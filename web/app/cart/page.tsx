@@ -34,7 +34,7 @@ export default function CartPage() {
             <p className="text-xl text-gray-600 mb-6">장바구니가 비어있습니다.</p>
             <button
               onClick={() => router.push('/products')}
-              className="bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 transition"
+              className="bg-primary-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-900 transition"
             >
               쇼핑 계속하기
             </button>
@@ -124,7 +124,7 @@ export default function CartPage() {
                   <div className="border-t pt-3">
                     <div className="flex justify-between text-lg font-bold">
                       <span>총 결제 금액</span>
-                      <span className="text-primary-600">
+                      <span className="text-primary-900">
                         {formatPrice(getTotalPrice() + (getTotalPrice() >= 50000 ? 0 : 3000))}원
                       </span>
                     </div>
@@ -139,7 +139,7 @@ export default function CartPage() {
 
                 <button
                   onClick={handleCheckout}
-                  className="w-full bg-primary-600 text-white py-4 rounded-lg font-semibold text-lg hover:bg-primary-700 transition"
+                  className="w-full bg-primary-800 text-white py-4 rounded-lg font-semibold text-lg hover:bg-primary-900 transition"
                 >
                   주문하기
                 </button>

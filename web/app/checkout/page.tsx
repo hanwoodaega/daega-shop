@@ -280,7 +280,7 @@ export default function CheckoutPage() {
                   <div className="border-t pt-3">
                     <div className="flex justify-between text-lg font-bold">
                       <span>총 결제 금액</span>
-                      <span className="text-primary-600">{formatPrice(total)}원</span>
+                      <span className="text-primary-900">{formatPrice(total)}원</span>
                     </div>
                   </div>
                 </div>
@@ -288,7 +288,7 @@ export default function CheckoutPage() {
                 <button
                   type="submit"
                   disabled={isProcessing}
-                  className="w-full bg-primary-600 text-white py-4 rounded-lg font-semibold text-lg hover:bg-primary-700 transition disabled:bg-gray-400"
+                  className="w-full bg-primary-800 text-white py-4 rounded-lg font-semibold text-lg hover:bg-primary-900 transition disabled:bg-gray-400"
                 >
                   {isProcessing ? '처리 중...' : `${formatPrice(total)}원 결제하기`}
                 </button>

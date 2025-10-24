@@ -69,7 +69,7 @@ export default function ProductDetailPage() {
       <div className="min-h-screen flex flex-col">
         <Navbar />
         <div className="flex-1 flex justify-center items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>
         <Footer />
       </div>
@@ -97,7 +97,7 @@ export default function ProductDetailPage() {
 
           {/* 상품 정보 */}
           <div>
-            <div className="text-sm text-primary-600 font-medium mb-2">
+            <div className="text-sm text-primary-700 font-semibold mb-2">
               {product.category}
             </div>
             <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
@@ -164,7 +164,7 @@ export default function ProductDetailPage() {
               <div className="flex justify-between items-center">
                 <span className="text-lg font-medium">총 금액</span>
                 <div className="text-right">
-                  <span className="text-3xl font-bold text-primary-600">
+                  <span className="text-3xl font-bold text-primary-900">
                     {formatPrice(product.price * quantity)}
                   </span>
                   <span className="text-gray-600 ml-1">원</span>
@@ -177,7 +177,7 @@ export default function ProductDetailPage() {
               <button
                 onClick={handleAddToCart}
                 disabled={product.stock <= 0}
-                className="flex-1 bg-primary-600 text-white py-4 rounded-lg font-semibold text-lg hover:bg-primary-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="flex-1 bg-primary-800 text-white py-4 rounded-lg font-semibold text-lg hover:bg-primary-900 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {product.stock > 0 ? '장바구니 담기' : '품절'}
               </button>

@@ -14,8 +14,8 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <Link href={`/products/${product.id}`}>
-      <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition group">
-        <div className="relative h-64 bg-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition group border border-gray-200">
+        <div className="relative h-64 bg-gray-100 overflow-hidden">
           <img
             src={product.image_url || 'https://via.placeholder.com/400x300?text=상품이미지'}
             alt={product.name}
@@ -28,10 +28,10 @@ export default function ProductCard({ product }: ProductCardProps) {
           )}
         </div>
         <div className="p-4">
-          <div className="text-sm text-primary-600 font-medium mb-1">
+          <div className="text-sm text-primary-700 font-semibold mb-1">
             {product.category}
           </div>
-          <h3 className="text-lg font-semibold mb-2 line-clamp-1">
+          <h3 className="text-lg font-bold mb-2 line-clamp-1 text-primary-900">
             {product.name}
           </h3>
           <p className="text-gray-600 text-sm mb-3 line-clamp-2">
@@ -39,7 +39,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           </p>
           <div className="flex justify-between items-center">
             <div>
-              <span className="text-2xl font-bold text-gray-900">
+              <span className="text-2xl font-bold text-primary-900">
                 {formatPrice(product.price)}
               </span>
               <span className="text-gray-600 ml-1">원</span>
