@@ -10,7 +10,6 @@ export default function Navbar() {
   const router = useRouter()
   const { user, loading, signOut } = useAuth()
   const getTotalItems = useCartStore((state) => state.getTotalItems)
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -75,13 +74,27 @@ export default function Navbar() {
             </div>
           </form>
 
-          {/* 장바구니, 로그인 & 모바일 메뉴 */}
+          {/* 장바구니, 로그인 */}
           <div className="flex items-center space-x-2 sm:space-x-4">
+            <Link href="/cart" className="relative">
+              <button className="flex items-center space-x-2 bg-primary-800 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-900 transition shadow-md">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span className="font-semibold hidden sm:inline">장바구니</span>
+                {mounted && getTotalItems() > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                    {getTotalItems()}
+                  </span>
+                )}
+              </button>
+            </Link>
+
             {/* 로그인/사용자 메뉴 */}
             {loading ? (
-              <div className="hidden sm:block w-8 h-8"></div>
+              <div className="w-8 h-8"></div>
             ) : user ? (
-              <div className="relative hidden sm:block">
+              <div className="relative">
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition"
@@ -113,40 +126,12 @@ export default function Navbar() {
                 )}
               </div>
             ) : (
-              <Link href="/auth/login" className="hidden sm:block">
-                <button className="px-4 py-2 text-gray-700 hover:text-primary-800 font-medium transition">
+              <Link href="/auth/login">
+                <button className="px-3 sm:px-4 py-2 text-gray-700 hover:text-primary-800 font-medium transition">
                   로그인
                 </button>
               </Link>
             )}
-
-            <Link href="/cart" className="relative">
-              <button className="flex items-center space-x-2 bg-primary-800 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-900 transition shadow-md">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <span className="font-semibold hidden sm:inline">장바구니</span>
-                {mounted && getTotalItems() > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                    {getTotalItems()}
-                  </span>
-                )}
-              </button>
-            </Link>
-
-            {/* 모바일 메뉴 버튼 */}
-            <button
-              className="md:hidden p-2"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {isMenuOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
-            </button>
           </div>
         </div>
 
@@ -186,46 +171,6 @@ export default function Navbar() {
             </Link>
           ))}
         </div>
-
-        {/* 모바일 메뉴 */}
-        {isMenuOpen && (
-          <div className="md:hidden py-4 border-t">
-            {loading ? null : user ? (
-              <div className="mb-4 px-2 py-3 bg-gray-50 rounded">
-                <p className="text-sm font-medium text-gray-900">{user.user_metadata?.name || '사용자'}</p>
-                <p className="text-xs text-gray-500">{user.email}</p>
-                <button
-                  onClick={() => {
-                    signOut()
-                    setIsMenuOpen(false)
-                  }}
-                  className="mt-2 text-sm text-red-600 font-medium"
-                >
-                  로그아웃
-                </button>
-              </div>
-            ) : (
-              <Link
-                href="/auth/login"
-                className="block py-3 text-gray-700 hover:text-primary-800 hover:bg-gray-50 px-2 rounded transition font-medium mb-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                로그인
-              </Link>
-            )}
-            
-            {categories.map((category) => (
-              <Link
-                key={category.name}
-                href={category.href}
-                className="block py-3 text-gray-700 hover:text-primary-800 hover:bg-gray-50 px-2 rounded transition font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {category.name}
-              </Link>
-            ))}
-          </div>
-        )}
       </div>
     </nav>
   )

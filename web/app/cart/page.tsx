@@ -47,11 +47,7 @@ export default function CartPage() {
                 <div key={item.productId} className="bg-white rounded-lg shadow-md p-6">
                   <div className="flex items-start space-x-4">
                     {/* 상품 이미지 */}
-                    <img
-                      src={item.imageUrl || 'https://via.placeholder.com/100x100?text=상품'}
-                      alt={item.name}
-                      className="w-24 h-24 object-cover rounded-lg"
-                    />
+                    <div className="w-24 h-24 bg-gray-200 rounded-lg flex-shrink-0"></div>
 
                     {/* 상품 정보 */}
                     <div className="flex-1">

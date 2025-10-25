@@ -11,6 +11,11 @@ export default function CheckoutPage() {
   const router = useRouter()
   const { items, getTotalPrice, clearCart } = useCartStore()
   
+  const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'quick' | 'regular'>('regular')
+  const [pickupTime, setPickupTime] = useState('')
+  const [quickDeliveryArea, setQuickDeliveryArea] = useState('')
+  const [quickDeliveryTime, setQuickDeliveryTime] = useState('')
+  
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -23,6 +28,27 @@ export default function CheckoutPage() {
   
   const [isProcessing, setIsProcessing] = useState(false)
 
+  // 픽업 가능 시간대 (오전 10시 ~ 오후 8시)
+  const pickupTimeSlots = [
+    '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
+    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
+    '19:00', '19:30', '20:00'
+  ]
+
+  // 퀵배달 가능 지역
+  const quickDeliveryAreas = [
+    '연향동', '조례동', '풍덕동', '해룡면'
+  ]
+
+  // 퀵배달 시간대 (오전 10시 ~ 오후 10시)
+  const quickDeliveryTimeSlots = [
+    '10:00~11:00', '11:00~12:00', '12:00~13:00',
+    '13:00~14:00', '14:00~15:00', '15:00~16:00',
+    '16:00~17:00', '17:00~18:00', '18:00~19:00',
+    '19:00~20:00', '20:00~21:00', '21:00~22:00'
+  ]
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ko-KR').format(price)
   }
@@ -30,6 +56,13 @@ export default function CheckoutPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const getDeliveryFee = () => {
+    if (deliveryMethod === 'pickup') return 0
+    if (deliveryMethod === 'quick') return 5000
+    // 일반 택배
+    return getTotalPrice() >= 50000 ? 0 : 3000
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,8 +74,30 @@ export default function CheckoutPage() {
       return
     }
 
-    if (!formData.name || !formData.phone || !formData.address) {
+    if (!formData.name || !formData.phone) {
       alert('필수 항목을 모두 입력해주세요.')
+      return
+    }
+
+    // 배송 방법별 유효성 검사
+    if (deliveryMethod === 'pickup' && !pickupTime) {
+      alert('픽업 시간을 선택해주세요.')
+      return
+    }
+
+    if (deliveryMethod === 'quick') {
+      if (!quickDeliveryArea) {
+        alert('배달 지역을 선택해주세요.')
+        return
+      }
+      if (!quickDeliveryTime) {
+        alert('배달 시간을 선택해주세요.')
+        return
+      }
+    }
+
+    if (deliveryMethod === 'regular' && !formData.address) {
+      alert('배송 주소를 입력해주세요.')
       return
     }
 
@@ -102,7 +157,7 @@ export default function CheckoutPage() {
   }
 
   const subtotal = getTotalPrice()
-  const shipping = subtotal >= 50000 ? 0 : 3000
+  const shipping = getDeliveryFee()
   const total = subtotal + shipping
 
   return (
@@ -116,6 +171,114 @@ export default function CheckoutPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* 주문 정보 입력 */}
             <div className="lg:col-span-2 space-y-6">
+              {/* 배송 방법 선택 */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-bold mb-4">배송 방법</h2>
+                <div className="space-y-4">
+                  {/* 오늘 픽업 */}
+                  <label className="flex items-start space-x-3 cursor-pointer p-4 border-2 rounded-lg hover:border-primary-500 transition"
+                    style={{ borderColor: deliveryMethod === 'pickup' ? '#b45309' : '#e5e7eb' }}>
+                    <input
+                      type="radio"
+                      name="deliveryMethod"
+                      value="pickup"
+                      checked={deliveryMethod === 'pickup'}
+                      onChange={() => setDeliveryMethod('pickup')}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="font-semibold text-lg">오늘 픽업</div>
+                      <div className="text-sm text-gray-600 mt-1">매장에서 직접 픽업 • 무료</div>
+                      {deliveryMethod === 'pickup' && (
+                        <div className="mt-3">
+                          <label className="block text-sm font-medium mb-2">픽업 시간 선택</label>
+                          <select
+                            value={pickupTime}
+                            onChange={(e) => setPickupTime(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                            required
+                          >
+                            <option value="">시간을 선택하세요</option>
+                            {pickupTimeSlots.map(time => (
+                              <option key={time} value={time}>{time}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </label>
+
+                  {/* 퀵배달 */}
+                  <label className="flex items-start space-x-3 cursor-pointer p-4 border-2 rounded-lg hover:border-primary-500 transition"
+                    style={{ borderColor: deliveryMethod === 'quick' ? '#b45309' : '#e5e7eb' }}>
+                    <input
+                      type="radio"
+                      name="deliveryMethod"
+                      value="quick"
+                      checked={deliveryMethod === 'quick'}
+                      onChange={() => setDeliveryMethod('quick')}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="font-semibold text-lg">퀵배달</div>
+                      <div className="text-sm text-gray-600 mt-1">1~2시간 내 신속 배달 • 5,000원</div>
+                      {deliveryMethod === 'quick' && (
+                        <div className="mt-3 space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium mb-2">배달 지역 선택</label>
+                            <select
+                              value={quickDeliveryArea}
+                              onChange={(e) => setQuickDeliveryArea(e.target.value)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                              required
+                            >
+                              <option value="">지역을 선택하세요</option>
+                              {quickDeliveryAreas.map(area => (
+                                <option key={area} value={area}>{area}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">배달 시간대 선택</label>
+                            <select
+                              value={quickDeliveryTime}
+                              onChange={(e) => setQuickDeliveryTime(e.target.value)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                              required
+                            >
+                              <option value="">시간대를 선택하세요</option>
+                              {quickDeliveryTimeSlots.map(time => (
+                                <option key={time} value={time}>{time}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </label>
+
+                  {/* 일반 택배 */}
+                  <label className="flex items-start space-x-3 cursor-pointer p-4 border-2 rounded-lg hover:border-primary-500 transition"
+                    style={{ borderColor: deliveryMethod === 'regular' ? '#b45309' : '#e5e7eb' }}>
+                    <input
+                      type="radio"
+                      name="deliveryMethod"
+                      value="regular"
+                      checked={deliveryMethod === 'regular'}
+                      onChange={() => setDeliveryMethod('regular')}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="font-semibold text-lg">택배배송</div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        2~3일 내 배송 • {subtotal >= 50000 ? '무료' : '3,000원'}
+                        {subtotal < 50000 && <span className="text-primary-600"> (5만원 이상 무료)</span>}
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
               {/* 주문자 정보 */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-bold mb-4">주문자 정보</h2>
@@ -163,7 +326,8 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* 배송 정보 */}
+              {/* 배송 정보 - 택배배송일 때만 표시 */}
+              {deliveryMethod === 'regular' && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-bold mb-4">배송 정보</h2>
                 <div className="space-y-4">
@@ -227,6 +391,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* 결제 방법 */}
               <div className="bg-white rounded-lg shadow-md p-6">

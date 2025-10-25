@@ -85,30 +85,33 @@ export default function ProductDetailPage() {
       <Navbar />
       
       <main className="flex-1 container mx-auto px-4 py-8">
+        {/* 뒤로가기 버튼 */}
+        <button
+          onClick={() => router.back()}
+          className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-6 transition"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          <span>뒤로가기</span>
+        </button>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           {/* 상품 이미지 */}
-          <div className="bg-gray-200 rounded-lg overflow-hidden">
-            <img
-              src={product.image_url || 'https://via.placeholder.com/600x600?text=상품이미지'}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
+          <div className="bg-gray-200 rounded-lg overflow-hidden aspect-square">
           </div>
 
           {/* 상품 정보 */}
           <div>
-            <div className="text-sm text-primary-700 font-semibold mb-2">
-              {product.category}
-            </div>
-            <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
+            <h1 className="text-xl font-semibold mb-4">{product.name}</h1>
             
             <div className="border-t border-b py-4 mb-6">
               <div className="flex items-baseline mb-2">
-                <span className="text-4xl font-bold text-gray-900">
+                <span className="text-xl font-bold text-gray-900">
                   {formatPrice(product.price)}
                 </span>
-                <span className="text-xl text-gray-600 ml-2">원</span>
-                <span className="text-gray-500 ml-2">
+                <span className="text-base text-gray-600 ml-2">원</span>
+                <span className="text-gray-500 ml-2 text-sm">
                   / {product.unit}
                 </span>
               </div>
@@ -162,9 +165,9 @@ export default function ProductDetailPage() {
             {/* 총 금액 */}
             <div className="bg-gray-50 p-4 rounded-lg mb-6">
               <div className="flex justify-between items-center">
-                <span className="text-lg font-medium">총 금액</span>
+                <span className="text-base font-medium">총 금액</span>
                 <div className="text-right">
-                  <span className="text-3xl font-bold text-primary-900">
+                  <span className="text-xl font-bold text-primary-900">
                     {formatPrice(product.price * quantity)}
                   </span>
                   <span className="text-gray-600 ml-1">원</span>
