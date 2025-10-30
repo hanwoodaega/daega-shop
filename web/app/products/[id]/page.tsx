@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { supabase, Product } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth-context'
 import { useCartStore } from '@/lib/store'
 
 export default function ProductDetailPage() {
@@ -15,6 +16,11 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
+  const [showQty, setShowQty] = useState(false)
+  const [pendingAction, setPendingAction] = useState<null | 'cart' | 'buy'>(null)
+  const [showCartConfirm, setShowCartConfirm] = useState(false)
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+  const { user } = useAuth()
   const addItem = useCartStore((state) => state.addItem)
 
   useEffect(() => {
@@ -56,8 +62,6 @@ export default function ProductDetailPage() {
       imageUrl: product.image_url,
       unit: product.unit,
     })
-
-    alert('장바구니에 추가되었습니다.')
   }
 
   const formatPrice = (price: number) => {
@@ -85,16 +89,6 @@ export default function ProductDetailPage() {
       <Navbar />
       
       <main className="flex-1 container mx-auto px-4 py-8">
-        {/* 뒤로가기 버튼 */}
-        <button
-          onClick={() => router.back()}
-          className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-6 transition"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          <span>뒤로가기</span>
-        </button>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           {/* 상품 이미지 */}
@@ -131,35 +125,7 @@ export default function ProductDetailPage() {
                   <span className="font-medium w-24">중량:</span>
                   <span>{product.weight} {product.unit}</span>
                 </li>
-                <li className="flex">
-                  <span className="font-medium w-24">재고:</span>
-                  <span className={product.stock > 0 ? 'text-green-600' : 'text-red-600'}>
-                    {product.stock > 0 ? `${product.stock}개 재고 있음` : '품절'}
-                  </span>
-                </li>
               </ul>
-            </div>
-
-            {/* 수량 선택 */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">수량</label>
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-100"
-                >
-                  -
-                </button>
-                <span className="text-xl font-semibold w-12 text-center">
-                  {quantity}
-                </span>
-                <button
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-100"
-                >
-                  +
-                </button>
-              </div>
             </div>
 
             {/* 총 금액 */}
@@ -174,30 +140,113 @@ export default function ProductDetailPage() {
                 </div>
               </div>
             </div>
+            {/* 기존 버튼 제거: 하단 고정 바 사용 */}
+          </div>
+        </div>
+      </main>
 
-            {/* 버튼 */}
-            <div className="flex space-x-4">
-              <button
-                onClick={handleAddToCart}
-                disabled={product.stock <= 0}
-                className="flex-1 bg-primary-800 text-white py-4 rounded-lg font-semibold text-lg hover:bg-primary-900 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {product.stock > 0 ? '장바구니 담기' : '품절'}
-              </button>
+      {/* 하단 고정 뒤로가기 버튼 (좌측) */}
+      <button
+        onClick={() => router.back()}
+        aria-label="뒤로가기"
+        className="fixed bottom-24 left-4 z-50 bg-white/80 backdrop-blur-sm text-gray-800 border border-gray-200 shadow-lg rounded-full p-3 hover:bg-white hover:shadow-xl transition"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+
+      {/* 하단 고정 액션 바 (상하 패딩 축소, 하단 여백 확장, 배경 화이트) */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200">
+        <div className="px-0 pt-0 pb-8 grid grid-cols-2 gap-0">
+          <button
+            onClick={() => { setPendingAction('cart'); setShowQty(true) }}
+            disabled={product.stock <= 0}
+            className="bg-primary-800 text-white py-3 text-base font-semibold hover:bg-primary-900 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            장바구니
+          </button>
+          <button
+            onClick={() => { setPendingAction('buy'); setShowQty(true) }}
+            disabled={product.stock <= 0}
+            className="bg-red-600 text-white py-3 text-lg font-semibold hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            바로구매
+          </button>
+        </div>
+      </div>
+
+      {/* 수량 선택 미니 패널 */}
+      {showQty && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setShowQty(false)}></div>
+          <div className="relative w-full max-w-md mx-auto mb-20 bg-white rounded-t-xl shadow-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-gray-600">수량</span>
+              <button onClick={() => setShowQty(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div className="flex items-center justify-center space-x-6 mb-4">
+              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-100">-</button>
+              <span className="text-xl font-semibold w-12 text-center">{quantity}</span>
+              <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-100">+</button>
+            </div>
+            <div className="text-center text-sm text-gray-600 mb-4">총 {formatPrice(product.price * quantity)}원</div>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => setShowQty(false)} className="py-3 rounded-lg border">취소</button>
               <button
                 onClick={() => {
-                  handleAddToCart()
-                  router.push('/cart')
+                  if (pendingAction === 'cart') {
+                    handleAddToCart()
+                    setShowQty(false)
+                    setShowCartConfirm(true)
+                  } else if (pendingAction === 'buy') {
+                    handleAddToCart()
+                    setShowQty(false)
+                    if (!user) {
+                      setShowLoginPrompt(true)
+                    } else {
+                      router.push('/checkout')
+                    }
+                  }
                 }}
-                disabled={product.stock <= 0}
-                className="flex-1 bg-gray-900 text-white py-4 rounded-lg font-semibold text-lg hover:bg-gray-800 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="py-3 rounded-lg bg-primary-800 text-white font-semibold"
               >
-                바로 구매
+                확인
               </button>
             </div>
           </div>
         </div>
-      </main>
+      )}
+
+      {/* 로그인 유도 모달 */}
+      {showLoginPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setShowLoginPrompt(false)}></div>
+          <div className="relative w-full max-w-sm mx-auto bg-white rounded-xl shadow-xl p-5">
+            <div className="text-base font-medium mb-2">로그인이 필요합니다.</div>
+            <div className="text-sm text-gray-600 mb-5">주문을 계속하시려면 로그인해 주세요.</div>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => setShowLoginPrompt(false)} className="py-3 rounded-lg border">취소</button>
+              <button onClick={() => router.push(`/auth/login?next=${encodeURIComponent('/checkout')}`)} className="py-3 rounded-lg bg-primary-800 text-white font-semibold">로그인</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 장바구니 이동 확인 모달 */}
+      {showCartConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setShowCartConfirm(false)}></div>
+          <div className="relative w-full max-w-sm mx-auto bg-white rounded-xl shadow-xl p-5">
+            <div className="text-base font-medium mb-2">장바구니에 추가되었습니다.</div>
+            <div className="text-sm text-gray-600 mb-5">장바구니로 바로 가시겠습니까?</div>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => setShowCartConfirm(false)} className="py-3 rounded-lg border">취소</button>
+              <button onClick={() => router.push('/cart')} className="py-3 rounded-lg bg-primary-800 text-white font-semibold">확인</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

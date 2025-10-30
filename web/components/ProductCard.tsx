@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Product } from '@/lib/supabase'
 import { useCartStore } from '@/lib/store'
 
@@ -10,6 +11,21 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem)
+  const hasValidImage =
+    typeof product.image_url === 'string' &&
+    product.image_url.trim().length > 0 &&
+    (product.image_url.startsWith('http://') ||
+      product.image_url.startsWith('https://') ||
+      product.image_url.startsWith('/'))
+  const isPlaceholderHost = (() => {
+    try {
+      const url = new URL(product.image_url)
+      return url.hostname === 'via.placeholder.com'
+    } catch {
+      return false
+    }
+  })()
+  const shouldRenderImage = hasValidImage && !isPlaceholderHost
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ko-KR').format(price)
@@ -38,8 +54,22 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <Link href={`/products/${product.id}`}>
-      <div className="bg-white rounded-lg overflow-hidden transition group border border-gray-100 shadow-sm hover:shadow-md">
-        <div className="relative h-40 bg-gray-200 overflow-hidden">
+      <div className="bg-white transition shadow-sm hover:shadow-md">
+        <div className="relative aspect-square bg-gray-200 overflow-hidden">
+          {shouldRenderImage ? (
+            <Image
+              src={product.image_url}
+              alt={product.name}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+              unoptimized={isPlaceholderHost}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm bg-gray-200">
+              이미지 준비중
+            </div>
+          )}
           {product.stock <= 0 && (
             <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
               <span className="text-white text-xl font-bold">품절</span>
@@ -56,24 +86,38 @@ export default function ProductCard({ product }: ProductCardProps) {
             </svg>
           </button>
         </div>
-        <div className="p-4 group-active:bg-black group-active:text-white transition-colors duration-150">
-          <h3 className="text-sm font-medium mb-3 line-clamp-1 text-primary-900">
-            {product.name}
-          </h3>
-          <div className="flex justify-between items-center">
-            <div>
-              <span className="text-base font-bold text-primary-900">
-                {formatPrice(product.price)}
-              </span>
-              <span className="text-gray-600 ml-1 text-sm">원</span>
-              <span className="text-gray-500 text-xs ml-1">
-                / {product.unit}
-              </span>
-            </div>
-          </div>
-          <div className="mt-2 text-xs text-gray-500">
-            {product.origin}
-          </div>
+        <div className="pt-2 pb-3 pr-4 pl-2">
+          {product.brand && (
+            <div className="text-sm font-bold text-primary-900 mb-0.5 line-clamp-1">{product.brand}</div>
+          )}
+          <h3 className="text-sm font-medium mb-0 line-clamp-1 text-primary-900">{product.name}</h3>
+          {/* 가격 영역을 2줄로 고정하여 카드 높이를 통일 */}
+          {product.discount_percent && product.discount_percent > 0 ? (
+            <>
+              <div className="text-xs text-gray-500 line-through mt-1">
+                {formatPrice(product.price)}원
+              </div>
+              <div className="flex items-baseline gap-2 mt-0">
+                <span className="text-base md:text-lg font-bold text-red-600">{product.discount_percent}%</span>
+                <span className="text-base font-extrabold text-primary-900">
+                  {formatPrice(Math.round(product.price * (100 - product.discount_percent) / 100))}
+                </span>
+                <span className="text-gray-600 text-sm">원</span>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* 할인 미적용 시에도 1줄을 비워 동일 높이 확보 (줄간격 최소화) */}
+              <div className="invisible h-2 leading-none">.</div>
+              <div className="flex items-baseline gap-1 mt-0">
+                <span className="text-base font-bold text-primary-900">
+                  {formatPrice(product.price)}
+                </span>
+                <span className="text-gray-600 text-sm">원</span>
+              </div>
+            </>
+          )}
+          
         </div>
       </div>
     </Link>
