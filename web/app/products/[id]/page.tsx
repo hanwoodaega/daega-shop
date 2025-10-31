@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
-import BottomNavbar from '@/components/BottomNavbar'
 import { supabase, Product } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { useCartStore } from '@/lib/store'
@@ -156,7 +155,7 @@ export default function ProductDetailPage() {
       </button>
 
       {/* 하단 고정 액션 바 (상하 패딩 축소, 하단 여백 확장, 배경 화이트) */}
-      <div className="fixed bottom-16 left-0 right-0 z-40 bg-white border-t border-gray-200">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
         <div className="px-0 pt-0 pb-8 grid grid-cols-2 gap-0">
           <button
             onClick={() => { setPendingAction('cart'); setShowQty(true) }}
@@ -248,7 +247,6 @@ export default function ProductDetailPage() {
       )}
 
       <Footer />
-      <BottomNavbar />
     </div>
   )
 }

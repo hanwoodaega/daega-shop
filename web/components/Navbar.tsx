@@ -49,7 +49,7 @@ export default function Navbar() {
           </Link>
 
           {/* 검색창 */}
-          <form onSubmit={handleSearch} className={`transition-all duration-300 ${isSearchFocused ? 'flex-1 w-full' : 'ml-auto md:flex-1 md:max-w-2xl'}`} id="navbar-search">
+          <form onSubmit={handleSearch} className={`transition-all duration-300 ${isSearchFocused ? 'flex-1 max-w-xl' : 'ml-auto md:flex-1 md:max-w-2xl'}`} id="navbar-search">
             <div className="relative">
               <input
                 type="text"
@@ -59,17 +59,19 @@ export default function Navbar() {
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
                 className={`px-3 py-1.5 md:px-4 md:py-2 pr-8 md:pr-10 text-sm md:text-base border-2 border-gray-300 rounded-full focus:outline-none focus:border-primary-700 transition-all duration-300 ${
-                  isSearchFocused ? 'w-full' : 'w-48 sm:w-56 md:w-full'
+                  isSearchFocused ? 'w-full max-w-xs sm:max-w-sm md:max-w-xl' : 'w-48 sm:w-56 md:w-full'
                 }`}
               />
-              <svg 
-                className="absolute right-2 md:right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400"
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              {!isSearchFocused && (
+                <svg 
+                  className="absolute right-2 md:right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400"
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              )}
             </div>
           </form>
         </div>
