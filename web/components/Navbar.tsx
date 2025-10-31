@@ -65,12 +65,14 @@ export default function Navbar() {
               <input
                 type="search"
                 id="navbar-search-input"
+                name="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 inputMode="search"
                 autoComplete="off"
                 enterKeyHint="search"
+                data-1p-ignore
                 className="w-48 sm:w-56 md:w-full px-3 py-1.5 md:px-4 md:py-2 pr-8 md:pr-10 text-base md:text-base border-2 border-gray-300 rounded-full focus:outline-none focus:border-primary-700 transition"
               />
               <svg 
