@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Product } from '@/lib/supabase'
 import { useCartStore } from '@/lib/store'
+import { formatPrice } from '@/lib/utils'
 
 interface ProductCardProps {
   product: Product
@@ -17,19 +18,9 @@ export default function ProductCard({ product }: ProductCardProps) {
     (product.image_url.startsWith('http://') ||
       product.image_url.startsWith('https://') ||
       product.image_url.startsWith('/'))
-  const isPlaceholderHost = (() => {
-    try {
-      const url = new URL(product.image_url)
-      return url.hostname === 'via.placeholder.com'
-    } catch {
-      return false
-    }
-  })()
+  
+  const isPlaceholderHost = hasValidImage && product.image_url.includes('via.placeholder.com')
   const shouldRenderImage = hasValidImage && !isPlaceholderHost
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR').format(price)
-  }
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -46,7 +37,8 @@ export default function ProductCard({ product }: ProductCardProps) {
       price: product.price,
       quantity: 1,
       imageUrl: product.image_url,
-      unit: product.unit,
+      discount_percent: product.discount_percent,
+      brand: product.brand,
     })
 
     alert('장바구니에 추가되었습니다.')
@@ -63,7 +55,6 @@ export default function ProductCard({ product }: ProductCardProps) {
               fill
               className="object-cover"
               sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
-              unoptimized={isPlaceholderHost}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm bg-gray-200">

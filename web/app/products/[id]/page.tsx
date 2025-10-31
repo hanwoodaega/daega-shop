@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
+import BottomNavbar from '@/components/BottomNavbar'
 import { supabase, Product } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { useCartStore } from '@/lib/store'
+import { formatPrice } from '@/lib/utils'
 
 export default function ProductDetailPage() {
   const params = useParams()
@@ -60,12 +62,9 @@ export default function ProductDetailPage() {
       price: product.price,
       quantity,
       imageUrl: product.image_url,
-      unit: product.unit,
+      discount_percent: product.discount_percent,
+      brand: product.brand,
     })
-  }
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR').format(price)
   }
 
   if (loading) {
@@ -149,7 +148,7 @@ export default function ProductDetailPage() {
       <button
         onClick={() => router.back()}
         aria-label="뒤로가기"
-        className="fixed bottom-24 left-4 z-50 bg-white/80 backdrop-blur-sm text-gray-800 border border-gray-200 shadow-lg rounded-full p-3 hover:bg-white hover:shadow-xl transition"
+        className="fixed bottom-28 left-4 z-50 bg-white/80 backdrop-blur-sm text-gray-800 border border-gray-200 shadow-lg rounded-full p-3 hover:bg-white hover:shadow-xl transition"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -157,7 +156,7 @@ export default function ProductDetailPage() {
       </button>
 
       {/* 하단 고정 액션 바 (상하 패딩 축소, 하단 여백 확장, 배경 화이트) */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200">
+      <div className="fixed bottom-16 left-0 right-0 z-40 bg-white border-t border-gray-200">
         <div className="px-0 pt-0 pb-8 grid grid-cols-2 gap-0">
           <button
             onClick={() => { setPendingAction('cart'); setShowQty(true) }}
@@ -249,6 +248,7 @@ export default function ProductDetailPage() {
       )}
 
       <Footer />
+      <BottomNavbar />
     </div>
   )
 }

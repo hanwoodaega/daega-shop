@@ -6,20 +6,20 @@ import { useState } from 'react'
 import Footer from '@/components/Footer'
 import { useCartStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
+import { formatPrice } from '@/lib/utils'
 
 export default function CartPage() {
   const router = useRouter()
-  const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore()
+  const { items, removeItem, updateQuantity, getTotalPrice, toggleSelect, toggleSelectAll, getSelectedItems } = useCartStore()
   const { user } = useAuth()
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false as any)
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR').format(price)
-  }
+  const allSelected = items.length > 0 && items.every((item) => item.selected !== false)
 
   const handleCheckout = () => {
-    if (items.length === 0) {
-      alert('장바구니가 비어있습니다.')
+    const selectedItems = getSelectedItems()
+    if (selectedItems.length === 0) {
+      alert('주문할 상품을 선택해주세요.')
       return
     }
     if (!user) {
@@ -30,8 +30,9 @@ export default function CartPage() {
   }
 
   const handleGiftCheckout = () => {
-    if (items.length === 0) {
-      alert('장바구니가 비어있습니다.')
+    const selectedItems = getSelectedItems()
+    if (selectedItems.length === 0) {
+      alert('주문할 상품을 선택해주세요.')
       return
     }
     if (!user) {
@@ -68,7 +69,7 @@ export default function CartPage() {
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-2 py-8">
+      <main className="flex-1 container mx-auto px-2 py-8 pb-32">
 
         {items.length === 0 ? (
           <div className="text-center py-20">
@@ -84,17 +85,45 @@ export default function CartPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* 장바구니 아이템 */}
-            <div className="lg:col-span-2 space-y-4">
-              {items.map((item) => (
-                <div key={item.productId} className="bg-white rounded-lg shadow-md pr-6 pl-3 py-6 border border-gray-300">
-                  <div className="flex items-start space-x-4">
+            <div className="lg:col-span-2">
+              {/* 전체 선택 체크박스 */}
+              <div className="pt-0 pb-4 border-b border-gray-300">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={(e) => toggleSelectAll(e.target.checked)}
+                    className="w-6 h-6 text-primary-800 border-gray-300 rounded focus:ring-primary-800"
+                  />
+                  <span className="ml-2 text-sm font-medium text-gray-900">전체 선택</span>
+                </label>
+              </div>
+
+              {items.map((item, index) => (
+                <div key={item.productId} className={`py-6 border-b border-gray-200 ${index === items.length - 1 ? 'border-b-0' : ''}`}>
+                  <div className="flex items-start space-x-3">
                     {/* 상품 이미지 (각진 모서리, 크기 약간 축소) */}
-                    <div className="w-20 h-20 bg-gray-200 flex-shrink-0"></div>
+                    <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0">
+                      {/* 체크박스 - 이미지 왼쪽 상단 */}
+                      <div className="absolute top-0 left-0 z-10">
+                        <input
+                          type="checkbox"
+                          checked={item.selected !== false}
+                          onChange={() => toggleSelect(item.productId)}
+                          className="w-6 h-6 text-primary-800 border-gray-300 rounded focus:ring-primary-800 bg-white"
+                        />
+                      </div>
+                    </div>
 
                     {/* 상품 정보 */}
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
-                        <h3 className="text-sm font-normal mb-1 pr-2 line-clamp-2">{item.name}</h3>
+                        <div className="flex-1 pr-2">
+                          {item.brand && (
+                            <div className="text-sm font-bold text-gray-900 mb-0.5 line-clamp-1">{item.brand}</div>
+                          )}
+                          <h3 className="text-sm font-normal mb-1 line-clamp-2">{item.name}</h3>
+                        </div>
                         <button
                           onClick={() => removeItem(item.productId)}
                           className="text-red-600 hover:text-red-700 text-xs flex-shrink-0"
@@ -104,9 +133,32 @@ export default function CartPage() {
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <p className="text-lg md:text-xl font-bold text-gray-900">
-                          {formatPrice(item.price * item.quantity)}원
-                        </p>
+                        <div className="flex-1">
+                          {item.discount_percent && item.discount_percent > 0 ? (
+                            <>
+                              <div className="text-xs text-gray-500 line-through mt-1">
+                                {formatPrice(item.price * item.quantity)}원
+                              </div>
+                              <div className="flex items-baseline gap-2 mt-0">
+                                <span className="text-base md:text-lg font-bold text-red-600">{item.discount_percent}%</span>
+                                <span className="text-lg md:text-xl font-extrabold text-gray-900">
+                                  {formatPrice(Math.round(item.price * (100 - item.discount_percent) / 100) * item.quantity)}
+                                </span>
+                                <span className="text-gray-600 text-sm">원</span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="invisible h-2 leading-none">.</div>
+                              <div className="flex items-baseline gap-1 mt-0">
+                                <span className="text-lg md:text-xl font-bold text-gray-900">
+                                  {formatPrice(item.price * item.quantity)}
+                                </span>
+                                <span className="text-gray-600 text-sm">원</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => updateQuantity(item.productId, Math.max(1, item.quantity - 1))}
@@ -114,7 +166,7 @@ export default function CartPage() {
                           >
                             -
                           </button>
-                          <span className="font-semibold w-6 text-center text-xs">
+                          <span className="font-semibold w-6 text-center text-base">
                             {item.quantity}
                           </span>
                           <button
@@ -136,7 +188,7 @@ export default function CartPage() {
 
             {/* 주문 요약 */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
+              <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 sticky top-24">
                 <h2 className="text-xl font-bold mb-4">주문 요약</h2>
                 
                 <div className="space-y-3 mb-6">
@@ -168,7 +220,7 @@ export default function CartPage() {
 
                 <button
                   onClick={() => router.push('/products')}
-                  className="w-full mt-3 bg-gray-200 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-300 transition"
+                  className="w-full mt-3 bg-primary-800 text-white py-3 rounded-lg font-semibold hover:bg-primary-900 transition"
                 >
                   쇼핑 계속하기
                 </button>
@@ -179,8 +231,8 @@ export default function CartPage() {
       </main>
 
       {/* 하단 고정 액션 바: 선물하기 / 주문하기 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200">
-        <div className="px-0 pt-0 pb-8 grid grid-cols-2 gap-0">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+        <div className="px-0 pb-6 grid grid-cols-2 gap-0">
           <button
             onClick={handleGiftCheckout}
             className="bg-gray-900 text-white py-3 text-lg font-semibold hover:bg-gray-800"
@@ -196,7 +248,9 @@ export default function CartPage() {
         </div>
       </div>
 
-      <Footer />
+      <div className="pb-20">
+        <Footer />
+      </div>
 
       {/* 로그인 유도 모달 */}
       {showLoginPrompt && (

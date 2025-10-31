@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
+import BottomNavbar from '@/components/BottomNavbar'
 import ProductCard from '@/components/ProductCard'
 import { supabase, Product, isSupabaseConfigured } from '@/lib/supabase'
 
@@ -108,7 +109,7 @@ export default function Home() {
         </section>
 
         {/* 카테고리 - 모바일만 표시 */}
-        <section className="py-8 bg-white md:hidden border-b-2 border-gray-300">
+        <section className="py-4 bg-white md:hidden border-b-2 border-gray-300">
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-5 gap-3">
               <Link href="/products" className="flex flex-col items-center">
@@ -162,7 +163,7 @@ export default function Home() {
               <h2 className="text-xl font-bold text-primary-900">상품 목록</h2>
               <select
                 value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as any)}
+                onChange={(e) => setSortOrder(e.target.value as 'default' | 'price_asc' | 'price_desc')}
                 className="px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-800 focus:border-transparent transition"
               >
                 <option value="default">최신순</option>
@@ -218,6 +219,7 @@ export default function Home() {
       )}
 
       <Footer />
+      <BottomNavbar />
     </div>
   )
 }

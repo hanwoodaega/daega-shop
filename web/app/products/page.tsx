@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
+import BottomNavbar from '@/components/BottomNavbar'
 import { supabase, Product } from '@/lib/supabase'
 import ProductCard from '@/components/ProductCard'
 
@@ -139,7 +140,7 @@ function ProductsContent() {
           </div>
           <select
             value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value as any)}
+            onChange={(e) => setSortOrder(e.target.value as 'default' | 'price_asc' | 'price_desc')}
             className="px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-800 focus:border-transparent transition"
           >
             <option value="default">최신순</option>
@@ -196,6 +197,7 @@ function ProductsContent() {
       </main>
 
       <Footer />
+      <BottomNavbar />
     </div>
   )
 }
@@ -209,6 +211,7 @@ export default function ProductsPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>
         <Footer />
+        <BottomNavbar />
       </div>
     }>
       <ProductsContent />

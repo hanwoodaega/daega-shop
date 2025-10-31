@@ -9,7 +9,11 @@ export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl as string, supabaseAnonKey as string)
   : (null as unknown as ReturnType<typeof createClient>)
 
-// Database Types
+/**
+ * Database Types
+ * These types represent the database schema structure
+ */
+
 export interface Product {
   id: string
   brand?: string
@@ -27,6 +31,10 @@ export interface Product {
   updated_at: string
 }
 
+/**
+ * Database CartItem type (for server-side operations)
+ * Note: Client-side cart uses a different CartItem interface in @/lib/store
+ */
 export interface CartItem {
   id: string
   user_id: string
@@ -36,6 +44,9 @@ export interface CartItem {
   product?: Product
 }
 
+/**
+ * Order type for database operations
+ */
 export interface Order {
   id: string
   user_id: string
@@ -48,6 +59,9 @@ export interface Order {
   updated_at: string
 }
 
+/**
+ * OrderItem type for database operations
+ */
 export interface OrderItem {
   id: string
   order_id: string

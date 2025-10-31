@@ -1,0 +1,202 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useCartStore } from '@/lib/store'
+import { useAuth } from '@/lib/auth-context'
+import { useState, useEffect } from 'react'
+
+export default function BottomNavbar() {
+  const pathname = usePathname()
+  const router = useRouter()
+  const { user } = useAuth()
+  const getTotalItems = useCartStore((state) => state.getTotalItems)
+  const [mounted, setMounted] = useState(false)
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false)
+  const [showSearchModal, setShowSearchModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/products?search=${encodeURIComponent(searchQuery)}`)
+      setShowSearchModal(false)
+      setSearchQuery('')
+    }
+  }
+
+  const categories = [
+    { name: '전체', href: '/products' },
+    { name: '한우', href: '/products?category=한우' },
+    { name: '돼지고기', href: '/products?category=돼지고기' },
+    { name: '수입육', href: '/products?category=수입육' },
+    { name: '닭', href: '/products?category=닭' },
+    { name: '가공육', href: '/products?category=가공육' },
+    { name: '조리육', href: '/products?category=조리육' },
+    { name: '야채', href: '/products?category=야채' },
+  ]
+
+  return (
+    <>
+      {/* 검색 모달 */}
+      {showSearchModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center pt-20">
+          <div className="w-full max-w-md mx-4 bg-white rounded-lg shadow-xl p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">상품 검색</h3>
+              <button
+                onClick={() => {
+                  setShowSearchModal(false)
+                  setSearchQuery('')
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleSearch}>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="상품을 검색하세요"
+                  className="w-full px-4 py-3 pl-10 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-primary-700"
+                  autoFocus
+                />
+                <svg
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 카테고리 메뉴 모달 */}
+      {showCategoryMenu && (
+        <div className="fixed inset-0 z-50 bg-black/50" onClick={() => setShowCategoryMenu(false)}>
+          <div className="fixed bottom-20 left-0 right-0 bg-white rounded-t-xl shadow-xl p-6 max-h-[60vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">카테고리</h3>
+              <button
+                onClick={() => setShowCategoryMenu(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {categories.map((category) => (
+                <Link
+                  key={category.name}
+                  href={category.href}
+                  onClick={() => setShowCategoryMenu(false)}
+                  className="p-4 bg-gray-50 rounded-lg text-center hover:bg-gray-100 transition"
+                >
+                  <span className="text-sm font-medium text-gray-900">{category.name}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 하단 네비게이션 바 */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+        <div className="container mx-auto px-2">
+          <div className="flex items-center justify-around h-16">
+            {/* 홈 */}
+            <Link
+              href="/"
+              className={`flex flex-col items-center justify-center flex-1 py-2 ${
+                pathname === '/' ? 'text-primary-800' : 'text-gray-600'
+              }`}
+            >
+              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              <span className="text-xs">홈</span>
+            </Link>
+
+            {/* 카테고리 */}
+            <button
+              onClick={() => setShowCategoryMenu(true)}
+              className={`flex flex-col items-center justify-center flex-1 py-2 ${
+                pathname?.startsWith('/products') ? 'text-primary-800' : 'text-gray-600'
+              }`}
+            >
+              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              <span className="text-xs">카테고리</span>
+            </button>
+
+            {/* 검색 */}
+            <button
+              onClick={() => {
+                const searchInput = document.getElementById('navbar-search-input')
+                if (searchInput) {
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                  setTimeout(() => {
+                    searchInput.focus()
+                  }, 300)
+                } else {
+                  // 상단 검색창이 없는 경우 모달 열기
+                  setShowSearchModal(true)
+                }
+              }}
+              className="flex flex-col items-center justify-center flex-1 py-2 text-gray-600"
+            >
+              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="text-xs">검색</span>
+            </button>
+
+            {/* 사용자 */}
+            <Link
+              href={user ? '/profile' : '/auth/login'}
+              className={`flex flex-col items-center justify-center flex-1 py-2 ${
+                pathname?.startsWith('/auth') || pathname?.startsWith('/profile') ? 'text-primary-800' : 'text-gray-600'
+              }`}
+            >
+              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span className="text-xs">사용자</span>
+            </Link>
+
+            {/* 장바구니 */}
+            <Link
+              href="/cart"
+              className={`relative flex flex-col items-center justify-center flex-1 py-2 ${
+                pathname === '/cart' ? 'text-primary-800' : 'text-gray-600'
+              }`}
+            >
+              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span className="text-xs">장바구니</span>
+              {mounted && getTotalItems() > 0 && (
+                <span className="absolute top-1 right-4 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                  {getTotalItems()}
+                </span>
+              )}
+            </Link>
+          </div>
+        </div>
+      </nav>
+    </>
+  )
+}
+

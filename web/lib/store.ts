@@ -7,7 +7,9 @@ interface CartItem {
   price: number
   quantity: number
   imageUrl: string
-  unit: string
+  discount_percent?: number
+  brand?: string
+  selected?: boolean
 }
 
 interface CartStore {
@@ -15,8 +17,11 @@ interface CartStore {
   addItem: (item: CartItem) => void
   removeItem: (productId: string) => void
   updateQuantity: (productId: string, quantity: number) => void
+  toggleSelect: (productId: string) => void
+  toggleSelectAll: (selected: boolean) => void
   clearCart: () => void
   getTotalPrice: () => number
+  getSelectedItems: () => CartItem[]
   getTotalItems: () => number
 }
 
@@ -33,12 +38,17 @@ export const useCartStore = create<CartStore>()(
             return {
               items: state.items.map((i) =>
                 i.productId === item.productId
-                  ? { ...i, quantity: i.quantity + item.quantity }
-                  : i
+                  ? { ...i, quantity: i.quantity + item.quantity, discount_percent: item.discount_percent ?? i.discount_percent, brand: item.brand ?? i.brand, selected: item.selected ?? i.selected ?? true }
+                  : { ...i, selected: i.selected ?? true }
               ),
             }
           }
-          return { items: [...state.items, item] }
+          return { 
+            items: [
+              ...state.items.map((i) => ({ ...i, selected: i.selected ?? true })),
+              { ...item, selected: item.selected ?? true }
+            ]
+          }
         }),
       removeItem: (productId) =>
         set((state) => ({
@@ -50,10 +60,28 @@ export const useCartStore = create<CartStore>()(
             i.productId === productId ? { ...i, quantity } : i
           ),
         })),
+      toggleSelect: (productId) =>
+        set((state) => ({
+          items: state.items.map((i) =>
+            i.productId === productId ? { ...i, selected: !(i.selected ?? true) } : i
+          ),
+        })),
+      toggleSelectAll: (selected) =>
+        set((state) => ({
+          items: state.items.map((i) => ({ ...i, selected })),
+        })),
       clearCart: () => set({ items: [] }),
       getTotalPrice: () => {
-        const items = get().items
-        return items.reduce((total, item) => total + item.price * item.quantity, 0)
+        const items = get().items.filter((item) => item.selected !== false)
+        return items.reduce((total, item) => {
+          const unitPrice = item.discount_percent && item.discount_percent > 0
+            ? Math.round(item.price * (100 - item.discount_percent) / 100)
+            : item.price
+          return total + unitPrice * item.quantity
+        }, 0)
+      },
+      getSelectedItems: () => {
+        return get().items.filter((item) => item.selected !== false)
       },
       getTotalItems: () => {
         const items = get().items

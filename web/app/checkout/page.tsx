@@ -6,10 +6,11 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { useCartStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
+import { formatPrice } from '@/lib/utils'
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, getTotalPrice, clearCart } = useCartStore()
+  const { items, getTotalPrice, clearCart, getSelectedItems } = useCartStore()
   
   const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'quick' | 'regular'>('regular')
   const [pickupTime, setPickupTime] = useState('')
@@ -46,12 +47,8 @@ export default function CheckoutPage() {
     '10:00~11:00', '11:00~12:00', '12:00~13:00',
     '13:00~14:00', '14:00~15:00', '15:00~16:00',
     '16:00~17:00', '17:00~18:00', '18:00~19:00',
-    '19:00~20:00', '20:00~21:00', '21:00~22:00'
+    '19:00~20:00', '20:00~21:00',     '21:00~22:00'
   ]
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR').format(price)
-  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -68,8 +65,9 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (items.length === 0) {
-      alert('장바구니가 비어있습니다.')
+    const selectedItems = getSelectedItems()
+    if (selectedItems.length === 0) {
+      alert('주문할 상품을 선택해주세요.')
       router.push('/cart')
       return
     }
@@ -132,7 +130,7 @@ export default function CheckoutPage() {
 
       // 주문 아이템 저장
       if (order) {
-        const orderItems = items.map(item => ({
+        const orderItems = selectedItems.map(item => ({
           order_id: order.id,
           product_id: item.productId,
           quantity: item.quantity,
@@ -156,6 +154,7 @@ export default function CheckoutPage() {
     }
   }
 
+  const selectedItems = getSelectedItems()
   const subtotal = getTotalPrice()
   const shipping = getDeliveryFee()
   const total = subtotal + shipping
@@ -423,12 +422,17 @@ export default function CheckoutPage() {
                 <h2 className="text-xl font-bold mb-4">주문 상품</h2>
                 
                 <div className="space-y-3 mb-6 max-h-60 overflow-y-auto">
-                  {items.map((item) => (
-                    <div key={item.productId} className="flex justify-between text-sm">
-                      <span className="flex-1 truncate">{item.name} x {item.quantity}</span>
-                      <span className="font-semibold ml-2">{formatPrice(item.price * item.quantity)}원</span>
-                    </div>
-                  ))}
+                  {selectedItems.map((item) => {
+                    const itemPrice = item.discount_percent && item.discount_percent > 0
+                      ? Math.round(item.price * (100 - item.discount_percent) / 100)
+                      : item.price
+                    return (
+                      <div key={item.productId} className="flex justify-between text-sm">
+                        <span className="flex-1 truncate">{item.name} x {item.quantity}</span>
+                        <span className="font-semibold ml-2">{formatPrice(itemPrice * item.quantity)}원</span>
+                      </div>
+                    )
+                  })}
                 </div>
 
                 <div className="border-t pt-4 space-y-3 mb-6">
