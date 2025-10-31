@@ -199,7 +199,7 @@ export default function Home() {
       {showScrollTop && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-8 right-8 bg-white/60 backdrop-blur-sm text-primary-800 p-4 rounded-full shadow-lg hover:bg-white/75 transition-all duration-300 z-50 hover:scale-110"
+          className="fixed bottom-24 right-8 bg-white/60 backdrop-blur-sm text-primary-800 p-4 rounded-full shadow-lg hover:bg-white/75 transition-all duration-300 z-50 hover:scale-110"
           aria-label="위로가기"
         >
           <svg 
