@@ -58,7 +58,7 @@ export default function Navbar() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
-                className={`px-3 py-1.5 md:px-4 md:py-2 pr-8 md:pr-10 text-sm md:text-base border-2 border-gray-300 rounded-full focus:outline-none focus:border-primary-700 transition-all duration-300 ${
+                className={`px-3 py-1.5 md:px-4 md:py-2 pr-8 md:pr-10 text-base md:text-base border-2 border-gray-300 rounded-full focus:outline-none focus:border-primary-700 transition-all duration-300 ${
                   isSearchFocused ? 'w-full max-w-[360px] sm:max-w-[480px] md:max-w-2xl' : 'w-48 sm:w-56 md:w-full'
                 }`}
               />
