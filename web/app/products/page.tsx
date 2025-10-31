@@ -49,6 +49,7 @@ function ProductsContent() {
   // 카테고리나 검색어가 변경되면 상품 조회
   useEffect(() => {
     fetchProducts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory, searchQuery])
 
   useEffect(() => {
@@ -72,14 +73,14 @@ function ProductsContent() {
     try {
       let query = supabase.from('products').select('*')
       
-      // 카테고리 필터
-      if (selectedCategory && selectedCategory !== '전체') {
-        query = query.eq('category', selectedCategory)
-      }
-      
-      // 검색어 필터 (상품명 또는 설명에서 검색)
+      // 검색어가 있으면 검색어 필터만 적용 (카테고리 무시)
       if (searchQuery) {
         query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,origin.ilike.%${searchQuery}%`)
+      } else {
+        // 검색어가 없을 때만 카테고리 필터 적용
+        if (selectedCategory && selectedCategory !== '전체') {
+          query = query.eq('category', selectedCategory)
+        }
       }
       
       const { data, error } = await query.order('created_at', { ascending: false })

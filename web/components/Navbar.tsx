@@ -11,10 +11,15 @@ export default function Navbar() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    if (searchQuery.trim()) {
-      router.push(`/products?search=${encodeURIComponent(searchQuery)}`)
+    const query = searchQuery.trim()
+    if (query) {
+      setIsSearchFocused(false)
+      router.push(`/products?search=${encodeURIComponent(query)}`)
+      // 검색어는 URL에 있으므로 유지
     } else {
+      setIsSearchFocused(false)
       router.push('/products')
+      setSearchQuery('')
     }
   }
 
