@@ -1,19 +1,15 @@
 'use client'
 
+import { useCallback, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { CATEGORY_LINKS } from '@/lib/constants'
 
 export default function Navbar() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    performSearch()
-  }
-
-  const performSearch = () => {
+  const performSearch = useCallback(() => {
     const query = searchQuery.trim()
     if (query) {
       router.push(`/products?search=${encodeURIComponent(query)}`)
@@ -22,25 +18,21 @@ export default function Navbar() {
       router.push('/products')
       setSearchQuery('')
     }
-  }
+  }, [searchQuery, router])
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleSearch = useCallback((e: React.FormEvent) => {
+    e.preventDefault()
+    performSearch()
+  }, [performSearch])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
       performSearch()
     }
-  }
+  }, [performSearch])
 
-  const categories = [
-    { name: '전체상품', href: '/products' },
-    { name: '한우', href: '/products?category=한우' },
-    { name: '돼지고기', href: '/products?category=돼지고기' },
-    { name: '수입육', href: '/products?category=수입육' },
-    { name: '닭', href: '/products?category=닭' },
-    { name: '가공육', href: '/products?category=가공육' },
-    { name: '조리육', href: '/products?category=조리육' },
-    { name: '야채', href: '/products?category=야채' },
-  ]
+  const categories = useMemo(() => CATEGORY_LINKS, [])
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">

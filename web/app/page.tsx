@@ -1,69 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ProductCard from '@/components/ProductCard'
 import { supabase, Product, isSupabaseConfigured } from '@/lib/supabase'
+import CategoryGrid from '@/components/CategoryGrid'
 
 export default function Home() {
   const [allProducts, setAllProducts] = useState<Product[]>([])
-  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [sortOrder, setSortOrder] = useState<'default' | 'price_asc' | 'price_desc'>('default')
 
-  useEffect(() => {
-    fetchProducts()
-  }, [])
-
-  // 안전장치: 8초 안에 로딩이 끝나지 않으면 에러 메시지와 함께 로딩 종료
-  useEffect(() => {
-    if (!loading) return
-    const timer = setTimeout(() => {
-      if (loading) {
-        setErrorMessage('상품 목록을 불러오는데 시간이 오래 걸립니다. 잠시 후 다시 시도해주세요.')
-        setLoading(false)
-      }
-    }, 8000)
-    return () => clearTimeout(timer)
-  }, [loading])
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 300) {
-        setShowScrollTop(true)
-      } else {
-        setShowScrollTop(false)
-      }
-    }
-
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    })
-  }
-
-  useEffect(() => {
-    if (sortOrder === 'default') {
-      setProducts(allProducts)
-      return
-    }
-    const sorted = [...allProducts].sort((a, b) =>
-      sortOrder === 'price_asc' ? a.price - b.price : b.price - a.price
-    )
-    setProducts(sorted)
-  }, [sortOrder, allProducts])
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       if (!isSupabaseConfigured) {
         setLoading(false)
@@ -77,14 +30,59 @@ export default function Home() {
       
       if (error) throw error
       setAllProducts(data || [])
-      setProducts(data || [])
     } catch (error) {
       console.error('상품 조회 실패:', error)
       setErrorMessage('상품 목록을 불러오지 못했습니다.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchProducts()
+  }, [fetchProducts])
+
+  // 안전장치: 8초 안에 로딩이 끝나지 않으면 에러 메시지와 함께 로딩 종료
+  useEffect(() => {
+    if (!loading) return
+    const timer = setTimeout(() => {
+      if (loading) {
+        setErrorMessage('상품 목록을 불러오는데 시간이 오래 걸립니다. 잠시 후 다시 시도해주세요.')
+        setLoading(false)
+      }
+    }, 8000)
+    return () => clearTimeout(timer)
+  }, [loading])
+
+  const handleScroll = useCallback(() => {
+    if (window.scrollY > 300) {
+      setShowScrollTop(true)
+    } else {
+      setShowScrollTop(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    })
+  }, [])
+
+  // 정렬된 상품 목록을 useMemo로 메모이제이션
+  const products = useMemo(() => {
+    if (sortOrder === 'default') {
+      return allProducts
+    }
+    return [...allProducts].sort((a, b) =>
+      sortOrder === 'price_asc' ? a.price - b.price : b.price - a.price
+    )
+  }, [sortOrder, allProducts])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -111,48 +109,7 @@ export default function Home() {
         {/* 카테고리 - 모바일만 표시 */}
         <section className="py-4 bg-white md:hidden border-b-2 border-gray-300">
           <div className="container mx-auto px-4">
-            <div className="grid grid-cols-5 gap-3">
-              <Link href="/products" className="flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden hover:scale-110 transition shadow-md">
-                </div>
-                <span className="text-xs font-medium text-gray-700 mt-2">전체</span>
-              </Link>
-              <Link href="/products?category=한우" className="flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden hover:scale-110 transition shadow-md">
-                </div>
-                <span className="text-xs font-medium text-gray-700 mt-2">한우</span>
-              </Link>
-              <Link href="/products?category=돼지고기" className="flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden hover:scale-110 transition shadow-md">
-                </div>
-                <span className="text-xs font-medium text-gray-700 mt-2">돼지고기</span>
-              </Link>
-              <Link href="/products?category=수입육" className="flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden hover:scale-110 transition shadow-md">
-                </div>
-                <span className="text-xs font-medium text-gray-700 mt-2">수입육</span>
-              </Link>
-              <Link href="/products?category=닭" className="flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden hover:scale-110 transition shadow-md">
-                </div>
-                <span className="text-xs font-medium text-gray-700 mt-2">닭</span>
-              </Link>
-              <Link href="/products?category=가공육" className="flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden hover:scale-110 transition shadow-md">
-                </div>
-                <span className="text-xs font-medium text-gray-700 mt-2">가공육</span>
-              </Link>
-              <Link href="/products?category=조리육" className="flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden hover:scale-110 transition shadow-md">
-                </div>
-                <span className="text-xs font-medium text-gray-700 mt-2">조리육</span>
-              </Link>
-              <Link href="/products?category=야채" className="flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden hover:scale-110 transition shadow-md">
-                </div>
-                <span className="text-xs font-medium text-gray-700 mt-2">야채</span>
-              </Link>
-            </div>
+            <CategoryGrid />
           </div>
         </section>
 

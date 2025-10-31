@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, Suspense, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
@@ -8,13 +8,15 @@ import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import { supabase, Product } from '@/lib/supabase'
 import ProductCard from '@/components/ProductCard'
+import CategoryGrid from '@/components/CategoryGrid'
+import { CATEGORIES } from '@/lib/constants'
 
 function ProductsContent() {
   const searchParams = useSearchParams()
   const category = searchParams.get('category')
   const searchQuery = searchParams.get('search')
   
-  const [products, setProducts] = useState<Product[]>([])
+  const [allProducts, setAllProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState(category || '전체')
   const [sortOrder, setSortOrder] = useState<'default' | 'price_asc' | 'price_desc'>('default')
@@ -25,50 +27,28 @@ function ProductsContent() {
     setSelectedCategory(category || '전체')
   }, [category])
 
-  // 스크롤 이벤트 처리
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 300) {
-        setShowScrollTop(true)
-      } else {
-        setShowScrollTop(false)
-      }
+  const handleScroll = useCallback(() => {
+    if (window.scrollY > 300) {
+      setShowScrollTop(true)
+    } else {
+      setShowScrollTop(false)
     }
-
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const scrollToTop = () => {
+  // 스크롤 이벤트 처리
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
+
+  const scrollToTop = useCallback(() => {
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
     })
-  }
+  }, [])
 
-  // 카테고리나 검색어가 변경되면 상품 조회
-  useEffect(() => {
-    fetchProducts()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, searchQuery])
-
-  useEffect(() => {
-    sortProducts()
-  }, [sortOrder])
-
-  const sortProducts = () => {
-    if (products.length === 0) return
-    
-    let sorted = [...products]
-    if (sortOrder === 'price_asc') {
-      sorted.sort((a, b) => a.price - b.price)
-    } else if (sortOrder === 'price_desc') {
-      sorted.sort((a, b) => b.price - a.price)
-    }
-    setProducts(sorted)
-  }
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
       let query = supabase.from('products').select('*')
@@ -86,15 +66,34 @@ function ProductsContent() {
       const { data, error } = await query.order('created_at', { ascending: false })
       
       if (error) throw error
-      setProducts(data || [])
+      setAllProducts(data || [])
     } catch (error) {
       console.error('상품 조회 실패:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedCategory, searchQuery])
 
-  const categories = ['전체', '한우', '돼지고기', '수입육', '닭', '가공육', '조리육', '야채']
+  // 카테고리나 검색어가 변경되면 상품 조회
+  useEffect(() => {
+    fetchProducts()
+  }, [fetchProducts])
+
+  // 정렬된 상품 목록을 useMemo로 메모이제이션
+  const products = useMemo(() => {
+    if (sortOrder === 'default') {
+      return allProducts
+    }
+    const sorted = [...allProducts]
+    if (sortOrder === 'price_asc') {
+      sorted.sort((a, b) => a.price - b.price)
+    } else if (sortOrder === 'price_desc') {
+      sorted.sort((a, b) => b.price - a.price)
+    }
+    return sorted
+  }, [sortOrder, allProducts])
+
+  const categories = useMemo(() => CATEGORIES, [])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -103,51 +102,10 @@ function ProductsContent() {
       {/* 카테고리 - 모바일만 표시 */}
       {!searchQuery && (
         <section className="py-8 bg-white md:hidden border-b-2 border-gray-300">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-5 gap-3">
-            <Link href="/products" className="flex flex-col items-center">
-              <div className={`w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center hover:scale-110 transition shadow-md ${selectedCategory === '전체' ? 'border-2 border-black' : ''}`}>
-              </div>
-              <span className="text-xs font-medium text-gray-700 mt-2">전체</span>
-            </Link>
-            <Link href="/products?category=한우" className="flex flex-col items-center">
-              <div className={`w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center hover:scale-110 transition shadow-md ${selectedCategory === '한우' ? 'border-2 border-black' : ''}`}>
-              </div>
-              <span className="text-xs font-medium text-gray-700 mt-2">한우</span>
-            </Link>
-            <Link href="/products?category=돼지고기" className="flex flex-col items-center">
-              <div className={`w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center hover:scale-110 transition shadow-md ${selectedCategory === '돼지고기' ? 'border-2 border-black' : ''}`}>
-              </div>
-              <span className="text-xs font-medium text-gray-700 mt-2">돼지고기</span>
-            </Link>
-            <Link href="/products?category=수입육" className="flex flex-col items-center">
-              <div className={`w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center hover:scale-110 transition shadow-md ${selectedCategory === '수입육' ? 'border-2 border-black' : ''}`}>
-              </div>
-              <span className="text-xs font-medium text-gray-700 mt-2">수입육</span>
-            </Link>
-            <Link href="/products?category=닭" className="flex flex-col items-center">
-              <div className={`w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center hover:scale-110 transition shadow-md ${selectedCategory === '닭' ? 'border-2 border-black' : ''}`}>
-              </div>
-              <span className="text-xs font-medium text-gray-700 mt-2">닭</span>
-            </Link>
-            <Link href="/products?category=가공육" className="flex flex-col items-center">
-              <div className={`w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center hover:scale-110 transition shadow-md ${selectedCategory === '가공육' ? 'border-2 border-black' : ''}`}>
-              </div>
-              <span className="text-xs font-medium text-gray-700 mt-2">가공육</span>
-            </Link>
-            <Link href="/products?category=조리육" className="flex flex-col items-center">
-              <div className={`w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center hover:scale-110 transition shadow-md ${selectedCategory === '조리육' ? 'border-2 border-black' : ''}`}>
-              </div>
-              <span className="text-xs font-medium text-gray-700 mt-2">조리육</span>
-            </Link>
-            <Link href="/products?category=야채" className="flex flex-col items-center">
-              <div className={`w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center hover:scale-110 transition shadow-md ${selectedCategory === '야채' ? 'border-2 border-black' : ''}`}>
-              </div>
-              <span className="text-xs font-medium text-gray-700 mt-2">야채</span>
-            </Link>
+          <div className="container mx-auto px-4">
+            <CategoryGrid selectedCategory={selectedCategory} />
           </div>
-        </div>
-      </section>
+        </section>
       )}
       
       <main className="flex-1 container mx-auto px-4 py-8">

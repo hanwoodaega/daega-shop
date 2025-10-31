@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
@@ -24,11 +24,7 @@ export default function ProductDetailPage() {
   const { user } = useAuth()
   const addItem = useCartStore((state) => state.addItem)
 
-  useEffect(() => {
-    fetchProduct()
-  }, [productId])
-
-  const fetchProduct = async () => {
+  const fetchProduct = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('products')
@@ -45,9 +41,13 @@ export default function ProductDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [productId, router])
 
-  const handleAddToCart = () => {
+  useEffect(() => {
+    fetchProduct()
+  }, [fetchProduct])
+
+  const handleAddToCart = useCallback(() => {
     if (!product) return
     
     if (product.stock <= 0) {
@@ -64,7 +64,7 @@ export default function ProductDetailPage() {
       discount_percent: product.discount_percent,
       brand: product.brand,
     })
-  }
+  }, [product, quantity, addItem])
 
   if (loading) {
     return (

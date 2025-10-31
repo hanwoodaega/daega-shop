@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 // Navbar 제거: 장바구니 전용 헤더 사용
 import Footer from '@/components/Footer'
 import { useCartStore } from '@/lib/store'
@@ -14,9 +14,12 @@ export default function CartPage() {
   const { user } = useAuth()
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
 
-  const allSelected = items.length > 0 && items.every((item) => item.selected !== false)
+  const allSelected = useMemo(() => 
+    items.length > 0 && items.every((item) => item.selected !== false),
+    [items]
+  )
 
-  const handleCheckout = () => {
+  const handleCheckout = useCallback(() => {
     const selectedItems = getSelectedItems()
     if (selectedItems.length === 0) {
       alert('주문할 상품을 선택해주세요.')
@@ -27,9 +30,9 @@ export default function CartPage() {
       return
     }
     router.push('/checkout')
-  }
+  }, [getSelectedItems, user, router])
 
-  const handleGiftCheckout = () => {
+  const handleGiftCheckout = useCallback(() => {
     const selectedItems = getSelectedItems()
     if (selectedItems.length === 0) {
       alert('주문할 상품을 선택해주세요.')
@@ -40,7 +43,7 @@ export default function CartPage() {
       return
     }
     router.push('/checkout?mode=gift')
-  }
+  }, [getSelectedItems, user, router])
 
   return (
     <div className="min-h-screen flex flex-col">

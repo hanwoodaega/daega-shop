@@ -1,10 +1,11 @@
 'use client'
 
+import { useCallback, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useCartStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
-import { useState, useEffect } from 'react'
+import { CATEGORIES } from '@/lib/constants'
 
 export default function BottomNavbar() {
   const pathname = usePathname()
@@ -20,25 +21,19 @@ export default function BottomNavbar() {
     setMounted(true)
   }, [])
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
       router.push(`/products?search=${encodeURIComponent(searchQuery)}`)
       setShowSearchModal(false)
       setSearchQuery('')
     }
-  }
+  }, [searchQuery, router])
 
-  const categories = [
-    { name: '전체', href: '/products' },
-    { name: '한우', href: '/products?category=한우' },
-    { name: '돼지고기', href: '/products?category=돼지고기' },
-    { name: '수입육', href: '/products?category=수입육' },
-    { name: '닭', href: '/products?category=닭' },
-    { name: '가공육', href: '/products?category=가공육' },
-    { name: '조리육', href: '/products?category=조리육' },
-    { name: '야채', href: '/products?category=야채' },
-  ]
+  const categories = useMemo(() => CATEGORIES.map(cat => ({
+    name: cat,
+    href: cat === '전체' ? '/products' : `/products?category=${cat}`
+  })), [])
 
   return (
     <>
@@ -173,7 +168,7 @@ export default function BottomNavbar() {
               <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              <span className="text-xs">사용자</span>
+              <span className="text-xs">MY</span>
             </Link>
 
             {/* 장바구니 */}

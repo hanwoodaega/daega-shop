@@ -1,5 +1,6 @@
 'use client'
 
+import { memo, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Product } from '@/lib/supabase'
@@ -10,7 +11,7 @@ interface ProductCardProps {
   product: Product
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem)
   const hasValidImage =
     typeof product.image_url === 'string' &&
@@ -22,7 +23,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const isPlaceholderHost = hasValidImage && product.image_url.includes('via.placeholder.com')
   const shouldRenderImage = hasValidImage && !isPlaceholderHost
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     
@@ -42,7 +43,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     })
 
     alert('장바구니에 추가되었습니다.')
-  }
+  }, [product, addItem])
 
   return (
     <Link href={`/products/${product.id}`}>
@@ -114,4 +115,6 @@ export default function ProductCard({ product }: ProductCardProps) {
     </Link>
   )
 }
+
+export default memo(ProductCard)
 
