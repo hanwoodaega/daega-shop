@@ -33,23 +33,23 @@ export default function Navbar() {
     <nav className="bg-white shadow-md sticky top-0 z-50">
       <div className="container mx-auto px-4">
         {/* 첫 번째 줄: 로고, 검색창 */}
-        <div className="flex justify-between items-center h-16 gap-4">
+        <div className={`flex items-center h-16 transition-all duration-300 ${isSearchFocused ? 'justify-center' : 'justify-between gap-4'}`}>
           {/* 로고 */}
-          <Link 
-            href="/" 
-            className={`flex items-center space-x-2 flex-shrink-0 transition-all duration-300 ${
-              isSearchFocused ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
-            }`}
-          >
-            <div className="flex flex-col leading-none">
-              <span className="text-xl font-bold text-primary-800 hidden sm:inline">대가 정육백화점</span>
-              <span className="text-xl font-bold text-primary-800 sm:hidden">대가축산</span>
-              <span className="text-xs text-primary-600 tracking-wider hidden sm:inline">DAEGA PREMIUM MEAT</span>
-            </div>
-          </Link>
+          {!isSearchFocused && (
+            <Link 
+              href="/" 
+              className="flex items-center space-x-2 flex-shrink-0"
+            >
+              <div className="flex flex-col leading-none">
+                <span className="text-xl font-bold text-primary-800 hidden sm:inline">대가 정육백화점</span>
+                <span className="text-xl font-bold text-primary-800 sm:hidden">대가축산</span>
+                <span className="text-xs text-primary-600 tracking-wider hidden sm:inline">DAEGA PREMIUM MEAT</span>
+              </div>
+            </Link>
+          )}
 
           {/* 검색창 */}
-          <form onSubmit={handleSearch} className={`transition-all duration-300 ${isSearchFocused ? 'flex-1 max-w-xl' : 'ml-auto md:flex-1 md:max-w-2xl'}`} id="navbar-search">
+          <form onSubmit={handleSearch} className={`transition-all duration-300 ${isSearchFocused ? 'max-w-2xl w-full' : 'ml-auto md:flex-1 md:max-w-2xl'}`} id="navbar-search">
             <div className="relative">
               <input
                 type="text"
@@ -59,7 +59,7 @@ export default function Navbar() {
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
                 className={`px-3 py-1.5 md:px-4 md:py-2 pr-8 md:pr-10 text-sm md:text-base border-2 border-gray-300 rounded-full focus:outline-none focus:border-primary-700 transition-all duration-300 ${
-                  isSearchFocused ? 'w-full max-w-xs sm:max-w-sm md:max-w-xl' : 'w-48 sm:w-56 md:w-full'
+                  isSearchFocused ? 'w-full max-w-[360px] sm:max-w-[480px] md:max-w-2xl' : 'w-48 sm:w-56 md:w-full'
                 }`}
               />
               {!isSearchFocused && (
