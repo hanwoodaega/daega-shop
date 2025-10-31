@@ -10,6 +10,10 @@ export default function Navbar() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    performSearch()
+  }
+
+  const performSearch = () => {
     const query = searchQuery.trim()
     if (query) {
       router.push(`/products?search=${encodeURIComponent(query)}`)
@@ -17,6 +21,13 @@ export default function Navbar() {
     } else {
       router.push('/products')
       setSearchQuery('')
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      performSearch()
     }
   }
 
@@ -56,8 +67,10 @@ export default function Navbar() {
                 id="navbar-search-input"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
                 inputMode="search"
                 autoComplete="off"
+                enterKeyHint="search"
                 className="w-48 sm:w-56 md:w-full px-3 py-1.5 md:px-4 md:py-2 pr-8 md:pr-10 text-base md:text-base border-2 border-gray-300 rounded-full focus:outline-none focus:border-primary-700 transition"
               />
               <svg 
