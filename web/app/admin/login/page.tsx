@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [password, setPassword] = useState('')
@@ -55,6 +55,20 @@ export default function AdminLoginPage() {
         </button>
       </form>
     </div>
+  )
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="w-full max-w-sm bg-white p-6 rounded-lg shadow">
+          <div className="animate-pulse">로딩 중...</div>
+        </div>
+      </div>
+    }>
+      <AdminLoginForm />
+    </Suspense>
   )
 }
 

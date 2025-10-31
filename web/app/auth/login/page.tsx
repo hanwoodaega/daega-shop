@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const nextPath = searchParams.get('next') || '/'
@@ -178,6 +178,26 @@ export default function LoginPage() {
 
       <Footer />
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 bg-gray-50 flex items-center justify-center py-12 px-4">
+          <div className="max-w-md w-full">
+            <div className="bg-white rounded-lg shadow-md p-8">
+              <div className="animate-pulse">로딩 중...</div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }
 
