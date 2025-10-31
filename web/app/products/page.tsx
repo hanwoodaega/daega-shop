@@ -101,7 +101,8 @@ function ProductsContent() {
       <Navbar />
       
       {/* 카테고리 - 모바일만 표시 */}
-      <section className="py-8 bg-white md:hidden border-b-2 border-gray-300">
+      {!searchQuery && (
+        <section className="py-8 bg-white md:hidden border-b-2 border-gray-300">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-5 gap-3">
             <Link href="/products" className="flex flex-col items-center">
@@ -147,6 +148,7 @@ function ProductsContent() {
           </div>
         </div>
       </section>
+      )}
       
       <main className="flex-1 container mx-auto px-4 py-8">
         {/* 페이지 제목 & 정렬 */}
