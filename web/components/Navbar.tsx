@@ -52,10 +52,12 @@ export default function Navbar() {
           <form onSubmit={handleSearch} className="ml-auto md:flex-1 md:max-w-2xl" id="navbar-search">
             <div className="relative">
               <input
-                type="text"
+                type="search"
                 id="navbar-search-input"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                inputMode="search"
+                autoComplete="off"
                 className="w-48 sm:w-56 md:w-full px-3 py-1.5 md:px-4 md:py-2 pr-8 md:pr-10 text-base md:text-base border-2 border-gray-300 rounded-full focus:outline-none focus:border-primary-700 transition"
               />
               <svg 
