@@ -52,9 +52,16 @@ export interface Order {
   user_id: string
   total_amount: number
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled'
+  delivery_type: 'pickup' | 'quick' | 'regular'
+  delivery_time?: string | null
   shipping_address: string
   shipping_name: string
   shipping_phone: string
+  delivery_note?: string | null
+  refund_status?: 'pending' | 'processing' | 'completed' | null
+  refund_amount?: number | null
+  refund_requested_at?: string | null
+  refund_completed_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -70,5 +77,23 @@ export interface OrderItem {
   price: number
   created_at: string
   product?: Product
+}
+
+/**
+ * Address type for database operations
+ */
+export interface Address {
+  id: string
+  user_id: string
+  name: string
+  recipient_name: string
+  recipient_phone: string
+  zipcode?: string
+  address: string
+  address_detail?: string
+  delivery_note?: string | null
+  is_default: boolean
+  created_at: string
+  updated_at: string
 }
 

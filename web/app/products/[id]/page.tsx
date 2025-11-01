@@ -98,15 +98,27 @@ export default function ProductDetailPage() {
             <h1 className="text-xl font-semibold mb-4">{product.name}</h1>
             
             <div className="border-t border-b py-4 mb-6">
-              <div className="flex items-baseline mb-2">
-                <span className="text-xl font-bold text-gray-900">
-                  {formatPrice(product.price)}
-                </span>
-                <span className="text-base text-gray-600 ml-2">원</span>
-                <span className="text-gray-500 ml-2 text-sm">
-                  / {product.unit}
-                </span>
-              </div>
+              {product.discount_percent && product.discount_percent > 0 ? (
+                <>
+                  <div className="text-sm text-gray-500 line-through mb-2">
+                    {formatPrice(product.price)}원
+                  </div>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-2xl font-bold text-red-600">{product.discount_percent}%</span>
+                    <span className="text-2xl font-extrabold text-gray-900">
+                      {formatPrice(Math.round(product.price * (100 - product.discount_percent) / 100))}
+                    </span>
+                    <span className="text-base text-gray-600">원</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-baseline mb-2">
+                  <span className="text-2xl font-bold text-gray-900">
+                    {formatPrice(product.price)}
+                  </span>
+                  <span className="text-base text-gray-600 ml-2">원</span>
+                </div>
+              )}
             </div>
 
             <div className="mb-6">
@@ -132,7 +144,11 @@ export default function ProductDetailPage() {
                 <span className="text-base font-medium">총 금액</span>
                 <div className="text-right">
                   <span className="text-xl font-bold text-primary-900">
-                    {formatPrice(product.price * quantity)}
+                    {formatPrice(
+                      (product.discount_percent && product.discount_percent > 0
+                        ? Math.round(product.price * (100 - product.discount_percent) / 100)
+                        : product.price) * quantity
+                    )}
                   </span>
                   <span className="text-gray-600 ml-1">원</span>
                 </div>
@@ -188,7 +204,13 @@ export default function ProductDetailPage() {
               <span className="text-xl font-semibold w-12 text-center">{quantity}</span>
               <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-100">+</button>
             </div>
-            <div className="text-center text-sm text-gray-600 mb-4">총 {formatPrice(product.price * quantity)}원</div>
+            <div className="text-center text-sm text-gray-600 mb-4">
+              총 {formatPrice(
+                (product.discount_percent && product.discount_percent > 0
+                  ? Math.round(product.price * (100 - product.discount_percent) / 100)
+                  : product.price) * quantity
+              )}원
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setShowQty(false)} className="py-3 rounded-lg border">취소</button>
               <button

@@ -109,7 +109,7 @@ export default function Home() {
         {/* 카테고리 - 모바일만 표시 */}
         <section className="py-4 bg-white md:hidden border-b-2 border-gray-300">
           <div className="container mx-auto px-4">
-            <CategoryGrid />
+            <CategoryGrid selectedCategory="" />
           </div>
         </section>
 

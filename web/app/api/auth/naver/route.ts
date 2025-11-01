@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
         email: userData.response.email,
         name: userData.response.name,
         profile_image: userData.response.profile_image,
+        mobile: userData.response.mobile, // 전화번호 (선택적 동의 필요)
       },
     })
   } catch (error: any) {

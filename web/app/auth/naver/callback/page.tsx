@@ -42,46 +42,63 @@ function NaverCallbackContent() {
 
       const { user } = await response.json()
 
-      // Supabase에 사용자 생성 또는 로그인
-      // 네이버 이메일로 사용자 확인
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', user.email)
-        .single()
+      // Supabase Auth에 사용자 등록 또는 로그인
+      // 고정 비밀번호 사용 (네이버 ID 기반)
+      const password = `naver_${user.id}_${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.slice(0, 8)}`
+      
+      // 전화번호 처리 (하이픈 제거)
+      const phoneNumber = user.mobile ? user.mobile.replace(/[^0-9]/g, '') : null
+      
+      // 먼저 로그인 시도
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: password,
+      })
 
-      if (!existingUser) {
-        // 새 사용자 - Supabase Auth에 등록
-        const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8)
-        
+      // 로그인 실패시 새 사용자 등록
+      if (signInError) {
         const { error: signUpError } = await supabase.auth.signUp({
           email: user.email,
-          password: randomPassword,
+          password: password,
           options: {
             data: {
               name: user.name,
               provider: 'naver',
               naver_id: user.id,
+              profile_image: user.profile_image,
+              phone: phoneNumber,
             },
+            emailRedirectTo: `${window.location.origin}/`,
           },
         })
 
-        if (signUpError) throw signUpError
-      }
-
-      // 자동 로그인 (이메일 기반)
-      const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8)
-      
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: randomPassword,
-      })
-
-      // 비밀번호가 맞지 않으면 매직 링크로 로그인
-      if (signInError) {
-        await supabase.auth.signInWithOtp({
-          email: user.email,
-        })
+        if (signUpError) {
+          // 이미 존재하는 사용자일 수 있으므로 다시 로그인 시도
+          const { error: retrySignInError } = await supabase.auth.signInWithPassword({
+            email: user.email,
+            password: password,
+          })
+          
+          if (retrySignInError) {
+            throw new Error('로그인에 실패했습니다. 고객센터에 문의해주세요.')
+          }
+        } else {
+          // 회원가입 성공 후 전화번호를 users 테이블에도 저장
+          if (phoneNumber) {
+            await supabase
+              .from('users')
+              .update({ phone: phoneNumber })
+              .eq('email', user.email)
+          }
+        }
+      } else {
+        // 기존 사용자 로그인 성공 - 전화번호 업데이트 (있는 경우)
+        if (phoneNumber) {
+          await supabase
+            .from('users')
+            .update({ phone: phoneNumber })
+            .eq('email', user.email)
+        }
       }
 
       sessionStorage.removeItem('naver_oauth_state')

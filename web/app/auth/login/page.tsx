@@ -107,13 +107,6 @@ function LoginForm() {
               >
                 <span>네이버로 시작하기</span>
               </button>
-              
-              <button
-                onClick={() => handleSocialLogin('google')}
-                className="w-full bg-white border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-50 transition flex items-center justify-center space-x-2"
-              >
-                <span>Google로 시작하기</span>
-              </button>
             </div>
 
             <div className="relative mb-6">
