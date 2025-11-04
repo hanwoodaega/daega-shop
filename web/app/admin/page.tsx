@@ -166,7 +166,15 @@ export default function AdminPage() {
       <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-lg font-bold">관리자 - 상품 등록</h1>
-          <button onClick={logout} className="text-sm text-red-600 hover:underline">로그아웃</button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => router.push('/admin/orders')}
+              className="px-4 py-2 bg-primary-800 text-white rounded-lg hover:bg-primary-900 transition text-sm font-medium"
+            >
+              주문 관리
+            </button>
+            <button onClick={logout} className="text-sm text-red-600 hover:underline">로그아웃</button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -34,3 +34,4 @@ CREATE INDEX IF NOT EXISTS idx_orders_delivery_type ON orders(delivery_type);
 -- 확인 쿼리:
 -- SELECT id, delivery_type, shipping_address, status FROM orders ORDER BY created_at DESC LIMIT 10;
 
+

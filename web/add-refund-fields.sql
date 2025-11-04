@@ -43,3 +43,4 @@ WHERE status = 'cancelled' AND refund_status IS NULL;
 -- 확인 쿼리:
 -- SELECT id, status, refund_status, refund_amount, total_amount FROM orders WHERE status = 'cancelled';
 
+

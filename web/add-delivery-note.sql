@@ -21,3 +21,4 @@ ADD COLUMN IF NOT EXISTS delivery_note TEXT DEFAULT NULL;
 -- 확인 쿼리:
 -- SELECT id, shipping_address, delivery_note FROM orders WHERE delivery_note IS NOT NULL;
 
+

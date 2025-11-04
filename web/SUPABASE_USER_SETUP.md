@@ -185,3 +185,4 @@ UPDATE users SET name = '새이름' WHERE auth.uid() = id;
 - Table Editor 탭에서 public.users 확인
 - 두 테이블은 Trigger로 자동 동기화됨
 
+

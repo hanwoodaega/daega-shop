@@ -71,7 +71,26 @@ export default function OrdersPage() {
     }
   }
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: string, deliveryType?: string) => {
+    // 픽업의 경우 다른 상태 텍스트 사용
+    if (deliveryType === 'pickup') {
+      switch (status) {
+        case 'pending':
+          return '결제 대기'
+        case 'paid':
+          return '결제 완료'
+        case 'shipped':
+          return '준비 중'
+        case 'delivered':
+          return '완료'
+        case 'cancelled':
+          return '주문 취소'
+        default:
+          return status
+      }
+    }
+    
+    // 택배배달, 퀵배달의 경우 기존 텍스트 사용
     switch (status) {
       case 'pending':
         return '결제 대기'
@@ -244,7 +263,7 @@ export default function OrdersPage() {
                     })}
                   </p>
                   <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-                    {getStatusText(order.status)}
+                    {getStatusText(order.status, order.delivery_type)}
                   </span>
                 </div>
 

@@ -20,3 +20,4 @@ ADD COLUMN IF NOT EXISTS quick_delivery_time VARCHAR(50) DEFAULT NULL;
 -- 확인 쿼리:
 -- SELECT id, delivery_type, quick_delivery_time FROM orders WHERE delivery_type = 'quick';
 
+

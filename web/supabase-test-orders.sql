@@ -173,3 +173,4 @@ SELECT 'Product IDs:', id, name FROM products LIMIT 5;
 
 -- 확인 후 위 스크립트의 YOUR_USER_ID를 교체하고 실행
 
+

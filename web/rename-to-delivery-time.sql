@@ -26,3 +26,4 @@ RENAME COLUMN quick_delivery_time TO delivery_time;
 -- 확인 쿼리:
 -- SELECT id, delivery_type, delivery_time FROM orders WHERE delivery_time IS NOT NULL;
 
+
