@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatPrice } from '@/lib/utils'
 import { formatPhoneNumber } from '@/lib/format-phone'
+import { getStatusText, getDeliveryTypeText, getStatusColor } from '@/lib/order-utils'
 
 interface OrderItem {
   id: string
@@ -127,48 +128,6 @@ export default function AdminOrdersPage() {
       alert('상태 변경에 실패했습니다.')
     } finally {
       setUpdatingOrderId(null)
-    }
-  }
-
-  const getStatusText = (status: string, deliveryType?: string) => {
-    if (deliveryType === 'pickup') {
-      switch (status) {
-        case 'pending': return '결제 대기'
-        case 'paid': return '결제 완료'
-        case 'shipped': return '준비 중'
-        case 'delivered': return '완료'
-        case 'cancelled': return '주문 취소'
-        default: return status
-      }
-    }
-    
-    switch (status) {
-      case 'pending': return '결제 대기'
-      case 'paid': return '결제 완료'
-      case 'shipped': return '배송 중'
-      case 'delivered': return '배송 완료'
-      case 'cancelled': return '주문 취소'
-      default: return status
-    }
-  }
-
-  const getDeliveryTypeText = (deliveryType: string) => {
-    switch (deliveryType) {
-      case 'pickup': return '매장 픽업'
-      case 'quick': return '퀵배달'
-      case 'regular': return '택배배달'
-      default: return deliveryType
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'text-yellow-600 bg-yellow-50'
-      case 'paid': return 'text-blue-600 bg-blue-50'
-      case 'shipped': return 'text-purple-600 bg-purple-50'
-      case 'delivered': return 'text-green-600 bg-green-50'
-      case 'cancelled': return 'text-red-600 bg-red-50'
-      default: return 'text-gray-600 bg-gray-50'
     }
   }
 

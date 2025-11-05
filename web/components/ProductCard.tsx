@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { Product } from '@/lib/supabase'
 import { useCartStore } from '@/lib/store'
 import { formatPrice } from '@/lib/utils'
+import { isValidImageUrl, isOutOfStock, calculateDiscountPrice } from '@/lib/product-utils'
 
 interface ProductCardProps {
   product: Product
@@ -13,21 +14,17 @@ interface ProductCardProps {
 
 function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem)
-  const hasValidImage =
-    typeof product.image_url === 'string' &&
-    product.image_url.trim().length > 0 &&
-    (product.image_url.startsWith('http://') ||
-      product.image_url.startsWith('https://') ||
-      product.image_url.startsWith('/'))
-  
+  const hasValidImage = isValidImageUrl(product.image_url)
   const isPlaceholderHost = hasValidImage && product.image_url.includes('via.placeholder.com')
   const shouldRenderImage = hasValidImage && !isPlaceholderHost
+  const outOfStock = isOutOfStock(product.stock)
+  const discountPrice = calculateDiscountPrice(product.price, product.discount_percent)
 
   const handleAddToCart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     
-    if (product.stock <= 0) {
+    if (outOfStock) {
       alert('품절된 상품입니다.')
       return
     }
@@ -38,24 +35,36 @@ function ProductCard({ product }: ProductCardProps) {
       price: product.price,
       quantity: 1,
       imageUrl: product.image_url,
-      discount_percent: product.discount_percent,
-      brand: product.brand,
+      discount_percent: product.discount_percent ?? undefined,
+      brand: product.brand ?? undefined,
     })
 
-    alert('장바구니에 추가되었습니다.')
-  }, [product, addItem])
+    const promoMsg = product.promotion_type 
+      ? `\n\n💡 상품 상세페이지에서 "${product.promotion_type} 골라담기"를 통해서만 프로모션이 적용됩니다.`
+      : ''
+    alert(`장바구니에 추가되었습니다.${promoMsg}`)
+  }, [product, addItem, outOfStock])
 
   return (
     <Link href={`/products/${product.id}`}>
       <div className="bg-white transition shadow-sm hover:shadow-md">
         <div className="relative aspect-square bg-gray-200 overflow-hidden">
+          {/* 프로모션 배지 */}
+          {product.promotion_type && (
+            <div className="absolute top-0 left-0 z-10">
+              <span className="bg-red-600 text-white px-2 py-1 text-xs font-bold shadow-lg">
+                {product.promotion_type}
+              </span>
+            </div>
+          )}
           {shouldRenderImage ? (
             <Image
               src={product.image_url}
               alt={product.name}
               fill
               className="object-cover"
-              sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+              sizes="(max-width: 768px) 50vw, (max-width: 1280px) 50vw, 50vw"
+              loading="lazy"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm bg-gray-200">
@@ -92,7 +101,7 @@ function ProductCard({ product }: ProductCardProps) {
               <div className="flex items-baseline gap-2 mt-0">
                 <span className="text-base md:text-lg font-bold text-red-600">{product.discount_percent}%</span>
                 <span className="text-base font-extrabold text-primary-900">
-                  {formatPrice(Math.round(product.price * (100 - product.discount_percent) / 100))}
+                  {formatPrice(discountPrice)}
                 </span>
                 <span className="text-gray-600 text-sm">원</span>
               </div>
@@ -116,5 +125,14 @@ function ProductCard({ product }: ProductCardProps) {
   )
 }
 
-export default memo(ProductCard)
+export default memo(ProductCard, (prevProps, nextProps) => {
+  // product 객체의 주요 속성이 변경되지 않으면 재렌더링 방지
+  return (
+    prevProps.product.id === nextProps.product.id &&
+    prevProps.product.price === nextProps.product.price &&
+    prevProps.product.stock === nextProps.product.stock &&
+    prevProps.product.discount_percent === nextProps.product.discount_percent &&
+    prevProps.product.promotion_type === nextProps.product.promotion_type
+  )
+})
 

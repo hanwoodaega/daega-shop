@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import ProductEditModal from '@/components/admin/ProductEditModal'
 
 const CATEGORIES = ['한우', '돼지고기', '수입육', '닭', '가공육', '조리육', '야채']
 
@@ -25,6 +26,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false)
   const [items, setItems] = useState<any[]>([])
   const [filterCategory, setFilterCategory] = useState<string>('전체')
+  const [filterTag, setFilterTag] = useState<string>('전체')
   const [loadingList, setLoadingList] = useState(false)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -98,6 +100,7 @@ export default function AdminPage() {
     try {
       const params = new URLSearchParams()
       if (filterCategory && filterCategory !== '전체') params.set('category', filterCategory)
+      if (filterTag && filterTag !== '전체') params.set('tag', filterTag)
       if (search.trim()) params.set('q', search.trim())
       params.set('page', String(page))
       params.set('limit', String(limit))
@@ -145,6 +148,10 @@ export default function AdminPage() {
           unit: editing.unit,
           origin: editing.origin,
           discount_percent: editing.discount_percent === '' || editing.discount_percent === undefined ? null : Number(editing.discount_percent),
+          is_new: editing.is_new || false,
+          is_best: editing.is_best || false,
+          is_sale: editing.is_sale || false,
+          is_budget: editing.is_budget || false,
         }),
       })
       if (res.ok) {
@@ -159,14 +166,20 @@ export default function AdminPage() {
   useEffect(() => {
     fetchList()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterCategory, page])
+  }, [filterCategory, filterTag, page])
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow">
+      <div className="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-lg font-bold">관리자 - 상품 등록</h1>
           <div className="flex items-center gap-3">
+            <button 
+              onClick={() => router.push('/admin/promotions')}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+            >
+              프로모션 관리
+            </button>
             <button 
               onClick={() => router.push('/admin/orders')}
               className="px-4 py-2 bg-primary-800 text-white rounded-lg hover:bg-primary-900 transition text-sm font-medium"
@@ -238,9 +251,9 @@ export default function AdminPage() {
           </button>
         </form>
         <hr className="my-6" />
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-md font-semibold">상품 목록</h2>
-          <div className="flex items-center space-x-2">
+        <div className="mb-4">
+          <h2 className="text-md font-semibold mb-3">상품 목록</h2>
+          <div className="flex flex-wrap items-center gap-2">
             <input
               value={search}
               onChange={(e)=>setSearch(e.target.value)}
@@ -249,13 +262,27 @@ export default function AdminPage() {
               className="border rounded px-2 py-1 text-sm"
             />
             <button onClick={()=>{ setPage(1); fetchList() }} className="text-sm px-2 py-1 border rounded">검색</button>
-            <label className="text-sm text-gray-600">카테고리</label>
-            <select className="border rounded px-2 py-1 text-sm" value={filterCategory} onChange={(e)=>{ setFilterCategory(e.target.value); setPage(1); }}>
-              <option value="전체">전체</option>
-              {CATEGORIES.map((c)=> (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+            
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">카테고리</label>
+              <select className="border rounded px-2 py-1 text-sm" value={filterCategory} onChange={(e)=>{ setFilterCategory(e.target.value); setPage(1); }}>
+                <option value="전체">전체</option>
+                {CATEGORIES.map((c)=> (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">필터태그</label>
+              <select className="border rounded px-2 py-1 text-sm" value={filterTag} onChange={(e)=>{ setFilterTag(e.target.value); setPage(1); }}>
+                <option value="전체">전체</option>
+                <option value="new">신상품</option>
+                <option value="best">베스트</option>
+                <option value="sale">전단행사</option>
+                <option value="budget">알뜰상품</option>
+              </select>
+            </div>
           </div>
         </div>
         {loadingList ? (
@@ -271,6 +298,7 @@ export default function AdminPage() {
                   <th className="p-2 border">브랜드</th>
                   <th className="p-2 border">이름</th>
                   <th className="p-2 border">카테고리</th>
+                  <th className="p-2 border">필터태그</th>
                   <th className="p-2 border">가격</th>
                   <th className="p-2 border">할인율(%)</th>
                   <th className="p-2 border">할인가</th>
@@ -279,25 +307,47 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((it) => (
-                  <tr key={it.id}>
-                    <td className="p-2 border">{it.brand || '-'}</td>
-                    <td className="p-2 border">{it.name}</td>
-                    <td className="p-2 border">{it.category}</td>
-                    <td className="p-2 border">{Number(it.price).toLocaleString('ko-KR')}</td>
-                    <td className="p-2 border">{it.discount_percent ?? '-'}</td>
-                    <td className="p-2 border">{
-                      it.discount_percent && it.discount_percent > 0
-                        ? Math.round((Number(it.price) * (100 - Number(it.discount_percent))) / 100).toLocaleString('ko-KR')
-                        : '-'
-                    }</td>
-                    <td className="p-2 border">{it.stock}</td>
-                    <td className="p-2 border text-right space-x-3">
-                      <button onClick={() => startEdit(it)} className="text-blue-600 hover:underline">수정</button>
-                      <button onClick={() => removeItem(it.id)} className="text-red-600 hover:underline">삭제</button>
-                    </td>
-                  </tr>
-                ))}
+                {items.map((it) => {
+                  const tags = []
+                  if (it.is_new) tags.push('신상품')
+                  if (it.is_best) tags.push('베스트')
+                  if (it.is_sale) tags.push('전단행사')
+                  if (it.is_budget) tags.push('알뜰상품')
+                  
+                  return (
+                    <tr key={it.id}>
+                      <td className="p-2 border">{it.brand || '-'}</td>
+                      <td className="p-2 border">{it.name}</td>
+                      <td className="p-2 border">{it.category}</td>
+                      <td className="p-2 border">
+                        {tags.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 justify-center">
+                            {tags.map((tag, idx) => (
+                              <span 
+                                key={idx} 
+                                className="px-2 py-0.5 text-xs rounded bg-red-100 text-red-700"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        ) : '-'}
+                      </td>
+                      <td className="p-2 border">{Number(it.price).toLocaleString('ko-KR')}</td>
+                      <td className="p-2 border">{it.discount_percent ?? '-'}</td>
+                      <td className="p-2 border">{
+                        it.discount_percent && it.discount_percent > 0
+                          ? Math.round((Number(it.price) * (100 - Number(it.discount_percent))) / 100).toLocaleString('ko-KR')
+                          : '-'
+                      }</td>
+                      <td className="p-2 border">{it.stock}</td>
+                      <td className="p-2 border text-right space-x-3">
+                        <button onClick={() => startEdit(it)} className="text-blue-600 hover:underline">수정</button>
+                        <button onClick={() => removeItem(it.id)} className="text-red-600 hover:underline">삭제</button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -310,55 +360,13 @@ export default function AdminPage() {
           </div>
           </>
         )}
-        {editing && (
-          <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg p-4 w-full max-w-md shadow">
-              <h3 className="font-semibold mb-3">상품 수정</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">브랜드</label>
-                  <input className="w-full border rounded px-3 py-2" value={editing.brand || ''} onChange={(e)=>setEditing({ ...editing, brand: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">이름</label>
-                  <input className="w-full border rounded px-3 py-2" value={editing.name} onChange={(e)=>setEditing({ ...editing, name: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">가격</label>
-                    <input type="number" className="w-full border rounded px-3 py-2" value={editing.price} onChange={(e)=>setEditing({ ...editing, price: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">재고</label>
-                    <input type="number" className="w-full border rounded px-3 py-2" value={editing.stock} onChange={(e)=>setEditing({ ...editing, stock: e.target.value })} />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">카테고리</label>
-                  <select className="w-full border rounded px-3 py-2" value={editing.category} onChange={(e)=>setEditing({ ...editing, category: e.target.value })}>
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">원산지</label>
-                    <input className="w-full border rounded px-3 py-2" value={editing.origin || ''} onChange={(e)=>setEditing({ ...editing, origin: e.target.value })} />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">할인율(%)</label>
-                  <input type="number" min={0} max={100} className="w-full border rounded px-3 py-2" value={editing.discount_percent ?? ''} onChange={(e)=>setEditing({ ...editing, discount_percent: e.target.value })} />
-                </div>
-              </div>
-              <div className="flex justify-end space-x-2 mt-4">
-                <button onClick={()=>setEditing(null)} className="px-3 py-2 text-sm">취소</button>
-                <button onClick={saveEdit} disabled={savingEdit} className="px-3 py-2 text-sm bg-primary-800 text-white rounded disabled:opacity-60">{savingEdit ? '저장중...' : '저장'}</button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ProductEditModal 
+          editing={editing}
+          setEditing={setEditing}
+          saveEdit={saveEdit}
+          savingEdit={savingEdit}
+          allProducts={items}
+        />
       </div>
     </div>
   )

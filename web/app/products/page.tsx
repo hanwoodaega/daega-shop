@@ -15,6 +15,7 @@ function ProductsContent() {
   const searchParams = useSearchParams()
   const category = searchParams.get('category')
   const searchQuery = searchParams.get('search')
+  const filter = searchParams.get('filter')
   
   const [allProducts, setAllProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,6 +57,17 @@ function ProductsContent() {
       // 검색어가 있으면 검색어 필터만 적용 (카테고리 무시)
       if (searchQuery) {
         query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,origin.ilike.%${searchQuery}%`)
+      } else if (filter) {
+        // 필터가 있으면 필터 적용
+        if (filter === 'new') {
+          query = query.eq('is_new', true)
+        } else if (filter === 'best') {
+          query = query.eq('is_best', true)
+        } else if (filter === 'sale') {
+          query = query.eq('is_sale', true)
+        } else if (filter === 'budget') {
+          query = query.eq('is_budget', true)
+        }
       } else {
         // 검색어가 없을 때만 카테고리 필터 적용
         if (selectedCategory && selectedCategory !== '전체') {
@@ -72,7 +84,7 @@ function ProductsContent() {
     } finally {
       setLoading(false)
     }
-  }, [selectedCategory, searchQuery])
+  }, [selectedCategory, searchQuery, filter])
 
   // 카테고리나 검색어가 변경되면 상품 조회
   useEffect(() => {
@@ -93,15 +105,24 @@ function ProductsContent() {
     return sorted
   }, [sortOrder, allProducts])
 
-  const categories = useMemo(() => CATEGORIES, [])
+  const categories = CATEGORIES
+
+  const getPageTitle = () => {
+    if (searchQuery) return `"${searchQuery}" 검색 결과`
+    if (filter === 'new') return '신상품'
+    if (filter === 'best') return '베스트'
+    if (filter === 'sale') return '전단행사'
+    if (filter === 'budget') return '알뜰상품'
+    return selectedCategory
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       
       {/* 카테고리 - 모바일만 표시 */}
-      {!searchQuery && (
-        <section className="py-8 bg-white md:hidden border-b-2 border-gray-300">
+      {!searchQuery && !filter && (
+        <section className="py-8 bg-gray-100 md:hidden">
           <div className="container mx-auto px-4">
             <CategoryGrid selectedCategory={selectedCategory} />
           </div>
@@ -113,7 +134,7 @@ function ProductsContent() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-xl font-bold mb-1">
-              {searchQuery ? `"${searchQuery}" 검색 결과` : selectedCategory}
+              {getPageTitle()}
             </h1>
             {searchQuery && (
               <p className="text-gray-600 text-sm">
@@ -133,7 +154,7 @@ function ProductsContent() {
         </div>
         
         {/* 카테고리 필터 - 데스크탑만 표시 */}
-        {!searchQuery && (
+        {!searchQuery && !filter && (
           <div className="hidden md:flex flex-wrap gap-2 mb-8">
             {categories.map((cat) => (
               <button
@@ -171,7 +192,7 @@ function ProductsContent() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

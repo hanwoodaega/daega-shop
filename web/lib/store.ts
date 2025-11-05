@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
 interface CartItem {
+  id?: string  // 장바구니 아이템 고유 ID
   productId: string
   name: string
   price: number
@@ -10,14 +11,20 @@ interface CartItem {
   discount_percent?: number
   brand?: string
   selected?: boolean
+  promotion_type?: '1+1' | '2+1' | '3+1'
+  promotion_products?: string[]
+  free_product_id?: string  // 선택한 증정품 ID
+  promotion_group_id?: string  // 프로모션 그룹 ID (같은 그룹끼리 묶음)
 }
 
 interface CartStore {
   items: CartItem[]
   addItem: (item: CartItem) => void
-  removeItem: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
-  toggleSelect: (productId: string) => void
+  removeItem: (itemId: string) => void
+  updateQuantity: (itemId: string, quantity: number) => void
+  updateFreeProduct: (productId: string, freeProductId: string) => void
+  toggleSelect: (itemId: string) => void
+  toggleSelectGroup: (groupId: string) => void
   toggleSelectAll: (selected: boolean) => void
   clearCart: () => void
   getTotalPrice: () => number
@@ -31,14 +38,34 @@ export const useCartStore = create<CartStore>()(
       items: [],
       addItem: (item) =>
         set((state) => {
+          // 고유 ID 생성
+          const cartItemId = `cart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          
+          // 프로모션 그룹이 있는 상품은 항상 새로 추가 (그룹별로 분리)
+          if (item.promotion_group_id) {
+            return { 
+              items: [
+                ...state.items.map((i) => ({ ...i, selected: i.selected ?? true })),
+                { ...item, id: cartItemId, selected: item.selected ?? true }
+              ]
+            }
+          }
+          
+          // 일반 상품은 기존 로직 유지
           const existingItem = state.items.find(
-            (i) => i.productId === item.productId
+            (i) => i.productId === item.productId && !i.promotion_group_id
           )
           if (existingItem) {
             return {
               items: state.items.map((i) =>
-                i.productId === item.productId
-                  ? { ...i, quantity: i.quantity + item.quantity, discount_percent: item.discount_percent ?? i.discount_percent, brand: item.brand ?? i.brand, selected: item.selected ?? i.selected ?? true }
+                i.productId === item.productId && !i.promotion_group_id
+                  ? { 
+                      ...i, 
+                      quantity: i.quantity + item.quantity, 
+                      discount_percent: item.discount_percent ?? i.discount_percent, 
+                      brand: item.brand ?? i.brand, 
+                      selected: item.selected ?? i.selected ?? true 
+                    }
                   : { ...i, selected: i.selected ?? true }
               ),
             }
@@ -46,26 +73,55 @@ export const useCartStore = create<CartStore>()(
           return { 
             items: [
               ...state.items.map((i) => ({ ...i, selected: i.selected ?? true })),
-              { ...item, selected: item.selected ?? true }
+              { ...item, id: cartItemId, selected: item.selected ?? true }
             ]
           }
         }),
-      removeItem: (productId) =>
-        set((state) => ({
-          items: state.items.filter((i) => i.productId !== productId),
-        })),
-      updateQuantity: (productId, quantity) =>
+      removeItem: (itemId) =>
+        set((state) => {
+          const item = state.items.find(i => i.id === itemId)
+          // 프로모션 그룹이 있으면 같은 그룹의 모든 상품 삭제
+          if (item?.promotion_group_id) {
+            return {
+              items: state.items.filter(i => i.promotion_group_id !== item.promotion_group_id)
+            }
+          }
+          // 일반 상품은 해당 아이템만 삭제
+          return {
+            items: state.items.filter((i) => i.id !== itemId),
+          }
+        }),
+      updateQuantity: (itemId, quantity) =>
         set((state) => ({
           items: state.items.map((i) =>
-            i.productId === productId ? { ...i, quantity } : i
+            i.id === itemId ? { ...i, quantity } : i
           ),
         })),
-      toggleSelect: (productId) =>
+      updateFreeProduct: (productId, freeProductId) =>
         set((state) => ({
           items: state.items.map((i) =>
-            i.productId === productId ? { ...i, selected: !(i.selected ?? true) } : i
+            i.productId === productId ? { ...i, free_product_id: freeProductId } : i
           ),
         })),
+      toggleSelect: (itemId) =>
+        set((state) => ({
+          items: state.items.map((i) =>
+            i.id === itemId ? { ...i, selected: !(i.selected ?? true) } : i
+          ),
+        })),
+      toggleSelectGroup: (groupId) =>
+        set((state) => {
+          // 그룹의 현재 선택 상태 확인
+          const groupItems = state.items.filter(i => i.promotion_group_id === groupId)
+          const allSelected = groupItems.every(i => i.selected !== false)
+          const newSelected = !allSelected
+          
+          return {
+            items: state.items.map((i) =>
+              i.promotion_group_id === groupId ? { ...i, selected: newSelected } : i
+            ),
+          }
+        }),
       toggleSelectAll: (selected) =>
         set((state) => ({
           items: state.items.map((i) => ({ ...i, selected })),

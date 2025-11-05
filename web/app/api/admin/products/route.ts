@@ -6,6 +6,7 @@ export async function GET(request: Request) {
   try { assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   const { searchParams } = new URL(request.url)
   const category = searchParams.get('category')
+  const tag = searchParams.get('tag')
   const q = searchParams.get('q') || ''
   const page = Math.max(1, Number(searchParams.get('page') || '1'))
   const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit') || '20')))
@@ -17,6 +18,12 @@ export async function GET(request: Request) {
     .order('created_at', { ascending: false })
   if (category && category !== '전체') {
     query = query.eq('category', category)
+  }
+  if (tag && tag !== '전체') {
+    if (tag === 'new') query = query.eq('is_new', true)
+    else if (tag === 'best') query = query.eq('is_best', true)
+    else if (tag === 'sale') query = query.eq('is_sale', true)
+    else if (tag === 'budget') query = query.eq('is_budget', true)
   }
   if (q) {
     const like = `%${q}%`

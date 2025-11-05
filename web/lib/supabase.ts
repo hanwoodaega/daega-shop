@@ -5,8 +5,14 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
+// Supabase 클라이언트 생성 (싱글톤)
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl as string, supabaseAnonKey as string)
+  ? createClient(supabaseUrl as string, supabaseAnonKey as string, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    })
   : (null as unknown as ReturnType<typeof createClient>)
 
 /**
@@ -16,7 +22,7 @@ export const supabase = isSupabaseConfigured
 
 export interface Product {
   id: string
-  brand?: string
+  brand?: string | null
   name: string
   description: string
   price: number
@@ -26,7 +32,13 @@ export interface Product {
   unit: string
   weight: number
   origin: string
-  discount_percent?: number
+  discount_percent?: number | null
+  is_new?: boolean
+  is_best?: boolean
+  is_sale?: boolean
+  is_budget?: boolean
+  promotion_type?: '1+1' | '2+1' | '3+1' | null
+  promotion_products?: string[] | null  // 증정 가능한 상품 ID 배열
   created_at: string
   updated_at: string
 }

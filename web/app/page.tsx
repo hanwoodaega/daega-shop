@@ -26,7 +26,6 @@ export default function Home() {
         .from('products')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(8)
       
       if (error) throw error
       setAllProducts(data || [])
@@ -90,24 +89,19 @@ export default function Home() {
       
       <main className="flex-1">
         {/* 히어로 섹션 */}
-        <section className="bg-gradient-to-r from-primary-800 to-primary-900 text-white py-20">
+        <section className="bg-gradient-to-r from-primary-800 to-primary-900 text-white py-24">
           <div className="container mx-auto px-4 text-center">
             <h1 className="text-5xl font-bold mb-4">
               대가 정육백화점
             </h1>
-            <p className="text-sm tracking-widest text-gray-300 mb-8">
+            <p className="text-sm tracking-widest text-gray-300">
               DAEGA PREMIUM MEAT
             </p>
-            <Link href="/products">
-              <button className="bg-white text-primary-900 px-8 py-3 rounded-lg font-semibold text-lg hover:bg-gray-100 transition shadow-lg">
-                상품 둘러보기
-              </button>
-            </Link>
           </div>
         </section>
 
         {/* 카테고리 - 모바일만 표시 */}
-        <section className="py-4 bg-white md:hidden border-b-2 border-gray-300">
+        <section className="py-4 bg-gray-100 md:hidden">
           <div className="container mx-auto px-4">
             <CategoryGrid selectedCategory="" />
           </div>

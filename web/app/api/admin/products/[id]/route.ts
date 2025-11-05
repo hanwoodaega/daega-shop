@@ -17,17 +17,47 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try { assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   const { id } = await context.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  
   const body = await request.json().catch(() => ({}))
-  const allowed = ['brand','name','description','price','image_url','category','stock','unit','weight','origin','discount_percent'] as const
+  const allowed = ['brand','name','description','price','image_url','category','stock','unit','weight','origin','discount_percent','promotion_type','promotion_products','is_new','is_best','is_sale','is_budget'] as const
   const updates: Record<string, any> = {}
-  for (const key of allowed) if (key in body) updates[key] = body[key]
+  
+  for (const key of allowed) {
+    if (key in body) {
+      updates[key] = body[key]
+    }
+  }
+  
+  // 할인율 검증
   if ('discount_percent' in updates) {
     const v = Number(updates.discount_percent)
     updates.discount_percent = isNaN(v) ? null : Math.max(0, Math.min(100, v))
   }
-  if (Object.keys(updates).length === 0) return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
+  
+  // 프로모션 상품 배열 처리
+  if ('promotion_products' in updates) {
+    if (Array.isArray(updates.promotion_products)) {
+      updates.promotion_products = updates.promotion_products.length > 0 ? updates.promotion_products : null
+    } else {
+      updates.promotion_products = null
+    }
+  }
+  
+  // 프로모션 타입 없으면 교차 상품도 null
+  if ('promotion_type' in updates && !updates.promotion_type) {
+    updates.promotion_products = null
+  }
+  
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
+  }
+  
   const { error } = await supabaseAdmin.from('products').update(updates).eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (error) {
+    console.error('❌ Product update error:', error)
+    return NextResponse.json({ error: error.message }, { status: 400 })
+  }
+  
   return NextResponse.json({ ok: true })
 }
 

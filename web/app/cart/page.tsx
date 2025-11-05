@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 // Navbar 제거: 장바구니 전용 헤더 사용
 import Footer from '@/components/Footer'
 import { useCartStore } from '@/lib/store'
@@ -10,7 +10,7 @@ import { formatPrice } from '@/lib/utils'
 
 export default function CartPage() {
   const router = useRouter()
-  const { items, removeItem, updateQuantity, getTotalPrice, toggleSelect, toggleSelectAll, getSelectedItems } = useCartStore()
+  const { items, addItem, removeItem, updateQuantity, getTotalPrice, toggleSelect, toggleSelectGroup, toggleSelectAll, getSelectedItems } = useCartStore()
   const { user } = useAuth()
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
 
@@ -18,6 +18,81 @@ export default function CartPage() {
     items.length > 0 && items.every((item) => item.selected !== false),
     [items]
   )
+
+  // 프로모션 삭제 감지 및 자동 처리
+  useEffect(() => {
+    const checkPromotions = async () => {
+      const promotionGroupItems = items.filter(item => item.promotion_group_id)
+      
+      if (promotionGroupItems.length === 0) return
+
+      // promotion_group_id별로 그룹화
+      const groupMap = new Map<string, typeof items>()
+      promotionGroupItems.forEach(item => {
+        if (item.promotion_group_id) {
+          if (!groupMap.has(item.promotion_group_id)) {
+            groupMap.set(item.promotion_group_id, [])
+          }
+          groupMap.get(item.promotion_group_id)!.push(item)
+        }
+      })
+
+      // 각 그룹의 첫 번째 상품 ID로 현재 프로모션 상태 확인
+      for (const [groupId, groupItems] of Array.from(groupMap.entries())) {
+        const productId = groupItems[0].productId
+        
+        try {
+          const res = await fetch(`/api/products/${productId}`)
+          if (res.ok) {
+            const product = await res.json()
+            
+            // 프로모션이 삭제되었거나 변경된 경우
+            if (!product.promotion_type || !product.promotion_products) {
+              // 해당 그룹의 모든 상품을 일반 상품으로 변환
+              removeItem(groupItems[0].id!)
+              
+              // 일반 상품으로 다시 추가
+              groupItems.forEach(item => {
+                addItem({
+                  productId: item.productId,
+                  name: item.name,
+                  price: item.price,
+                  quantity: item.quantity,
+                  imageUrl: item.imageUrl,
+                  discount_percent: item.discount_percent === 100 ? undefined : item.discount_percent,
+                  brand: item.brand,
+                })
+              })
+            }
+          }
+        } catch (error) {
+          console.error('프로모션 확인 실패:', error)
+        }
+      }
+    }
+
+    checkPromotions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // 컴포넌트 마운트 시 한 번만 실행
+
+  // 프로모션 그룹별로 상품 묶기
+  const groupedItems = useMemo(() => {
+    const groups: { [key: string]: typeof items } = {}
+    const standalone: typeof items = []
+    
+    items.forEach(item => {
+      if (item.promotion_group_id) {
+        if (!groups[item.promotion_group_id]) {
+          groups[item.promotion_group_id] = []
+        }
+        groups[item.promotion_group_id].push(item)
+      } else {
+        standalone.push(item)
+      }
+    })
+    
+    return { groups, standalone }
+  }, [items])
 
   const handleCheckout = useCallback(() => {
     const selectedItems = getSelectedItems()
@@ -102,20 +177,121 @@ export default function CartPage() {
                 </label>
               </div>
 
-              {items.map((item, index) => (
-                <div key={item.productId} className={`py-6 border-b border-gray-200 ${index === items.length - 1 ? 'border-b-0' : ''}`}>
+              {/* 프로모션 그룹 표시 */}
+              {Object.entries(groupedItems.groups).map(([groupId, groupItems]) => {
+                const groupSelected = groupItems.every(item => item.selected !== false)
+                return (
+                  <div key={groupId} className="py-6 border-b border-gray-200">
+                    {/* 프로모션 그룹 헤더 */}
+                    <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={groupSelected}
+                          onChange={() => toggleSelectGroup(groupId)}
+                          className="w-5 h-5 text-primary-800 border-gray-300 rounded focus:ring-primary-800"
+                        />
+                        <span className="text-sm font-bold text-red-700">
+                          🎁 {groupItems[0].promotion_type || '1+1'} 프로모션
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => removeItem(groupItems[0].id!)}
+                        className="text-red-600 hover:text-red-700 text-xs font-medium"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  
+                  {/* 그룹 내 상품들 */}
+                  {groupItems.map((item) => (
+                    <div key={item.productId} className="py-3">
+                      <div className="flex items-start space-x-3">
+                        {/* 상품 이미지 */}
+                        <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 text-xs">
+                          이미지 준비중
+                        </div>
+
+                        {/* 상품 정보 */}
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 pr-2">
+                              {item.brand && (
+                                <div className="text-sm font-bold text-gray-900 mb-0.5">{item.brand}</div>
+                              )}
+                              <h3 className="text-sm font-normal mb-1">{item.name}</h3>
+                            </div>
+                          </div>
+
+                          <div className="flex-1">
+                            {item.discount_percent === 100 ? (
+                              <>
+                                <div className="text-sm text-gray-500 line-through">
+                                  {formatPrice(item.price)}원
+                                </div>
+                                <div className="text-lg font-bold text-red-600">
+                                  0원
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-lg font-bold text-gray-900">
+                                {formatPrice(item.price)}원
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* 그룹 수량 조절 - 하단에 배치 */}
+                  <div className="mt-2 flex items-center justify-end gap-1">
+                    <button
+                      onClick={() => {
+                        const currentQty = groupItems[0].quantity
+                        groupItems.forEach(item => {
+                          updateQuantity(item.id!, Math.max(1, currentQty - 1))
+                        })
+                      }}
+                      className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 text-xs"
+                    >
+                      -
+                    </button>
+                    <span className="font-semibold w-6 text-center text-base">
+                      {groupItems[0].quantity}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const currentQty = groupItems[0].quantity
+                        groupItems.forEach(item => {
+                          updateQuantity(item.id!, currentQty + 1)
+                        })
+                      }}
+                      className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 text-xs"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                )
+              })}
+
+              {/* 일반 상품 표시 */}
+              {groupedItems.standalone.map((item, index) => (
+                <div key={item.productId} className={`py-6 border-b border-gray-200 ${index === groupedItems.standalone.length - 1 && Object.keys(groupedItems.groups).length === 0 ? 'border-b-0' : ''}`}>
                   <div className="flex items-start space-x-3">
                     {/* 상품 이미지 (각진 모서리, 크기 약간 축소) */}
-                    <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0">
+                    <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center">
                       {/* 체크박스 - 이미지 왼쪽 상단 */}
                       <div className="absolute top-0 left-0 z-10">
                         <input
                           type="checkbox"
                           checked={item.selected !== false}
-                          onChange={() => toggleSelect(item.productId)}
+                          onChange={() => toggleSelect(item.id!)}
                           className="w-6 h-6 text-primary-800 border-gray-300 rounded focus:ring-primary-800 bg-white"
                         />
                       </div>
+                      <span className="text-gray-500 text-xs">이미지 준비중</span>
                     </div>
 
                     {/* 상품 정보 */}
@@ -128,7 +304,7 @@ export default function CartPage() {
                           <h3 className="text-sm font-normal mb-1 line-clamp-2">{item.name}</h3>
                         </div>
                         <button
-                          onClick={() => removeItem(item.productId)}
+                          onClick={() => removeItem(item.id!)}
                           className="text-red-600 hover:text-red-700 text-xs flex-shrink-0"
                         >
                           삭제
@@ -164,7 +340,7 @@ export default function CartPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => updateQuantity(item.productId, Math.max(1, item.quantity - 1))}
+                            onClick={() => updateQuantity(item.id!, Math.max(1, item.quantity - 1))}
                             className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 text-xs"
                           >
                             -
@@ -173,7 +349,7 @@ export default function CartPage() {
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                            onClick={() => updateQuantity(item.id!, item.quantity + 1)}
                             className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 text-xs"
                           >
                             +
