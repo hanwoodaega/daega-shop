@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
-interface CartItem {
+export interface CartItem {
   id?: string  // 장바구니 아이템 고유 ID
   productId: string
   name: string
@@ -156,6 +156,47 @@ export const useCartStore = create<CartStore>()(
           }
         }
         return localStorage
+      }),
+    }
+  )
+)
+
+// 직접구매 전용 세션 스토리지 store
+interface DirectPurchaseStore {
+  items: CartItem[]
+  setItems: (items: CartItem[]) => void
+  clearItems: () => void
+  getTotalPrice: () => number
+}
+
+export const useDirectPurchaseStore = create<DirectPurchaseStore>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      setItems: (items) => set({ items }),
+      clearItems: () => set({ items: [] }),
+      getTotalPrice: () => {
+        const items = get().items
+        return items.reduce((total, item) => {
+          const unitPrice = item.discount_percent && item.discount_percent > 0
+            ? Math.round(item.price * (100 - item.discount_percent) / 100)
+            : item.price
+          return total + unitPrice * item.quantity
+        }, 0)
+      },
+    }),
+    {
+      name: 'direct-purchase-storage',
+      storage: createJSONStorage(() => {
+        // 서버 사이드에서는 sessionStorage가 없으므로 체크
+        if (typeof window === 'undefined') {
+          return {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+          }
+        }
+        return sessionStorage
       }),
     }
   )

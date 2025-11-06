@@ -16,10 +16,37 @@ export default function BottomNavbar() {
   const [showCategoryMenu, setShowCategoryMenu] = useState(false)
   const [showSearchModal, setShowSearchModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isVisible, setIsVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // 스크롤 방향 감지
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+      
+      // 스크롤이 최상단일 때는 항상 표시
+      if (currentScrollY < 10) {
+        setIsVisible(true)
+      } 
+      // 스크롤 올릴 때 표시
+      else if (currentScrollY < lastScrollY) {
+        setIsVisible(true)
+      } 
+      // 스크롤 내릴 때 숨김
+      else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsVisible(false)
+      }
+      
+      setLastScrollY(currentScrollY)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [lastScrollY])
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault()
@@ -107,7 +134,9 @@ export default function BottomNavbar() {
       )}
 
       {/* 하단 네비게이션 바 */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+      <nav className={`fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg transition-transform duration-300 ${
+        isVisible ? 'translate-y-0' : 'translate-y-full'
+      }`}>
         <div className="container mx-auto px-2">
           <div className="flex items-center justify-around h-16">
             {/* 홈 */}

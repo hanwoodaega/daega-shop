@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import Navbar from '@/components/Navbar'
+import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 
@@ -10,7 +10,7 @@ export default function SupportPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <Navbar />
+      <Header />
       
       <main className="flex-1 container mx-auto px-4 py-4 pb-24">
         <div className="flex items-center mb-4">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Navbar from '@/components/Navbar'
+import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import { useAuth } from '@/lib/auth-context'
@@ -125,7 +125,7 @@ export default function OrdersPage() {
   if (loading || !user) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Navbar />
+        <Header />
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>
@@ -137,7 +137,7 @@ export default function OrdersPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <Navbar />
+      <Header />
       
       <main className="flex-1 container mx-auto px-4 py-4 pb-24">
         {/* 헤더 */}

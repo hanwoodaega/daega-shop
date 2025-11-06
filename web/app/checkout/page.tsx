@@ -2,24 +2,24 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Navbar from '@/components/Navbar'
+import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { useCartStore } from '@/lib/store'
+import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
 import { formatPrice } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
-
-// Daum 우편번호 서비스 타입 정의
-declare global {
-  interface Window {
-    daum: any
-  }
-}
+import { useDaumPostcodeScript, openDaumPostcode, AddressSearchResult } from '@/lib/hooks/useDaumPostcode'
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { items, getTotalPrice, clearCart, getSelectedItems } = useCartStore()
+  const { items: cartItems, getTotalPrice: getCartTotalPrice, clearCart, getSelectedItems } = useCartStore()
+  const { items: directPurchaseItems, getTotalPrice: getDirectPurchaseTotalPrice, clearItems: clearDirectPurchase } = useDirectPurchaseStore()
+  
+  // 바로구매가 있으면 그것을 사용, 없으면 장바구니 선택 상품 사용
+  const isDirectPurchase = directPurchaseItems.length > 0
+  const items = isDirectPurchase ? directPurchaseItems : getSelectedItems()
+  const getTotalPrice = isDirectPurchase ? getDirectPurchaseTotalPrice : getCartTotalPrice
   
   const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'quick' | 'regular'>('regular')
   const [pickupTime, setPickupTime] = useState('')
@@ -48,18 +48,7 @@ export default function CheckoutPage() {
   }, [])
 
   // Daum 우편번호 스크립트 로드
-  useEffect(() => {
-    const script = document.createElement('script')
-    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
-    script.async = true
-    document.body.appendChild(script)
-
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script)
-      }
-    }
-  }, [])
+  useDaumPostcodeScript()
 
   // 기본 배송지 불러오기
   useEffect(() => {
@@ -165,40 +154,20 @@ export default function CheckoutPage() {
   }
 
   const handleSearchAddress = () => {
-    if (!window.daum) {
-      alert('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
-      return
-    }
+    openDaumPostcode((data: AddressSearchResult) => {
+      setFormData(prev => ({
+        ...prev,
+        zipcode: data.zonecode,
+        address: data.address,
+      }))
 
-    new window.daum.Postcode({
-      oncomplete: function(data: any) {
-        let fullAddress = data.address
-        let extraAddress = ''
-
-        if (data.addressType === 'R') {
-          if (data.bname !== '') {
-            extraAddress += data.bname
-          }
-          if (data.buildingName !== '') {
-            extraAddress += (extraAddress !== '' ? ', ' + data.buildingName : data.buildingName)
-          }
-          fullAddress += (extraAddress !== '' ? ' (' + extraAddress + ')' : '')
+      setTimeout(() => {
+        const detailInput = document.getElementById('checkout_address_detail')
+        if (detailInput) {
+          detailInput.focus()
         }
-
-        setFormData(prev => ({
-          ...prev,
-          zipcode: data.zonecode,
-          address: fullAddress,
-        }))
-
-        setTimeout(() => {
-          const detailInput = document.getElementById('checkout_address_detail')
-          if (detailInput) {
-            detailInput.focus()
-          }
-        }, 100)
-      }
-    }).open()
+      }, 100)
+    })
   }
 
   const getDeliveryFee = () => {
@@ -211,10 +180,9 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const selectedItems = getSelectedItems()
-    if (selectedItems.length === 0) {
-      alert('주문할 상품을 선택해주세요.')
-      router.push('/cart')
+    if (items.length === 0) {
+      alert('주문할 상품이 없습니다.')
+      router.push(isDirectPurchase ? '/products' : '/cart')
       return
     }
 
@@ -303,7 +271,7 @@ export default function CheckoutPage() {
 
       // 주문 아이템 저장
       if (order) {
-        const orderItems = selectedItems.map(item => ({
+        const orderItems = items.map(item => ({
           order_id: order.id,
           product_id: item.productId,
           quantity: item.quantity,
@@ -333,8 +301,12 @@ export default function CheckoutPage() {
         }
       }
 
-      // 장바구니 비우기
-      clearCart()
+      // 바로구매면 세션 스토리지 비우기, 아니면 장바구니 비우기
+      if (isDirectPurchase) {
+        clearDirectPurchase()
+      } else {
+        clearCart()
+      }
 
       // 주문 완료 페이지로 이동
       alert('주문이 완료되었습니다!')
@@ -347,7 +319,6 @@ export default function CheckoutPage() {
     }
   }
 
-  const selectedItems = getSelectedItems()
   const subtotal = getTotalPrice()
   const shipping = getDeliveryFee()
   const total = subtotal + shipping
@@ -356,7 +327,7 @@ export default function CheckoutPage() {
   if (loadingDefaultAddress) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Navbar />
+        <Header />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800 mx-auto mb-4"></div>
@@ -370,7 +341,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      <Header />
       
       <main className="flex-1 container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">주문/결제</h1>
@@ -755,7 +726,7 @@ export default function CheckoutPage() {
                 <h2 className="text-xl font-bold mb-4">주문 상품</h2>
                 
                 <div className="space-y-3 mb-6 max-h-60 overflow-y-auto">
-                  {selectedItems.map((item) => {
+                  {items.map((item) => {
                     const itemPrice = item.discount_percent && item.discount_percent > 0
                       ? Math.round(item.price * (100 - item.discount_percent) / 100)
                       : item.price

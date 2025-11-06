@@ -32,3 +32,4 @@ export function validateEnv() {
 
 export const isEnvConfigured = Boolean(env.supabase.url && env.supabase.anonKey)
 
+

@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import Navbar from '@/components/Navbar'
+import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 
 function NaverCallbackContent() {
@@ -120,7 +120,7 @@ function NaverCallbackContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      <Header />
       
       <main className="flex-1 bg-gray-50 flex items-center justify-center py-12 px-4">
         <div className="max-w-md w-full">
@@ -166,7 +166,7 @@ export default function NaverCallbackPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex flex-col">
-        <Navbar />
+        <Header />
         <main className="flex-1 bg-gray-50 flex items-center justify-center py-12 px-4">
           <div className="max-w-md w-full">
             <div className="bg-white rounded-lg shadow-md p-8 text-center">

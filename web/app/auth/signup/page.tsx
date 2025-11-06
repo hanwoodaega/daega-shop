@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import Navbar from '@/components/Navbar'
+import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 
 export default function SignupPage() {
@@ -58,7 +58,7 @@ export default function SignupPage() {
   if (success) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Navbar />
+        <Header />
         
         <main className="flex-1 bg-gray-50 flex items-center justify-center py-12 px-4">
           <div className="max-w-md w-full">
@@ -84,7 +84,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      <Header />
       
       <main className="flex-1 bg-gray-50 flex items-center justify-center py-12 px-4">
         <div className="max-w-md w-full">

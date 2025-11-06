@@ -2,19 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Navbar from '@/components/Navbar'
+import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import { useAuth } from '@/lib/auth-context'
 import { supabase, Address } from '@/lib/supabase'
 import { formatPhoneNumber } from '@/lib/format-phone'
-
-// Daum 우편번호 서비스 타입 정의
-declare global {
-  interface Window {
-    daum: any
-  }
-}
+import { useDaumPostcodeScript, openDaumPostcode, AddressSearchResult } from '@/lib/hooks/useDaumPostcode'
 
 export default function AddressesPage() {
   const router = useRouter()
@@ -45,16 +39,7 @@ export default function AddressesPage() {
   }, [user, loading, router])
 
   // Daum 우편번호 스크립트 로드
-  useEffect(() => {
-    const script = document.createElement('script')
-    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
-    script.async = true
-    document.body.appendChild(script)
-
-    return () => {
-      document.body.removeChild(script)
-    }
-  }, [])
+  useDaumPostcodeScript()
 
   useEffect(() => {
     if (user) {
@@ -198,50 +183,27 @@ export default function AddressesPage() {
   }
 
   const handleSearchAddress = () => {
-    if (!window.daum) {
-      alert('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
-      return
-    }
+    openDaumPostcode((data: AddressSearchResult) => {
+      setFormData({
+        ...formData,
+        zipcode: data.zonecode,
+        address: data.address,
+      })
 
-    new window.daum.Postcode({
-      oncomplete: function(data: any) {
-        // 사용자가 선택한 주소 정보
-        let fullAddress = data.address // 기본 주소
-        let extraAddress = '' // 참고 항목
-
-        // 참고항목이 있는 경우 추가
-        if (data.addressType === 'R') {
-          if (data.bname !== '') {
-            extraAddress += data.bname
-          }
-          if (data.buildingName !== '') {
-            extraAddress += (extraAddress !== '' ? ', ' + data.buildingName : data.buildingName)
-          }
-          fullAddress += (extraAddress !== '' ? ' (' + extraAddress + ')' : '')
+      // 상세주소 입력 필드로 포커스 이동
+      setTimeout(() => {
+        const detailInput = document.getElementById('address_detail')
+        if (detailInput) {
+          detailInput.focus()
         }
-
-        // 폼 데이터 업데이트
-        setFormData({
-          ...formData,
-          zipcode: data.zonecode,
-          address: fullAddress,
-        })
-
-        // 상세주소 입력 필드로 포커스 이동
-        setTimeout(() => {
-          const detailInput = document.getElementById('address_detail')
-          if (detailInput) {
-            detailInput.focus()
-          }
-        }, 100)
-      }
-    }).open()
+      }, 100)
+    })
   }
 
   if (loading || loadingAddresses) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Navbar />
+        <Header />
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>
@@ -257,7 +219,7 @@ export default function AddressesPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <Navbar />
+      <Header />
       
       <main className="flex-1 container mx-auto px-4 py-4 pb-24">
         <div className="flex items-center justify-between mb-4">

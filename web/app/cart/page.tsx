@@ -7,17 +7,93 @@ import Footer from '@/components/Footer'
 import { useCartStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
 import { formatPrice } from '@/lib/utils'
+import { supabase } from '@/lib/supabase'
 
 export default function CartPage() {
   const router = useRouter()
   const { items, addItem, removeItem, updateQuantity, getTotalPrice, toggleSelect, toggleSelectGroup, toggleSelectAll, getSelectedItems } = useCartStore()
   const { user } = useAuth()
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+  const [defaultAddress, setDefaultAddress] = useState<any>(null)
+  const [loadingAddress, setLoadingAddress] = useState(true)
+  const [showAddressModal, setShowAddressModal] = useState(false)
+  const [allAddresses, setAllAddresses] = useState<any[]>([])
+  const [loadingAddresses, setLoadingAddresses] = useState(false)
 
   const allSelected = useMemo(() => 
     items.length > 0 && items.every((item) => item.selected !== false),
     [items]
   )
+
+  // 기본 배송지 불러오기
+  useEffect(() => {
+    const loadDefaultAddress = async () => {
+      if (!user) {
+        setLoadingAddress(false)
+        return
+      }
+
+      try {
+        // 기본 배송지 조회
+        const { data: defaultAddr, error } = await supabase
+          .from('addresses')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_default', true)
+          .single()
+
+        if (error) {
+          // 기본 배송지가 없으면 첫 번째 배송지 조회
+          const { data: firstAddr } = await supabase
+            .from('addresses')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+          setDefaultAddress(firstAddr || null)
+        } else {
+          setDefaultAddress(defaultAddr)
+        }
+      } catch (error) {
+        console.error('배송지 조회 실패:', error)
+      } finally {
+        setLoadingAddress(false)
+      }
+    }
+
+    loadDefaultAddress()
+  }, [user])
+
+  // 모든 배송지 불러오기
+  const loadAllAddresses = async () => {
+    if (!user) return
+    
+    setLoadingAddresses(true)
+    try {
+      const { data, error } = await supabase
+        .from('addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: false })
+
+      if (!error && data) {
+        setAllAddresses(data)
+      }
+    } catch (error) {
+      console.error('배송지 목록 조회 실패:', error)
+    } finally {
+      setLoadingAddresses(false)
+    }
+  }
+
+  // 배송지 선택 (장바구니에서만 사용, 기본 배송지 변경 없음)
+  const handleSelectAddress = (address: any) => {
+    setDefaultAddress(address)
+    setShowAddressModal(false)
+  }
 
   // 프로모션 삭제 감지 및 자동 처리
   useEffect(() => {
@@ -147,7 +223,47 @@ export default function CartPage() {
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-2 py-8 pb-32">
+      <main className="flex-1 container mx-auto px-2 pt-2 pb-32">
+        {/* 배송지 정보 */}
+        {!loadingAddress && user && items.length > 0 && (
+          <div className="mb-3 bg-white rounded-lg px-3 py-2">
+            {defaultAddress ? (
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-base font-bold text-gray-900">{defaultAddress.name}</h3>
+                    {defaultAddress.is_default && (
+                      <span className="text-xs bg-primary-100 text-primary-800 px-2 py-0.5 rounded">기본</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    {defaultAddress.address}
+                    {defaultAddress.address_detail && ` ${defaultAddress.address_detail}`}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    loadAllAddresses()
+                    setShowAddressModal(true)
+                  }}
+                  className="ml-4 px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition whitespace-nowrap"
+                >
+                  배송지 변경
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">등록된 배송지가 없습니다</p>
+                <button
+                  onClick={() => router.push('/profile/addresses')}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-primary-800 rounded-md hover:bg-primary-900 transition"
+                >
+                  배송지 등록
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {items.length === 0 ? (
           <div className="text-center py-20">
@@ -205,7 +321,7 @@ export default function CartPage() {
                   
                   {/* 그룹 내 상품들 */}
                   {groupItems.map((item) => (
-                    <div key={item.productId} className="py-3">
+                    <div key={item.id} className="py-3">
                       <div className="flex items-start space-x-3">
                         {/* 상품 이미지 */}
                         <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 text-xs">
@@ -278,7 +394,7 @@ export default function CartPage() {
 
               {/* 일반 상품 표시 */}
               {groupedItems.standalone.map((item, index) => (
-                <div key={item.productId} className={`py-6 border-b border-gray-200 ${index === groupedItems.standalone.length - 1 && Object.keys(groupedItems.groups).length === 0 ? 'border-b-0' : ''}`}>
+                <div key={item.id} className={`py-6 border-b border-gray-200 ${index === groupedItems.standalone.length - 1 && Object.keys(groupedItems.groups).length === 0 ? 'border-b-0' : ''}`}>
                   <div className="flex items-start space-x-3">
                     {/* 상품 이미지 (각진 모서리, 크기 약간 축소) */}
                     <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center">
@@ -430,6 +546,93 @@ export default function CartPage() {
       <div className="pb-20">
         <Footer />
       </div>
+
+      {/* 배송지 선택 모달 */}
+      {showAddressModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowAddressModal(false)}></div>
+          <div className="relative w-full max-w-lg bg-white rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="bg-primary-800 text-white px-5 py-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold">배송지 선택</h3>
+                <button onClick={() => setShowAddressModal(false)} className="text-white text-2xl">×</button>
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4">
+              {loadingAddresses ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-800 mx-auto"></div>
+                </div>
+              ) : allAddresses.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600 mb-4">등록된 배송지가 없습니다</p>
+                  <button
+                    onClick={() => {
+                      setShowAddressModal(false)
+                      router.push('/profile/addresses')
+                    }}
+                    className="px-4 py-2 bg-primary-800 text-white rounded-lg hover:bg-primary-900"
+                  >
+                    배송지 등록하기
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {allAddresses.map((address) => (
+                    <div
+                      key={address.id}
+                      onClick={() => handleSelectAddress(address)}
+                      className={`border rounded-lg p-4 cursor-pointer transition ${
+                        defaultAddress?.id === address.id
+                          ? 'border-primary-800 bg-primary-50'
+                          : 'border-gray-300 hover:border-primary-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-bold text-gray-900">{address.name}</h4>
+                        {address.is_default && (
+                          <span className="text-xs bg-primary-800 text-white px-2 py-0.5 rounded">기본</span>
+                        )}
+                        {defaultAddress?.id === address.id && (
+                          <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">선택됨</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-700 mb-1">
+                        {address.address}
+                        {address.address_detail && ` ${address.address_detail}`}
+                      </p>
+                      {address.recipient_phone && (
+                        <p className="text-sm text-gray-600">
+                          {address.recipient_name} · {address.recipient_phone}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="px-4 py-3 bg-gray-50 border-t flex gap-2">
+              <button
+                onClick={() => {
+                  setShowAddressModal(false)
+                  router.push('/profile/addresses')
+                }}
+                className="flex-1 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
+              >
+                배송지 관리
+              </button>
+              <button
+                onClick={() => setShowAddressModal(false)}
+                className="flex-1 py-2.5 text-sm font-medium text-white bg-primary-800 rounded-lg hover:bg-primary-900"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 로그인 유도 모달 */}
       {showLoginPrompt && (

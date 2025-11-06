@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import Navbar from '@/components/Navbar'
+import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ProductCard from '@/components/ProductCard'
+import ScrollToTop from '@/components/common/ScrollToTop'
 import { supabase, Product, isSupabaseConfigured } from '@/lib/supabase'
 import CategoryGrid from '@/components/CategoryGrid'
 
@@ -13,7 +14,6 @@ export default function Home() {
   const [allProducts, setAllProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [showScrollTop, setShowScrollTop] = useState(false)
   const [sortOrder, setSortOrder] = useState<'default' | 'price_asc' | 'price_desc'>('default')
 
   const fetchProducts = useCallback(async () => {
@@ -53,25 +53,6 @@ export default function Home() {
     return () => clearTimeout(timer)
   }, [loading])
 
-  const handleScroll = useCallback(() => {
-    if (window.scrollY > 300) {
-      setShowScrollTop(true)
-    } else {
-      setShowScrollTop(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [handleScroll])
-
-  const scrollToTop = useCallback(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    })
-  }, [])
 
   // 정렬된 상품 목록을 useMemo로 메모이제이션
   const products = useMemo(() => {
@@ -85,7 +66,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      <Header />
       
       <main className="flex-1">
         {/* 히어로 섹션 */}
@@ -146,29 +127,7 @@ export default function Home() {
         </section>
       </main>
 
-      {/* 위로가기 버튼 */}
-      {showScrollTop && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-24 right-8 bg-white/60 backdrop-blur-sm text-primary-800 p-4 rounded-full shadow-lg hover:bg-white/75 transition-all duration-300 z-50 hover:scale-110"
-          aria-label="위로가기"
-        >
-          <svg 
-            className="w-6 h-6" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M5 10l7-7m0 0l7 7m-7-7v18" 
-            />
-          </svg>
-        </button>
-      )}
-
+      <ScrollToTop className="bottom-24 right-8 bg-white/60 backdrop-blur-sm text-primary-800 hover:bg-white/75 hover:scale-110" />
       <Footer />
       <BottomNavbar />
     </div>

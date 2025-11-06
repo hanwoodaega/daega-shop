@@ -1,53 +1,95 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+
+const CUSTOMER_SERVICE_BUTTONS = [
+  { href: 'tel:010-3941-1223', label: '전화걸기', external: false },
+  { href: 'http://pf.kakao.com/_your_channel_id', label: '1:1 카톡', external: true },
+]
+
+const FOOTER_LINKS = [
+  { href: '/terms', label: '이용약관' },
+  { href: '/privacy', label: '개인정보처리방침' },
+  { href: '/finance-terms', label: '전자금융거래약관' },
+  { href: '/refund', label: '반품/교환/환불' },
+]
+
+const COMPANY_INFO = [
+  { value: '(주)대가', bold: true },
+  { value: '대표자: 김영락 | 사업자등록번호: 000-00-00000' },
+  { value: '통신판매업신고: 제0000-서울-0000호' },
+  { value: '개인정보보호책임자: 김다민 | 주소: 전남 순천시 연향상가 7길 7' },
+]
+
 export default function Footer() {
+  const pathname = usePathname()
+  
   return (
-    <footer className="bg-gray-900 text-white mt-20">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* 회사 정보 */}
-          <div>
-            <h3 className="text-xl font-bold mb-4">대가 정육백화점</h3>
-            <p className="text-gray-400 text-sm">
-              신선하고 고품질의 정육을<br />
-              합리적인 가격으로 제공합니다.
-            </p>
-          </div>
-
-          {/* 고객센터 */}
-          <div>
-            <h4 className="font-semibold mb-4">고객센터</h4>
-            <ul className="space-y-2 text-sm text-gray-400">
-              <li>전화: 1588-0000</li>
-              <li>운영시간: 09:00 - 18:00</li>
-              <li>점심시간: 12:00 - 13:00</li>
-              <li>주말/공휴일 휴무</li>
-            </ul>
-          </div>
-
-          {/* 쇼핑 안내 */}
-          <div>
-            <h4 className="font-semibold mb-4">쇼핑 안내</h4>
-            <ul className="space-y-2 text-sm text-gray-400">
-              <li>배송 안내</li>
-              <li>반품/교환 안내</li>
-              <li>FAQ</li>
-              <li>공지사항</li>
-            </ul>
-          </div>
-
-          {/* 회사 정보 */}
-          <div>
-            <h4 className="font-semibold mb-4">회사 정보</h4>
-            <ul className="space-y-2 text-sm text-gray-400">
-              <li>회사명: (주)대가</li>
-              <li>대표: 홍길동</li>
-              <li>사업자등록번호: 000-00-00000</li>
-              <li>통신판매업신고: 제0000-서울-0000호</li>
+    <footer className="mt-10">
+      {/* 고객센터 - 회색 배경 */}
+      <div className="bg-gray-700 text-white">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-semibold text-sm">📞 (주)대가 고객센터</h4>
+              <div className="flex">
+                {CUSTOMER_SERVICE_BUTTONS.map((button, index) => (
+                  <a 
+                    key={button.href}
+                    href={button.href}
+                    {...(button.external && { target: '_blank', rel: 'noopener noreferrer' })}
+                    className={`px-3 py-1.5 bg-black text-white text-xs font-medium hover:bg-gray-900 transition whitespace-nowrap ${
+                      index === 0 ? 'border-r border-gray-700' : ''
+                    }`}
+                  >
+                    {button.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+            <ul className="space-y-1 text-xs text-gray-300">
+              <li>1588-0000/admin@hanwoodaega.com</li>
             </ul>
           </div>
         </div>
+      </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-          <p>&copy; 2024 대가 정육백화점. All rights reserved.</p>
+      {/* 회사 정보 및 약관 - 아주 연한 회색 배경 */}
+      <div className="bg-gray-200">
+        <div className="container mx-auto px-4 py-8 pb-16">
+          <div className="mb-6">
+            <ul className="space-y-1 text-xs text-gray-600">
+              {COMPANY_INFO.map((info, index) => (
+                <li key={index} className={info.bold ? 'font-bold text-gray-900' : ''}>
+                  {info.value}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="border-t border-gray-400 pt-6">
+            <div className="flex flex-wrap gap-2 mb-4" style={{ fontSize: '11px' }}>
+              {FOOTER_LINKS.map((link, index) => (
+                <div key={link.href} className="flex items-center gap-2">
+                  <Link 
+                    href={link.href}
+                    className={`font-bold transition ${
+                      pathname === link.href ? 'text-red-600' : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                  {index < FOOTER_LINKS.length - 1 && (
+                    <span className="text-gray-400">|</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              &copy; (주)대가. All rights reserved.
+            </p>
+          </div>
         </div>
       </div>
     </footer>

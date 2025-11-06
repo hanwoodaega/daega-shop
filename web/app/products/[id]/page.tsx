@@ -2,12 +2,20 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Navbar from '@/components/Navbar'
+import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import LoginPrompt from '@/components/common/LoginPrompt'
+import ConfirmModal from '@/components/common/ConfirmModal'
 import { supabase, Product } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
-import { useCartStore } from '@/lib/store'
-import { formatPrice } from '@/lib/utils'
+import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
+import { 
+  formatPrice, 
+  getPromotionRequiredCount, 
+  getPromotionPaidCount, 
+  calculateDiscountedPrice, 
+  getTotalPromoQuantity 
+} from '@/lib/utils'
 
 export default function ProductDetailPage() {
   const params = useParams()
@@ -25,6 +33,7 @@ export default function ProductDetailPage() {
   const [promotionProducts, setPromotionProducts] = useState<Product[]>([])
   const { user } = useAuth()
   const addItem = useCartStore((state) => state.addItem)
+  const { setItems: setDirectPurchaseItems } = useDirectPurchaseStore()
 
   const fetchProduct = useCallback(async () => {
     try {
@@ -101,8 +110,8 @@ export default function ProductDetailPage() {
   const handlePromotionAdd = useCallback(() => {
     if (!product) return
     
-    const requiredCount = product.promotion_type === '3+1' ? 4 : product.promotion_type === '2+1' ? 3 : 2
-    const totalSelected = Object.values(promoQuantities).reduce((sum, qty) => sum + qty, 0)
+    const requiredCount = getPromotionRequiredCount(product.promotion_type)
+    const totalSelected = getTotalPromoQuantity(promoQuantities)
     
     if (totalSelected !== requiredCount) {
       alert(`${product.promotion_type} 프로모션은 정확히 ${requiredCount}개를 선택해야 합니다.\n현재: ${totalSelected}개`)
@@ -127,7 +136,7 @@ export default function ProductDetailPage() {
     selectedItems.sort((a, b) => b.product.price - a.product.price)
     
     // 각 상품을 개별로 추가
-    const paidCount = product.promotion_type === '3+1' ? 3 : product.promotion_type === '2+1' ? 2 : 1
+    const paidCount = getPromotionPaidCount(product.promotion_type)
     let remaining = paidCount
     
     selectedItems.forEach(({ product: p, quantity }) => {
@@ -154,7 +163,7 @@ export default function ProductDetailPage() {
   }, [product, promotionProducts, promoQuantities, addItem])
 
   const updatePromoQuantity = (productId: string, change: number) => {
-    const requiredCount = product?.promotion_type === '3+1' ? 4 : product?.promotion_type === '2+1' ? 3 : 2
+    const requiredCount = getPromotionRequiredCount(product?.promotion_type)
     const currentQty = promoQuantities[productId] || 0
     const newQty = Math.max(0, currentQty + change)
     
@@ -177,7 +186,7 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Navbar />
+        <Header />
         <div className="flex-1 flex justify-center items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>
@@ -192,7 +201,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      <Header />
       
       <main className="flex-1 container mx-auto px-4 py-8">
 
@@ -215,7 +224,7 @@ export default function ProductDetailPage() {
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-2xl font-bold text-red-600">{product.discount_percent}%</span>
                     <span className="text-2xl font-extrabold text-gray-900">
-                      {formatPrice(Math.round(product.price * (100 - product.discount_percent) / 100))}
+                      {formatPrice(calculateDiscountedPrice(product.price, product.discount_percent))}
                     </span>
                     <span className="text-base text-gray-600">원</span>
                   </div>
@@ -253,11 +262,7 @@ export default function ProductDetailPage() {
                 <span className="text-base font-medium">총 금액</span>
                 <div className="text-right">
                   <span className="text-xl font-bold text-primary-900">
-                    {formatPrice(
-                      (product.discount_percent && product.discount_percent > 0
-                        ? Math.round(product.price * (100 - product.discount_percent) / 100)
-                        : product.price) * quantity
-                    )}
+                    {formatPrice(calculateDiscountedPrice(product.price, product.discount_percent) * quantity)}
                   </span>
                   <span className="text-gray-600 ml-1">원</span>
                 </div>
@@ -328,11 +333,7 @@ export default function ProductDetailPage() {
               <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-100">+</button>
             </div>
             <div className="text-center text-sm text-gray-600 mb-4">
-              총 {formatPrice(
-                (product.discount_percent && product.discount_percent > 0
-                  ? Math.round(product.price * (100 - product.discount_percent) / 100)
-                  : product.price) * quantity
-              )}원
+              총 {formatPrice(calculateDiscountedPrice(product.price, product.discount_percent) * quantity)}원
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setShowQty(false)} className="py-3 rounded-lg border">취소</button>
@@ -343,7 +344,19 @@ export default function ProductDetailPage() {
                     setShowQty(false)
                     setShowCartConfirm(true)
                   } else if (pendingAction === 'buy') {
-                    handleAddToCart()
+                    // 바로구매: 세션 스토리지에 저장 (장바구니에는 추가하지 않음)
+                    if (!product) return
+                    
+                    setDirectPurchaseItems([{
+                      productId: product.id,
+                      name: product.name,
+                      price: product.price,
+                      quantity,
+                      imageUrl: product.image_url,
+                      discount_percent: product.discount_percent ?? undefined,
+                      brand: product.brand ?? undefined,
+                    }])
+                    
                     setShowQty(false)
                     if (!user) {
                       setShowLoginPrompt(true)
@@ -361,20 +374,11 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      {/* 로그인 유도 모달 */}
-      {showLoginPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setShowLoginPrompt(false)}></div>
-          <div className="relative w-full max-w-sm mx-auto bg-white rounded-xl shadow-xl p-5">
-            <div className="text-base font-medium mb-2">로그인이 필요합니다.</div>
-            <div className="text-sm text-gray-600 mb-5">주문을 계속하시려면 로그인해 주세요.</div>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setShowLoginPrompt(false)} className="py-3 rounded-lg border">취소</button>
-              <button onClick={() => router.push(`/auth/login?next=${encodeURIComponent('/checkout')}`)} className="py-3 rounded-lg bg-primary-800 text-white font-semibold">로그인</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <LoginPrompt
+        isOpen={showLoginPrompt}
+        onClose={() => setShowLoginPrompt(false)}
+        message="주문을 계속하시려면 로그인해 주세요."
+      />
 
       {/* 프로모션 상품 선택 모달 */}
       {showPromotionModal && (
@@ -390,7 +394,7 @@ export default function ProductDetailPage() {
             
             <div className="px-5 py-3 bg-gray-50 border-b">
               <p className="text-sm text-gray-700">
-                상품을 <strong>{product.promotion_type === '3+1' ? '4개' : product.promotion_type === '2+1' ? '3개' : '2개'}</strong> 담으면, 1개가 <strong>무료</strong>로 적용됩니다.
+                상품을 <strong>{getPromotionRequiredCount(product.promotion_type)}개</strong> 담으면, 1개가 <strong>무료</strong>로 적용됩니다.
               </p>
             </div>
             
@@ -448,16 +452,16 @@ export default function ProductDetailPage() {
             <div className="px-5 py-4 bg-white border-t">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-medium">
-                  선택: {Object.values(promoQuantities).reduce((sum, qty) => sum + qty, 0)} / {product.promotion_type === '3+1' ? '4' : product.promotion_type === '2+1' ? '3' : '2'}
+                  선택: {getTotalPromoQuantity(promoQuantities)} / {getPromotionRequiredCount(product.promotion_type)}
                 </span>
                 <span className="text-xs text-gray-600">
-                  {Object.values(promoQuantities).reduce((sum, qty) => sum + qty, 0) < (product.promotion_type === '3+1' ? 4 : product.promotion_type === '2+1' ? 3 : 2) && 
-                    `${(product.promotion_type === '3+1' ? 4 : product.promotion_type === '2+1' ? 3 : 2) - Object.values(promoQuantities).reduce((sum, qty) => sum + qty, 0)}개 더 선택`}
+                  {getTotalPromoQuantity(promoQuantities) < getPromotionRequiredCount(product.promotion_type) && 
+                    `${getPromotionRequiredCount(product.promotion_type) - getTotalPromoQuantity(promoQuantities)}개 더 선택`}
                 </span>
               </div>
               <button
                 onClick={handlePromotionAdd}
-                disabled={Object.values(promoQuantities).reduce((sum, qty) => sum + qty, 0) !== (product.promotion_type === '3+1' ? 4 : product.promotion_type === '2+1' ? 3 : 2)}
+                disabled={getTotalPromoQuantity(promoQuantities) !== getPromotionRequiredCount(product.promotion_type)}
                 className="w-full py-3 bg-pink-500 text-white rounded font-bold hover:bg-pink-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 장바구니에 담기
@@ -467,20 +471,15 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      {/* 장바구니 이동 확인 모달 */}
-      {showCartConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setShowCartConfirm(false)}></div>
-          <div className="relative w-full max-w-sm mx-auto bg-white rounded-xl shadow-xl p-5">
-            <div className="text-base font-medium mb-2">장바구니에 추가되었습니다.</div>
-            <div className="text-sm text-gray-600 mb-5">장바구니로 바로 가시겠습니까?</div>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setShowCartConfirm(false)} className="py-3 rounded-lg border">취소</button>
-              <button onClick={() => router.push('/cart')} className="py-3 rounded-lg bg-primary-800 text-white font-semibold">확인</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showCartConfirm}
+        title="장바구니에 추가되었습니다."
+        message="장바구니로 바로 가시겠습니까?"
+        confirmText="확인"
+        cancelText="취소"
+        onConfirm={() => router.push('/cart')}
+        onCancel={() => setShowCartConfirm(false)}
+      />
 
       <Footer />
     </div>
