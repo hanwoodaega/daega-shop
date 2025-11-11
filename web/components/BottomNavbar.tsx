@@ -3,7 +3,7 @@
 import { useCallback, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useCartStore } from '@/lib/store'
+import { useCartStore, useSearchUIStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
 import { CATEGORIES } from '@/lib/constants'
 
@@ -168,15 +168,10 @@ export default function BottomNavbar() {
             {/* 검색 */}
             <button
               onClick={() => {
+                // 검색 모드 열기
+                useSearchUIStore.getState().openSearch()
                 // 상단으로 스크롤
                 window.scrollTo({ top: 0, behavior: 'smooth' })
-                // Header의 검색 버튼 클릭
-                setTimeout(() => {
-                  const searchButton = document.querySelector('[aria-label="검색"]') as HTMLButtonElement
-                  if (searchButton) {
-                    searchButton.click()
-                  }
-                }, 300)
               }}
               className="flex flex-col items-center justify-center flex-1 py-2 text-gray-600"
             >

@@ -1,15 +1,15 @@
 'use client'
 
-import { useCallback, useState, Suspense } from 'react'
+import { useCallback, useState, Suspense, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import MainMenu from '@/components/MainMenu'
-import { useWishlistStore } from '@/lib/store'
+import { useWishlistStore, useSearchUIStore } from '@/lib/store'
 
 function HeaderContent() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
-  const [showSearch, setShowSearch] = useState(false)
+  const { isSearchOpen, closeSearch } = useSearchUIStore()
   const { items: wishlistIds } = useWishlistStore()
 
   const performSearch = useCallback(() => {
@@ -35,16 +35,23 @@ function HeaderContent() {
     }
   }, [performSearch])
 
+  // 검색 모드가 닫힐 때 검색어 초기화 (옵션)
+  useEffect(() => {
+    if (!isSearchOpen) {
+      // setSearchQuery('') // 필요시 활성화
+    }
+  }, [isSearchOpen])
+
   return (
     <>
       {/* 첫 번째 부분: 로고, 검색창 (Normal) */}
       <div className="bg-white shadow-md">
         <div className="container mx-auto px-6">
           <div className="flex justify-between items-center h-14 gap-4">
-            {showSearch ? (
+            {isSearchOpen ? (
               <>
                 {/* 검색 모드 */}
-                <form onSubmit={(e) => { handleSearch(e); setShowSearch(false) }} className="flex-1">
+                <form onSubmit={(e) => { handleSearch(e); closeSearch() }} className="flex-1">
                   <input
                     type="search"
                     value={searchQuery}
@@ -52,7 +59,7 @@ function HeaderContent() {
                     onKeyDown={(e) => {
                       handleKeyDown(e)
                       if (e.key === 'Escape') {
-                        setShowSearch(false)
+                        closeSearch()
                       }
                     }}
                     placeholder="검색어를 입력하세요"
@@ -61,7 +68,7 @@ function HeaderContent() {
                   />
                 </form>
                 <button
-                  onClick={() => setShowSearch(false)}
+                  onClick={closeSearch}
                   className="p-2 hover:bg-gray-100 rounded-full transition flex-shrink-0"
                   aria-label="닫기"
                 >
@@ -87,7 +94,7 @@ function HeaderContent() {
                 <div className="ml-auto flex items-center gap-2">
                   {/* 검색 아이콘 */}
                   <button
-                    onClick={() => setShowSearch(true)}
+                    onClick={() => useSearchUIStore.getState().openSearch()}
                     className="p-2 hover:bg-gray-100 rounded-full transition"
                     aria-label="검색"
                   >

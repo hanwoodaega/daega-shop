@@ -9,6 +9,8 @@ import { useCartStore, useWishlistStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
 import { formatPrice } from '@/lib/utils'
 import { supabase, Product } from '@/lib/supabase'
+import { toggleWishlist } from '@/lib/wishlist-sync'
+import { calculateDiscountPrice } from '@/lib/product-utils'
 
 function CartPageContent() {
   const router = useRouter()
@@ -64,7 +66,8 @@ function CartPageContent() {
   // 장바구니 상품의 실시간 재고 상태 확인
   useEffect(() => {
     const checkStockStatus = async () => {
-      if (items.length === 0) return
+      // 찜 페이지에서는 재고 확인 안 함
+      if (items.length === 0 || showWishlist) return
 
       const productIds = Array.from(new Set(items.map(item => item.productId)))
       
@@ -87,7 +90,7 @@ function CartPageContent() {
     }
 
     checkStockStatus()
-  }, [items])
+  }, [items.length, showWishlist]) // items 대신 items.length 사용
 
   // 재고 상태 변경 시 품절 상품 자동 제거
   useEffect(() => {
@@ -116,10 +119,11 @@ function CartPageContent() {
     }
   }, [stockStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 기본 배송지 불러오기
+  // 기본 배송지 불러오기 (장바구니 모드에서만)
   useEffect(() => {
     const loadDefaultAddress = async () => {
-      if (!user) {
+      // 찜 페이지에서는 배송지 불러오지 않음
+      if (!user || showWishlist) {
         setLoadingAddress(false)
         return
       }
@@ -155,7 +159,7 @@ function CartPageContent() {
     }
 
     loadDefaultAddress()
-  }, [user])
+  }, [user?.id, showWishlist]) // user 대신 user?.id 사용
 
   // 모든 배송지 불러오기
   const loadAllAddresses = async () => {
@@ -347,42 +351,46 @@ function CartPageContent() {
     <div className="min-h-screen flex flex-col">
       {/* 장바구니 전용 헤더 */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
-        <div className="container mx-auto px-2 h-14 md:h-16 flex items-center justify-between">
+        <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
+          {/* 왼쪽: 뒤로가기 */}
           <button
             onClick={() => router.back()}
             aria-label="뒤로가기"
-            className="p-2 -ml-2 text-gray-700 hover:text-gray-900"
+            className="p-2 text-gray-700 hover:text-gray-900"
           >
             <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h1 className="text-lg md:text-xl font-semibold text-gray-900">{showWishlist ? '찜 목록' : '장바구니'}</h1>
-          <div className="flex items-center gap-2">
+          
+          {/* 중앙: 제목 (absolute로 완전 중앙 배치) */}
+          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">
+              {showWishlist ? '나의 찜' : '장바구니'}
+            </h1>
+          </div>
+          
+          {/* 오른쪽: 찜/장바구니 + 홈 */}
+          <div className="ml-auto flex items-center gap-1">
             <button
               onClick={() => setShowWishlist(!showWishlist)}
-              aria-label="찜 목록"
-              className="p-2 text-gray-700 hover:text-gray-900 relative"
+              aria-label={showWishlist ? "장바구니" : "찜 목록"}
+              className="p-2 text-gray-700 hover:text-gray-900"
             >
               {showWishlist ? (
-                <svg className="w-7 h-7 md:w-8 md:h-8 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               ) : (
                 <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                 </svg>
               )}
-              {wishlistIds.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {wishlistIds.length}
-                </span>
-              )}
             </button>
             <button
               onClick={() => router.push('/')}
               aria-label="홈으로"
-              className="p-2 -mr-2 text-gray-700 hover:text-gray-900"
+              className="p-2 text-gray-700 hover:text-gray-900"
             >
               <svg className="w-8 h-8 md:w-9 md:h-9" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z" />
@@ -413,47 +421,103 @@ function CartPageContent() {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {wishlistProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    onClick={() => router.push(`/products/${product.id}`)}
-                    className="bg-white rounded-lg shadow-sm hover:shadow-md transition cursor-pointer"
-                  >
-                    <div className="relative aspect-square bg-gray-200 rounded-t-lg overflow-hidden">
-                      <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm">
-                        이미지 준비중
-                      </div>
-                      {product.stock <= 0 && (
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                          <span className="text-white text-xl font-bold">품절</span>
+                {wishlistProducts.map((product) => {
+                  const isWished = wishlistIds.includes(product.id)
+                  const discountPrice = calculateDiscountPrice(product.price, product.discount_percent)
+                  return (
+                    <div
+                      key={product.id}
+                      onClick={() => router.push(`/products/${product.id}`)}
+                      className="bg-white rounded-lg shadow-sm hover:shadow-md transition cursor-pointer"
+                    >
+                      <div 
+                        className="relative aspect-square bg-gray-200 overflow-hidden"
+                      >
+                        <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm">
+                          이미지 준비중
                         </div>
-                      )}
-                    </div>
-                    <div className="p-3">
-                      {product.brand && (
-                        <div className="text-sm font-bold text-primary-900 mb-1 line-clamp-1">{product.brand}</div>
-                      )}
-                      <h3 className="text-sm font-medium mb-2 line-clamp-2">{product.name}</h3>
-                      {product.discount_percent && product.discount_percent > 0 ? (
-                        <>
-                          <div className="text-xs text-gray-500 line-through">
+                        {product.stock <= 0 && (
+                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                            <span className="text-white text-xl font-bold">품절</span>
+                          </div>
+                        )}
+                        {/* 장바구니 버튼 - 오른쪽 하단 */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (product.stock <= 0) {
+                              toast.error('품절된 상품입니다', {
+                                icon: '😢',
+                              })
+                              return
+                            }
+                            addItem({
+                              productId: product.id,
+                              name: product.name,
+                              price: product.price,
+                              quantity: 1,
+                              imageUrl: product.image_url,
+                              discount_percent: product.discount_percent ?? undefined,
+                              brand: product.brand ?? undefined,
+                              stock: product.stock,
+                            })
+                            toast.success('장바구니에 추가되었습니다!', {
+                              icon: '🛒',
+                            })
+                          }}
+                          className="absolute bottom-2 right-2 bg-white p-2 rounded-full shadow-md hover:bg-primary-800 hover:text-white transition z-10"
+                          aria-label="장바구니에 담기"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="p-3">
+                        {product.brand && (
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-sm font-bold text-primary-900 line-clamp-1 flex-1">{product.brand}</div>
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation()
+                                const success = await toggleWishlist(product.id, false)
+                                if (success) {
+                                  toast.success('찜 목록에서 제거되었습니다', {
+                                    icon: '💔',
+                                  })
+                                }
+                              }}
+                              className="ml-2 p-1 hover:scale-110 transition-transform flex-shrink-0"
+                              aria-label="찜 해제"
+                            >
+                              <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                        <h3 className="text-sm font-medium mb-2 line-clamp-2">{product.name}</h3>
+                        {product.discount_percent && product.discount_percent > 0 ? (
+                          <>
+                            <div className="text-xs text-gray-500 line-through">
+                              {formatPrice(product.price)}원
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-base font-bold text-red-600">{product.discount_percent}%</span>
+                              <span className="text-base font-bold text-gray-900">
+                                {formatPrice(discountPrice)}원
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-base font-bold text-gray-900">
                             {formatPrice(product.price)}원
                           </div>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-base font-bold text-red-600">{product.discount_percent}%</span>
-                            <span className="text-base font-bold text-gray-900">
-                              {formatPrice(Math.round(product.price * (100 - product.discount_percent) / 100))}원
-                            </span>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="text-base font-bold text-gray-900">
-                          {formatPrice(product.price)}원
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

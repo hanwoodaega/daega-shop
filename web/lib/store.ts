@@ -204,6 +204,21 @@ export const useDirectPurchaseStore = create<DirectPurchaseStore>()(
   )
 )
 
+// 검색 UI 상태 관리 스토어
+interface SearchUIStore {
+  isSearchOpen: boolean
+  openSearch: () => void
+  closeSearch: () => void
+  toggleSearch: () => void
+}
+
+export const useSearchUIStore = create<SearchUIStore>()((set) => ({
+  isSearchOpen: false,
+  openSearch: () => set({ isSearchOpen: true }),
+  closeSearch: () => set({ isSearchOpen: false }),
+  toggleSearch: () => set((state) => ({ isSearchOpen: !state.isSearchOpen })),
+}))
+
 // 위시리스트(찜) 스토어
 interface WishlistStore {
   items: string[] // 상품 ID 목록

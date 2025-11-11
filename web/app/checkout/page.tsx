@@ -51,14 +51,15 @@ export default function CheckoutPage() {
   // Daum 우편번호 스크립트 로드
   useDaumPostcodeScript()
 
-  // 기본 배송지 불러오기
+  // 기본 배송지 불러오기 (최초 1회만)
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       loadDefaultAddress()
     } else {
       setLoadingDefaultAddress(false)
     }
-  }, [user])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]) // user 대신 user?.id 사용
 
   const loadDefaultAddress = async () => {
     try {
