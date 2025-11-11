@@ -10,7 +10,8 @@ import ConfirmModal from '@/components/common/ConfirmModal'
 import { supabase, Product } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { useCartStore, useDirectPurchaseStore, useWishlistStore } from '@/lib/store'
-import { toggleWishlist } from '@/lib/wishlist-sync'
+import { toggleWishlistDB } from '@/lib/wishlist-db'
+import { addCartItemWithDB } from '@/lib/cart-db'
 import { 
   formatPrice, 
   getPromotionRequiredCount, 
@@ -34,10 +35,12 @@ export default function ProductDetailPage() {
   const [showPromotionModal, setShowPromotionModal] = useState(false)
   const [promotionProducts, setPromotionProducts] = useState<Product[]>([])
   const { user } = useAuth()
+  
+  // ✅ Selector 패턴 - 필요한 것만 구독
   const addItem = useCartStore((state) => state.addItem)
-  const { setItems: setDirectPurchaseItems } = useDirectPurchaseStore()
-  const { toggleItem, isInWishlist } = useWishlistStore()
-  const isWished = isInWishlist(productId)
+  const setDirectPurchaseItems = useDirectPurchaseStore((state) => state.setItems)
+  const toggleItem = useWishlistStore((state) => state.toggleItem)
+  const isWished = useWishlistStore((state) => state.items.includes(productId))
 
   const fetchProduct = useCallback(async () => {
     try {
@@ -84,7 +87,7 @@ export default function ProductDetailPage() {
     }
 
     fetchPromotionProducts()
-  }, [product])
+  }, [product?.id, product?.promotion_type, product?.promotion_products?.join(',')]) // ✅ 필요한 속성만 의존성으로 (무한 루프 방지)
 
   const handleAddToCart = useCallback(() => {
     if (!product) return
@@ -96,7 +99,7 @@ export default function ProductDetailPage() {
       return
     }
 
-    addItem({
+    const cartItem = {
       productId: product.id,
       name: product.name,
       price: product.price,
@@ -107,12 +110,15 @@ export default function ProductDetailPage() {
       promotion_type: product.promotion_type ?? undefined,
       promotion_products: product.promotion_products ?? undefined,
       stock: product.stock, // 품절 여부 확인용
-    })
+    }
+
+    // DB 연동 장바구니 추가
+    addCartItemWithDB(user?.id || null, cartItem)
     
     toast.success('장바구니에 추가되었습니다!', {
       icon: '🛒',
     })
-  }, [product, quantity, addItem])
+  }, [product, quantity, user])
 
   const [promoQuantities, setPromoQuantities] = useState<{[key: string]: number}>({})  
 
@@ -154,7 +160,7 @@ export default function ProductDetailPage() {
     selectedItems.forEach(({ product: p, quantity }) => {
       for (let i = 0; i < quantity; i++) {
         const isFree = remaining <= 0
-        addItem({
+        const cartItem = {
           productId: p.id,
           name: p.name,
           price: p.price,
@@ -165,7 +171,9 @@ export default function ProductDetailPage() {
           promotion_type: product.promotion_type ?? undefined,
           promotion_group_id: groupId,
           stock: p.stock, // 품절 여부 확인용
-        })
+        }
+        // DB 연동 장바구니 추가
+        addCartItemWithDB(user?.id || null, cartItem)
         remaining--
       }
     })
@@ -176,7 +184,7 @@ export default function ProductDetailPage() {
     toast.success('장바구니에 추가되었습니다!', {
       icon: '🛒',
     })
-  }, [product, promotionProducts, promoQuantities, addItem])
+  }, [product, promotionProducts, promoQuantities, user])
 
   const updatePromoQuantity = (productId: string, change: number) => {
     const requiredCount = getPromotionRequiredCount(product?.promotion_type)
@@ -202,8 +210,8 @@ export default function ProductDetailPage() {
   }
 
   const handleWishlistToggle = useCallback(async () => {
-    // 임시: DB 연동 없이 localStorage만 사용
-    const success = await toggleWishlist(productId, false)
+    // 클라이언트에서 직접 DB 접근 (인증 문제 해결)
+    const success = await toggleWishlistDB(user?.id || null, productId)
     
     if (success) {
       if (isWished) {
@@ -225,7 +233,7 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <Header hideMainMenu showCartButton sticky />
         <div className="flex-1 flex justify-center items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>
@@ -240,18 +248,18 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header hideMainMenu showCartButton sticky />
       
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1">
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          {/* 상품 이미지 */}
-          <div className="bg-gray-200 rounded-lg overflow-hidden aspect-square flex items-center justify-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+          {/* 상품 이미지 - 상하좌우 패딩 제거 */}
+          <div className="bg-gray-200 overflow-hidden aspect-square flex items-center justify-center">
             <span className="text-gray-500 text-base">이미지 준비중</span>
           </div>
 
           {/* 상품 정보 */}
-          <div>
+          <div className="px-4 py-8">
             <h1 className="text-xl font-semibold mb-4">{product.name}</h1>
             
             <div className="border-t border-b py-4 mb-6">
@@ -338,12 +346,12 @@ export default function ProductDetailPage() {
           </div>
         )}
         
-        {/* 하트 / 바로구매 / 장바구니 버튼 */}
+        {/* 찜 / 바로구매 / 장바구니 버튼 */}
         <div className="px-0 pt-0 pb-8 flex gap-0">
           <button
             onClick={handleWishlistToggle}
-            className="flex items-center justify-center text-white py-3 hover:bg-gray-200 transition"
-            style={{ width: '15%', backgroundColor: isWished ? '#ef4444' : '#ffffff', border: '1px solid #e5e7eb' }}
+            className="flex items-center justify-center bg-white py-3 hover:bg-gray-100 transition border border-gray-200"
+            style={{ width: '15%' }}
             aria-label="찜하기"
           >
             {isWished ? (
@@ -375,25 +383,48 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      {/* 수량 선택 미니 패널 */}
+      {/* 수량 선택 패널 */}
       {showQty && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setShowQty(false)}></div>
-          <div className="relative w-full max-w-md mx-auto mb-20 bg-white rounded-t-xl shadow-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-gray-600">수량</span>
-              <button onClick={() => setShowQty(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+        <div className="fixed inset-0 z-50 flex items-end justify-center pointer-events-none">
+          <div className="relative w-full max-w-md mx-auto mb-20 bg-white rounded-lg shadow-2xl p-6 pointer-events-auto">
+            {/* 상품 카드 */}
+            <div className="border-2 border-gray-400 rounded-lg p-4 mb-4 bg-gray-50">
+              {/* 상품명 */}
+              <h3 className="text-sm font-semibold mb-8 line-clamp-2">{product.name}</h3>
+              
+              <div className="flex items-end justify-between">
+                {/* 수량 조절 (왼쪽 아래) - 네모 안에 구분선 */}
+                <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-white">
+                  <button 
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))} 
+                    className="w-8 h-7 hover:bg-gray-100 flex items-center justify-center border-r border-gray-300"
+                  >
+                    <span className="text-2xl leading-none -mt-1">-</span>
+                  </button>
+                  <span className="w-10 text-center text-base font-medium">{quantity}</span>
+                  <button 
+                    onClick={() => setQuantity(quantity + 1)} 
+                    className="w-8 h-7 hover:bg-gray-100 flex items-center justify-center border-l border-gray-300"
+                  >
+                    <span className="text-2xl leading-none -mt-1">+</span>
+                  </button>
+                </div>
+                
+                {/* 가격 (오른쪽 아래) */}
+                <span className="text-lg font-bold text-primary-900">
+                  {formatPrice(calculateDiscountedPrice(product.price, product.discount_percent) * quantity)}원
+                </span>
+              </div>
             </div>
-            <div className="flex items-center justify-center space-x-6 mb-4">
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-100">-</button>
-              <span className="text-xl font-semibold w-12 text-center">{quantity}</span>
-              <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 rounded-lg border border-gray-300 hover:bg-gray-100">+</button>
-            </div>
-            <div className="text-center text-sm text-gray-600 mb-4">
-              총 {formatPrice(calculateDiscountedPrice(product.price, product.discount_percent) * quantity)}원
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => setShowQty(false)} className="py-3 rounded-lg border">취소</button>
+            
+            {/* 취소/확인 버튼 */}
+            <div className="grid grid-cols-2 gap-2">
+              <button 
+                onClick={() => setShowQty(false)} 
+                className="py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50"
+              >
+                취소
+              </button>
               <button
                 onClick={() => {
                   if (pendingAction === 'cart') {
@@ -421,7 +452,7 @@ export default function ProductDetailPage() {
                     }
                   }
                 }}
-                className="py-3 rounded-lg bg-primary-800 text-white font-semibold"
+                className="py-2 text-sm rounded-lg bg-primary-800 text-white font-semibold hover:bg-primary-900"
               >
                 확인
               </button>

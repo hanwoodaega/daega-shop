@@ -32,10 +32,10 @@ export default function ProfileEditPage() {
   }, [user, loading, router])
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       loadUserData()
     }
-  }, [user])
+  }, [user?.id]) // ✅ user.id만 의존성으로 (무한 루프 방지)
 
   const loadUserData = async () => {
     try {

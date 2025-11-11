@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { formatPrice } from '@/lib/utils'
 import { formatPhoneNumber } from '@/lib/format-phone'
-import { getStatusText, getDeliveryTypeText, getStatusColor } from '@/lib/order-utils'
+import { getStatusText, getDeliveryTypeText, getStatusColor, getStatusTextColor } from '@/lib/order-utils'
 
 interface OrderItem {
   id: string
@@ -26,6 +26,7 @@ interface User {
 
 interface Order {
   id: string
+  order_number?: string | null
   user_id: string
   total_amount: number
   status: string
@@ -290,20 +291,24 @@ export default function AdminOrdersPage() {
                 <div key={order.id} className="bg-white rounded-lg shadow-md overflow-hidden">
                   {/* 주문 헤더 */}
                   <div className="bg-gray-50 px-4 py-3 border-b">
+                    <p className="text-sm text-gray-600 mb-1">
+                      주문일시: {new Date(order.created_at).toLocaleDateString('ko-KR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
                     <div className="flex items-center justify-between mb-2">
-                      <div>
+                      {order.order_number ? (
                         <p className="text-sm text-gray-600">
-                          주문일시: {new Date(order.created_at).toLocaleDateString('ko-KR', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
+                          주문번호: <span className="font-mono text-primary-900 font-bold text-base">{order.order_number}</span>
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">주문번호: {order.id}</p>
-                      </div>
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                      ) : (
+                        <p className="text-xs text-gray-500">ID: {order.id.slice(0, 8)}...</p>
+                      )}
+                      <span className={`text-base font-bold ${getStatusTextColor(order.status)}`}>
                         {getStatusText(order.status, order.delivery_type)}
                       </span>
                     </div>

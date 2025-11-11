@@ -24,6 +24,10 @@ export default function RootLayout({
         <ClientLayout>{children}</ClientLayout>
         <Toaster 
           position="top-center"
+          containerStyle={{
+            top: '50%',
+            transform: 'translateY(-50%)',
+          }}
           toastOptions={{
             duration: 3000,
             style: {

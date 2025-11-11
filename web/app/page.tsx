@@ -12,7 +12,6 @@ import { supabase, Product, isSupabaseConfigured } from '@/lib/supabase'
 import CategoryGrid from '@/components/CategoryGrid'
 
 export default function Home() {
-  const [allProducts, setAllProducts] = useState<Product[]>([])
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -22,22 +21,46 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(true)
   const PAGE_SIZE = 20
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
     try {
       if (!isSupabaseConfigured) {
         setLoading(false)
         return
       }
-      const { data, error } = await supabase
+
+      const from = (pageNum - 1) * PAGE_SIZE
+      const to = from + PAGE_SIZE - 1
+
+      let query = supabase
         .from('products')
-        .select('*')
-        .order('created_at', { ascending: false })
+        .select('*', { count: 'exact' })
+        .range(from, to)
+      
+      // 정렬 적용
+      if (sort === 'price_asc') {
+        query = query.order('price', { ascending: true })
+      } else if (sort === 'price_desc') {
+        query = query.order('price', { ascending: false })
+      } else {
+        query = query.order('created_at', { ascending: false })
+      }
+      
+      const { data, error, count } = await query
       
       if (error) throw error
-      setAllProducts(data || [])
-      // 처음 20개만 표시
-      setDisplayedProducts((data || []).slice(0, PAGE_SIZE))
-      setHasMore((data || []).length > PAGE_SIZE)
+
+      if (pageNum === 1) {
+        setDisplayedProducts(data || [])
+      } else {
+        // 중복 방지: 이미 있는 상품은 제외하고 추가
+        setDisplayedProducts(prev => {
+          const existingIds = new Set(prev.map(p => p.id))
+          const newProducts = (data || []).filter(p => !existingIds.has(p.id))
+          return [...prev, ...newProducts]
+        })
+      }
+      
+      setHasMore((count || 0) > pageNum * PAGE_SIZE)
     } catch (error) {
       console.error('상품 조회 실패:', error)
       setErrorMessage('상품 목록을 불러오지 못했습니다.')
@@ -46,11 +69,16 @@ export default function Home() {
     }
   }, [])
 
+  // 초기 로드 & 정렬 변경 통합 (중복 호출 방지)
   useEffect(() => {
-    fetchProducts()
-  }, [fetchProducts])
+    setLoading(true)
+    setPage(1)
+    setDisplayedProducts([]) // 기존 데이터 클리어
+    fetchProducts(1, sortOrder)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortOrder]) // sortOrder 변경 시 (초기 로드 포함)
 
-  // 안전장치: 8초 안에 로딩이 끝나지 않으면 에러 메시지와 함께 로딩 종료
+  // 안전장치: 8초 안에 로딩이 끝나지 않으면 에러 메시지
   useEffect(() => {
     if (!loading) return
     const timer = setTimeout(() => {
@@ -62,44 +90,18 @@ export default function Home() {
     return () => clearTimeout(timer)
   }, [loading])
 
-
   // 더 보기 함수
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return
     
     setLoadingMore(true)
-    setTimeout(() => {
-      const nextPage = page + 1
-      const start = 0
-      const end = nextPage * PAGE_SIZE
-      
-      let sortedProducts = [...allProducts]
-      if (sortOrder === 'price_asc') {
-        sortedProducts.sort((a, b) => a.price - b.price)
-      } else if (sortOrder === 'price_desc') {
-        sortedProducts.sort((a, b) => b.price - a.price)
-      }
-      
-      setDisplayedProducts(sortedProducts.slice(start, end))
-      setPage(nextPage)
-      setHasMore(sortedProducts.length > end)
-      setLoadingMore(false)
-    }, 500)
-  }, [allProducts, page, sortOrder, loadingMore, hasMore, PAGE_SIZE])
-
-  // 정렬 변경 시 처음부터 다시 표시
-  useEffect(() => {
-    let sortedProducts = [...allProducts]
-    if (sortOrder === 'price_asc') {
-      sortedProducts.sort((a, b) => a.price - b.price)
-    } else if (sortOrder === 'price_desc') {
-      sortedProducts.sort((a, b) => b.price - a.price)
-    }
+    const nextPage = page + 1
+    setPage(nextPage) // 페이지 먼저 업데이트 (중복 호출 방지)
     
-    setDisplayedProducts(sortedProducts.slice(0, PAGE_SIZE))
-    setPage(1)
-    setHasMore(sortedProducts.length > PAGE_SIZE)
-  }, [sortOrder, allProducts, PAGE_SIZE])
+    fetchProducts(nextPage, sortOrder).finally(() => {
+      setLoadingMore(false)
+    })
+  }, [page, sortOrder, loadingMore, hasMore, fetchProducts])
 
   // 무한 스크롤 감지
   useEffect(() => {
@@ -113,8 +115,6 @@ export default function Home() {
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [loadMore])
-
-  const products = displayedProducts
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -166,14 +166,14 @@ export default function Home() {
               <div className="text-center py-20">
                 <p className="text-sm text-red-600">{errorMessage}</p>
               </div>
-            ) : products.length === 0 ? (
+            ) : displayedProducts.length === 0 ? (
               <div className="text-center py-20">
                 <p className="text-xl text-gray-600">등록된 상품이 없습니다.</p>
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
-                  {products.map((product) => (
+                  {displayedProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
                 </div>
@@ -186,7 +186,7 @@ export default function Home() {
                 )}
                 
                 {/* 모든 상품 로드 완료 */}
-                {!hasMore && products.length > 0 && (
+                {!hasMore && displayedProducts.length > 0 && (
                   <div className="text-center py-8">
                     <p className="text-sm text-gray-500">모든 상품을 확인하셨습니다 ✨</p>
                   </div>

@@ -3,8 +3,8 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase, isSupabaseConfigured } from './supabase'
-import { migrateWishlistToDB, syncWishlistFromDB } from './wishlist-sync'
-import { migrateCartToDB, syncCartFromDB } from './cart-sync'
+import { syncWishlistOnLogin } from './wishlist-db'
+import { syncCartOnLogin } from './cart-db'
 
 interface AuthContextType {
   user: User | null
@@ -38,14 +38,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
       
       // 로그인 상태라면 DB에서 데이터 불러오기
-      // 임시: DB 동기화 비활성화
-      // if (session?.user && !hasSyncedRef.current) {
-      //   hasSyncedRef.current = true
-      //   setTimeout(() => {
-      //     syncWishlistFromDB()
-      //     syncCartFromDB()
-      //   }, 100)
-      // }
+      if (session?.user && !hasSyncedRef.current) {
+        hasSyncedRef.current = true
+        setTimeout(() => {
+          syncWishlistOnLogin(session.user.id)
+          syncCartOnLogin(session.user.id)
+        }, 100)
+      }
     })
 
     // 인증 상태 변경 감지
@@ -59,20 +58,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(newUser)
 
       // 로그인 시: localStorage → DB 마이그레이션 + DB에서 불러오기
-      // 임시: DB 동기화 비활성화
-      // if (justLoggedIn && !hasSyncedRef.current) {
-      //   hasSyncedRef.current = true
-      //   setTimeout(async () => {
-      //     try {
-      //       await migrateWishlistToDB()
-      //       await migrateCartToDB()
-      //       await syncWishlistFromDB()
-      //       await syncCartFromDB()
-      //     } catch (error) {
-      //       console.error('데이터 마이그레이션 실패:', error)
-      //     }
-      //   }, 100)
-      // }
+      if (justLoggedIn && !hasSyncedRef.current) {
+        hasSyncedRef.current = true
+        setTimeout(async () => {
+          try {
+            await syncWishlistOnLogin(newUser.id)
+            await syncCartOnLogin(newUser.id)
+          } catch (error) {
+            console.error('데이터 마이그레이션 실패:', error)
+          }
+        }, 100)
+      }
       
       // 로그아웃 시: 동기화 플래그 리셋
       if (wasLoggedOut) {

@@ -22,10 +22,10 @@ export default function ProfilePage() {
   }, [user, loading, router])
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       loadUserProfile()
     }
-  }, [user])
+  }, [user?.id]) // ✅ user.id만 의존성으로 (무한 루프 방지)
 
   const loadUserProfile = async () => {
     try {

@@ -61,6 +61,7 @@ export interface CartItem {
  */
 export interface Order {
   id: string
+  order_number?: string | null  // 고객용 주문번호 (YYYYMMDD-####)
   user_id: string
   total_amount: number
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled'

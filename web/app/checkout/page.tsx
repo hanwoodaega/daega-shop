@@ -10,23 +10,37 @@ import { supabase } from '@/lib/supabase'
 import { formatPrice } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useDaumPostcodeScript, openDaumPostcode, AddressSearchResult } from '@/lib/hooks/useDaumPostcode'
+import { showError, showSuccess, handleSupabaseError, showInfo } from '@/lib/error-handler'
+import { useDefaultAddress, useUserProfile } from '@/lib/hooks/useAddress'
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { items: cartItems, getTotalPrice: getCartTotalPrice, clearCart, getSelectedItems } = useCartStore()
-  const { items: directPurchaseItems, getTotalPrice: getDirectPurchaseTotalPrice, clearItems: clearDirectPurchase } = useDirectPurchaseStore()
+  
+  // ✅ Selector 패턴 - 필요한 것만 구독
+  const cartItems = useCartStore((state) => state.items)
+  const getCartTotalPrice = useCartStore((state) => state.getTotalPrice)
+  const clearCart = useCartStore((state) => state.clearCart)
+  const getSelectedItems = useCartStore((state) => state.getSelectedItems)
+  
+  const directPurchaseItems = useDirectPurchaseStore((state) => state.items)
+  const getDirectPurchaseTotalPrice = useDirectPurchaseStore((state) => state.getTotalPrice)
+  const clearDirectPurchase = useDirectPurchaseStore((state) => state.clearItems)
   
   // 바로구매가 있으면 그것을 사용, 없으면 장바구니 선택 상품 사용
   const isDirectPurchase = directPurchaseItems.length > 0
   const items = isDirectPurchase ? directPurchaseItems : getSelectedItems()
   const getTotalPrice = isDirectPurchase ? getDirectPurchaseTotalPrice : getCartTotalPrice
   
-  const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'quick' | 'regular'>('regular')
-  const [pickupTime, setPickupTime] = useState('')
-  const [quickDeliveryArea, setQuickDeliveryArea] = useState('')
-  const [quickDeliveryTime, setQuickDeliveryTime] = useState('')
+  // ✅ 배송 관련 state 그룹화
+  const [deliveryState, setDeliveryState] = useState({
+    method: 'regular' as 'pickup' | 'quick' | 'regular',
+    pickupTime: '',
+    quickDeliveryArea: '',
+    quickDeliveryTime: '',
+  })
   
+  // ✅ 폼 데이터 (이미 그룹화됨)
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -37,85 +51,50 @@ export default function CheckoutPage() {
     message: '',
   })
   
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [mounted, setMounted] = useState(false)
-  const [loadingDefaultAddress, setLoadingDefaultAddress] = useState(true)
-  const [saveAsDefaultAddress, setSaveAsDefaultAddress] = useState(false)
-  const [hasDefaultAddress, setHasDefaultAddress] = useState(false)
+  // ✅ 플래그 state 그룹화
+  const [flags, setFlags] = useState({
+    isProcessing: false,
+    mounted: false,
+    saveAsDefaultAddress: false,
+  })
+
+  // Destructuring for backward compatibility
+  const { method: deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime } = deliveryState
+  const { isProcessing, mounted, saveAsDefaultAddress } = flags
+
+  // ✅ 공통 hook 사용
+  const { address: defaultAddress, loading: loadingDefaultAddress, hasDefaultAddress } = useDefaultAddress()
+  const { profile: userProfile, loading: loadingUserProfile } = useUserProfile()
 
   // 클라이언트 마운트 확인
   useEffect(() => {
-    setMounted(true)
+    setFlags(prev => ({ ...prev, mounted: true }))
   }, [])
 
   // Daum 우편번호 스크립트 로드
   useDaumPostcodeScript()
 
-  // 기본 배송지 불러오기 (최초 1회만)
+  // 기본 배송지 적용
   useEffect(() => {
-    if (user?.id) {
-      loadDefaultAddress()
-    } else {
-      setLoadingDefaultAddress(false)
+    if (defaultAddress) {
+      applyAddress(defaultAddress)
+    } else if (!hasDefaultAddress) {
+      // 배송지가 하나도 없으면 체크박스 자동 체크
+      setFlags(prev => ({ ...prev, saveAsDefaultAddress: true }))
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]) // user 대신 user?.id 사용
+  }, [defaultAddress, hasDefaultAddress])
 
-  const loadDefaultAddress = async () => {
-    try {
-      // 기본 배송지 조회
-      const { data: defaultAddress, error } = await supabase
-        .from('addresses')
-        .select('*')
-        .eq('user_id', user!.id)
-        .eq('is_default', true)
-        .single()
-
-      if (error) {
-        // 기본 배송지가 없으면 첫 번째 배송지 조회
-        const { data: firstAddress } = await supabase
-          .from('addresses')
-          .select('*')
-          .eq('user_id', user!.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single()
-
-        if (firstAddress) {
-          applyAddress(firstAddress)
-          setHasDefaultAddress(true)
-        } else {
-          // 배송지가 하나도 없음 - 체크박스 자동 체크
-          setHasDefaultAddress(false)
-          setSaveAsDefaultAddress(true)
-        }
-      } else if (defaultAddress) {
-        applyAddress(defaultAddress)
-        setHasDefaultAddress(true)
-      }
-
-      // 사용자 정보도 불러오기
-      const { data: userData } = await supabase
-        .from('users')
-        .select('name, phone, email')
-        .eq('id', user!.id)
-        .single()
-
-      if (userData) {
-        setFormData(prev => ({
-          ...prev,
-          name: prev.name || userData.name || '',
-          phone: prev.phone || userData.phone || '',
-          email: prev.email || user!.email || '',
-        }))
-      }
-    } catch (error) {
-      console.error('기본 배송지 조회 실패:', error)
-      setHasDefaultAddress(false)
-    } finally {
-      setLoadingDefaultAddress(false)
+  // 사용자 정보 적용
+  useEffect(() => {
+    if (userProfile) {
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || userProfile.name || '',
+        phone: prev.phone || userProfile.phone || '',
+        email: prev.email || userProfile.email || user?.email || '',
+      }))
     }
-  }
+  }, [userProfile, user?.email])
 
   const applyAddress = (address: any) => {
     setFormData(prev => ({
@@ -183,64 +162,48 @@ export default function CheckoutPage() {
     e.preventDefault()
 
     if (items.length === 0) {
-      toast.error('주문할 상품이 없습니다.', {
-        icon: '📦',
-      })
+      showError({ message: '주문할 상품이 없습니다.' }, { icon: '📦' })
       router.push(isDirectPurchase ? '/products' : '/cart')
       return
     }
 
     if (!formData.name || !formData.phone) {
-      toast.error('필수 항목을 모두 입력해주세요.', {
-        icon: '⚠️',
-      })
+      showError({ message: '필수 항목을 모두 입력해주세요.' }, { icon: '⚠️' })
       return
     }
 
     // 배송 방법별 유효성 검사
     if (deliveryMethod === 'pickup' && !pickupTime) {
-      toast.error('픽업 시간을 선택해주세요.', {
-        icon: '⏰',
-      })
+      showError({ message: '픽업 시간을 선택해주세요.' }, { icon: '⏰' })
       return
     }
 
     if (deliveryMethod === 'quick') {
       if (!quickDeliveryArea) {
-        toast.error('배달 지역을 선택해주세요.', {
-          icon: '📍',
-        })
+        showError({ message: '배달 지역을 선택해주세요.' }, { icon: '📍' })
         return
       }
       if (!formData.address) {
-        toast.error('상세 주소를 입력해주세요.', {
-          icon: '📍',
-        })
+        showError({ message: '상세 주소를 입력해주세요.' }, { icon: '📍' })
         return
       }
       if (!quickDeliveryTime) {
-        toast.error('배달 시간을 선택해주세요.', {
-          icon: '⏰',
-        })
+        showError({ message: '배달 시간을 선택해주세요.' }, { icon: '⏰' })
         return
       }
     }
 
     if (deliveryMethod === 'regular' && !formData.address) {
-      toast.error('배송 주소를 입력해주세요.', {
-        icon: '📍',
-      })
+      showError({ message: '배송 주소를 입력해주세요.' }, { icon: '📍' })
       return
     }
 
-    setIsProcessing(true)
+    setFlags(prev => ({ ...prev, isProcessing: true }))
 
     try {
       // 로그인 확인
       if (!user) {
-        toast.error('로그인이 필요합니다.', {
-          icon: '🔒',
-        })
+        showError({ message: '로그인이 필요합니다.' }, { icon: '🔒' })
         router.push('/auth/login?next=/checkout')
         return
       }
@@ -282,9 +245,7 @@ export default function CheckoutPage() {
         .single()
 
       if (orderError) {
-        console.error('주문 생성 실패:', orderError)
-        toast.error('주문 생성에 실패했습니다. 다시 시도해주세요.')
-        return
+        throw handleSupabaseError(orderError)
       }
 
       // 주문 아이템 저장
@@ -326,17 +287,21 @@ export default function CheckoutPage() {
         clearCart()
       }
 
-      // 주문 완료 페이지로 이동
-      toast.success('주문이 완료되었습니다!', {
+      // 주문 완료
+      showSuccess('주문이 완료되었습니다!', {
         icon: '🎉',
-        duration: 2000,
+        duration: 3000,
       })
-      setTimeout(() => router.push('/'), 1500)
+
+      // 주문 완료 페이지로 이동
+      setTimeout(() => {
+        router.push('/orders')
+      }, 1500)
+
     } catch (error) {
-      console.error('결제 처리 실패:', error)
-      toast.error('결제 처리 중 오류가 발생했습니다.')
+      showError(error)
     } finally {
-      setIsProcessing(false)
+      setFlags(prev => ({ ...prev, isProcessing: false }))
     }
   }
 
@@ -416,7 +381,7 @@ export default function CheckoutPage() {
                       name="deliveryMethod"
                       value="pickup"
                       checked={deliveryMethod === 'pickup'}
-                      onChange={() => setDeliveryMethod('pickup')}
+                      onChange={() => setDeliveryState(prev => ({ ...prev, method: 'pickup' }))}
                       className="mt-1"
                     />
                     <div className="flex-1">
@@ -425,12 +390,12 @@ export default function CheckoutPage() {
                       {deliveryMethod === 'pickup' && (
                         <div className="mt-3">
                           <label className="block text-sm font-medium mb-2">픽업 시간 선택</label>
-                          <select
-                            value={pickupTime}
-                            onChange={(e) => setPickupTime(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                            required
-                          >
+                        <select
+                          value={pickupTime}
+                          onChange={(e) => setDeliveryState(prev => ({ ...prev, pickupTime: e.target.value }))}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          required
+                        >
                             <option value="">시간을 선택하세요</option>
                             {pickupTimeSlots.map(time => (
                               <option key={time} value={time}>{time}</option>
@@ -449,7 +414,7 @@ export default function CheckoutPage() {
                       name="deliveryMethod"
                       value="quick"
                       checked={deliveryMethod === 'quick'}
-                      onChange={() => setDeliveryMethod('quick')}
+                      onChange={() => setDeliveryState(prev => ({ ...prev, method: 'quick' }))}
                       className="mt-1"
                     />
                     <div className="flex-1">
@@ -459,12 +424,12 @@ export default function CheckoutPage() {
                         <div className="mt-3 space-y-3">
                           <div>
                             <label className="block text-sm font-medium mb-2">배달 지역 선택</label>
-                            <select
-                              value={quickDeliveryArea}
-                              onChange={(e) => setQuickDeliveryArea(e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                              required
-                            >
+                          <select
+                            value={quickDeliveryArea}
+                            onChange={(e) => setDeliveryState(prev => ({ ...prev, quickDeliveryArea: e.target.value }))}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                            required
+                          >
                               <option value="">지역을 선택하세요</option>
                               {quickDeliveryAreas.map(area => (
                                 <option key={area} value={area}>{area}</option>
@@ -473,12 +438,12 @@ export default function CheckoutPage() {
                           </div>
                           <div>
                             <label className="block text-sm font-medium mb-2">배달 시간대 선택</label>
-                            <select
-                              value={quickDeliveryTime}
-                              onChange={(e) => setQuickDeliveryTime(e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                              required
-                            >
+                          <select
+                            value={quickDeliveryTime}
+                            onChange={(e) => setDeliveryState(prev => ({ ...prev, quickDeliveryTime: e.target.value }))}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                            required
+                          >
                               <option value="">시간대를 선택하세요</option>
                               {quickDeliveryTimeSlots.map(time => (
                                 <option key={time} value={time}>{time}</option>
@@ -498,7 +463,7 @@ export default function CheckoutPage() {
                       name="deliveryMethod"
                       value="regular"
                       checked={deliveryMethod === 'regular'}
-                      onChange={() => setDeliveryMethod('regular')}
+                      onChange={() => setDeliveryState(prev => ({ ...prev, method: 'regular' }))}
                       className="mt-1"
                     />
                     <div className="flex-1">
@@ -641,7 +606,7 @@ export default function CheckoutPage() {
                           type="checkbox"
                           id="save_as_default_quick"
                           checked={saveAsDefaultAddress}
-                          onChange={(e) => setSaveAsDefaultAddress(e.target.checked)}
+                          onChange={(e) => setFlags(prev => ({ ...prev, saveAsDefaultAddress: e.target.checked }))}
                           className="w-4 h-4 mt-0.5 text-primary-800 border-gray-300 rounded focus:ring-primary-500"
                         />
                         <label htmlFor="save_as_default_quick" className="ml-2 text-sm text-blue-900">
@@ -734,7 +699,7 @@ export default function CheckoutPage() {
                           type="checkbox"
                           id="save_as_default"
                           checked={saveAsDefaultAddress}
-                          onChange={(e) => setSaveAsDefaultAddress(e.target.checked)}
+                          onChange={(e) => setFlags(prev => ({ ...prev, saveAsDefaultAddress: e.target.checked }))}
                           className="w-4 h-4 mt-0.5 text-primary-800 border-gray-300 rounded focus:ring-primary-500"
                         />
                         <label htmlFor="save_as_default" className="ml-2 text-sm text-blue-900">
@@ -780,12 +745,12 @@ export default function CheckoutPage() {
                 <h2 className="text-xl font-bold mb-4">주문 상품</h2>
                 
                 <div className="space-y-3 mb-6 max-h-60 overflow-y-auto">
-                  {items.map((item) => {
+                  {items.map((item, index) => {
                     const itemPrice = item.discount_percent && item.discount_percent > 0
                       ? Math.round(item.price * (100 - item.discount_percent) / 100)
                       : item.price
                     return (
-                      <div key={item.productId} className="flex justify-between text-sm">
+                      <div key={item.id || `${item.productId}-${index}`} className="flex justify-between text-sm">
                         <span className="flex-1 truncate">{item.name} x {item.quantity}</span>
                         <span className="font-semibold ml-2">{formatPrice(itemPrice * item.quantity)}원</span>
                       </div>

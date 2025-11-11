@@ -66,6 +66,24 @@ export function getStatusColor(status: string): string {
   }
 }
 
+// 배경 없이 텍스트 색상만 반환
+export function getStatusTextColor(status: string): string {
+  switch (status) {
+    case 'pending':
+      return 'text-yellow-700'
+    case 'paid':
+      return 'text-blue-700'
+    case 'shipped':
+      return 'text-purple-700'
+    case 'delivered':
+      return 'text-green-700'
+    case 'cancelled':
+      return 'text-red-700'
+    default:
+      return 'text-gray-700'
+  }
+}
+
 export function getRefundStatusText(refundStatus?: string | null): string | null {
   switch (refundStatus) {
     case 'pending':

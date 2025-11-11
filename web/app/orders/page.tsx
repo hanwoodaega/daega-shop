@@ -11,7 +11,8 @@ import { useAuth } from '@/lib/auth-context'
 import { supabase, Order } from '@/lib/supabase'
 import { formatPrice } from '@/lib/utils'
 import { formatPhoneNumber } from '@/lib/format-phone'
-import { getStatusText, getDeliveryTypeText, getStatusColor, getRefundStatusText } from '@/lib/order-utils'
+import { getStatusText, getDeliveryTypeText, getStatusColor, getStatusTextColor, getRefundStatusText } from '@/lib/order-utils'
+import { showError, showSuccess, handleSupabaseError } from '@/lib/error-handler'
 
 interface OrderWithItems extends Order {
   order_items?: Array<{
@@ -41,12 +42,15 @@ export default function OrdersPage() {
   }, [user, loading, router])
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchOrders()
     }
-  }, [user])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]) // user 객체가 아닌 user.id만 의존
 
   const fetchOrders = async () => {
+    if (!user?.id) return
+    
     try {
       const { data, error } = await supabase
         .from('orders')
@@ -63,13 +67,13 @@ export default function OrdersPage() {
             )
           )
         `)
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) throw handleSupabaseError(error)
       setOrders(data || [])
     } catch (error) {
-      console.error('주문 조회 실패:', error)
+      showError(error)
     } finally {
       setLoadingOrders(false)
     }
@@ -96,7 +100,7 @@ export default function OrdersPage() {
         })
         .eq('id', orderId)
 
-      if (error) throw error
+      if (error) throw handleSupabaseError(error)
 
       // 주문 목록 업데이트
       setOrders(orders.map(o => 
@@ -111,13 +115,11 @@ export default function OrdersPage() {
           : o
       ))
 
-      toast.success('주문이 취소되었습니다\n환불이 진행됩니다. 영업일 기준 3-5일 소요됩니다.', {
-        icon: '✅',
+      showSuccess('주문이 취소되었습니다.\n환불이 진행됩니다. 영업일 기준 3-5일 소요됩니다.', {
         duration: 5000,
       })
     } catch (error) {
-      console.error('주문 취소 실패:', error)
-      toast.error('주문 취소에 실패했습니다.')
+      showError(error)
     } finally {
       setCancelingOrderId(null)
     }
@@ -206,7 +208,7 @@ export default function OrdersPage() {
               <div key={order.id} className="bg-white rounded-lg shadow-md overflow-hidden">
                 {/* 주문 헤더 */}
                 <div className="bg-gray-50 px-4 py-3 border-b">
-                  <p className="text-sm text-gray-600 mb-2">
+                  <p className="text-sm text-gray-600 mb-1">
                     주문일시: {new Date(order.created_at).toLocaleDateString('ko-KR', {
                       year: 'numeric',
                       month: 'long',
@@ -215,9 +217,16 @@ export default function OrdersPage() {
                       minute: '2-digit',
                     })}
                   </p>
-                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-                    {getStatusText(order.status, order.delivery_type)}
-                  </span>
+                  {order.order_number && (
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-gray-600">
+                        주문번호: <span className="font-mono text-primary-900 font-semibold">{order.order_number}</span>
+                      </p>
+                      <span className={`text-sm font-semibold ${getStatusTextColor(order.status)}`}>
+                        {getStatusText(order.status, order.delivery_type)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* 주문 상품 목록 */}

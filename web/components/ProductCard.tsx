@@ -1,13 +1,14 @@
 'use client'
 
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { Product } from '@/lib/supabase'
 import { useCartStore, useWishlistStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
-import { toggleWishlist } from '@/lib/wishlist-sync'
+import { toggleWishlistDB } from '@/lib/wishlist-db'
+import { addCartItemWithDB } from '@/lib/cart-db'
 import { formatPrice } from '@/lib/utils'
 import { isValidImageUrl, isOutOfStock, calculateDiscountPrice } from '@/lib/product-utils'
 
@@ -16,15 +17,27 @@ interface ProductCardProps {
 }
 
 function ProductCard({ product }: ProductCardProps) {
+  // ✅ Zustand selector 패턴 - 필요한 것만 구독
   const addItem = useCartStore((state) => state.addItem)
-  const { isInWishlist } = useWishlistStore()
+  const isWished = useWishlistStore((state) => state.items.includes(product.id))
   const { user } = useAuth()
-  const isWished = isInWishlist(product.id)
-  const hasValidImage = isValidImageUrl(product.image_url)
-  const isPlaceholderHost = hasValidImage && product.image_url.includes('via.placeholder.com')
-  const shouldRenderImage = hasValidImage && !isPlaceholderHost
-  const outOfStock = isOutOfStock(product.stock)
-  const discountPrice = calculateDiscountPrice(product.price, product.discount_percent)
+  const userId = user?.id
+  
+  // ✅ 계산 결과 메모이제이션
+  const hasValidImage = useMemo(() => isValidImageUrl(product.image_url), [product.image_url])
+  const isPlaceholderHost = useMemo(() => 
+    hasValidImage && product.image_url.includes('via.placeholder.com'),
+    [hasValidImage, product.image_url]
+  )
+  const shouldRenderImage = useMemo(() => 
+    hasValidImage && !isPlaceholderHost,
+    [hasValidImage, isPlaceholderHost]
+  )
+  const outOfStock = useMemo(() => isOutOfStock(product.stock), [product.stock])
+  const discountPrice = useMemo(() => 
+    calculateDiscountPrice(product.price, product.discount_percent),
+    [product.price, product.discount_percent]
+  )
 
   const handleAddToCart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -37,7 +50,7 @@ function ProductCard({ product }: ProductCardProps) {
       return
     }
 
-    addItem({
+    const cartItem = {
       productId: product.id,
       name: product.name,
       price: product.price,
@@ -45,8 +58,11 @@ function ProductCard({ product }: ProductCardProps) {
       imageUrl: product.image_url,
       discount_percent: product.discount_percent ?? undefined,
       brand: product.brand ?? undefined,
-      stock: product.stock, // 품절 여부 확인용
-    })
+      stock: product.stock,
+    }
+
+    // DB 연동 장바구니 추가
+    addCartItemWithDB(userId || null, cartItem)
 
     toast.success('장바구니에 추가되었습니다!', {
       icon: '🛒',
@@ -60,14 +76,25 @@ function ProductCard({ product }: ProductCardProps) {
         })
       }, 500)
     }    
-  }, [product, addItem, outOfStock])
+  }, [
+    product.id, 
+    product.name, 
+    product.price, 
+    product.image_url, 
+    product.discount_percent, 
+    product.brand, 
+    product.stock,
+    product.promotion_type,
+    userId, 
+    outOfStock
+  ])
 
   const handleWishlistToggle = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     
-    // 임시: DB 연동 없이 localStorage만 사용
-    const success = await toggleWishlist(product.id, false)
+    // 클라이언트에서 직접 DB 접근 (인증 문제 해결)
+    const success = await toggleWishlistDB(userId || null, product.id)
     
     if (success) {
       if (isWished) {
@@ -84,7 +111,7 @@ function ProductCard({ product }: ProductCardProps) {
         icon: '❌',
       })
     }
-  }, [product.id, isWished])
+  }, [product.id, userId, isWished])
 
   return (
     <Link href={`/products/${product.id}`}>

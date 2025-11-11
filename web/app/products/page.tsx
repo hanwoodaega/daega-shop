@@ -19,7 +19,6 @@ function ProductsContent() {
   const searchQuery = searchParams.get('search')
   const filter = searchParams.get('filter')
   
-  const [allProducts, setAllProducts] = useState<Product[]>([])
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -34,14 +33,24 @@ function ProductsContent() {
     setSelectedCategory(category || '전체')
   }, [category])
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true)
+  const fetchProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
+    setLoading(pageNum === 1)
+    setLoadingMore(pageNum > 1)
+    
     try {
-      let query = supabase.from('products').select('*')
+      const from = (pageNum - 1) * PAGE_SIZE
+      const to = from + PAGE_SIZE - 1
+
+      let query = supabase
+        .from('products')
+        .select('*', { count: 'exact' })
+        .range(from, to)
       
       // 검색어가 있으면 검색어 필터만 적용 (카테고리 무시)
       if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,origin.ilike.%${searchQuery}%`)
+        // ✅ Full-Text Search 사용 (search_vector가 있는 경우)
+        // 없으면 fallback으로 ILIKE 사용
+        query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,origin.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%`)
       } else if (filter) {
         // 필터가 있으면 필터 적용
         if (filter === 'new') {
@@ -60,63 +69,67 @@ function ProductsContent() {
         }
       }
       
-      const { data, error } = await query.order('created_at', { ascending: false })
+      // 정렬 적용
+      if (sort === 'price_asc') {
+        query = query.order('price', { ascending: true })
+      } else if (sort === 'price_desc') {
+        query = query.order('price', { ascending: false })
+      } else {
+        query = query.order('created_at', { ascending: false })
+      }
+      
+      const { data, error, count } = await query
       
       if (error) throw error
-      setAllProducts(data || [])
-      // 처음 20개만 표시
-      setDisplayedProducts((data || []).slice(0, PAGE_SIZE))
-      setPage(1)
-      setHasMore((data || []).length > PAGE_SIZE)
+
+      if (pageNum === 1) {
+        setDisplayedProducts(data || [])
+      } else {
+        // 중복 방지: 이미 있는 상품은 제외하고 추가
+        setDisplayedProducts(prev => {
+          const existingIds = new Set(prev.map(p => p.id))
+          const newProducts = (data || []).filter(p => !existingIds.has(p.id))
+          return [...prev, ...newProducts]
+        })
+      }
+      
+      setHasMore((count || 0) > pageNum * PAGE_SIZE)
     } catch (error) {
       console.error('상품 조회 실패:', error)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }, [selectedCategory, searchQuery, filter])
 
-  // 카테고리나 검색어가 변경되면 상품 조회
+  // 카테고리나 검색어가 변경되면 상품 조회 (초기 로드)
   useEffect(() => {
-    fetchProducts()
-  }, [fetchProducts])
+    setPage(1)
+    setDisplayedProducts([]) // 기존 데이터 클리어
+    fetchProducts(1, sortOrder)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory, searchQuery, filter]) // sortOrder는 별도 처리
 
   // 더 보기 함수
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return
     
     setLoadingMore(true)
-    setTimeout(() => {
-      const nextPage = page + 1
-      const start = 0
-      const end = nextPage * PAGE_SIZE
-      
-      let sortedProducts = [...allProducts]
-      if (sortOrder === 'price_asc') {
-        sortedProducts.sort((a, b) => a.price - b.price)
-      } else if (sortOrder === 'price_desc') {
-        sortedProducts.sort((a, b) => b.price - a.price)
-      }
-      
-      setDisplayedProducts(sortedProducts.slice(start, end))
-      setPage(nextPage)
-      setHasMore(sortedProducts.length > end)
-      setLoadingMore(false)
-    }, 500)
-  }, [allProducts, page, sortOrder, loadingMore, hasMore, PAGE_SIZE])
-
-  // 정렬 변경 시 처음부터 다시 표시
-  useEffect(() => {
-    let sortedProducts = [...allProducts]
-    if (sortOrder === 'price_asc') {
-      sortedProducts.sort((a, b) => a.price - b.price)
-    } else if (sortOrder === 'price_desc') {
-      sortedProducts.sort((a, b) => b.price - a.price)
-    }
+    const nextPage = page + 1
+    setPage(nextPage) // 페이지 먼저 업데이트 (중복 호출 방지)
     
-    setDisplayedProducts(sortedProducts.slice(0, PAGE_SIZE))
+    fetchProducts(nextPage, sortOrder).finally(() => {
+      setLoadingMore(false)
+    })
+  }, [page, sortOrder, loadingMore, hasMore, fetchProducts])
+
+  // 정렬 변경 시 처음부터 다시 로드
+  useEffect(() => {
     setPage(1)
-    setHasMore(sortedProducts.length > PAGE_SIZE)
-  }, [sortOrder, allProducts, PAGE_SIZE])
+    setDisplayedProducts([]) // 기존 데이터 클리어
+    fetchProducts(1, sortOrder)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortOrder]) // fetchProducts 의존성 제거 (중복 호출 방지)
 
   // 무한 스크롤 감지
   useEffect(() => {
@@ -131,18 +144,16 @@ function ProductsContent() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [loadMore])
 
-  const products = displayedProducts
-
-  const categories = CATEGORIES
-
-  const getPageTitle = () => {
+  // 페이지 타이틀 메모이제이션
+  const pageTitle = useMemo(() => {
     if (searchQuery) return `"${searchQuery}" 검색 결과`
     if (filter === 'new') return '신상품'
     if (filter === 'best') return '베스트'
     if (filter === 'sale') return '전단행사'
     if (filter === 'budget') return '알뜰상품'
-    return selectedCategory
-  }
+    if (selectedCategory && selectedCategory !== '전체') return selectedCategory
+    return '전체 상품'
+  }, [searchQuery, filter, selectedCategory])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -219,11 +230,11 @@ function ProductsContent() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-xl font-bold mb-1">
-              {getPageTitle()}
+              {pageTitle}
             </h1>
-            {searchQuery && (
+            {searchQuery && displayedProducts.length > 0 && (
               <p className="text-gray-600 text-sm">
-                총 <span className="font-semibold text-primary-800">{products.length}</span>개의 상품을 찾았습니다
+                검색 결과
               </p>
             )}
           </div>
@@ -241,7 +252,7 @@ function ProductsContent() {
         {/* 카테고리 필터 - 데스크탑만 표시 */}
         {!searchQuery && !filter && (
           <div className="hidden md:flex flex-wrap gap-2 mb-8">
-            {categories.map((cat) => (
+            {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
@@ -264,7 +275,7 @@ function ProductsContent() {
               <ProductCardSkeleton key={i} />
             ))}
           </div>
-        ) : products.length === 0 ? (
+        ) : displayedProducts.length === 0 ? (
           <div className="text-center py-20">
             <div className="text-6xl mb-4">🔍</div>
             <p className="text-xl text-gray-600 mb-2">
@@ -281,7 +292,7 @@ function ProductsContent() {
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
-              {products.map((product) => (
+              {displayedProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
@@ -294,7 +305,7 @@ function ProductsContent() {
             )}
             
             {/* 모든 상품 로드 완료 */}
-            {!hasMore && products.length > 0 && (
+            {!hasMore && displayedProducts.length > 0 && (
               <div className="text-center py-8">
                 <p className="text-sm text-gray-500">모든 상품을 확인하셨습니다 ✨</p>
               </div>

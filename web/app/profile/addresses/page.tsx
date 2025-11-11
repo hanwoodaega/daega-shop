@@ -42,10 +42,10 @@ export default function AddressesPage() {
   useDaumPostcodeScript()
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchAddresses()
     }
-  }, [user])
+  }, [user?.id]) // ✅ user.id만 의존성으로 (무한 루프 방지)
 
   const fetchAddresses = async () => {
     try {

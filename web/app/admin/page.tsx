@@ -3,36 +3,56 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import ProductEditModal from '@/components/admin/ProductEditModal'
-
-const CATEGORIES = ['한우', '돼지고기', '수입육', '닭', '가공육', '조리육', '야채']
+import { ADMIN_CATEGORIES } from '@/lib/constants'
 
 export default function AdminPage() {
   const router = useRouter()
+  
+  // ✅ 상품 등록 폼 데이터 (이미 그룹화됨)
   const [form, setForm] = useState({
     brand: '',
     name: '',
     description: '',
     price: '',
     image_url: '',
-    category: CATEGORIES[0],
+    category: ADMIN_CATEGORIES[0],
     stock: '999',
     unit: '1팩',
     weight: '0',
     origin: '국내산',
     discount_percent: '',
   })
-  const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [items, setItems] = useState<any[]>([])
-  const [filterCategory, setFilterCategory] = useState<string>('전체')
-  const [filterTag, setFilterTag] = useState<string>('전체')
-  const [loadingList, setLoadingList] = useState(false)
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
-  const [limit] = useState(20)
+  
+  // ✅ UI 상태 그룹화
+  const [uiState, setUiState] = useState({
+    message: null as string | null,
+    error: null as string | null,
+    loading: false,
+    loadingList: false,
+  })
+  
+  // ✅ 목록 관련 state 그룹화
+  const [listState, setListState] = useState({
+    items: [] as any[],
+    filterCategory: '전체',
+    filterTag: '전체',
+    search: '',
+    page: 1,
+    total: 0,
+  })
+  
+  const limit = 20
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  // Destructuring for backward compatibility
+  const { message, error, loading, loadingList } = uiState
+  const { items, filterCategory, filterTag, search, page, total } = listState
+
+  // 페이지나 필터 변경 시 자동 조회
+  useEffect(() => {
+    fetchList()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filterCategory, filterTag])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -41,9 +61,7 @@ export default function AdminPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setMessage(null)
-    setError(null)
-    setLoading(true)
+    setUiState(prev => ({ ...prev, message: null, error: null, loading: true }))
     try {
       let imageUrl = form.image_url.trim()
       const file = fileInputRef.current?.files?.[0]
@@ -53,7 +71,7 @@ export default function AdminPage() {
         const up = await fetch('/api/admin/upload-image', { method: 'POST', body: fd })
         const upData = await up.json()
         if (!up.ok) {
-          setError(upData.error || '이미지 업로드 실패')
+          setUiState(prev => ({ ...prev, error: upData.error || '이미지 업로드 실패', loading: false }))
           return
         }
         imageUrl = upData.url
@@ -78,15 +96,16 @@ export default function AdminPage() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error || '등록에 실패했습니다.')
+        setUiState(prev => ({ ...prev, error: data.error || '등록에 실패했습니다.', loading: false }))
         return
       }
-      setMessage('상품이 등록되었습니다.')
+      setUiState(prev => ({ ...prev, message: '상품이 등록되었습니다.', loading: false }))
       setForm({ ...form, brand: '', name: '', description: '', price: '', image_url: '', stock: '999', weight: '0', discount_percent: '' })
       if (fileInputRef.current) fileInputRef.current.value = ''
       await fetchList()
-    } finally {
-      setLoading(false)
+    } catch (error) {
+      console.error('상품 등록 실패:', error)
+      setUiState(prev => ({ ...prev, error: '상품 등록에 실패했습니다.', loading: false }))
     }
   }
 
@@ -96,7 +115,7 @@ export default function AdminPage() {
   }
 
   const fetchList = async () => {
-    setLoadingList(true)
+    setUiState(prev => ({ ...prev, loadingList: true }))
     try {
       const params = new URLSearchParams()
       if (filterCategory && filterCategory !== '전체') params.set('category', filterCategory)
@@ -108,11 +127,14 @@ export default function AdminPage() {
       const res = await fetch(`/api/admin/products${qs}`)
       const data = await res.json()
       if (res.ok) {
-        setItems(data.items || [])
-        if (typeof data.total === 'number') setTotal(data.total)
+        setListState(prev => ({ 
+          ...prev, 
+          items: data.items || [], 
+          total: typeof data.total === 'number' ? data.total : prev.total 
+        }))
       }
     } finally {
-      setLoadingList(false)
+      setUiState(prev => ({ ...prev, loadingList: false }))
     }
   }
 
@@ -121,7 +143,7 @@ export default function AdminPage() {
     if (!ok) return
     const res = await fetch(`/api/admin/products/${id}`, { method: 'DELETE' })
     if (res.ok) {
-      setItems((prev) => prev.filter((i) => i.id !== id))
+      setListState(prev => ({ ...prev, items: prev.items.filter((i) => i.id !== id) }))
     }
   }
 
@@ -138,7 +160,10 @@ export default function AdminPage() {
     })
     
     if (res.ok) {
-      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, stock: newStock } : i)))
+      setListState(prev => ({ 
+        ...prev, 
+        items: prev.items.map((i) => (i.id === id ? { ...i, stock: newStock } : i)) 
+      }))
     }
   }
 
@@ -172,18 +197,16 @@ export default function AdminPage() {
         }),
       })
       if (res.ok) {
-        setItems((prev) => prev.map((i) => (i.id === editing.id ? { ...i, ...editing } : i)))
+        setListState((prev) => ({
+          ...prev,
+          items: prev.items.map((i) => (i.id === editing.id ? { ...i, ...editing } : i))
+        }))
         setEditing(null)
       }
     } finally {
       setSavingEdit(false)
     }
   }
-
-  useEffect(() => {
-    fetchList()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterCategory, filterTag, page])
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -227,7 +250,7 @@ export default function AdminPage() {
           <div>
             <label className="block text-sm font-medium mb-1">카테고리</label>
             <select name="category" value={form.category} onChange={handleChange} className="w-full border rounded px-3 py-2">
-              {CATEGORIES.map((c) => (
+              {ADMIN_CATEGORIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
@@ -267,18 +290,18 @@ export default function AdminPage() {
           <div className="flex flex-wrap items-center gap-2">
             <input
               value={search}
-              onChange={(e)=>setSearch(e.target.value)}
-              onKeyDown={(e)=>{ if(e.key==='Enter'){ setPage(1); fetchList() } }}
+              onChange={(e)=>setListState(prev => ({ ...prev, search: e.target.value }))}
+              onKeyDown={(e)=>{ if(e.key==='Enter'){ setListState(prev => ({ ...prev, page: 1 })); fetchList() } }}
               placeholder="상품명/설명 검색"
               className="border rounded px-2 py-1 text-sm"
             />
-            <button onClick={()=>{ setPage(1); fetchList() }} className="text-sm px-2 py-1 border rounded">검색</button>
+            <button onClick={()=>{ setListState(prev => ({ ...prev, page: 1 })); fetchList() }} className="text-sm px-2 py-1 border rounded">검색</button>
             
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">카테고리</label>
-              <select className="border rounded px-2 py-1 text-sm" value={filterCategory} onChange={(e)=>{ setFilterCategory(e.target.value); setPage(1); }}>
+              <select className="border rounded px-2 py-1 text-sm" value={filterCategory} onChange={(e)=>{ setListState(prev => ({ ...prev, filterCategory: e.target.value, page: 1 })); }}>
                 <option value="전체">전체</option>
-                {CATEGORIES.map((c)=> (
+                {ADMIN_CATEGORIES.map((c)=> (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
@@ -286,7 +309,7 @@ export default function AdminPage() {
             
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">필터태그</label>
-              <select className="border rounded px-2 py-1 text-sm" value={filterTag} onChange={(e)=>{ setFilterTag(e.target.value); setPage(1); }}>
+              <select className="border rounded px-2 py-1 text-sm" value={filterTag} onChange={(e)=>{ setListState(prev => ({ ...prev, filterTag: e.target.value, page: 1 })); }}>
                 <option value="전체">전체</option>
                 <option value="new">신상품</option>
                 <option value="best">베스트</option>
@@ -382,13 +405,113 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between mt-3 text-sm">
-            <span className="text-gray-600">총 {total}개</span>
-            <div className="space-x-2">
-              <button disabled={page<=1} onClick={()=>setPage((p)=>Math.max(1,p-1))} className="px-2 py-1 border rounded disabled:opacity-50">이전</button>
-              <button disabled={(page*limit)>=total} onClick={()=>setPage((p)=>p+1)} className="px-2 py-1 border rounded disabled:opacity-50">다음</button>
+          {/* 페이지네이션 */}
+          {total > 0 && (
+            <div className="mt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-gray-600">
+                총 <span className="font-semibold text-primary-900">{total}</span>개 상품
+                {' | '}
+                <span className="font-semibold text-primary-900">{Math.ceil(total / limit)}</span>페이지 중{' '}
+                <span className="font-semibold text-primary-900">{page}</span>페이지
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {/* 첫 페이지 */}
+                <button
+                  onClick={() => {
+                    setListState(prev => ({ ...prev, page: 1 }))
+                    setTimeout(fetchList, 0)
+                  }}
+                  disabled={page === 1}
+                  className="px-3 py-2 border rounded text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  title="첫 페이지"
+                >
+                  «
+                </button>
+
+                {/* 이전 페이지 */}
+                <button
+                  onClick={() => {
+                    setListState(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))
+                    setTimeout(fetchList, 0)
+                  }}
+                  disabled={page === 1}
+                  className="px-3 py-2 border rounded text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  title="이전 페이지"
+                >
+                  ‹
+                </button>
+
+                {/* 페이지 번호 표시 */}
+                <div className="flex items-center gap-1">
+                  {(() => {
+                    const totalPages = Math.ceil(total / limit)
+                    const pageNumbers = []
+                    let startPage = Math.max(1, page - 2)
+                    let endPage = Math.min(totalPages, page + 2)
+
+                    // 항상 5개 페이지 보이도록 조정
+                    if (endPage - startPage < 4) {
+                      if (startPage === 1) {
+                        endPage = Math.min(totalPages, startPage + 4)
+                      } else if (endPage === totalPages) {
+                        startPage = Math.max(1, endPage - 4)
+                      }
+                    }
+
+                    for (let i = startPage; i <= endPage; i++) {
+                      pageNumbers.push(
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setListState(prev => ({ ...prev, page: i }))
+                            setTimeout(fetchList, 0)
+                          }}
+                          className={`min-w-[36px] px-3 py-2 border rounded text-sm font-medium transition ${
+                            page === i
+                              ? 'bg-primary-800 text-white border-primary-800'
+                              : 'hover:bg-gray-100'
+                          }`}
+                        >
+                          {i}
+                        </button>
+                      )
+                    }
+
+                    return pageNumbers
+                  })()}
+                </div>
+
+                {/* 다음 페이지 */}
+                <button
+                  onClick={() => {
+                    const totalPages = Math.ceil(total / limit)
+                    setListState(prev => ({ ...prev, page: Math.min(totalPages, prev.page + 1) }))
+                    setTimeout(fetchList, 0)
+                  }}
+                  disabled={page >= Math.ceil(total / limit)}
+                  className="px-3 py-2 border rounded text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  title="다음 페이지"
+                >
+                  ›
+                </button>
+
+                {/* 마지막 페이지 */}
+                <button
+                  onClick={() => {
+                    const totalPages = Math.ceil(total / limit)
+                    setListState(prev => ({ ...prev, page: totalPages }))
+                    setTimeout(fetchList, 0)
+                  }}
+                  disabled={page >= Math.ceil(total / limit)}
+                  className="px-3 py-2 border rounded text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  title="마지막 페이지"
+                >
+                  »
+                </button>
+              </div>
             </div>
-          </div>
+          )}
           </>
         )}
         <ProductEditModal 

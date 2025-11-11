@@ -5,30 +5,44 @@ import { useState, useMemo, useCallback, useEffect, Suspense } from 'react'
 import toast from 'react-hot-toast'
 // Navbar 제거: 장바구니 전용 헤더 사용
 import Footer from '@/components/Footer'
+import ProductCard from '@/components/ProductCard'
 import { useCartStore, useWishlistStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
 import { formatPrice } from '@/lib/utils'
 import { supabase, Product } from '@/lib/supabase'
-import { toggleWishlist } from '@/lib/wishlist-sync'
+import { toggleWishlistDB } from '@/lib/wishlist-db'
+import { removeCartItemWithDB, updateCartQuantityWithDB, addCartItemWithDB } from '@/lib/cart-db'
 import { calculateDiscountPrice } from '@/lib/product-utils'
+import { useDefaultAddress, useAddresses } from '@/lib/hooks/useAddress'
 
 function CartPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { items, addItem, removeItem, updateQuantity, getTotalPrice, toggleSelect, toggleSelectGroup, toggleSelectAll, getSelectedItems } = useCartStore()
-  const { items: wishlistIds } = useWishlistStore()
+  
+  // ✅ Selector 패턴 - 필요한 것만 구독
+  const items = useCartStore((state) => state.items)
+  const addItem = useCartStore((state) => state.addItem)
+  const removeItem = useCartStore((state) => state.removeItem)
+  const updateQuantity = useCartStore((state) => state.updateQuantity)
+  const getTotalPrice = useCartStore((state) => state.getTotalPrice)
+  const toggleSelect = useCartStore((state) => state.toggleSelect)
+  const toggleSelectGroup = useCartStore((state) => state.toggleSelectGroup)
+  const toggleSelectAll = useCartStore((state) => state.toggleSelectAll)
+  const getSelectedItems = useCartStore((state) => state.getSelectedItems)
+  
+  const wishlistIds = useWishlistStore((state) => state.items)
   const { user } = useAuth()
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
-  const [defaultAddress, setDefaultAddress] = useState<any>(null)
-  const [loadingAddress, setLoadingAddress] = useState(true)
   const [showAddressModal, setShowAddressModal] = useState(false)
-  const [allAddresses, setAllAddresses] = useState<any[]>([])
-  const [loadingAddresses, setLoadingAddresses] = useState(false)
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
   const [stockStatus, setStockStatus] = useState<{[productId: string]: number}>({})
   const [showWishlist, setShowWishlist] = useState(searchParams?.get('tab') === 'wishlist')
   const [wishlistProducts, setWishlistProducts] = useState<Product[]>([])
   const [loadingWishlist, setLoadingWishlist] = useState(false)
+
+  // ✅ 공통 hook 사용
+  const { address: defaultAddress, loading: loadingAddress } = useDefaultAddress(!showWishlist)
+  const { addresses: allAddresses, loading: loadingAddresses, reload: loadAllAddresses } = useAddresses()
 
   const allSelected = useMemo(() => 
     items.length > 0 && items.every((item) => item.selected !== false),
@@ -61,7 +75,8 @@ function CartPageContent() {
     }
 
     loadWishlistProducts()
-  }, [wishlistIds])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wishlistIds.join(',')]) // 배열을 문자열로 변환하여 비교 (더 정확)
 
   // 장바구니 상품의 실시간 재고 상태 확인
   useEffect(() => {
@@ -117,72 +132,10 @@ function CartPageContent() {
         duration: 5000,
       })
     }
-  }, [stockStatus]) // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stockStatus, items.length]) // items.length 추가하여 변경 감지
 
-  // 기본 배송지 불러오기 (장바구니 모드에서만)
-  useEffect(() => {
-    const loadDefaultAddress = async () => {
-      // 찜 페이지에서는 배송지 불러오지 않음
-      if (!user || showWishlist) {
-        setLoadingAddress(false)
-        return
-      }
-
-      try {
-        // 기본 배송지 조회
-        const { data: defaultAddr, error } = await supabase
-          .from('addresses')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('is_default', true)
-          .single()
-
-        if (error) {
-          // 기본 배송지가 없으면 첫 번째 배송지 조회
-          const { data: firstAddr } = await supabase
-            .from('addresses')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single()
-
-          setDefaultAddress(firstAddr || null)
-        } else {
-          setDefaultAddress(defaultAddr)
-        }
-      } catch (error) {
-        console.error('배송지 조회 실패:', error)
-      } finally {
-        setLoadingAddress(false)
-      }
-    }
-
-    loadDefaultAddress()
-  }, [user?.id, showWishlist]) // user 대신 user?.id 사용
-
-  // 모든 배송지 불러오기
-  const loadAllAddresses = async () => {
-    if (!user) return
-    
-    setLoadingAddresses(true)
-    try {
-      const { data, error } = await supabase
-        .from('addresses')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('is_default', { ascending: false })
-        .order('created_at', { ascending: false })
-
-      if (!error && data) {
-        setAllAddresses(data)
-      }
-    } catch (error) {
-      console.error('배송지 목록 조회 실패:', error)
-    } finally {
-      setLoadingAddresses(false)
-    }
-  }
+  // ✅ 배송지는 useDefaultAddress, useAddresses hook에서 자동 로드
 
   // 배송지 선택 (장바구니에서만 사용, 기본 배송지 변경 없음)
   const handleSelectAddress = (addressId: string) => {
@@ -217,19 +170,10 @@ function CartPageContent() {
         return
       }
 
-      // 3. 로컬 state 업데이트
-      const selected = allAddresses.find(addr => addr.id === selectedAddressId)
-      if (selected) {
-        setDefaultAddress({ ...selected, is_default: true })
-      }
+      // 3. 배송지 목록 새로고침 (hook에서 자동 업데이트)
+      await loadAllAddresses()
 
-      // 4. allAddresses도 업데이트
-      setAllAddresses(prev => 
-        prev.map(addr => ({
-          ...addr,
-          is_default: addr.id === selectedAddressId
-        }))
-      )
+      toast.success('기본 배송지가 변경되었습니다.')
 
     } catch (error) {
       console.error('배송지 업데이트 실패:', error)
@@ -403,7 +347,7 @@ function CartPageContent() {
       <main className="flex-1 container mx-auto px-2 pt-2 pb-32">
         {/* 위시리스트 보기 */}
         {showWishlist ? (
-          <div>
+          <div className="pt-4">
             {loadingWishlist ? (
               <div className="flex justify-center items-center py-20">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
@@ -420,104 +364,10 @@ function CartPageContent() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {wishlistProducts.map((product) => {
-                  const isWished = wishlistIds.includes(product.id)
-                  const discountPrice = calculateDiscountPrice(product.price, product.discount_percent)
-                  return (
-                    <div
-                      key={product.id}
-                      onClick={() => router.push(`/products/${product.id}`)}
-                      className="bg-white rounded-lg shadow-sm hover:shadow-md transition cursor-pointer"
-                    >
-                      <div 
-                        className="relative aspect-square bg-gray-200 overflow-hidden"
-                      >
-                        <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm">
-                          이미지 준비중
-                        </div>
-                        {product.stock <= 0 && (
-                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                            <span className="text-white text-xl font-bold">품절</span>
-                          </div>
-                        )}
-                        {/* 장바구니 버튼 - 오른쪽 하단 */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (product.stock <= 0) {
-                              toast.error('품절된 상품입니다', {
-                                icon: '😢',
-                              })
-                              return
-                            }
-                            addItem({
-                              productId: product.id,
-                              name: product.name,
-                              price: product.price,
-                              quantity: 1,
-                              imageUrl: product.image_url,
-                              discount_percent: product.discount_percent ?? undefined,
-                              brand: product.brand ?? undefined,
-                              stock: product.stock,
-                            })
-                            toast.success('장바구니에 추가되었습니다!', {
-                              icon: '🛒',
-                            })
-                          }}
-                          className="absolute bottom-2 right-2 bg-white p-2 rounded-full shadow-md hover:bg-primary-800 hover:text-white transition z-10"
-                          aria-label="장바구니에 담기"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                          </svg>
-                        </button>
-                      </div>
-                      <div className="p-3">
-                        {product.brand && (
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="text-sm font-bold text-primary-900 line-clamp-1 flex-1">{product.brand}</div>
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation()
-                                const success = await toggleWishlist(product.id, false)
-                                if (success) {
-                                  toast.success('찜 목록에서 제거되었습니다', {
-                                    icon: '💔',
-                                  })
-                                }
-                              }}
-                              className="ml-2 p-1 hover:scale-110 transition-transform flex-shrink-0"
-                              aria-label="찜 해제"
-                            >
-                              <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                              </svg>
-                            </button>
-                          </div>
-                        )}
-                        <h3 className="text-sm font-medium mb-2 line-clamp-2">{product.name}</h3>
-                        {product.discount_percent && product.discount_percent > 0 ? (
-                          <>
-                            <div className="text-xs text-gray-500 line-through">
-                              {formatPrice(product.price)}원
-                            </div>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-base font-bold text-red-600">{product.discount_percent}%</span>
-                              <span className="text-base font-bold text-gray-900">
-                                {formatPrice(discountPrice)}원
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-base font-bold text-gray-900">
-                            {formatPrice(product.price)}원
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
+                {wishlistProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
               </div>
             )}
           </div>
@@ -582,14 +432,14 @@ function CartPageContent() {
             <div className="lg:col-span-2">
               {/* 전체 선택 체크박스 */}
               <div className="pt-0 pb-4 border-b border-gray-300">
-                <label className="flex items-center cursor-pointer">
+                <label className="flex items-center cursor-pointer pl-2">
                   <input
                     type="checkbox"
                     checked={allSelected}
                     onChange={(e) => toggleSelectAll(e.target.checked)}
-                    className="w-6 h-6 text-primary-800 border-gray-300 rounded focus:ring-primary-800"
+                    className="w-6 h-6 text-primary-800 border-gray-300 focus:ring-primary-800"
                   />
-                  <span className="ml-2 text-sm font-medium text-gray-900">전체 선택</span>
+                  <span className="ml-3 text-sm font-medium text-gray-900">전체선택</span>
                 </label>
               </div>
 
@@ -605,15 +455,15 @@ function CartPageContent() {
                           type="checkbox"
                           checked={groupSelected}
                           onChange={() => toggleSelectGroup(groupId)}
-                          className="w-5 h-5 text-primary-800 border-gray-300 rounded focus:ring-primary-800"
+                          className="w-5 h-5 text-primary-800 border-gray-300 focus:ring-primary-800"
                         />
                         <span className="text-sm font-bold text-red-700">
                           🎁 {groupItems[0].promotion_type || '1+1'} 프로모션
                         </span>
                       </div>
                       <button
-                        onClick={() => removeItem(groupItems[0].id!)}
-                        className="text-red-600 hover:text-red-700 text-xs font-medium"
+                        onClick={() => removeCartItemWithDB(user?.id || null, groupItems[0].id!, groupItems[0].promotion_group_id)}
+                        className="text-red-600 hover:text-red-700 text-sm font-medium"
                       >
                         삭제
                       </button>
@@ -663,32 +513,36 @@ function CartPageContent() {
                   })}
                   
                   {/* 그룹 수량 조절 - 하단에 배치 */}
-                  <div className="mt-2 flex items-center justify-end gap-1">
-                    <button
-                      onClick={() => {
-                        const currentQty = groupItems[0].quantity
-                        groupItems.forEach(item => {
-                          updateQuantity(item.id!, Math.max(1, currentQty - 1))
-                        })
-                      }}
-                      className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 text-xs"
-                    >
-                      -
-                    </button>
-                    <span className="font-semibold w-6 text-center text-base">
-                      {groupItems[0].quantity}
-                    </span>
-                    <button
-                      onClick={() => {
-                        const currentQty = groupItems[0].quantity
-                        groupItems.forEach(item => {
-                          updateQuantity(item.id!, currentQty + 1)
-                        })
-                      }}
-                      className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 text-xs"
-                    >
-                      +
-                    </button>
+                  <div className="mt-2 flex items-center justify-end">
+                    <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-white">
+                      <button
+                        onClick={() => {
+                          const currentQty = groupItems[0].quantity
+                          const newQty = Math.max(1, currentQty - 1)
+                          groupItems.forEach(item => {
+                            updateCartQuantityWithDB(user?.id || null, item.id!, newQty)
+                          })
+                        }}
+                        className="w-7 h-6 hover:bg-gray-100 flex items-center justify-center border-r border-gray-300"
+                      >
+                        <span className="text-xl leading-none -mt-0.5">-</span>
+                      </button>
+                      <span className="w-8 text-center text-sm font-medium">
+                        {groupItems[0].quantity}
+                      </span>
+                      <button
+                        onClick={() => {
+                          const currentQty = groupItems[0].quantity
+                          const newQty = currentQty + 1
+                          groupItems.forEach(item => {
+                            updateCartQuantityWithDB(user?.id || null, item.id!, newQty)
+                          })
+                        }}
+                        className="w-7 h-6 hover:bg-gray-100 flex items-center justify-center border-l border-gray-300"
+                      >
+                        <span className="text-xl leading-none -mt-0.5">+</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
                 )
@@ -706,7 +560,7 @@ function CartPageContent() {
                           type="checkbox"
                           checked={item.selected !== false}
                           onChange={() => toggleSelect(item.id!)}
-                          className="w-6 h-6 text-primary-800 border-gray-300 rounded focus:ring-primary-800 bg-white"
+                          className="w-6 h-6 text-primary-800 border-gray-300 focus:ring-primary-800 bg-white"
                         />
                       </div>
                       <span className="text-gray-500 text-xs">이미지 준비중</span>
@@ -722,8 +576,8 @@ function CartPageContent() {
                           <h3 className="text-sm font-normal mb-1 line-clamp-2">{item.name}</h3>
                         </div>
                         <button
-                          onClick={() => removeItem(item.id!)}
-                          className="text-red-600 hover:text-red-700 text-xs flex-shrink-0"
+                          onClick={() => removeCartItemWithDB(user?.id || null, item.id!)}
+                          className="text-red-600 hover:text-red-700 text-sm flex-shrink-0"
                         >
                           삭제
                         </button>
@@ -756,21 +610,21 @@ function CartPageContent() {
                             </>
                           )}
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-white">
                           <button
-                            onClick={() => updateQuantity(item.id!, Math.max(1, item.quantity - 1))}
-                            className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 text-xs"
+                            onClick={() => updateCartQuantityWithDB(user?.id || null, item.id!, Math.max(1, item.quantity - 1))}
+                            className="w-7 h-6 hover:bg-gray-100 flex items-center justify-center border-r border-gray-300"
                           >
-                            -
+                            <span className="text-xl leading-none -mt-0.5">-</span>
                           </button>
-                          <span className="font-semibold w-6 text-center text-base">
+                          <span className="w-8 text-center text-sm font-medium">
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(item.id!, item.quantity + 1)}
-                            className="w-6 h-6 rounded border border-gray-300 hover:bg-gray-100 text-xs"
+                            onClick={() => updateCartQuantityWithDB(user?.id || null, item.id!, item.quantity + 1)}
+                            className="w-7 h-6 hover:bg-gray-100 flex items-center justify-center border-l border-gray-300"
                           >
-                            +
+                            <span className="text-xl leading-none -mt-0.5">+</span>
                           </button>
                         </div>
                       </div>
