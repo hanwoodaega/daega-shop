@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
+import OrderItemSkeleton from '@/components/skeletons/OrderItemSkeleton'
 import { useAuth } from '@/lib/auth-context'
 import { supabase, Order } from '@/lib/supabase'
 import { formatPrice } from '@/lib/utils'
@@ -30,6 +32,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([])
   const [loadingOrders, setLoadingOrders] = useState(true)
   const [cancelingOrderId, setCancelingOrderId] = useState<string | null>(null)
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!loading && !user) {
@@ -108,10 +111,13 @@ export default function OrdersPage() {
           : o
       ))
 
-      alert('주문이 취소되었습니다.\n\n환불이 진행됩니다.\n환불 완료까지 영업일 기준 3-5일 소요됩니다.')
+      toast.success('주문이 취소되었습니다\n환불이 진행됩니다. 영업일 기준 3-5일 소요됩니다.', {
+        icon: '✅',
+        duration: 5000,
+      })
     } catch (error) {
       console.error('주문 취소 실패:', error)
-      alert('주문 취소에 실패했습니다.')
+      toast.error('주문 취소에 실패했습니다.')
     } finally {
       setCancelingOrderId(null)
     }
@@ -119,16 +125,39 @@ export default function OrdersPage() {
 
   const handleTrackDelivery = (order: OrderWithItems) => {
     // 배송 조회 기능 (추후 구현)
-    alert(`배송 조회 기능은 준비 중입니다.\n\n배송지: ${order.shipping_address}\n수령인: ${order.shipping_name}`)
+    toast(`배송 조회 기능은 준비 중입니다\n\n배송지: ${order.shipping_address}\n수령인: ${order.shipping_name}`, {
+      icon: '📦',
+      duration: 4000,
+    })
+  }
+
+  const toggleOrderExpand = (orderId: string) => {
+    setExpandedOrders(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId)
+      } else {
+        newSet.add(orderId)
+      }
+      return newSet
+    })
   }
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-gray-50">
         <Header />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
-        </div>
+        <main className="flex-1 container mx-auto px-4 py-4 pb-24">
+          <div className="flex items-center mb-4">
+            <div className="w-5 h-5 bg-gray-200 rounded mr-3"></div>
+            <div className="h-5 bg-gray-200 rounded w-20"></div>
+          </div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <OrderItemSkeleton key={i} />
+            ))}
+          </div>
+        </main>
         <Footer />
         <BottomNavbar />
       </div>
@@ -155,8 +184,10 @@ export default function OrdersPage() {
 
         {/* 주문 목록 */}
         {loadingOrders ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <OrderItemSkeleton key={i} />
+            ))}
           </div>
         ) : orders.length === 0 ? (
           <div className="text-center py-20">
@@ -192,80 +223,109 @@ export default function OrdersPage() {
                 {/* 주문 상품 목록 */}
                 <div className="p-4">
                   {order.order_items && order.order_items.length > 0 && (
-                    <div className="space-y-3 mb-4">
-                      {order.order_items.map((item) => (
-                        <div key={item.id} className="flex items-center space-x-3">
+                    <div className="mb-4">
+                      {/* 첫 번째 상품만 표시 */}
+                      {!expandedOrders.has(order.id) ? (
+                        <div className="flex items-center space-x-3 mb-3">
                           <div className="w-16 h-16 bg-gray-200 rounded flex-shrink-0"></div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate">
-                              {item.product?.name || '상품'}
+                              {order.order_items[0].product?.name || '상품'}
+                              {order.order_items.length > 1 && (
+                                <span className="text-gray-500 ml-1">
+                                  외 {order.order_items.length - 1}개 상품
+                                </span>
+                              )}
                             </p>
                             <p className="text-sm text-gray-600">
-                              {formatPrice(item.price)}원 × {item.quantity}개
+                              {formatPrice(order.order_items[0].price)}원 × {order.order_items[0].quantity}개
                             </p>
                           </div>
                         </div>
-                      ))}
+                      ) : (
+                        /* 모든 상품 표시 */
+                        <div className="space-y-3 mb-3">
+                          {order.order_items.map((item) => (
+                            <div key={item.id} className="flex items-center space-x-3">
+                              <div className="w-16 h-16 bg-gray-200 rounded flex-shrink-0"></div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {item.product?.name || '상품'}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {formatPrice(item.price)}원 × {item.quantity}개
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* 자세히 보기 버튼 */}
+                      <button
+                        onClick={() => toggleOrderExpand(order.id)}
+                        className="w-full py-2 text-sm text-primary-800 font-medium hover:bg-gray-50 rounded transition"
+                      >
+                        {expandedOrders.has(order.id) ? '접기 ▲' : '자세히 보기 ▼'}
+                      </button>
                     </div>
                   )}
 
-                  {/* 주문 정보 */}
-                  <div className="border-t pt-3 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">배달 유형</span>
-                      <span className="text-gray-900 font-medium">{getDeliveryTypeText(order.delivery_type)}</span>
-                    </div>
-                    {order.delivery_time && (order.delivery_type === 'pickup' || order.delivery_type === 'quick') && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">
-                          {order.delivery_type === 'pickup' ? '픽업 시간' : '배달 시간'}
-                        </span>
-                        <span className="text-gray-900 font-medium">{order.delivery_time}</span>
+                  {/* 주문 정보 - 펼쳤을 때만 표시 */}
+                  {expandedOrders.has(order.id) && (
+                    <div className="border-t pt-3 space-y-2">
+                      <div className="text-sm">
+                        <span className="text-gray-600">배달 유형: </span>
+                        <span className="text-gray-900 font-medium">{getDeliveryTypeText(order.delivery_type)}</span>
                       </div>
-                    )}
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">배송지</span>
-                      <span className="text-gray-900 text-right max-w-[200px] truncate">
-                        {order.shipping_address}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">수령인</span>
-                      <span className="text-gray-900">{order.shipping_name}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">연락처</span>
-                      <span className="text-gray-900">{formatPhoneNumber(order.shipping_phone)}</span>
-                    </div>
-                    {order.delivery_note && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">요청사항</span>
-                        <span className="text-gray-900 text-right max-w-[200px]">
-                          {order.delivery_note}
-                        </span>
+                      {order.delivery_time && (order.delivery_type === 'pickup' || order.delivery_type === 'quick') && (
+                        <div className="text-sm">
+                          <span className="text-gray-600">
+                            {order.delivery_type === 'pickup' ? '픽업 시간: ' : '배달 시간: '}
+                          </span>
+                          <span className="text-gray-900 font-medium">{order.delivery_time}</span>
+                        </div>
+                      )}
+                      <div className="text-sm">
+                        <span className="text-gray-600">배송지: </span>
+                        <span className="text-gray-900">{order.shipping_address}</span>
                       </div>
-                    )}
-                    
-                    {/* 환불 정보 */}
-                    {order.refund_status && (
-                      <div className="flex justify-between text-sm pt-2 border-t">
-                        <span className="text-gray-600">환불 상태</span>
-                        <span className={`font-medium ${
-                          order.refund_status === 'completed' ? 'text-green-600' :
-                          order.refund_status === 'processing' ? 'text-blue-600' :
-                          'text-orange-600'
-                        }`}>
-                          {getRefundStatusText(order.refund_status)}
-                        </span>
+                      <div className="text-sm">
+                        <span className="text-gray-600">수령인: </span>
+                        <span className="text-gray-900">{order.shipping_name}</span>
                       </div>
-                    )}
-                    {order.refund_amount && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">환불 금액</span>
-                        <span className="text-red-600 font-semibold">{formatPrice(order.refund_amount)}원</span>
+                      <div className="text-sm">
+                        <span className="text-gray-600">연락처: </span>
+                        <span className="text-gray-900">{formatPhoneNumber(order.shipping_phone)}</span>
                       </div>
-                    )}
-                  </div>
+                      {order.delivery_note && (
+                        <div className="text-sm">
+                          <span className="text-gray-600">요청사항: </span>
+                          <span className="text-gray-900">{order.delivery_note}</span>
+                        </div>
+                      )}
+                      
+                      {/* 환불 정보 */}
+                      {order.refund_status && (
+                        <div className="text-sm pt-2 border-t">
+                          <span className="text-gray-600">환불 상태: </span>
+                          <span className={`font-medium ${
+                            order.refund_status === 'completed' ? 'text-green-600' :
+                            order.refund_status === 'processing' ? 'text-blue-600' :
+                            'text-orange-600'
+                          }`}>
+                            {getRefundStatusText(order.refund_status)}
+                          </span>
+                        </div>
+                      )}
+                      {order.refund_amount && (
+                        <div className="text-sm">
+                          <span className="text-gray-600">환불 금액: </span>
+                          <span className="text-red-600 font-semibold">{formatPrice(order.refund_amount)}원</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* 결제 금액 */}
                   <div className="border-t mt-3 pt-3">

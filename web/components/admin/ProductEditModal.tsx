@@ -35,25 +35,28 @@ export default function ProductEditModal({ editing, setEditing, saveEdit, saving
               onChange={(e)=>setEditing({ ...editing, name: e.target.value })} 
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">가격</label>
-              <input 
-                type="number" 
-                className="w-full border rounded px-3 py-2" 
-                value={editing.price} 
-                onChange={(e)=>setEditing({ ...editing, price: e.target.value })} 
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">재고</label>
-              <input 
-                type="number" 
-                className="w-full border rounded px-3 py-2" 
-                value={editing.stock} 
-                onChange={(e)=>setEditing({ ...editing, stock: e.target.value })} 
-              />
-            </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">가격</label>
+            <input 
+              type="number" 
+              className="w-full border rounded px-3 py-2" 
+              value={editing.price} 
+              onChange={(e)=>setEditing({ ...editing, price: e.target.value })} 
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">판매 상태</label>
+            <button
+              type="button"
+              onClick={() => setEditing({ ...editing, stock: editing.stock <= 0 ? 999 : 0 })}
+              className={`w-full px-4 py-2.5 rounded font-medium transition ${
+                editing.stock <= 0 
+                  ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
+            >
+              {editing.stock <= 0 ? '🔴 품절 (클릭하여 판매재개)' : '🟢 판매중 (클릭하여 품절처리)'}
+            </button>
           </div>
           <div>
             <label className="block text-xs text-gray-600 mb-1">카테고리</label>

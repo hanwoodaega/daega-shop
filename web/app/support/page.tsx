@@ -35,8 +35,8 @@ export default function SupportPage() {
               고객센터 연락처
             </h2>
             <div className="space-y-2 text-sm">
-              <p className="text-gray-900 font-medium">전화: 1234-5678</p>
-              <p className="text-gray-600">운영시간: 평일 09:00 ~ 18:00</p>
+              <p className="text-gray-900 font-medium">전화: 010-3941-1223</p>
+              <p className="text-gray-600">운영시간: 평일 10:00 ~ 18:00</p>
               <p className="text-gray-600">(주말 및 공휴일 휴무)</p>
             </div>
           </div>

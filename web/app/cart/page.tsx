@@ -1,17 +1,20 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useMemo, useCallback, useEffect, Suspense } from 'react'
+import toast from 'react-hot-toast'
 // Navbar 제거: 장바구니 전용 헤더 사용
 import Footer from '@/components/Footer'
-import { useCartStore } from '@/lib/store'
+import { useCartStore, useWishlistStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
 import { formatPrice } from '@/lib/utils'
-import { supabase } from '@/lib/supabase'
+import { supabase, Product } from '@/lib/supabase'
 
-export default function CartPage() {
+function CartPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { items, addItem, removeItem, updateQuantity, getTotalPrice, toggleSelect, toggleSelectGroup, toggleSelectAll, getSelectedItems } = useCartStore()
+  const { items: wishlistIds } = useWishlistStore()
   const { user } = useAuth()
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [defaultAddress, setDefaultAddress] = useState<any>(null)
@@ -19,11 +22,99 @@ export default function CartPage() {
   const [showAddressModal, setShowAddressModal] = useState(false)
   const [allAddresses, setAllAddresses] = useState<any[]>([])
   const [loadingAddresses, setLoadingAddresses] = useState(false)
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
+  const [stockStatus, setStockStatus] = useState<{[productId: string]: number}>({})
+  const [showWishlist, setShowWishlist] = useState(searchParams?.get('tab') === 'wishlist')
+  const [wishlistProducts, setWishlistProducts] = useState<Product[]>([])
+  const [loadingWishlist, setLoadingWishlist] = useState(false)
 
   const allSelected = useMemo(() => 
     items.length > 0 && items.every((item) => item.selected !== false),
     [items]
   )
+
+  // 위시리스트 상품 불러오기
+  useEffect(() => {
+    const loadWishlistProducts = async () => {
+      if (wishlistIds.length === 0) {
+        setWishlistProducts([])
+        return
+      }
+
+      setLoadingWishlist(true)
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .in('id', wishlistIds)
+
+        if (!error && data) {
+          setWishlistProducts(data)
+        }
+      } catch (error) {
+        console.error('위시리스트 상품 조회 실패:', error)
+      } finally {
+        setLoadingWishlist(false)
+      }
+    }
+
+    loadWishlistProducts()
+  }, [wishlistIds])
+
+  // 장바구니 상품의 실시간 재고 상태 확인
+  useEffect(() => {
+    const checkStockStatus = async () => {
+      if (items.length === 0) return
+
+      const productIds = Array.from(new Set(items.map(item => item.productId)))
+      
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('id, stock')
+          .in('id', productIds)
+
+        if (!error && data) {
+          const stockMap: {[productId: string]: number} = {}
+          data.forEach(p => {
+            stockMap[p.id] = p.stock
+          })
+          setStockStatus(stockMap)
+        }
+      } catch (error) {
+        console.error('재고 상태 확인 실패:', error)
+      }
+    }
+
+    checkStockStatus()
+  }, [items])
+
+  // 재고 상태 변경 시 품절 상품 자동 제거
+  useEffect(() => {
+    const outOfStockItems: {id: string, name: string}[] = []
+    
+    items.forEach(item => {
+      const currentStock = stockStatus[item.productId]
+      if (currentStock !== undefined && currentStock <= 0) {
+        outOfStockItems.push({ id: item.id!, name: item.name })
+      }
+    })
+
+    if (outOfStockItems.length > 0) {
+      // 품절 상품 제거
+      outOfStockItems.forEach(item => {
+        removeItem(item.id)
+      })
+      
+      // 상품명 목록 생성
+      const productNames = outOfStockItems.map(item => item.name).join(', ')
+      
+      toast.error(`${productNames}이(가) 품절되어 장바구니에서 제거되었습니다.`, {
+        icon: '❌',
+        duration: 5000,
+      })
+    }
+  }, [stockStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 기본 배송지 불러오기
   useEffect(() => {
@@ -90,9 +181,59 @@ export default function CartPage() {
   }
 
   // 배송지 선택 (장바구니에서만 사용, 기본 배송지 변경 없음)
-  const handleSelectAddress = (address: any) => {
-    setDefaultAddress(address)
-    setShowAddressModal(false)
+  const handleSelectAddress = (addressId: string) => {
+    setSelectedAddressId(addressId)
+  }
+  
+  // 배송지 선택 확인 - 기본 배송지로 저장
+  const confirmAddressSelection = async () => {
+    if (!selectedAddressId || !user) {
+      setShowAddressModal(false)
+      setSelectedAddressId(null)
+      return
+    }
+
+    try {
+      // 1. 모든 배송지의 is_default를 false로 설정
+      await supabase
+        .from('addresses')
+        .update({ is_default: false })
+        .eq('user_id', user.id)
+
+      // 2. 선택한 배송지를 기본 배송지로 설정
+      const { error } = await supabase
+        .from('addresses')
+        .update({ is_default: true })
+        .eq('id', selectedAddressId)
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.error('기본 배송지 설정 실패:', error)
+        toast.error('배송지 설정에 실패했습니다.')
+        return
+      }
+
+      // 3. 로컬 state 업데이트
+      const selected = allAddresses.find(addr => addr.id === selectedAddressId)
+      if (selected) {
+        setDefaultAddress({ ...selected, is_default: true })
+      }
+
+      // 4. allAddresses도 업데이트
+      setAllAddresses(prev => 
+        prev.map(addr => ({
+          ...addr,
+          is_default: addr.id === selectedAddressId
+        }))
+      )
+
+    } catch (error) {
+      console.error('배송지 업데이트 실패:', error)
+      toast.error('배송지 설정에 실패했습니다.')
+    } finally {
+      setShowAddressModal(false)
+      setSelectedAddressId(null)
+    }
   }
 
   // 프로모션 삭제 감지 및 자동 처리
@@ -173,26 +314,32 @@ export default function CartPage() {
   const handleCheckout = useCallback(() => {
     const selectedItems = getSelectedItems()
     if (selectedItems.length === 0) {
-      alert('주문할 상품을 선택해주세요.')
+      toast.error('주문할 상품을 선택해주세요.', {
+        icon: '📦',
+      })
       return
     }
     if (!user) {
       setShowLoginPrompt(true)
       return
     }
+    
     router.push('/checkout')
   }, [getSelectedItems, user, router])
 
   const handleGiftCheckout = useCallback(() => {
     const selectedItems = getSelectedItems()
     if (selectedItems.length === 0) {
-      alert('주문할 상품을 선택해주세요.')
+      toast.error('주문할 상품을 선택해주세요.', {
+        icon: '🎁',
+      })
       return
     }
     if (!user) {
       setShowLoginPrompt(true)
       return
     }
+    
     router.push('/checkout?mode=gift')
   }, [getSelectedItems, user, router])
 
@@ -210,20 +357,108 @@ export default function CartPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h1 className="text-lg md:text-xl font-semibold text-gray-900">장바구니</h1>
-          <button
-            onClick={() => router.push('/')}
-            aria-label="홈으로"
-            className="p-2 -mr-2 text-gray-700 hover:text-gray-900"
-          >
-            <svg className="w-8 h-8 md:w-9 md:h-9" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z" />
-            </svg>
-          </button>
+          <h1 className="text-lg md:text-xl font-semibold text-gray-900">{showWishlist ? '찜 목록' : '장바구니'}</h1>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowWishlist(!showWishlist)}
+              aria-label="찜 목록"
+              className="p-2 text-gray-700 hover:text-gray-900 relative"
+            >
+              {showWishlist ? (
+                <svg className="w-7 h-7 md:w-8 md:h-8 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+              ) : (
+                <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+              )}
+              {wishlistIds.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {wishlistIds.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => router.push('/')}
+              aria-label="홈으로"
+              className="p-2 -mr-2 text-gray-700 hover:text-gray-900"
+            >
+              <svg className="w-8 h-8 md:w-9 md:h-9" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="flex-1 container mx-auto px-2 pt-2 pb-32">
+        {/* 위시리스트 보기 */}
+        {showWishlist ? (
+          <div>
+            {loadingWishlist ? (
+              <div className="flex justify-center items-center py-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
+              </div>
+            ) : wishlistProducts.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="text-6xl mb-4">❤️</div>
+                <p className="text-xl text-gray-600 mb-6">찜한 상품이 없습니다.</p>
+                <button
+                  onClick={() => router.push('/products')}
+                  className="bg-primary-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-900 transition"
+                >
+                  쇼핑하기
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {wishlistProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    onClick={() => router.push(`/products/${product.id}`)}
+                    className="bg-white rounded-lg shadow-sm hover:shadow-md transition cursor-pointer"
+                  >
+                    <div className="relative aspect-square bg-gray-200 rounded-t-lg overflow-hidden">
+                      <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm">
+                        이미지 준비중
+                      </div>
+                      {product.stock <= 0 && (
+                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                          <span className="text-white text-xl font-bold">품절</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      {product.brand && (
+                        <div className="text-sm font-bold text-primary-900 mb-1 line-clamp-1">{product.brand}</div>
+                      )}
+                      <h3 className="text-sm font-medium mb-2 line-clamp-2">{product.name}</h3>
+                      {product.discount_percent && product.discount_percent > 0 ? (
+                        <>
+                          <div className="text-xs text-gray-500 line-through">
+                            {formatPrice(product.price)}원
+                          </div>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-base font-bold text-red-600">{product.discount_percent}%</span>
+                            <span className="text-base font-bold text-gray-900">
+                              {formatPrice(Math.round(product.price * (100 - product.discount_percent) / 100))}원
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-base font-bold text-gray-900">
+                          {formatPrice(product.price)}원
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
         {/* 배송지 정보 */}
         {!loadingAddress && user && items.length > 0 && (
           <div className="mb-3 bg-white rounded-lg px-3 py-2">
@@ -244,6 +479,7 @@ export default function CartPage() {
                 <button
                   onClick={() => {
                     loadAllAddresses()
+                    setSelectedAddressId(defaultAddress.id)
                     setShowAddressModal(true)
                   }}
                   className="ml-4 px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition whitespace-nowrap"
@@ -320,7 +556,8 @@ export default function CartPage() {
                     </div>
                   
                   {/* 그룹 내 상품들 */}
-                  {groupItems.map((item) => (
+                  {groupItems.map((item) => {
+                    return (
                     <div key={item.id} className="py-3">
                       <div className="flex items-start space-x-3">
                         {/* 상품 이미지 */}
@@ -358,7 +595,8 @@ export default function CartPage() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                   
                   {/* 그룹 수량 조절 - 하단에 배치 */}
                   <div className="mt-2 flex items-center justify-end gap-1">
@@ -523,6 +761,8 @@ export default function CartPage() {
             </div>
           </div>
         )}
+          </>
+        )}
       </main>
 
       {/* 하단 고정 액션 바: 선물하기 / 주문하기 */}
@@ -550,12 +790,18 @@ export default function CartPage() {
       {/* 배송지 선택 모달 */}
       {showAddressModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowAddressModal(false)}></div>
+          <div className="absolute inset-0 bg-black/50" onClick={() => {
+            setShowAddressModal(false)
+            setSelectedAddressId(null)
+          }}></div>
           <div className="relative w-full max-w-lg bg-white rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
             <div className="bg-primary-800 text-white px-5 py-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold">배송지 선택</h3>
-                <button onClick={() => setShowAddressModal(false)} className="text-white text-2xl">×</button>
+                <button onClick={() => {
+                  setShowAddressModal(false)
+                  setSelectedAddressId(null)
+                }} className="text-white text-2xl">×</button>
               </div>
             </div>
             
@@ -582,9 +828,9 @@ export default function CartPage() {
                   {allAddresses.map((address) => (
                     <div
                       key={address.id}
-                      onClick={() => handleSelectAddress(address)}
+                      onClick={() => handleSelectAddress(address.id)}
                       className={`border rounded-lg p-4 cursor-pointer transition ${
-                        defaultAddress?.id === address.id
+                        selectedAddressId === address.id
                           ? 'border-primary-800 bg-primary-50'
                           : 'border-gray-300 hover:border-primary-600 hover:bg-gray-50'
                       }`}
@@ -594,7 +840,7 @@ export default function CartPage() {
                         {address.is_default && (
                           <span className="text-xs bg-primary-800 text-white px-2 py-0.5 rounded">기본</span>
                         )}
-                        {defaultAddress?.id === address.id && (
+                        {selectedAddressId === address.id && (
                           <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">선택됨</span>
                         )}
                       </div>
@@ -617,6 +863,7 @@ export default function CartPage() {
               <button
                 onClick={() => {
                   setShowAddressModal(false)
+                  setSelectedAddressId(null)
                   router.push('/profile/addresses')
                 }}
                 className="flex-1 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
@@ -624,7 +871,7 @@ export default function CartPage() {
                 배송지 관리
               </button>
               <button
-                onClick={() => setShowAddressModal(false)}
+                onClick={confirmAddressSelection}
                 className="flex-1 py-2.5 text-sm font-medium text-white bg-primary-800 rounded-lg hover:bg-primary-900"
               >
                 확인
@@ -649,6 +896,18 @@ export default function CartPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function CartPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
+      </div>
+    }>
+      <CartPageContent />
+    </Suspense>
   )
 }
 

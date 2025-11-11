@@ -15,6 +15,7 @@ export interface CartItem {
   promotion_products?: string[]
   free_product_id?: string  // 선택한 증정품 ID
   promotion_group_id?: string  // 프로모션 그룹 ID (같은 그룹끼리 묶음)
+  stock?: number  // 품절 여부 확인용
 }
 
 interface CartStore {
@@ -63,8 +64,9 @@ export const useCartStore = create<CartStore>()(
                       ...i, 
                       quantity: i.quantity + item.quantity, 
                       discount_percent: item.discount_percent ?? i.discount_percent, 
-                      brand: item.brand ?? i.brand, 
-                      selected: item.selected ?? i.selected ?? true 
+                      brand: item.brand ?? i.brand,
+                      stock: item.stock ?? i.stock, // stock 정보 업데이트
+                      selected: item.selected ?? i.selected ?? true
                     }
                   : { ...i, selected: i.selected ?? true }
               ),
@@ -197,6 +199,59 @@ export const useDirectPurchaseStore = create<DirectPurchaseStore>()(
           }
         }
         return sessionStorage
+      }),
+    }
+  )
+)
+
+// 위시리스트(찜) 스토어
+interface WishlistStore {
+  items: string[] // 상품 ID 목록
+  addItem: (productId: string) => void
+  removeItem: (productId: string) => void
+  toggleItem: (productId: string) => void
+  isInWishlist: (productId: string) => boolean
+  clearWishlist: () => void
+}
+
+export const useWishlistStore = create<WishlistStore>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      addItem: (productId) =>
+        set((state) => {
+          if (state.items.includes(productId)) {
+            return state
+          }
+          return { items: [...state.items, productId] }
+        }),
+      removeItem: (productId) =>
+        set((state) => ({
+          items: state.items.filter((id) => id !== productId),
+        })),
+      toggleItem: (productId) =>
+        set((state) => {
+          if (state.items.includes(productId)) {
+            return { items: state.items.filter((id) => id !== productId) }
+          }
+          return { items: [...state.items, productId] }
+        }),
+      isInWishlist: (productId) => {
+        return get().items.includes(productId)
+      },
+      clearWishlist: () => set({ items: [] }),
+    }),
+    {
+      name: 'wishlist-storage',
+      storage: createJSONStorage(() => {
+        if (typeof window === 'undefined') {
+          return {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+          }
+        }
+        return localStorage
       }),
     }
   )

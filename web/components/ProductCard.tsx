@@ -3,8 +3,11 @@
 import { memo, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import toast from 'react-hot-toast'
 import { Product } from '@/lib/supabase'
-import { useCartStore } from '@/lib/store'
+import { useCartStore, useWishlistStore } from '@/lib/store'
+import { useAuth } from '@/lib/auth-context'
+import { toggleWishlist } from '@/lib/wishlist-sync'
 import { formatPrice } from '@/lib/utils'
 import { isValidImageUrl, isOutOfStock, calculateDiscountPrice } from '@/lib/product-utils'
 
@@ -14,6 +17,9 @@ interface ProductCardProps {
 
 function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem)
+  const { isInWishlist } = useWishlistStore()
+  const { user } = useAuth()
+  const isWished = isInWishlist(product.id)
   const hasValidImage = isValidImageUrl(product.image_url)
   const isPlaceholderHost = hasValidImage && product.image_url.includes('via.placeholder.com')
   const shouldRenderImage = hasValidImage && !isPlaceholderHost
@@ -25,7 +31,9 @@ function ProductCard({ product }: ProductCardProps) {
     e.stopPropagation()
     
     if (outOfStock) {
-      alert('품절된 상품입니다.')
+      toast.error('품절된 상품입니다', {
+        icon: '😢',
+      })
       return
     }
 
@@ -37,13 +45,46 @@ function ProductCard({ product }: ProductCardProps) {
       imageUrl: product.image_url,
       discount_percent: product.discount_percent ?? undefined,
       brand: product.brand ?? undefined,
+      stock: product.stock, // 품절 여부 확인용
     })
 
-    const promoMsg = product.promotion_type 
-      ? `\n\n💡 상품 상세페이지에서 "${product.promotion_type} 골라담기"를 통해서만 프로모션이 적용됩니다.`
-      : ''
-    alert(`장바구니에 추가되었습니다.${promoMsg}`)
+    toast.success('장바구니에 추가되었습니다!', {
+      icon: '🛒',
+    })
+    
+    if (product.promotion_type) {
+      setTimeout(() => {
+        toast('상품 상세페이지에서 프로모션을 확인하세요', {
+          icon: '💡',
+          duration: 4000,
+        })
+      }, 500)
+    }    
   }, [product, addItem, outOfStock])
+
+  const handleWishlistToggle = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    // 임시: DB 연동 없이 localStorage만 사용
+    const success = await toggleWishlist(product.id, false)
+    
+    if (success) {
+      if (isWished) {
+        toast.success('찜 목록에서 제거되었습니다', {
+          icon: '💔',
+        })
+      } else {
+        toast.success('찜 목록에 추가되었습니다!', {
+          icon: '❤️',
+        })
+      }
+    } else {
+      toast.error('오류가 발생했습니다. 다시 시도해주세요.', {
+        icon: '❌',
+      })
+    }
+  }, [product.id, isWished])
 
   return (
     <Link href={`/products/${product.id}`}>
@@ -87,9 +128,26 @@ function ProductCard({ product }: ProductCardProps) {
             </svg>
           </button>
         </div>
-        <div className="pt-2 pb-3 pr-4 pl-2">
+        <div className="pt-2 pb-3 pr-2 pl-2">
           {product.brand && (
-            <div className="text-sm font-bold text-primary-900 mb-0.5 line-clamp-1">{product.brand}</div>
+            <div className="flex items-center justify-between mb-0.5">
+              <div className="text-sm font-bold text-primary-900 line-clamp-1 flex-1">{product.brand}</div>
+              <button
+                onClick={handleWishlistToggle}
+                className="ml-2 p-1 hover:scale-110 transition-transform flex-shrink-0"
+                aria-label="찜하기"
+              >
+                {isWished ? (
+                  <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                  </svg>
+                )}
+              </button>
+            </div>
           )}
           <h3 className="text-sm font-medium mb-0 line-clamp-1 text-primary-900">{product.name}</h3>
           {/* 가격 영역을 2줄로 고정하여 카드 높이를 통일 */}

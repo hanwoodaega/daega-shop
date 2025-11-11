@@ -4,10 +4,13 @@ import { useCallback, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import MainMenu from '@/components/MainMenu'
+import { useWishlistStore } from '@/lib/store'
 
 function HeaderContent() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
+  const [showSearch, setShowSearch] = useState(false)
+  const { items: wishlistIds } = useWishlistStore()
 
   const performSearch = useCallback(() => {
     const query = searchQuery.trim()
@@ -38,44 +41,74 @@ function HeaderContent() {
       <div className="bg-white shadow-md">
         <div className="container mx-auto px-6">
           <div className="flex justify-between items-center h-14 gap-4">
-            {/* 로고 */}
-            <Link 
-              href="/" 
-              className="flex items-center space-x-2 flex-shrink-0"
-            >
-              <div className="flex flex-col leading-none">
-                <span className="text-xl font-bold text-primary-800 hidden sm:inline">대가 정육백화점</span>
-                <span className="text-xl font-bold text-primary-800 sm:hidden">대가축산</span>
-                <span className="text-xs text-primary-600 tracking-wider hidden sm:inline">DAEGA PREMIUM MEAT</span>
-              </div>
-            </Link>
-
-            {/* 검색창 */}
-            <form onSubmit={handleSearch} className="ml-auto md:flex-1 md:max-w-2xl" id="navbar-search">
-              <div className="relative">
-                <input
-                  type="search"
-                  id="navbar-search-input"
-                  name="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  inputMode="search"
-                  autoComplete="off"
-                  enterKeyHint="search"
-                  data-1p-ignore
-                  className="w-48 sm:w-56 md:w-full px-3 py-1.5 md:px-4 md:py-2 pr-8 md:pr-10 text-base md:text-base border-2 border-gray-300 rounded-full focus:outline-none focus:border-primary-700 transition"
-                />
-                <svg 
-                  className="absolute right-2 md:right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400"
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
+            {showSearch ? (
+              <>
+                {/* 검색 모드 */}
+                <form onSubmit={(e) => { handleSearch(e); setShowSearch(false) }} className="flex-1">
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      handleKeyDown(e)
+                      if (e.key === 'Escape') {
+                        setShowSearch(false)
+                      }
+                    }}
+                    placeholder="검색어를 입력하세요"
+                    autoFocus
+                    className="w-full px-4 py-2 text-base border-2 border-gray-300 rounded-full focus:outline-none focus:border-primary-700 transition"
+                  />
+                </form>
+                <button
+                  onClick={() => setShowSearch(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition flex-shrink-0"
+                  aria-label="닫기"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </form>
+                  <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </>
+            ) : (
+              <>
+                {/* 일반 모드 */}
+                <Link 
+                  href="/" 
+                  className="flex items-center space-x-2 flex-shrink-0"
+                >
+                  <div className="flex flex-col leading-none">
+                    <span className="text-xl font-bold text-primary-800 hidden sm:inline">대가 정육백화점</span>
+                    <span className="text-xl font-bold text-primary-800 sm:hidden">대가축산</span>
+                    <span className="text-xs text-primary-600 tracking-wider hidden sm:inline">DAEGA PREMIUM MEAT</span>
+                  </div>
+                </Link>
+
+                <div className="ml-auto flex items-center gap-2">
+                  {/* 검색 아이콘 */}
+                  <button
+                    onClick={() => setShowSearch(true)}
+                    className="p-2 hover:bg-gray-100 rounded-full transition"
+                    aria-label="검색"
+                  >
+                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </button>
+
+                  {/* 위시리스트 아이콘 */}
+                  <button
+                    onClick={() => router.push('/cart?tab=wishlist')}
+                    className="p-2 hover:bg-gray-100 rounded-full transition relative"
+                    aria-label="찜 목록"
+                  >
+                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

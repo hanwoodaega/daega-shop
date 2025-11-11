@@ -168,16 +168,15 @@ export default function BottomNavbar() {
             {/* 검색 */}
             <button
               onClick={() => {
-                const searchInput = document.getElementById('navbar-search-input')
-                if (searchInput) {
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                  setTimeout(() => {
-                    searchInput.focus()
-                  }, 300)
-                } else {
-                  // 상단 검색창이 없는 경우 모달 열기
-                  setShowSearchModal(true)
-                }
+                // 상단으로 스크롤
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+                // Header의 검색 버튼 클릭
+                setTimeout(() => {
+                  const searchButton = document.querySelector('[aria-label="검색"]') as HTMLButtonElement
+                  if (searchButton) {
+                    searchButton.click()
+                  }
+                }, 300)
               }}
               className="flex flex-col items-center justify-center flex-1 py-2 text-gray-600"
             >

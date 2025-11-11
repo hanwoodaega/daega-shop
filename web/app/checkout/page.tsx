@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
@@ -181,39 +182,53 @@ export default function CheckoutPage() {
     e.preventDefault()
 
     if (items.length === 0) {
-      alert('주문할 상품이 없습니다.')
+      toast.error('주문할 상품이 없습니다.', {
+        icon: '📦',
+      })
       router.push(isDirectPurchase ? '/products' : '/cart')
       return
     }
 
     if (!formData.name || !formData.phone) {
-      alert('필수 항목을 모두 입력해주세요.')
+      toast.error('필수 항목을 모두 입력해주세요.', {
+        icon: '⚠️',
+      })
       return
     }
 
     // 배송 방법별 유효성 검사
     if (deliveryMethod === 'pickup' && !pickupTime) {
-      alert('픽업 시간을 선택해주세요.')
+      toast.error('픽업 시간을 선택해주세요.', {
+        icon: '⏰',
+      })
       return
     }
 
     if (deliveryMethod === 'quick') {
       if (!quickDeliveryArea) {
-        alert('배달 지역을 선택해주세요.')
+        toast.error('배달 지역을 선택해주세요.', {
+          icon: '📍',
+        })
         return
       }
       if (!formData.address) {
-        alert('상세 주소를 입력해주세요.')
+        toast.error('상세 주소를 입력해주세요.', {
+          icon: '📍',
+        })
         return
       }
       if (!quickDeliveryTime) {
-        alert('배달 시간을 선택해주세요.')
+        toast.error('배달 시간을 선택해주세요.', {
+          icon: '⏰',
+        })
         return
       }
     }
 
     if (deliveryMethod === 'regular' && !formData.address) {
-      alert('배송 주소를 입력해주세요.')
+      toast.error('배송 주소를 입력해주세요.', {
+        icon: '📍',
+      })
       return
     }
 
@@ -222,7 +237,9 @@ export default function CheckoutPage() {
     try {
       // 로그인 확인
       if (!user) {
-        alert('로그인이 필요합니다.')
+        toast.error('로그인이 필요합니다.', {
+          icon: '🔒',
+        })
         router.push('/auth/login?next=/checkout')
         return
       }
@@ -265,7 +282,7 @@ export default function CheckoutPage() {
 
       if (orderError) {
         console.error('주문 생성 실패:', orderError)
-        alert('주문 생성에 실패했습니다. 다시 시도해주세요.')
+        toast.error('주문 생성에 실패했습니다. 다시 시도해주세요.')
         return
       }
 
@@ -309,11 +326,14 @@ export default function CheckoutPage() {
       }
 
       // 주문 완료 페이지로 이동
-      alert('주문이 완료되었습니다!')
-      router.push('/')
+      toast.success('주문이 완료되었습니다!', {
+        icon: '🎉',
+        duration: 2000,
+      })
+      setTimeout(() => router.push('/'), 1500)
     } catch (error) {
       console.error('결제 처리 실패:', error)
-      alert('결제 처리 중 오류가 발생했습니다.')
+      toast.error('결제 처리 중 오류가 발생했습니다.')
     } finally {
       setIsProcessing(false)
     }
@@ -328,12 +348,34 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800 mx-auto mb-4"></div>
-            <p className="text-gray-600">배송 정보를 불러오는 중...</p>
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <div className="flex items-center mb-4">
+            <div className="w-6 h-6 bg-gray-200 rounded mr-3"></div>
+            <div className="h-5 bg-gray-200 rounded w-24"></div>
           </div>
-        </div>
+          
+          <div className="animate-pulse space-y-6">
+            {/* 배송 방법 */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="h-5 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="space-y-3">
+                <div className="h-20 bg-gray-100 rounded-lg"></div>
+                <div className="h-20 bg-gray-100 rounded-lg"></div>
+                <div className="h-20 bg-gray-100 rounded-lg"></div>
+              </div>
+            </div>
+            
+            {/* 주문자 정보 */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="h-5 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="space-y-3">
+                <div className="h-10 bg-gray-100 rounded"></div>
+                <div className="h-10 bg-gray-100 rounded"></div>
+                <div className="h-10 bg-gray-100 rounded"></div>
+              </div>
+            </div>
+          </div>
+        </main>
         <Footer />
       </div>
     )
@@ -344,9 +386,20 @@ export default function CheckoutPage() {
       <Header />
       
       <main className="flex-1 container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">주문/결제</h1>
+        <div className="flex items-center mb-4">
+          <button
+            onClick={() => router.back()}
+            className="mr-3 p-2 hover:bg-gray-100 rounded-lg transition"
+            aria-label="뒤로가기"
+          >
+            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 className="text-xl font-bold">주문/결제</h1>
+        </div>
 
-        <form onSubmit={handleSubmit}>
+        <form id="checkout-form" onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* 주문 정보 입력 */}
             <div className="lg:col-span-2 space-y-6">
@@ -760,13 +813,6 @@ export default function CheckoutPage() {
                       </div>
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={isProcessing}
-                      className="w-full bg-primary-800 text-white py-4 rounded-lg font-semibold text-lg hover:bg-primary-900 transition disabled:bg-gray-400"
-                    >
-                      {isProcessing ? '처리 중...' : `${formatPrice(total)}원 결제하기`}
-                    </button>
                   </>
                 ) : (
                   <div className="border-t pt-4 mb-6">
@@ -779,9 +825,36 @@ export default function CheckoutPage() {
             </div>
           </div>
         </form>
+
+        {/* 하단 고정 결제 버튼 */}
+        {mounted && (
+          <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+            <div className="container mx-auto px-4 py-3">
+              <button
+                type="submit"
+                form="checkout-form"
+                disabled={isProcessing}
+                className="w-full bg-primary-800 text-white py-4 rounded-lg font-bold text-lg hover:bg-primary-900 transition disabled:bg-gray-400 flex items-center justify-center gap-2"
+              >
+                {isProcessing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    처리 중...
+                  </>
+                ) : (
+                  <>
+                    <span>{formatPrice(total)}원 결제하기</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </main>
 
-      <Footer />
+      <div className="pb-20">
+        <Footer />
+      </div>
     </div>
   )
 }

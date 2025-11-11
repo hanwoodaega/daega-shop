@@ -15,7 +15,7 @@ export default function AdminPage() {
     price: '',
     image_url: '',
     category: CATEGORIES[0],
-    stock: '0',
+    stock: '999',
     unit: '1팩',
     weight: '0',
     origin: '국내산',
@@ -82,7 +82,7 @@ export default function AdminPage() {
         return
       }
       setMessage('상품이 등록되었습니다.')
-      setForm({ ...form, brand: '', name: '', description: '', price: '', image_url: '', stock: '0', weight: '0', discount_percent: '' })
+      setForm({ ...form, brand: '', name: '', description: '', price: '', image_url: '', stock: '999', weight: '0', discount_percent: '' })
       if (fileInputRef.current) fileInputRef.current.value = ''
       await fetchList()
     } finally {
@@ -122,6 +122,23 @@ export default function AdminPage() {
     const res = await fetch(`/api/admin/products/${id}`, { method: 'DELETE' })
     if (res.ok) {
       setItems((prev) => prev.filter((i) => i.id !== id))
+    }
+  }
+
+  const toggleSoldOut = async (id: string, currentStock: number) => {
+    const newStock = currentStock <= 0 ? 999 : 0
+    const action = currentStock <= 0 ? '판매 재개' : '품절 처리'
+    const ok = confirm(`${action}하시겠습니까?`)
+    if (!ok) return
+    
+    const res = await fetch(`/api/admin/products/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stock: newStock }),
+    })
+    
+    if (res.ok) {
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, stock: newStock } : i)))
     }
   }
 
@@ -203,15 +220,9 @@ export default function AdminPage() {
             <label className="block text-sm font-medium mb-1">설명</label>
             <textarea name="description" value={form.description} onChange={handleChange} className="w-full border rounded px-3 py-2" rows={3} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">가격(원)</label>
-              <input name="price" type="number" value={form.price} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">재고</label>
-              <input name="stock" type="number" value={form.stock} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
-            </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">가격(원)</label>
+            <input name="price" type="number" value={form.price} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">카테고리</label>
@@ -302,7 +313,7 @@ export default function AdminPage() {
                   <th className="p-2 border">가격</th>
                   <th className="p-2 border">할인율(%)</th>
                   <th className="p-2 border">할인가</th>
-                  <th className="p-2 border">재고</th>
+                  <th className="p-2 border">판매상태</th>
                   <th className="p-2 border">작업</th>
                 </tr>
               </thead>
@@ -340,10 +351,30 @@ export default function AdminPage() {
                           ? Math.round((Number(it.price) * (100 - Number(it.discount_percent))) / 100).toLocaleString('ko-KR')
                           : '-'
                       }</td>
-                      <td className="p-2 border">{it.stock}</td>
-                      <td className="p-2 border text-right space-x-3">
-                        <button onClick={() => startEdit(it)} className="text-blue-600 hover:underline">수정</button>
-                        <button onClick={() => removeItem(it.id)} className="text-red-600 hover:underline">삭제</button>
+                      <td className="p-2 border">
+                        <div className="flex items-center justify-center">
+                          <span className={`text-xs px-3 py-1 rounded font-medium ${
+                            it.stock <= 0 
+                              ? 'bg-red-100 text-red-600' 
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            {it.stock <= 0 ? '품절' : '판매중'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-2 border text-center space-x-2">
+                        <button 
+                          onClick={() => toggleSoldOut(it.id, it.stock)} 
+                          className={`text-xs px-3 py-1.5 rounded font-medium ${
+                            it.stock <= 0 
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                              : 'bg-red-100 text-red-700 hover:bg-red-200'
+                          }`}
+                        >
+                          {it.stock <= 0 ? '판매재개' : '품절처리'}
+                        </button>
+                        <button onClick={() => startEdit(it)} className="text-blue-600 hover:underline text-sm">수정</button>
+                        <button onClick={() => removeItem(it.id)} className="text-red-600 hover:underline text-sm">삭제</button>
                       </td>
                     </tr>
                   )

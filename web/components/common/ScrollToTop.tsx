@@ -26,7 +26,7 @@ export default function ScrollToTop({ threshold = 300, className = '' }: ScrollT
   return (
     <button
       onClick={scrollToTop}
-      className={`fixed bottom-20 right-4 z-50 bg-primary-600 text-white p-3 rounded-full shadow-lg hover:bg-primary-700 transition ${className}`}
+      className={`fixed bottom-24 right-6 z-50 bg-white/90 backdrop-blur-sm text-gray-600 p-3 rounded-full shadow-lg hover:bg-white hover:scale-110 transition ${className}`}
       aria-label="맨 위로"
     >
       <svg
@@ -40,4 +40,5 @@ export default function ScrollToTop({ threshold = 300, className = '' }: ScrollT
     </button>
   )
 }
+
 

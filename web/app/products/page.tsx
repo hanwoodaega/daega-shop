@@ -9,6 +9,7 @@ import BottomNavbar from '@/components/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import { supabase, Product } from '@/lib/supabase'
 import ProductCard from '@/components/ProductCard'
+import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import CategoryGrid from '@/components/CategoryGrid'
 import { CATEGORIES } from '@/lib/constants'
 
@@ -19,9 +20,14 @@ function ProductsContent() {
   const filter = searchParams.get('filter')
   
   const [allProducts, setAllProducts] = useState<Product[]>([])
+  const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState(category || '전체')
   const [sortOrder, setSortOrder] = useState<'default' | 'price_asc' | 'price_desc'>('default')
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const PAGE_SIZE = 20
 
   // URL 파라미터가 변경되면 selectedCategory 업데이트
   useEffect(() => {
@@ -58,6 +64,10 @@ function ProductsContent() {
       
       if (error) throw error
       setAllProducts(data || [])
+      // 처음 20개만 표시
+      setDisplayedProducts((data || []).slice(0, PAGE_SIZE))
+      setPage(1)
+      setHasMore((data || []).length > PAGE_SIZE)
     } catch (error) {
       console.error('상품 조회 실패:', error)
     } finally {
@@ -70,19 +80,58 @@ function ProductsContent() {
     fetchProducts()
   }, [fetchProducts])
 
-  // 정렬된 상품 목록을 useMemo로 메모이제이션
-  const products = useMemo(() => {
-    if (sortOrder === 'default') {
-      return allProducts
-    }
-    const sorted = [...allProducts]
+  // 더 보기 함수
+  const loadMore = useCallback(() => {
+    if (loadingMore || !hasMore) return
+    
+    setLoadingMore(true)
+    setTimeout(() => {
+      const nextPage = page + 1
+      const start = 0
+      const end = nextPage * PAGE_SIZE
+      
+      let sortedProducts = [...allProducts]
+      if (sortOrder === 'price_asc') {
+        sortedProducts.sort((a, b) => a.price - b.price)
+      } else if (sortOrder === 'price_desc') {
+        sortedProducts.sort((a, b) => b.price - a.price)
+      }
+      
+      setDisplayedProducts(sortedProducts.slice(start, end))
+      setPage(nextPage)
+      setHasMore(sortedProducts.length > end)
+      setLoadingMore(false)
+    }, 500)
+  }, [allProducts, page, sortOrder, loadingMore, hasMore, PAGE_SIZE])
+
+  // 정렬 변경 시 처음부터 다시 표시
+  useEffect(() => {
+    let sortedProducts = [...allProducts]
     if (sortOrder === 'price_asc') {
-      sorted.sort((a, b) => a.price - b.price)
+      sortedProducts.sort((a, b) => a.price - b.price)
     } else if (sortOrder === 'price_desc') {
-      sorted.sort((a, b) => b.price - a.price)
+      sortedProducts.sort((a, b) => b.price - a.price)
     }
-    return sorted
-  }, [sortOrder, allProducts])
+    
+    setDisplayedProducts(sortedProducts.slice(0, PAGE_SIZE))
+    setPage(1)
+    setHasMore(sortedProducts.length > PAGE_SIZE)
+  }, [sortOrder, allProducts, PAGE_SIZE])
+
+  // 무한 스크롤 감지
+  useEffect(() => {
+    const handleScroll = () => {
+      // 페이지 맨 아래에서 300px 전에 로드 시작
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 300) {
+        loadMore()
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [loadMore])
+
+  const products = displayedProducts
 
   const categories = CATEGORIES
 
@@ -99,16 +148,73 @@ function ProductsContent() {
     <div className="min-h-screen flex flex-col">
       <Header />
       
-      {/* 카테고리 - 모바일만 표시 */}
-      {!searchQuery && !filter && (
-        <section className="py-8 bg-gray-100 md:hidden">
-          <div className="container mx-auto px-4">
-            <CategoryGrid selectedCategory={selectedCategory} />
-          </div>
-        </section>
-      )}
+      <main className="flex-1">
+        {/* 히어로 섹션 - 신상품 */}
+        {filter === 'new' && (
+          <section className="bg-gradient-to-r from-green-600 to-green-700 text-white py-16">
+            <div className="container mx-auto px-4 text-center">
+              <h1 className="text-4xl font-bold mb-2">
+                ✨ 신상품
+              </h1>
+              <p className="text-sm tracking-widest text-green-100">
+                NEW ARRIVALS
+              </p>
+            </div>
+          </section>
+        )}
+
+        {/* 히어로 섹션 - 베스트 */}
+        {filter === 'best' && (
+          <section className="bg-gradient-to-r from-yellow-600 to-orange-600 text-white py-16">
+            <div className="container mx-auto px-4 text-center">
+              <h1 className="text-4xl font-bold mb-2">
+                👑 베스트
+              </h1>
+              <p className="text-sm tracking-widest text-yellow-100">
+                BEST SELLERS
+              </p>
+            </div>
+          </section>
+        )}
+
+        {/* 히어로 섹션 - 전단행사 */}
+        {filter === 'sale' && (
+          <section className="bg-gradient-to-r from-red-600 to-red-700 text-white py-16">
+            <div className="container mx-auto px-4 text-center">
+              <h1 className="text-4xl font-bold mb-2">
+                🔥 전단행사
+              </h1>
+              <p className="text-sm tracking-widest text-red-100">
+                HOT DEALS
+              </p>
+            </div>
+          </section>
+        )}
+
+        {/* 히어로 섹션 - 알뜰상품 */}
+        {filter === 'budget' && (
+          <section className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-16">
+            <div className="container mx-auto px-4 text-center">
+              <h1 className="text-4xl font-bold mb-2">
+                💰 알뜰상품
+              </h1>
+              <p className="text-sm tracking-widest text-blue-100">
+                BUDGET FRIENDLY
+              </p>
+            </div>
+          </section>
+        )}
+
+        {/* 카테고리 - 모바일만 표시 */}
+        {!searchQuery && !filter && (
+          <section className="py-3 bg-gray-100 md:hidden">
+            <div className="container mx-auto px-4">
+              <CategoryGrid selectedCategory={selectedCategory} />
+            </div>
+          </section>
+        )}
       
-      <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-4 pt-6">
         {/* 페이지 제목 & 정렬 */}
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -153,8 +259,10 @@ function ProductsContent() {
 
         {/* 상품 그리드 */}
         {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
+            {[...Array(8)].map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-20">
@@ -171,15 +279,32 @@ function ProductsContent() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+            
+            {/* 무한 스크롤 로딩 */}
+            {loadingMore && (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-800"></div>
+              </div>
+            )}
+            
+            {/* 모든 상품 로드 완료 */}
+            {!hasMore && products.length > 0 && (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500">모든 상품을 확인하셨습니다 ✨</p>
+              </div>
+            )}
+          </>
         )}
+        </div>
       </main>
 
-      <ScrollToTop className="bottom-24 right-8 bg-white/60 backdrop-blur-sm text-primary-800 hover:bg-white/75 hover:scale-110" />
+      <ScrollToTop />
       <Footer />
       <BottomNavbar />
     </div>
@@ -191,9 +316,13 @@ export default function ProductsPage() {
     <Suspense fallback={
       <div className="min-h-screen flex flex-col">
         <Header />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
-        </div>
+        <main className="flex-1 container mx-auto px-4 py-4 pt-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
+            {[...Array(8)].map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </div>
+        </main>
         <Footer />
         <BottomNavbar />
       </div>

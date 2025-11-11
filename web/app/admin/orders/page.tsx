@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import { formatPrice } from '@/lib/utils'
 import { formatPhoneNumber } from '@/lib/format-phone'
 import { getStatusText, getDeliveryTypeText, getStatusColor } from '@/lib/order-utils'
@@ -83,14 +84,18 @@ export default function AdminOrdersPage() {
       
       if (data.error) {
         console.error('❌ API 에러:', data)
-        alert(`주문 조회에 실패했습니다.\n\n${data.details || data.error}`)
+        toast.error(`주문 조회에 실패했습니다\n\n${data.details || data.error}`, {
+          duration: 4000,
+        })
         return
       }
       
       setOrders(data)
     } catch (error) {
       console.error('❌ 주문 조회 실패:', error)
-      alert(`주문 조회에 실패했습니다.\n\n${error}`)
+      toast.error(`주문 조회에 실패했습니다\n\n${error}`, {
+        duration: 4000,
+      })
     } finally {
       setLoading(false)
     }
@@ -122,10 +127,12 @@ export default function AdminOrdersPage() {
 
       // 주문 목록 새로고침
       await fetchOrders()
-      alert('주문 상태가 변경되었습니다.')
+      toast.success('주문 상태가 변경되었습니다.', {
+        icon: '✅',
+      })
     } catch (error) {
       console.error('상태 변경 실패:', error)
-      alert('상태 변경에 실패했습니다.')
+      toast.error('상태 변경에 실패했습니다.')
     } finally {
       setUpdatingOrderId(null)
     }

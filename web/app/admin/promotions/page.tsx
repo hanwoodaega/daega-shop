@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 
 interface PromotionGroup {
   id: string
@@ -86,8 +87,10 @@ export default function PromotionsPage() {
   }
 
   const createGroup = async () => {
-    if (newGroup.product_ids.length < 2) {
-      alert('최소 2개 이상의 상품을 선택하세요')
+    if (newGroup.product_ids.length < 1) {
+      toast.error('최소 1개 이상의 상품을 선택하세요', {
+        icon: '⚠️',
+      })
       return
     }
 
@@ -106,12 +109,14 @@ export default function PromotionsPage() {
         })
       }
 
-      alert('프로모션이 생성되었습니다!')
+      toast.success('프로모션이 생성되었습니다!', {
+        icon: '🎉',
+      })
       setNewGroup({ type: '1+1' as '1+1' | '2+1' | '3+1', product_ids: [] })
       fetchData()
     } catch (error) {
       console.error('프로모션 생성 실패:', error)
-      alert('프로모션 생성에 실패했습니다')
+      toast.error('프로모션 생성에 실패했습니다')
     }
   }
 
@@ -131,11 +136,13 @@ export default function PromotionsPage() {
         })
       }
 
-      alert('프로모션이 삭제되었습니다')
+      toast.success('프로모션이 삭제되었습니다', {
+        icon: '✅',
+      })
       fetchData()
     } catch (error) {
       console.error('프로모션 삭제 실패:', error)
-      alert('프로모션 삭제에 실패했습니다')
+      toast.error('프로모션 삭제에 실패했습니다')
     }
   }
 

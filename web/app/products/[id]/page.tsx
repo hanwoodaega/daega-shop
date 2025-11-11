@@ -2,13 +2,15 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import LoginPrompt from '@/components/common/LoginPrompt'
 import ConfirmModal from '@/components/common/ConfirmModal'
 import { supabase, Product } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
-import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
+import { useCartStore, useDirectPurchaseStore, useWishlistStore } from '@/lib/store'
+import { toggleWishlist } from '@/lib/wishlist-sync'
 import { 
   formatPrice, 
   getPromotionRequiredCount, 
@@ -34,6 +36,8 @@ export default function ProductDetailPage() {
   const { user } = useAuth()
   const addItem = useCartStore((state) => state.addItem)
   const { setItems: setDirectPurchaseItems } = useDirectPurchaseStore()
+  const { toggleItem, isInWishlist } = useWishlistStore()
+  const isWished = isInWishlist(productId)
 
   const fetchProduct = useCallback(async () => {
     try {
@@ -47,8 +51,8 @@ export default function ProductDetailPage() {
       setProduct(data)
     } catch (error) {
       console.error('상품 조회 실패:', error)
-      alert('상품을 찾을 수 없습니다.')
-      router.push('/products')
+      toast.error('상품을 찾을 수 없습니다.')
+      setTimeout(() => router.push('/products'), 1000)
     } finally {
       setLoading(false)
     }
@@ -86,7 +90,9 @@ export default function ProductDetailPage() {
     if (!product) return
     
     if (product.stock <= 0) {
-      alert('품절된 상품입니다.')
+      toast.error('품절된 상품입니다', {
+        icon: '😢',
+      })
       return
     }
 
@@ -100,9 +106,12 @@ export default function ProductDetailPage() {
       brand: product.brand ?? undefined,
       promotion_type: product.promotion_type ?? undefined,
       promotion_products: product.promotion_products ?? undefined,
+      stock: product.stock, // 품절 여부 확인용
     })
     
-    setShowCartConfirm(true)
+    toast.success('장바구니에 추가되었습니다!', {
+      icon: '🛒',
+    })
   }, [product, quantity, addItem])
 
   const [promoQuantities, setPromoQuantities] = useState<{[key: string]: number}>({})  
@@ -114,7 +123,10 @@ export default function ProductDetailPage() {
     const totalSelected = getTotalPromoQuantity(promoQuantities)
     
     if (totalSelected !== requiredCount) {
-      alert(`${product.promotion_type} 프로모션은 정확히 ${requiredCount}개를 선택해야 합니다.\n현재: ${totalSelected}개`)
+      toast.error(`${product.promotion_type} 프로모션은 정확히 ${requiredCount}개를 선택해야 합니다\n현재: ${totalSelected}개`, {
+        icon: '⚠️',
+        duration: 4000,
+      })
       return
     }
 
@@ -152,6 +164,7 @@ export default function ProductDetailPage() {
           brand: p.brand ?? undefined,
           promotion_type: product.promotion_type ?? undefined,
           promotion_group_id: groupId,
+          stock: p.stock, // 품절 여부 확인용
         })
         remaining--
       }
@@ -159,7 +172,10 @@ export default function ProductDetailPage() {
 
     setShowPromotionModal(false)
     setPromoQuantities({})
-    setShowCartConfirm(true)
+    
+    toast.success('장바구니에 추가되었습니다!', {
+      icon: '🛒',
+    })
   }, [product, promotionProducts, promoQuantities, addItem])
 
   const updatePromoQuantity = (productId: string, change: number) => {
@@ -173,7 +189,9 @@ export default function ProductDetailPage() {
       .reduce((sum, [, qty]) => sum + qty, 0)
     
     if (totalOthers + newQty > requiredCount) {
-      alert(`최대 ${requiredCount}개까지만 선택 가능합니다`)
+      toast.error(`최대 ${requiredCount}개까지만 선택 가능합니다`, {
+        icon: '⚠️',
+      })
       return
     }
     
@@ -182,6 +200,27 @@ export default function ProductDetailPage() {
       [productId]: newQty
     })
   }
+
+  const handleWishlistToggle = useCallback(async () => {
+    // 임시: DB 연동 없이 localStorage만 사용
+    const success = await toggleWishlist(productId, false)
+    
+    if (success) {
+      if (isWished) {
+        toast.success('찜 목록에서 제거되었습니다', {
+          icon: '💔',
+        })
+      } else {
+        toast.success('찜 목록에 추가되었습니다!', {
+          icon: '❤️',
+        })
+      }
+    } else {
+      toast.error('오류가 발생했습니다. 다시 시도해주세요.', {
+        icon: '❌',
+      })
+    }
+  }, [productId, isWished])
 
   if (loading) {
     return (
@@ -299,21 +338,39 @@ export default function ProductDetailPage() {
           </div>
         )}
         
-        {/* 장바구니 / 바로구매 버튼 */}
-        <div className="px-0 pt-0 pb-8 grid grid-cols-2 gap-0">
+        {/* 하트 / 바로구매 / 장바구니 버튼 */}
+        <div className="px-0 pt-0 pb-8 flex gap-0">
           <button
-            onClick={() => { setPendingAction('cart'); setShowQty(true) }}
-            disabled={product.stock <= 0}
-            className="bg-primary-800 text-white py-3 text-base font-semibold hover:bg-primary-900 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            onClick={handleWishlistToggle}
+            className="flex items-center justify-center text-white py-3 hover:bg-gray-200 transition"
+            style={{ width: '15%', backgroundColor: isWished ? '#ef4444' : '#ffffff', border: '1px solid #e5e7eb' }}
+            aria-label="찜하기"
           >
-            장바구니
+            {isWished ? (
+              <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+            ) : (
+              <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+            )}
           </button>
           <button
             onClick={() => { setPendingAction('buy'); setShowQty(true) }}
             disabled={product.stock <= 0}
-            className="bg-red-600 text-white py-3 text-lg font-semibold hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="bg-gray-900 text-white py-3 text-base font-semibold hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            style={{ width: '35%' }}
           >
             바로구매
+          </button>
+          <button
+            onClick={() => { setPendingAction('cart'); setShowQty(true) }}
+            disabled={product.stock <= 0}
+            className="bg-red-600 text-white py-3 text-base font-semibold hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            style={{ width: '50%' }}
+          >
+            장바구니
           </button>
         </div>
       </div>
@@ -342,7 +399,6 @@ export default function ProductDetailPage() {
                   if (pendingAction === 'cart') {
                     handleAddToCart()
                     setShowQty(false)
-                    setShowCartConfirm(true)
                   } else if (pendingAction === 'buy') {
                     // 바로구매: 세션 스토리지에 저장 (장바구니에는 추가하지 않음)
                     if (!product) return
