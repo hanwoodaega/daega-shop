@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
@@ -136,20 +137,16 @@ export default function AddressesPage() {
 
       await fetchAddresses()
       setShowAddModal(false)
-      alert(editingAddress ? '배송지가 수정되었습니다.' : '배송지가 추가되었습니다.')
+      toast.success(editingAddress ? '배송지가 수정되었습니다.' : '배송지가 추가되었습니다.')
     } catch (error: any) {
       console.error('배송지 저장 실패:', error)
-      alert('배송지 저장에 실패했습니다.')
+      toast.error('배송지 저장에 실패했습니다.')
     } finally {
       setSaving(false)
     }
   }
 
   const handleDeleteAddress = async (addressId: string) => {
-    if (!confirm('이 배송지를 삭제하시겠습니까?')) {
-      return
-    }
-
     try {
       const { error } = await supabase
         .from('addresses')
@@ -159,10 +156,10 @@ export default function AddressesPage() {
       if (error) throw error
 
       await fetchAddresses()
-      alert('배송지가 삭제되었습니다.')
+      toast.success('배송지가 삭제되었습니다.')
     } catch (error) {
       console.error('배송지 삭제 실패:', error)
-      alert('배송지 삭제에 실패했습니다.')
+      toast.error('배송지 삭제에 실패했습니다.')
     }
   }
 
@@ -176,9 +173,10 @@ export default function AddressesPage() {
       if (error) throw error
 
       await fetchAddresses()
+      toast.success('기본 배송지로 설정되었습니다.')
     } catch (error) {
       console.error('기본 배송지 설정 실패:', error)
-      alert('기본 배송지 설정에 실패했습니다.')
+      toast.error('기본 배송지 설정에 실패했습니다.')
     }
   }
 

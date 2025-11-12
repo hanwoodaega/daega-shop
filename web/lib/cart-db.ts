@@ -36,7 +36,7 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
     }
 
     // localStorage 형식으로 변환
-    const items = data?.map(item => {
+    const items = data?.map((item: any) => {
       const product = Array.isArray(item.products) ? item.products[0] : item.products
       return {
         id: item.id,

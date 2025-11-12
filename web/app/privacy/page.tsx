@@ -1,15 +1,28 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import BottomNavbar from '@/components/BottomNavbar'
 
 export default function PrivacyPage() {
+  const router = useRouter()
+  
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header hideMainMenu />
       
-      <main className="flex-1 container mx-auto px-4 py-12 max-w-4xl">
-        <h1 className="text-3xl font-bold mb-8">개인정보처리방침</h1>
+      <main className="flex-1 container mx-auto px-4 py-6 pb-24 max-w-4xl">
+        {/* 페이지 제목 */}
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 mb-6 text-gray-700 hover:text-gray-900"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          <h1 className="text-lg font-semibold">개인정보처리방침</h1>
+        </button>
         
         <div className="prose prose-slate max-w-none space-y-8">
           <section>
@@ -124,6 +137,7 @@ export default function PrivacyPage() {
         </div>
       </main>
       
+      <BottomNavbar />
       <Footer />
     </div>
   )

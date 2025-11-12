@@ -221,44 +221,40 @@ export default function CheckoutPage() {
       // 실제로는 여기서 결제 API를 호출합니다 (토스페이먼츠, 카카오페이 등)
       // 데모를 위해 주문 정보만 저장하고 완료 페이지로 이동
       
-      // 주문 저장
+      // 주문 저장 (API 통해서)
       const deliveryTime = deliveryMethod === 'pickup' 
         ? pickupTime 
         : deliveryMethod === 'quick' 
         ? quickDeliveryTime 
         : null
 
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: user.id,
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           total_amount: totalAmount,
-          status: 'paid',
           delivery_type: deliveryMethod,
           delivery_time: deliveryTime,
           shipping_address: shippingAddress,
           shipping_name: formData.name,
           shipping_phone: formData.phone,
           delivery_note: formData.message.trim() || null,
+          items: items.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+          }))
         })
-        .select()
-        .single()
+      })
 
-      if (orderError) {
-        throw handleSupabaseError(orderError)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '주문 생성 실패')
       }
 
-      // 주문 아이템 저장
-      if (order) {
-        const orderItems = items.map(item => ({
-          order_id: order.id,
-          product_id: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-        }))
-
-        await supabase.from('order_items').insert(orderItems)
-      }
+      const { order } = await response.json()
 
       // 기본 배송지로 저장 체크 시 배송지 저장 (택배 또는 퀵배달)
       if (saveAsDefaultAddress && (deliveryMethod === 'regular' || deliveryMethod === 'quick') && formData.address) {

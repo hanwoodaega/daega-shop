@@ -1,105 +1,52 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { AppError, ErrorCode } from './errors'
+import toast from 'react-hot-toast'
 
 /**
- * API 라우트 핸들러 래퍼 (에러 처리 자동화)
+ * API 에러를 일관되게 처리하는 유틸리티
  */
-export function withErrorHandler<T = any>(
-  handler: (request: NextRequest, context?: any) => Promise<T | NextResponse>
-) {
-  return async (request: NextRequest, context?: any): Promise<NextResponse> => {
-    try {
-      const result = await handler(request, context)
-      
-      // 이미 NextResponse면 그대로 반환
-      if (result instanceof NextResponse) {
-        return result
-      }
-      
-      // 아니면 JSON으로 변환
-      return NextResponse.json(result)
-    } catch (error) {
-      console.error('❌ API Error:', error)
-      
-      // AppError 처리
-      if (error instanceof AppError) {
-        return NextResponse.json(
-          {
-            error: error.userMessage || error.message,
-            code: error.code,
-            ...(process.env.NODE_ENV === 'development' && {
-              details: error.details,
-              stack: error.stack,
-            }),
-          },
-          { status: error.statusCode }
-        )
-      }
-      
-      // 예상치 못한 에러
-      return NextResponse.json(
-        {
-          error: '서버 오류가 발생했습니다.',
-          code: ErrorCode.UNKNOWN_ERROR,
-          ...(process.env.NODE_ENV === 'development' && {
-            message: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
-          }),
-        },
-        { status: 500 }
-      )
-    }
-  }
-}
-
-/**
- * 인증 검증 헬퍼
- */
-export function requireAuth(userId?: string | null): string {
-  if (!userId) {
-    throw new AppError(
-      ErrorCode.UNAUTHORIZED,
-      'Authentication required',
-      '로그인이 필요합니다.',
-      401
-    )
-  }
-  return userId
-}
-
-/**
- * 관리자 권한 검증 헬퍼
- */
-export function requireAdmin(isAdmin: boolean) {
-  if (!isAdmin) {
-    throw new AppError(
-      ErrorCode.FORBIDDEN,
-      'Admin access required',
-      '관리자 권한이 필요합니다.',
-      403
-    )
-  }
-}
-
-/**
- * 유효성 검증 헬퍼
- */
-export function validateRequired(data: any, fields: string[]) {
-  const missing = fields.filter(field => 
-    data[field] === undefined || 
-    data[field] === null || 
-    data[field] === ''
-  )
+export function handleApiError(error: any, context: string) {
+  console.error(`[${context}]`, error)
   
-  if (missing.length > 0) {
-    throw new AppError(
-      ErrorCode.REQUIRED_FIELD,
-      `Missing required fields: ${missing.join(', ')}`,
-      `필수 항목을 입력해주세요: ${missing.join(', ')}`,
-      400,
-      { missing }
-    )
+  // 개발 환경에서는 상세 에러 메시지 표시
+  if (process.env.NODE_ENV === 'development') {
+    toast.error(`${context}: ${error.message || '알 수 없는 오류'}`, {
+      duration: 4000,
+    })
+  } else {
+    // 프로덕션에서는 사용자 친화적 메시지
+    toast.error('일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', {
+      duration: 3000,
+    })
   }
 }
 
+/**
+ * 성공 메시지를 일관되게 표시
+ */
+export function showSuccessMessage(message: string) {
+  toast.success(message, {
+    icon: '✅',
+    duration: 2000,
+  })
+}
+
+/**
+ * 정보 메시지를 표시
+ */
+export function showInfoMessage(message: string) {
+  toast(message, {
+    icon: 'ℹ️',
+    duration: 3000,
+  })
+}
+
+/**
+ * fetch 응답을 검증하고 에러 처리
+ */
+export async function handleFetchResponse(response: Response, context: string) {
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    const errorMessage = errorData.error || errorData.message || `${context} 실패`
+    throw new Error(errorMessage)
+  }
+  return response.json()
+}

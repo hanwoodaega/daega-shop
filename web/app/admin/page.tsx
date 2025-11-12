@@ -21,6 +21,7 @@ export default function AdminPage() {
     weight: '0',
     origin: '국내산',
     discount_percent: '',
+    product_info: '',
   })
   
   // ✅ UI 상태 그룹화
@@ -277,6 +278,16 @@ export default function AdminPage() {
             <label className="block text-sm font-medium mb-1">이미지 업로드</label>
             <input ref={fileInputRef} type="file" accept="image/*" className="w-full" />
             <p className="text-xs text-gray-500 mt-1">파일을 선택하면 URL 대신 업로드가 사용됩니다.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">상품고시정보</label>
+            <textarea 
+              name="product_info" 
+              value={form.product_info} 
+              onChange={handleChange} 
+              className="w-full border rounded px-3 py-2 min-h-[120px]"
+              placeholder="품목, 중량, 원산지, 보관방법, 유통기한 등 상품고시정보를 입력하세요."
+            />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           {message && <p className="text-sm text-green-700">{message}</p>}

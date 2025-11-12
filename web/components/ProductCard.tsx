@@ -11,6 +11,7 @@ import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart-db'
 import { formatPrice } from '@/lib/utils'
 import { isValidImageUrl, isOutOfStock, calculateDiscountPrice } from '@/lib/product-utils'
+import StarIcons from '@/components/review/StarIcons'
 
 interface ProductCardProps {
   product: Product
@@ -115,7 +116,7 @@ function ProductCard({ product }: ProductCardProps) {
 
   return (
     <Link href={`/products/${product.id}`}>
-      <div className="bg-white transition shadow-sm hover:shadow-md">
+      <div className="bg-white transition">
         <div className="relative aspect-square bg-gray-200 overflow-hidden">
           {/* 프로모션 배지 */}
           {product.promotion_type && (
@@ -155,10 +156,10 @@ function ProductCard({ product }: ProductCardProps) {
             </svg>
           </button>
         </div>
-        <div className="pt-2 pb-3 pr-2 pl-2">
+        <div className="pt-1 pb-3 pr-0 pl-0">
           {product.brand && (
-            <div className="flex items-center justify-between mb-0.5">
-              <div className="text-sm font-bold text-primary-900 line-clamp-1 flex-1">{product.brand}</div>
+            <div className="flex items-center justify-between mb-0">
+              <div className="text-sm font-bold text-primary-900 line-clamp-1 flex-1 leading-tight tracking-tight">{product.brand}</div>
               <button
                 onClick={handleWishlistToggle}
                 className="ml-2 p-1 hover:scale-110 transition-transform flex-shrink-0"
@@ -176,34 +177,60 @@ function ProductCard({ product }: ProductCardProps) {
               </button>
             </div>
           )}
-          <h3 className="text-sm font-medium mb-0 line-clamp-1 text-primary-900">{product.name}</h3>
+          <h3 className="text-sm font-medium mb-0 line-clamp-1 text-primary-900 leading-tight tracking-tight">{product.name}</h3>
           {/* 가격 영역을 2줄로 고정하여 카드 높이를 통일 */}
           {product.discount_percent && product.discount_percent > 0 ? (
             <>
-              <div className="text-xs text-gray-500 line-through mt-1">
+              <div className="text-xs text-gray-500 line-through mt-0 leading-tight">
                 {formatPrice(product.price)}원
               </div>
-              <div className="flex items-baseline gap-2 mt-0">
+              <div className="flex items-baseline gap-2 mt-0 leading-tight">
                 <span className="text-base md:text-lg font-bold text-red-600">{product.discount_percent}%</span>
                 <span className="text-base font-extrabold text-primary-900">
-                  {formatPrice(discountPrice)}
+                  {formatPrice(discountPrice)}<span className="text-xs text-gray-600">원</span>
                 </span>
-                <span className="text-gray-600 text-sm">원</span>
               </div>
             </>
           ) : (
             <>
               {/* 할인 미적용 시에도 1줄을 비워 동일 높이 확보 (줄간격 최소화) */}
-              <div className="invisible h-2 leading-none">.</div>
-              <div className="flex items-baseline gap-1 mt-0">
+              <div className="invisible h-1 leading-none">.</div>
+              <div className="flex items-baseline mt-0 leading-tight">
                 <span className="text-base font-bold text-primary-900">
-                  {formatPrice(product.price)}
+                  {formatPrice(product.price)}<span className="text-xs text-gray-600">원</span>
                 </span>
-                <span className="text-gray-600 text-sm">원</span>
               </div>
             </>
           )}
           
+          {/* 리뷰 정보 */}
+          {(product.review_count ?? 0) > 0 && (
+            <div className="flex items-center gap-1 mt-1">
+              {/* 별 5개 */}
+              <StarIcons rating={product.average_rating || 0} size="sm" />
+              <span className="text-sm text-black font-medium">
+                {product.average_rating?.toFixed(1) || '0.0'}
+              </span>
+              <span className="text-sm text-gray-500">
+                ({product.review_count})
+              </span>
+            </div>
+          )}
+          
+          {/* 프로모션 상품 버튼 */}
+          {product.promotion_type && (
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                window.location.href = `/products/${product.id}?openPromotion=true`
+              }}
+              className="mt-2 w-full bg-white border border-gray-300 text-gray-900 py-2 px-3 text-xs font-medium rounded hover:bg-gray-50 transition flex items-center justify-between"
+            >
+              <span>{product.promotion_type} 상품 골라담기</span>
+              <span className="text-gray-600">❯</span>
+            </button>
+          )}
         </div>
       </div>
     </Link>

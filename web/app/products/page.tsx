@@ -87,8 +87,8 @@ function ProductsContent() {
       } else {
         // 중복 방지: 이미 있는 상품은 제외하고 추가
         setDisplayedProducts(prev => {
-          const existingIds = new Set(prev.map(p => p.id))
-          const newProducts = (data || []).filter(p => !existingIds.has(p.id))
+          const existingIds = new Set(prev.map((p: any) => p.id))
+          const newProducts = (data || []).filter((p: any) => !existingIds.has(p.id))
           return [...prev, ...newProducts]
         })
       }

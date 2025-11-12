@@ -130,6 +130,17 @@ export default function ProductEditModal({ editing, setEditing, saveEdit, saving
               </label>
             </div>
           </div>
+          
+          {/* 상품고시정보 */}
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">상품고시정보</label>
+            <textarea 
+              className="w-full border rounded px-3 py-2 min-h-[120px]" 
+              value={editing.product_info || ''} 
+              onChange={(e)=>setEditing({ ...editing, product_info: e.target.value })}
+              placeholder="품목, 중량, 원산지, 보관방법, 유통기한 등 상품고시정보를 입력하세요."
+            />
+          </div>
         </div>
         <div className="flex justify-end space-x-2 mt-4">
           <button 

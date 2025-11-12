@@ -1,19 +1,14 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
-// Supabase 클라이언트 생성 (싱글톤)
+// Supabase 클라이언트 생성 (cookie 기반으로 변경)
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl as string, supabaseAnonKey as string, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    })
-  : (null as unknown as ReturnType<typeof createClient>)
+  ? createBrowserClient(supabaseUrl as string, supabaseAnonKey as string)
+  : (null as unknown as ReturnType<typeof createBrowserClient>)
 
 /**
  * Database Types
@@ -39,6 +34,9 @@ export interface Product {
   is_budget?: boolean
   promotion_type?: '1+1' | '2+1' | '3+1' | null
   promotion_products?: string[] | null  // 증정 가능한 상품 ID 배열
+  product_info?: string | null  // 상품고시정보
+  average_rating?: number | null  // 평균 별점
+  review_count?: number | null  // 리뷰 개수
   created_at: string
   updated_at: string
 }

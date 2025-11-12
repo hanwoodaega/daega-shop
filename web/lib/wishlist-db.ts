@@ -16,7 +16,7 @@ export async function loadWishlistFromDB(userId: string): Promise<string[]> {
       return []
     }
 
-    return data?.map(item => item.product_id) || []
+    return data?.map((item: any) => item.product_id) || []
   } catch (error) {
     console.error('위시리스트 조회 에러:', error)
     return []

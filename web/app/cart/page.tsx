@@ -1,11 +1,12 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState, useMemo, useCallback, useEffect, Suspense } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef, Suspense } from 'react'
 import toast from 'react-hot-toast'
 // Navbar 제거: 장바구니 전용 헤더 사용
 import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
+import BottomNavbar from '@/components/BottomNavbar'
 import { useCartStore, useWishlistStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
 import { formatPrice } from '@/lib/utils'
@@ -39,9 +40,10 @@ function CartPageContent() {
   const [showWishlist, setShowWishlist] = useState(searchParams?.get('tab') === 'wishlist')
   const [wishlistProducts, setWishlistProducts] = useState<Product[]>([])
   const [loadingWishlist, setLoadingWishlist] = useState(false)
+  const processedStockStatus = useRef<string>('')
 
   // ✅ 공통 hook 사용
-  const { address: defaultAddress, loading: loadingAddress } = useDefaultAddress(!showWishlist)
+  const { address: defaultAddress, loading: loadingAddress, reload: reloadDefaultAddress } = useDefaultAddress(!showWishlist)
   const { addresses: allAddresses, loading: loadingAddresses, reload: loadAllAddresses } = useAddresses()
 
   const allSelected = useMemo(() => 
@@ -94,7 +96,7 @@ function CartPageContent() {
 
         if (!error && data) {
           const stockMap: {[productId: string]: number} = {}
-          data.forEach(p => {
+          data.forEach((p: any) => {
             stockMap[p.id] = p.stock
           })
           setStockStatus(stockMap)
@@ -109,6 +111,11 @@ function CartPageContent() {
 
   // 재고 상태 변경 시 품절 상품 자동 제거
   useEffect(() => {
+    const stockStatusKey = JSON.stringify(stockStatus)
+    
+    // 이미 처리한 stockStatus면 무시 (무한루프 방지)
+    if (processedStockStatus.current === stockStatusKey) return
+    
     const outOfStockItems: {id: string, name: string}[] = []
     
     items.forEach(item => {
@@ -119,12 +126,12 @@ function CartPageContent() {
     })
 
     if (outOfStockItems.length > 0) {
-      // 품절 상품 제거
+      processedStockStatus.current = stockStatusKey
+      
       outOfStockItems.forEach(item => {
         removeItem(item.id)
       })
       
-      // 상품명 목록 생성
       const productNames = outOfStockItems.map(item => item.name).join(', ')
       
       toast.error(`${productNames}이(가) 품절되어 장바구니에서 제거되었습니다.`, {
@@ -132,8 +139,7 @@ function CartPageContent() {
         duration: 5000,
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stockStatus, items.length]) // items.length 추가하여 변경 감지
+  }, [stockStatus, items, removeItem])
 
   // ✅ 배송지는 useDefaultAddress, useAddresses hook에서 자동 로드
 
@@ -171,7 +177,10 @@ function CartPageContent() {
       }
 
       // 3. 배송지 목록 새로고침 (hook에서 자동 업데이트)
-      await loadAllAddresses()
+      await Promise.all([
+        loadAllAddresses(),
+        reloadDefaultAddress()
+      ])
 
       toast.success('기본 배송지가 변경되었습니다.')
 
@@ -314,33 +323,29 @@ function CartPageContent() {
             </h1>
           </div>
           
-          {/* 오른쪽: 찜/장바구니 + 홈 */}
-          <div className="ml-auto flex items-center gap-1">
-            <button
-              onClick={() => setShowWishlist(!showWishlist)}
-              aria-label={showWishlist ? "장바구니" : "찜 목록"}
-              className="p-2 text-gray-700 hover:text-gray-900"
-            >
-              {showWishlist ? (
-                <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              ) : (
+          {/* 오른쪽: 장바구니 페이지에만 찜 버튼 + 홈 버튼 표시 */}
+          {!showWishlist && (
+            <div className="ml-auto flex items-center gap-0">
+              <button
+                onClick={() => setShowWishlist(true)}
+                aria-label="찜 목록"
+                className="p-2 text-gray-700 hover:text-gray-900"
+              >
                 <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                 </svg>
-              )}
-            </button>
-            <button
-              onClick={() => router.push('/')}
-              aria-label="홈으로"
-              className="p-2 text-gray-700 hover:text-gray-900"
-            >
-              <svg className="w-8 h-8 md:w-9 md:h-9" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z" />
-              </svg>
-            </button>
-          </div>
+              </button>
+              <button
+                onClick={() => router.push('/')}
+                aria-label="홈으로"
+                className="p-2 text-gray-700 hover:text-gray-900"
+              >
+                <svg className="w-8 h-8 md:w-9 md:h-9" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -683,23 +688,28 @@ function CartPageContent() {
         )}
       </main>
 
-      {/* 하단 고정 액션 바: 선물하기 / 주문하기 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
-        <div className="px-0 pb-6 grid grid-cols-2 gap-0">
-          <button
-            onClick={handleGiftCheckout}
-            className="bg-gray-900 text-white py-3 text-lg font-semibold hover:bg-gray-800"
-          >
-            선물하기
-          </button>
-          <button
-            onClick={handleCheckout}
-            className="bg-red-600 text-white py-3 text-lg font-semibold hover:bg-red-700"
-          >
-            주문하기
-          </button>
+      {/* 하단 고정 액션 바: 선물하기 / 주문하기 (장바구니에만 표시) */}
+      {!showWishlist && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+          <div className="px-0 pb-6 grid grid-cols-2 gap-0">
+            <button
+              onClick={handleGiftCheckout}
+              className="bg-gray-900 text-white py-3 text-lg font-semibold hover:bg-gray-800"
+            >
+              선물하기
+            </button>
+            <button
+              onClick={handleCheckout}
+              className="bg-red-600 text-white py-3 text-lg font-semibold hover:bg-red-700"
+            >
+              주문하기
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* 찜 페이지에만 BottomNavbar 표시 */}
+      {showWishlist && <BottomNavbar />}
 
       <div className="pb-20">
         <Footer />
