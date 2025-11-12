@@ -10,6 +10,7 @@ export interface Review {
   user_id: string
   is_verified_purchase: boolean
   created_at: string
+  updated_at?: string
 }
 
 export interface ReviewableProduct {

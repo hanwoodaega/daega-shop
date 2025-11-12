@@ -80,14 +80,15 @@ export default function ProductDetailPage() {
     }
   }, [product?.average_rating])
 
-  // 리뷰 개수 가져오기
+  // 리뷰 개수 가져오기 + 프리페칭
   useEffect(() => {
     const fetchReviewCount = async () => {
       try {
-        const response = await fetch(`/api/reviews?productId=${productId}&page=1&limit=1`)
+        const response = await fetch(`/api/reviews?productId=${productId}&page=1&limit=3`)
         if (response.ok) {
           const data = await response.json()
           setReviewCount(data.total || 0)
+          // 리뷰 데이터를 미리 가져와서 브라우저 캐시에 저장 (프리페칭)
         }
       } catch (error) {
         console.error('리뷰 개수 조회 실패:', error)

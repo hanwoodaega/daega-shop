@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 import ReviewStars from './ReviewStars'
 import { formatDate } from '@/lib/utils'
 import { ReviewItemProps } from '@/lib/types/review'
 
-export default function ReviewItem({ review, isOwner = false, onEdit, onDelete }: ReviewItemProps) {
+function ReviewItem({ review, isOwner = false, onEdit, onDelete }: ReviewItemProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showImageModal, setShowImageModal] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
@@ -89,6 +89,7 @@ export default function ReviewItem({ review, isOwner = false, onEdit, onDelete }
                 <img 
                   src={image} 
                   alt={`리뷰 이미지 ${index + 1}`}
+                  loading="lazy"
                   className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition"
                   onClick={() => {
                     setCurrentImageIndex(index)
@@ -190,4 +191,14 @@ export default function ReviewItem({ review, isOwner = false, onEdit, onDelete }
     </div>
   )
 }
+
+// 최적화: React.memo를 사용하여 불필요한 리렌더링 방지
+export default memo(ReviewItem, (prevProps, nextProps) => {
+  // review 객체가 동일하고 isOwner가 동일하면 리렌더링 skip
+  return (
+    prevProps.review.id === nextProps.review.id &&
+    prevProps.review.updated_at === nextProps.review.updated_at &&
+    prevProps.isOwner === nextProps.isOwner
+  )
+})
 

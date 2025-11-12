@@ -16,9 +16,13 @@ export async function GET(request: NextRequest) {
 
     const supabase = createSupabaseServerClient()
 
+    // 최적화: users 테이블과 JOIN하여 한 번의 쿼리로 처리
     const { data: reviews, error, count } = await supabase
       .from('reviews')
-      .select('*, products(name)', { count: 'exact' })
+      .select(`
+        *,
+        users!reviews_user_id_fkey(name)
+      `, { count: 'exact' })
       .eq('product_id', productId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
@@ -52,32 +56,28 @@ export async function GET(request: NextRequest) {
       return first + middle + last
     }
 
-    const userIds = Array.from(new Set((reviews || []).map((r: any) => r.user_id)))
-    
-    const { data: usersData } = await supabase
-      .from('users')
-      .select('id, name')
-      .in('id', userIds)
-    
-    const userMap = new Map((usersData || []).map((user: any) => [user.id, user.name || '익명']))
-
+    // JOIN 결과를 바로 사용 (추가 쿼리 불필요)
     const maskedReviews = (reviews || []).map((review: any) => {
-      const userName = userMap.get(review.user_id) || '익명'
+      const userName = review.users?.name || '익명'
       
       return {
         ...review,
         user_name: maskName(userName),
-        product_name: review.products?.name || null,
-        products: undefined
+        users: undefined // 불필요한 중첩 객체 제거
       }
     })
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       reviews: maskedReviews,
       total: count || 0,
       page,
       totalPages: Math.ceil((count || 0) / limit)
     })
+    
+    // 캐싱 헤더 추가 (10초간 캐시, 60초간 stale 허용)
+    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=60')
+    
+    return response
   } catch (error) {
     console.error('리뷰 조회 에러:', error)
     return NextResponse.json({ error: '서버 오류' }, { status: 500 })

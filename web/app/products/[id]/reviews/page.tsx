@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -8,6 +8,7 @@ import BottomNavbar from '@/components/BottomNavbar'
 import ReviewItem from '@/components/review/ReviewItem'
 import ReviewWriteModal from '@/components/review/ReviewWriteModal'
 import StarIcons from '@/components/review/StarIcons'
+import ReviewItemSkeleton from '@/components/skeletons/ReviewItemSkeleton'
 import { useAuth } from '@/lib/auth-context'
 import toast from 'react-hot-toast'
 import { Review } from '@/lib/types/review'
@@ -26,7 +27,6 @@ export default function AllReviewsPage() {
   const [total, setTotal] = useState(0)
   const [productName, setProductName] = useState('')
   const [averageRating, setAverageRating] = useState(0)
-  const [allImages, setAllImages] = useState<string[]>([])
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingReview, setEditingReview] = useState<Review | null>(null)
   const [targetReviewId, setTargetReviewId] = useState<string | null>(null)
@@ -54,16 +54,6 @@ export default function AllReviewsPage() {
       
       if (pageNum === 1) {
         setReviews(data.reviews || [])
-        
-        if (data.reviews && data.reviews.length > 0) {
-          const images: string[] = []
-          data.reviews.forEach((review: Review) => {
-            if (review.images && review.images.length > 0) {
-              images.push(...review.images)
-            }
-          })
-          setAllImages(images)
-        }
       } else {
         setReviews(prev => [...prev, ...(data.reviews || [])])
       }
@@ -169,12 +159,23 @@ export default function AllReviewsPage() {
     }
   }, [page, fetchReviews])
 
-  const handleEdit = (review: Review) => {
+  // 최적화: 이미지 배열을 메모이제이션
+  const allImages = useMemo(() => {
+    const images: string[] = []
+    reviews.forEach((review) => {
+      if (review.images && review.images.length > 0) {
+        images.push(...review.images)
+      }
+    })
+    return images
+  }, [reviews])
+
+  const handleEdit = useCallback((review: Review) => {
     setEditingReview(review)
     setShowEditModal(true)
-  }
+  }, [])
 
-  const handleEditSuccess = async () => {
+  const handleEditSuccess = useCallback(async () => {
     setShowEditModal(false)
     setEditingReview(null)
     
@@ -187,9 +188,9 @@ export default function AllReviewsPage() {
     
     fetchReviews(1)
     setPage(1)
-  }
+  }, [productId, fetchReviews])
 
-  const handleDelete = async (reviewId: string) => {
+  const handleDelete = useCallback(async (reviewId: string) => {
     try {
       const response = await fetch(`/api/reviews/${reviewId}`, {
         method: 'DELETE',
@@ -212,7 +213,7 @@ export default function AllReviewsPage() {
     } catch (error) {
       handleApiError(error, '리뷰 삭제')
     }
-  }
+  }, [productId])
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -257,6 +258,7 @@ export default function AllReviewsPage() {
                   <img 
                     src={image} 
                     alt={`리뷰 사진 ${index + 1}`}
+                    loading="lazy"
                     className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition"
                     onClick={() => router.push(`/products/${productId}/reviews/gallery`)}
                   />
@@ -294,16 +296,19 @@ export default function AllReviewsPage() {
                   />
                 </div>
               ))}
+              
+              {/* 로딩 중일 때 Skeleton 표시 */}
+              {loading && (
+                <>
+                  {[1, 2, 3].map((i) => (
+                    <ReviewItemSkeleton key={`skeleton-${i}`} />
+                  ))}
+                </>
+              )}
             </div>
 
             {/* 무한 스크롤 트리거 */}
             <div ref={observerTarget} className="h-10" />
-
-            {loading && (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-800 mx-auto"></div>
-              </div>
-            )}
 
             {!hasMore && reviews.length > 0 && (
               <div className="text-center py-8">

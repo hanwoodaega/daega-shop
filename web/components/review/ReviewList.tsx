@@ -6,6 +6,7 @@ import ReviewItem from './ReviewItem'
 import ReviewStars from './ReviewStars'
 import StarIcons from './StarIcons'
 import ReviewWriteModal from './ReviewWriteModal'
+import ReviewItemSkeleton from '../skeletons/ReviewItemSkeleton'
 import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -204,8 +205,21 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
 
   if (loading && page === 1) {
     return (
-      <div className="py-8 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-800 mx-auto"></div>
+      <div className="py-6">
+        {/* 리뷰 제목과 전체보기 */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">상품 리뷰</h2>
+        </div>
+
+        {/* 구분선 */}
+        <div className="border-b border-gray-200 mb-4"></div>
+
+        {/* Skeleton 로딩 */}
+        <div className="space-y-0 border-t border-gray-200">
+          {[1, 2, 3].map((i) => (
+            <ReviewItemSkeleton key={i} />
+          ))}
+        </div>
       </div>
     )
   }
@@ -267,6 +281,7 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
                 <img 
                   src={image} 
                   alt={`리뷰 사진 ${index + 1}`}
+                  loading="lazy"
                   className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition"
                   onClick={() => {
                     setCurrentImageIndex(index)
@@ -313,7 +328,9 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
           {showViewAllButton && total > limit && (
             <div className="mt-6 text-center">
               <button
-                onClick={() => router.push(`/products/${productId}/reviews`)}
+                onClick={() => {
+                  router.push(`/products/${productId}/reviews`)
+                }}
                 className="px-6 py-3 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
               >
                 리뷰 전체 보기 ({total})
