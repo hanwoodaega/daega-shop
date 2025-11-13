@@ -8,6 +8,7 @@ import BottomNavbar from '@/components/BottomNavbar'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import ScrollToTop from '@/components/common/ScrollToTop'
+import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import { supabase, Product, isSupabaseConfigured } from '@/lib/supabase'
 import CategoryGrid from '@/components/CategoryGrid'
 
@@ -122,7 +123,7 @@ export default function Home() {
       
       <main className="flex-1">
         {/* 히어로 섹션 */}
-        <section className="bg-gradient-to-r from-primary-800 to-primary-900 text-white py-24">
+        <section className="bg-gradient-to-r from-red-600 to-red-700 text-white py-24">
           <div className="container mx-auto px-4 text-center">
             <h1 className="text-5xl font-bold mb-4">
               대가 정육백화점
@@ -200,6 +201,7 @@ export default function Home() {
       <ScrollToTop />
       <Footer />
       <BottomNavbar />
+      <PromotionModalWrapper />
     </div>
   )
 }

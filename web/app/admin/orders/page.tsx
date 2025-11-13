@@ -347,7 +347,7 @@ export default function AdminOrdersPage() {
                     {/* 주문 상품 */}
                     {order.order_items && order.order_items.length > 0 && (
                       <div className="mb-4 pb-4 border-b">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-2">주문 상품</h3>
+                        <h3 className="text-sm font-semibold text-gray-900 mb-2">주문상품</h3>
                         <div className="space-y-2">
                           {order.order_items.map((item) => (
                             <div key={item.id} className="flex items-center justify-between text-sm">

@@ -12,7 +12,7 @@ export default function MainMenu() {
   return (
     <div className="bg-white border-b border-gray-200">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-center space-x-6 sm:space-x-8 md:space-x-16 pt-3 pb-0.5">
+        <div className="flex items-center justify-center space-x-6 sm:space-x-8 md:space-x-16 pt-2 pb-0.5">
           {mainMenus.map((menu) => {
             // 홈 페이지 체크
             let isActive = pathname === menu.href

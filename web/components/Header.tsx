@@ -11,8 +11,6 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
   const [searchQuery, setSearchQuery] = useState('')
   const { isSearchOpen, closeSearch } = useSearchUIStore()
   const cartCount = useCartStore((state) => state.getTotalItems())
-  // Note: 위시리스트 개수는 현재 Header에서 표시하지 않음
-  // 필요 시: const wishlistCount = useWishlistStore((state) => state.items.length)
 
   const performSearch = useCallback(() => {
     const query = searchQuery.trim()
@@ -48,7 +46,7 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
     <>
       {/* 첫 번째 부분: 로고, 검색창 (Normal) */}
       <div className={`bg-white shadow-md ${sticky ? 'sticky top-0 z-50' : ''}`}>
-        <div className="container mx-auto px-6">
+        <div className="container mx-auto pl-6 pr-4">
           <div className="flex justify-between items-center h-14 gap-4">
             {isSearchOpen ? (
               <>
@@ -107,14 +105,32 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
 
                   {/* 위시리스트 아이콘 */}
                   <button
-                    onClick={() => router.push('/cart?tab=wishlist')}
+                    onClick={() => router.push('/wishlist')}
                     className="p-2 hover:bg-gray-100 rounded-full transition relative"
                     aria-label="찜 목록"
                   >
-                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <svg className="w-7 h-7 md:w-8 md:h-8 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     </svg>
                   </button>
+
+                  {/* 장바구니 아이콘 (상품 상세 페이지에서만 표시) */}
+                  {showCartButton && (
+                    <button
+                      onClick={() => router.push('/cart')}
+                      className="p-2 hover:bg-gray-100 rounded-full transition relative"
+                      aria-label="장바구니"
+                    >
+                      <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      {cartCount > 0 && (
+                        <span className="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                          {cartCount > 99 ? '99+' : cartCount}
+                        </span>
+                      )}
+                    </button>
+                  )}
                 </div>
               </>
             )}

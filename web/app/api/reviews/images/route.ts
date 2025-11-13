@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 
+export const dynamic = 'force-dynamic'
+
 // GET: 특정 상품의 리뷰 이미지 조회 (무한 스크롤)
 export async function GET(request: NextRequest) {
   try {

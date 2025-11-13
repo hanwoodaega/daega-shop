@@ -121,12 +121,15 @@ export default function PromotionsPage() {
   }
 
   const deletePromotion = async (group: PromotionGroup) => {
-    if (!confirm(`"${group.name}" 프로모션을 삭제하시겠습니까?`)) return
+    if (!confirm(`"${group.name}" 프로모션을 삭제하시겠습니까?\n\n고객 장바구니에서도 해당 프로모션 상품이 제거됩니다.`)) return
+
+    console.log('[deletePromotion] 프로모션 삭제 시작:', group)
 
     try {
-      // 해당 상품들의 프로모션 설정 제거
+      // 1. 해당 상품들의 프로모션 설정 제거
+      console.log('[deletePromotion] 상품 프로모션 설정 제거 시작:', group.product_ids)
       for (const productId of group.product_ids) {
-        await fetch(`/api/admin/products/${productId}`, {
+        const res = await fetch(`/api/admin/products/${productId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -134,6 +137,34 @@ export default function PromotionsPage() {
             promotion_products: null,
           })
         })
+        console.log(`[deletePromotion] 상품 ${productId} 프로모션 제거:`, res.ok)
+      }
+
+      // 2. 모든 사용자 장바구니에서 해당 프로모션 상품 제거
+      console.log('[deletePromotion] 장바구니 정리 API 호출:', {
+        url: '/api/admin/promotions/cleanup-cart',
+        product_ids: group.product_ids
+      })
+      
+      const deleteResponse = await fetch('/api/admin/promotions/cleanup-cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product_ids: group.product_ids
+        })
+      })
+
+      const deleteResult = await deleteResponse.json()
+      console.log('[deletePromotion] 장바구니 정리 결과:', {
+        ok: deleteResponse.ok,
+        status: deleteResponse.status,
+        result: deleteResult
+      })
+
+      if (!deleteResponse.ok) {
+        console.error('[deletePromotion] 장바구니 정리 실패:', deleteResult)
+      } else {
+        console.log(`[deletePromotion] 장바구니에서 ${deleteResult.deletedCount}개 아이템 제거됨`)
       }
 
       toast.success('프로모션이 삭제되었습니다', {
@@ -141,7 +172,7 @@ export default function PromotionsPage() {
       })
       fetchData()
     } catch (error) {
-      console.error('프로모션 삭제 실패:', error)
+      console.error('[deletePromotion] 프로모션 삭제 실패:', error)
       toast.error('프로모션 삭제에 실패했습니다')
     }
   }
@@ -314,23 +345,48 @@ export default function PromotionsPage() {
               <div className="space-y-2 pb-4">
                 {filteredProducts.map((product) => {
                   const isSelected = newGroup.product_ids.includes(product.id)
+                  const hasDiscount = product.discount_percent && product.discount_percent > 0
+                  const hasPromotion = product.promotion_type
+                  const isDisabled = hasDiscount || hasPromotion  // 할인중이거나 프로모션 적용중이면 비활성화
+                  
                   return (
                     <div 
                       key={product.id}
-                      onClick={()=>toggleProduct(product.id)}
-                      className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition ${
-                        isSelected ? 'bg-blue-100 border-2 border-blue-500' : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                      onClick={() => {
+                        if (!isDisabled) {
+                          toggleProduct(product.id)
+                        }
+                      }}
+                      className={`flex items-center justify-between p-3 rounded-lg transition ${
+                        isDisabled 
+                          ? 'bg-gray-100 border-2 border-gray-200 cursor-not-allowed opacity-60'
+                          : isSelected 
+                            ? 'bg-blue-100 border-2 border-blue-500 cursor-pointer' 
+                            : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent cursor-pointer'
                       }`}
                     >
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-3 flex-1">
                         <input 
                           type="checkbox" 
                           checked={isSelected}
+                          disabled={isDisabled}
                           onChange={()=>{}}
                           className="w-5 h-5"
                         />
-                        <div>
-                          <p className="text-sm font-semibold">{product.name}</p>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold">{product.name}</p>
+                            {hasDiscount && (
+                              <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded">
+                                {product.discount_percent}% 할인중
+                              </span>
+                            )}
+                            {hasPromotion && !hasDiscount && (
+                              <span className="px-2 py-0.5 bg-pink-100 text-pink-700 text-xs font-bold rounded">
+                                {product.promotion_type} 프로모션 적용중
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-600">{product.category} • {product.price.toLocaleString()}원</p>
                         </div>
                       </div>

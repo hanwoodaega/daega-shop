@@ -2,6 +2,7 @@
 import { supabase } from './supabase'
 import { useCartStore, CartItem } from './store'
 import toast from 'react-hot-toast'
+import { debugLog } from './debug'
 
 // DB에서 장바구니 불러오기
 export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
@@ -35,17 +36,17 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
       return []
     }
 
-    // localStorage 형식으로 변환
+    // localStorage 형식으로 변환 (상품의 최신 정보 우선 사용)
     const items = data?.map((item: any) => {
       const product = Array.isArray(item.products) ? item.products[0] : item.products
       return {
         id: item.id,
         productId: item.product_id,
         name: product?.name || '',
-        price: product?.price || 0,
+        price: product?.price || 0, // 상품의 최신 가격 사용
         quantity: item.quantity,
         imageUrl: product?.image_url || '',
-        discount_percent: item.discount_percent ?? product?.discount_percent,
+        discount_percent: product?.discount_percent ?? item.discount_percent, // 상품의 최신 할인율 우선
         brand: product?.brand,
         promotion_type: item.promotion_type as '1+1' | '2+1' | '3+1' | undefined,
         promotion_group_id: item.promotion_group_id,
@@ -54,6 +55,7 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
       }
     }) || []
 
+    debugLog.log('[loadCartFromDB] 최신 상품 정보로 변환 완료:', items.length)
     return items
   } catch (error) {
     console.error('장바구니 조회 에러:', error)
@@ -63,9 +65,12 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
 
 // 장바구니에 추가 (DB)
 export async function addToCartDB(userId: string, item: CartItem): Promise<string | null> {
+  debugLog.log('[addToCartDB] 시작:', { userId, item })
+  
   try {
     // 프로모션 그룹이 있으면 항상 새로 추가
     if (item.promotion_group_id) {
+      debugLog.log('[addToCartDB] 프로모션 상품 - 신규 추가')
       const { data, error } = await supabase
         .from('carts')
         .insert({
@@ -80,14 +85,16 @@ export async function addToCartDB(userId: string, item: CartItem): Promise<strin
         .single()
 
       if (error) {
-        console.error('장바구니 추가 실패:', error)
+        console.error('[addToCartDB] 프로모션 상품 추가 실패:', error)
         return null
       }
 
+      debugLog.log('[addToCartDB] 프로모션 상품 추가 성공:', data.id)
       return data.id
     }
 
     // 일반 상품: 기존 상품 확인
+    debugLog.log('[addToCartDB] 일반 상품 - 기존 상품 확인 중')
     const { data: existing, error: checkError } = await supabase
       .from('carts')
       .select('id, quantity, discount_percent')
@@ -98,11 +105,12 @@ export async function addToCartDB(userId: string, item: CartItem): Promise<strin
     
     // 406 에러 등 발생 시 로그
     if (checkError && checkError.code !== 'PGRST116') {
-      console.error('장바구니 확인 실패:', checkError)
+      console.error('[addToCartDB] 장바구니 확인 실패:', checkError)
     }
 
     if (existing) {
       // 수량 증가
+      debugLog.log('[addToCartDB] 기존 상품 있음 - 수량 증가:', existing.id)
       const { data, error } = await supabase
         .from('carts')
         .update({ 
@@ -114,14 +122,16 @@ export async function addToCartDB(userId: string, item: CartItem): Promise<strin
         .single()
 
       if (error) {
-        console.error('장바구니 수량 업데이트 실패:', error)
+        console.error('[addToCartDB] 장바구니 수량 업데이트 실패:', error)
         return null
       }
 
+      debugLog.log('[addToCartDB] 수량 업데이트 성공:', data.id)
       return data.id
     }
 
     // 새 상품 추가
+    debugLog.log('[addToCartDB] 신규 상품 추가')
     const { data, error } = await supabase
       .from('carts')
       .insert({
@@ -134,13 +144,14 @@ export async function addToCartDB(userId: string, item: CartItem): Promise<strin
       .single()
 
     if (error) {
-      console.error('장바구니 추가 실패:', error)
+      console.error('[addToCartDB] 장바구니 추가 실패:', error)
       return null
     }
 
+    debugLog.log('[addToCartDB] 신규 상품 추가 성공:', data.id)
     return data.id
   } catch (error) {
-    console.error('장바구니 추가 에러:', error)
+    console.error('[addToCartDB] 장바구니 추가 에러:', error)
     return null
   }
 }
@@ -239,6 +250,7 @@ export async function addCartItemWithDB(userId: string | null, item: CartItem): 
   // DB 저장 (로그인 시)
   if (userId) {
     const dbId = await addToCartDB(userId, item)
+    
     if (dbId) {
       // DB ID로 업데이트
       const items = useCartStore.getState().items
@@ -253,9 +265,6 @@ export async function addCartItemWithDB(userId: string | null, item: CartItem): 
           )
         })
       }
-    } else {
-      // DB 저장 실패 - 하지만 로컬에는 이미 추가됨 (Optimistic)
-      console.warn('DB 저장 실패, 로컬에만 저장됨')
     }
   }
 }

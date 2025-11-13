@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { Product } from '@/lib/supabase'
-import { useCartStore, useWishlistStore } from '@/lib/store'
+import { useCartStore, useWishlistStore, usePromotionModalStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
 import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart-db'
@@ -21,6 +21,7 @@ function ProductCard({ product }: ProductCardProps) {
   // ✅ Zustand selector 패턴 - 필요한 것만 구독
   const addItem = useCartStore((state) => state.addItem)
   const isWished = useWishlistStore((state) => state.items.includes(product.id))
+  const openPromotionModal = usePromotionModalStore((state) => state.openModal)
   const { user } = useAuth()
   const userId = user?.id
   
@@ -223,7 +224,7 @@ function ProductCard({ product }: ProductCardProps) {
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                window.location.href = `/products/${product.id}?openPromotion=true`
+                openPromotionModal(product.id)
               }}
               className="mt-2 w-full bg-white border border-gray-300 text-gray-900 py-2 px-3 text-xs font-medium rounded hover:bg-gray-50 transition flex items-center justify-between"
             >

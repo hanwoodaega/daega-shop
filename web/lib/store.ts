@@ -220,6 +220,21 @@ export const useSearchUIStore = create<SearchUIStore>()((set) => ({
   toggleSearch: () => set((state) => ({ isSearchOpen: !state.isSearchOpen })),
 }))
 
+// 프로모션 모달 상태 관리 스토어
+interface PromotionModalStore {
+  isOpen: boolean
+  productId: string | null
+  openModal: (productId: string) => void
+  closeModal: () => void
+}
+
+export const usePromotionModalStore = create<PromotionModalStore>()((set) => ({
+  isOpen: false,
+  productId: null,
+  openModal: (productId: string) => set({ isOpen: true, productId }),
+  closeModal: () => set({ isOpen: false, productId: null }),
+}))
+
 // 위시리스트(찜) 스토어
 interface WishlistStore {
   items: string[] // 상품 ID 목록

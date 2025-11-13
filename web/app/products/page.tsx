@@ -7,6 +7,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
+import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import { supabase, Product } from '@/lib/supabase'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
@@ -318,6 +319,7 @@ function ProductsContent() {
       <ScrollToTop />
       <Footer />
       <BottomNavbar />
+      <PromotionModalWrapper />
     </div>
   )
 }

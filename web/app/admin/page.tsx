@@ -145,6 +145,11 @@ export default function AdminPage() {
     const res = await fetch(`/api/admin/products/${id}`, { method: 'DELETE' })
     if (res.ok) {
       setListState(prev => ({ ...prev, items: prev.items.filter((i) => i.id !== id) }))
+      setUiState(prev => ({ ...prev, message: '상품이 삭제되었습니다.' }))
+      setTimeout(() => setUiState(prev => ({ ...prev, message: null })), 3000)
+    } else {
+      const data = await res.json().catch(() => ({ error: '삭제 실패' }))
+      alert(data.error || '삭제에 실패했습니다.')
     }
   }
 
@@ -347,6 +352,7 @@ export default function AdminPage() {
                   <th className="p-2 border">가격</th>
                   <th className="p-2 border">할인율(%)</th>
                   <th className="p-2 border">할인가</th>
+                  <th className="p-2 border">프로모션</th>
                   <th className="p-2 border">판매상태</th>
                   <th className="p-2 border">작업</th>
                 </tr>
@@ -387,6 +393,17 @@ export default function AdminPage() {
                       }</td>
                       <td className="p-2 border">
                         <div className="flex items-center justify-center">
+                          {(it.promotion_type || it.promotion_products) ? (
+                            <span className="text-xs px-3 py-1 rounded font-medium bg-purple-100 text-purple-700">
+                              {it.promotion_type || '프로모션'}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-2 border">
+                        <div className="flex items-center justify-center">
                           <span className={`text-xs px-3 py-1 rounded font-medium ${
                             it.stock <= 0 
                               ? 'bg-red-100 text-red-600' 
@@ -407,8 +424,30 @@ export default function AdminPage() {
                         >
                           {it.stock <= 0 ? '판매재개' : '품절처리'}
                         </button>
-                        <button onClick={() => startEdit(it)} className="text-blue-600 hover:underline text-sm">수정</button>
-                        <button onClick={() => removeItem(it.id)} className="text-red-600 hover:underline text-sm">삭제</button>
+                        <button 
+                          onClick={() => !!(it.promotion_type || it.promotion_products) ? null : startEdit(it)} 
+                          disabled={!!(it.promotion_type || it.promotion_products)}
+                          className={`text-sm ${
+                            (it.promotion_type || it.promotion_products)
+                              ? 'text-gray-400 cursor-not-allowed' 
+                              : 'text-blue-600 hover:underline'
+                          }`}
+                          title={(it.promotion_type || it.promotion_products) ? '프로모션 중인 상품은 수정할 수 없습니다' : ''}
+                        >
+                          수정
+                        </button>
+                        <button 
+                          onClick={() => removeItem(it.id)} 
+                          disabled={!!(it.promotion_type || it.promotion_products)}
+                          className={`text-sm ${
+                            (it.promotion_type || it.promotion_products)
+                              ? 'text-gray-400 cursor-not-allowed' 
+                              : 'text-red-600 hover:underline'
+                          }`}
+                          title={(it.promotion_type || it.promotion_products) ? '프로모션 중인 상품은 삭제할 수 없습니다' : ''}
+                        >
+                          삭제
+                        </button>
                       </td>
                     </tr>
                   )

@@ -8,8 +8,40 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   try { assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   const { id } = await context.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  
+  // 1. 프로모션 중인 상품인지 확인
+  const { data: product, error: fetchError } = await supabaseAdmin
+    .from('products')
+    .select('promotion_type, promotion_products')
+    .eq('id', id)
+    .single()
+  
+  if (fetchError) {
+    return NextResponse.json({ error: fetchError.message }, { status: 400 })
+  }
+  
+  // 2. 프로모션 중이면 삭제 불가
+  if (product.promotion_type || product.promotion_products) {
+    return NextResponse.json({ 
+      error: '프로모션 중인 상품은 삭제할 수 없습니다. 먼저 프로모션을 해제해주세요.' 
+    }, { status: 400 })
+  }
+  
+  // 3. 상품 삭제
   const { error } = await supabaseAdmin.from('products').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  
+  // 4. 장바구니에서도 해당 상품 제거 (프로모션 그룹이 아닌 일반 상품만)
+  const { error: cartError } = await supabaseAdmin
+    .from('carts')
+    .delete()
+    .eq('product_id', id)
+    .is('promotion_group_id', null)
+  
+  if (cartError) {
+    console.error('장바구니 제거 실패:', cartError)
+  }
+  
   return NextResponse.json({ ok: true })
 }
 

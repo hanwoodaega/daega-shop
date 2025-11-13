@@ -9,17 +9,15 @@ import LoginPrompt from '@/components/common/LoginPrompt'
 import ConfirmModal from '@/components/common/ConfirmModal'
 import ReviewList from '@/components/review/ReviewList'
 import ReviewWriteModal from '@/components/review/ReviewWriteModal'
+import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import { supabase, Product } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
-import { useCartStore, useDirectPurchaseStore, useWishlistStore } from '@/lib/store'
+import { useCartStore, useDirectPurchaseStore, useWishlistStore, usePromotionModalStore } from '@/lib/store'
 import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart-db'
 import { 
   formatPrice, 
-  getPromotionRequiredCount, 
-  getPromotionPaidCount, 
   calculateDiscountedPrice, 
-  getTotalPromoQuantity 
 } from '@/lib/utils'
 
 export default function ProductDetailPage() {
@@ -35,8 +33,6 @@ export default function ProductDetailPage() {
   const [pendingAction, setPendingAction] = useState<null | 'cart' | 'buy'>(null)
   const [showCartConfirm, setShowCartConfirm] = useState(false)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
-  const [showPromotionModal, setShowPromotionModal] = useState(false)
-  const [promotionProducts, setPromotionProducts] = useState<Product[]>([])
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [reviewOrderId, setReviewOrderId] = useState<string>('')
   const [reviewCount, setReviewCount] = useState(0)
@@ -49,6 +45,7 @@ export default function ProductDetailPage() {
   const setDirectPurchaseItems = useDirectPurchaseStore((state) => state.setItems)
   const toggleItem = useWishlistStore((state) => state.toggleItem)
   const isWished = useWishlistStore((state) => state.items.includes(productId))
+  const openPromotionModal = usePromotionModalStore((state) => state.openModal)
 
   const fetchProduct = useCallback(async () => {
     try {
@@ -100,41 +97,17 @@ export default function ProductDetailPage() {
     }
   }, [productId])
 
-  // 프로모션 교차 상품 가져오기
-  useEffect(() => {
-    const fetchPromotionProducts = async () => {
-      if (!product?.promotion_type || !product?.promotion_products?.length) {
-        setPromotionProducts([])
-        return
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .in('id', product.promotion_products)
-        
-        if (error) throw error
-        setPromotionProducts(data || [])
-      } catch (error) {
-        console.error('프로모션 상품 조회 실패:', error)
-      }
-    }
-
-    fetchPromotionProducts()
-  }, [product?.id, product?.promotion_type, product?.promotion_products?.join(',')]) // ✅ 필요한 속성만 의존성으로 (무한 루프 방지)
-
   // URL 쿼리 파라미터로 프로모션 모달 자동 열기
   useEffect(() => {
     const openPromotion = searchParams?.get('openPromotion')
-    if (openPromotion === 'true' && product?.promotion_type && promotionProducts.length > 0) {
-      setShowPromotionModal(true)
+    if (openPromotion === 'true' && product?.promotion_type) {
+      openPromotionModal(productId)
       // URL에서 쿼리 파라미터 제거 (깔끔하게)
       const url = new URL(window.location.href)
       url.searchParams.delete('openPromotion')
       window.history.replaceState({}, '', url.toString())
     }
-  }, [searchParams, product?.promotion_type, promotionProducts.length])
+  }, [searchParams, product?.promotion_type, productId, openPromotionModal])
 
   const handleAddToCart = useCallback(() => {
     if (!product) return
@@ -167,94 +140,6 @@ export default function ProductDetailPage() {
     })
   }, [product, quantity, user])
 
-  const [promoQuantities, setPromoQuantities] = useState<{[key: string]: number}>({})  
-
-  const handlePromotionAdd = useCallback(() => {
-    if (!product) return
-    
-    const requiredCount = getPromotionRequiredCount(product.promotion_type)
-    const totalSelected = getTotalPromoQuantity(promoQuantities)
-    
-    if (totalSelected !== requiredCount) {
-      toast.error(`${product.promotion_type} 프로모션은 정확히 ${requiredCount}개를 선택해야 합니다\n현재: ${totalSelected}개`, {
-        icon: '⚠️',
-        duration: 4000,
-      })
-      return
-    }
-
-    // 프로모션 그룹 ID 생성
-    const groupId = `promo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-
-    // 선택한 상품들을 가격 순으로 정렬
-    const selectedItems: {product: Product, quantity: number}[] = []
-    Object.entries(promoQuantities).forEach(([productId, qty]) => {
-      if (qty > 0) {
-        const p = promotionProducts.find(p => p.id === productId)
-        if (p) {
-          selectedItems.push({ product: p, quantity: qty })
-        }
-      }
-    })
-    
-    // 가격 순 정렬 (높은 가격 → 낮은 가격)
-    selectedItems.sort((a, b) => b.product.price - a.product.price)
-    
-    // 각 상품을 개별로 추가
-    const paidCount = getPromotionPaidCount(product.promotion_type)
-    let remaining = paidCount
-    
-    selectedItems.forEach(({ product: p, quantity }) => {
-      for (let i = 0; i < quantity; i++) {
-        const isFree = remaining <= 0
-        const cartItem = {
-          productId: p.id,
-          name: p.name,
-          price: p.price,
-          quantity: 1,
-          imageUrl: p.image_url,
-          discount_percent: isFree ? 100 : (p.discount_percent ?? undefined),
-          brand: p.brand ?? undefined,
-          promotion_type: product.promotion_type ?? undefined,
-          promotion_group_id: groupId,
-          stock: p.stock, // 품절 여부 확인용
-        }
-        // DB 연동 장바구니 추가
-        addCartItemWithDB(user?.id || null, cartItem)
-        remaining--
-      }
-    })
-
-    setShowPromotionModal(false)
-    setPromoQuantities({})
-    
-    toast.success('장바구니에 추가되었습니다!', {
-      icon: '🛒',
-    })
-  }, [product, promotionProducts, promoQuantities, user])
-
-  const updatePromoQuantity = (productId: string, change: number) => {
-    const requiredCount = getPromotionRequiredCount(product?.promotion_type)
-    const currentQty = promoQuantities[productId] || 0
-    const newQty = Math.max(0, currentQty + change)
-    
-    // 총 수량 확인
-    const totalOthers = Object.entries(promoQuantities)
-      .filter(([id]) => id !== productId)
-      .reduce((sum, [, qty]) => sum + qty, 0)
-    
-    if (totalOthers + newQty > requiredCount) {
-      toast.error(`최대 ${requiredCount}개까지만 선택 가능합니다`, {
-        icon: '⚠️',
-      })
-      return
-    }
-    
-    setPromoQuantities({
-      ...promoQuantities,
-      [productId]: newQty
-    })
-  }
 
   const handleWishlistToggle = useCallback(async () => {
     // 클라이언트에서 직접 DB 접근 (인증 문제 해결)
@@ -394,10 +279,10 @@ export default function ProductDetailPage() {
       {/* 하단 고정 액션 바 */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
         {/* 1+1 골라담기 버튼 (프로모션 상품일 때만 표시) */}
-        {product.promotion_type && promotionProducts.length > 0 && (
+        {product.promotion_type && (
           <div className="border-b border-gray-200">
             <button
-              onClick={()=>setShowPromotionModal(true)}
+              onClick={() => openPromotionModal(productId)}
               className="w-full py-3 bg-pink-100 text-pink-700 text-base font-bold hover:bg-pink-200 transition flex items-center justify-center gap-2"
             >
               <span>🎁</span>
@@ -570,96 +455,8 @@ export default function ProductDetailPage() {
         </div>
       )}
 
-      {/* 프로모션 상품 선택 모달 */}
-      {showPromotionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={()=>{setShowPromotionModal(false); setPromoQuantities({})}}></div>
-          <div className="relative w-full max-w-md bg-white rounded-md shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-            <div className="bg-gradient-to-r from-pink-100 to-pink-200 text-pink-700 px-5 py-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold">🎁 {product.promotion_type} 골라담기</h3>
-                <button onClick={()=>{setShowPromotionModal(false); setPromoQuantities({})}} className="text-pink-700 text-2xl">×</button>
-              </div>
-            </div>
-            
-            <div className="px-5 py-3 bg-gray-50 border-b">
-              <p className="text-sm text-gray-700">
-                상품을 <strong>{getPromotionRequiredCount(product.promotion_type)}개</strong> 담으면, 1개가 <strong>무료</strong>로 적용됩니다.
-              </p>
-            </div>
-            
-            <div className="flex-1 p-4 overflow-y-auto">
-              
-              <div className="space-y-3">
-                {promotionProducts.map((promo) => {
-                  const qty = promoQuantities[promo.id] || 0
-                  return (
-                    <div 
-                      key={promo.id}
-                      className={`border p-4 transition ${
-                        qty > 0 ? 'border-black' : 'border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        {/* 왼쪽: 이미지 */}
-                        <div className="w-20 h-20 bg-gray-200 rounded flex-shrink-0 flex items-center justify-center">
-                          <span className="text-gray-500 text-xs">이미지 준비중</span>
-                        </div>
-                        
-                        {/* 중앙: 상품명 + 가격 */}
-                        <div className="flex-1">
-                          <h4 className="font-medium text-sm mb-1">{promo.name}</h4>
-                          <p className="text-sm font-semibold text-gray-900">
-                            {formatPrice(promo.price)}원
-                          </p>
-                        </div>
-                        
-                        {/* 오른쪽: 수량 조절 */}
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={()=>updatePromoQuantity(promo.id, -1)}
-                            className="w-7 h-7 rounded border border-gray-300 hover:bg-gray-100 text-sm flex items-center justify-center"
-                          >
-                            -
-                          </button>
-                          <span className="font-semibold w-7 text-center text-base">
-                            {qty}
-                          </span>
-                          <button
-                            onClick={()=>updatePromoQuantity(promo.id, 1)}
-                            className="w-7 h-7 rounded border border-gray-300 hover:bg-gray-100 text-sm flex items-center justify-center"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-            
-            <div className="px-5 py-4 bg-white border-t">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium">
-                  선택: {getTotalPromoQuantity(promoQuantities)} / {getPromotionRequiredCount(product.promotion_type)}
-                </span>
-                <span className="text-xs text-gray-600">
-                  {getTotalPromoQuantity(promoQuantities) < getPromotionRequiredCount(product.promotion_type) && 
-                    `${getPromotionRequiredCount(product.promotion_type) - getTotalPromoQuantity(promoQuantities)}개 더 선택`}
-                </span>
-              </div>
-              <button
-                onClick={handlePromotionAdd}
-                disabled={getTotalPromoQuantity(promoQuantities) !== getPromotionRequiredCount(product.promotion_type)}
-                className="w-full py-3 bg-pink-500 text-white rounded font-bold hover:bg-pink-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                장바구니에 담기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 전역 프로모션 모달 */}
+      <PromotionModalWrapper />
 
       <ConfirmModal
         isOpen={showCartConfirm}

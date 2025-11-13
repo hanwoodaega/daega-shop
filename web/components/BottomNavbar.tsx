@@ -205,11 +205,16 @@ export default function BottomNavbar() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
               <span className="text-xs">장바구니</span>
-              {mounted && getTotalItems() > 0 && (
-                <span className="absolute top-1 right-4 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                  {getTotalItems()}
-                </span>
-              )}
+              {/* hydration 에러 방지: 항상 같은 DOM 구조 유지 */}
+              <span 
+                className={`absolute top-1 right-4 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold transition-all duration-200 ${
+                  !mounted || getTotalItems() === 0 ? 'opacity-0 pointer-events-none scale-0' : 'opacity-100 scale-100'
+                }`}
+                suppressHydrationWarning
+                aria-hidden={!mounted || getTotalItems() === 0}
+              >
+                {mounted ? getTotalItems() : ''}
+              </span>
             </Link>
           </div>
         </div>

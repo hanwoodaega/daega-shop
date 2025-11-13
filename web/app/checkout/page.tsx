@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useDaumPostcodeScript, openDaumPostcode, AddressSearchResult } from '@/lib/hooks/useDaumPostcode'
 import { showError, showSuccess, handleSupabaseError, showInfo } from '@/lib/error-handler'
 import { useDefaultAddress, useUserProfile } from '@/lib/hooks/useAddress'
+import { calculateOrderTotal } from '@/lib/order-calc'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -66,9 +67,25 @@ export default function CheckoutPage() {
   const { address: defaultAddress, loading: loadingDefaultAddress, hasDefaultAddress } = useDefaultAddress()
   const { profile: userProfile, loading: loadingUserProfile } = useUserProfile()
 
-  // 클라이언트 마운트 확인
+  // 클라이언트 마운트 확인 및 장바구니에서 선택한 배송 방법 불러오기
   useEffect(() => {
     setFlags(prev => ({ ...prev, mounted: true }))
+    
+    // 세션 스토리지에서 배송 방법 및 관련 정보 불러오기
+    const savedDeliveryMethod = sessionStorage.getItem('deliveryMethod') as 'pickup' | 'quick' | 'regular' | null
+    const savedPickupTime = sessionStorage.getItem('pickupTime') || ''
+    const savedQuickArea = sessionStorage.getItem('quickDeliveryArea') || ''
+    const savedQuickTime = sessionStorage.getItem('quickDeliveryTime') || ''
+    
+    if (savedDeliveryMethod) {
+      setDeliveryState(prev => ({ 
+        ...prev, 
+        method: savedDeliveryMethod,
+        pickupTime: savedPickupTime,
+        quickDeliveryArea: savedQuickArea,
+        quickDeliveryTime: savedQuickTime,
+      }))
+    }
   }, [])
 
   // Daum 우편번호 스크립트 로드
@@ -301,9 +318,8 @@ export default function CheckoutPage() {
     }
   }
 
-  const subtotal = getTotalPrice()
-  const shipping = getDeliveryFee()
-  const total = subtotal + shipping
+  // 주문 금액 계산 (통합 유틸리티 사용)
+  const { originalTotal, discountAmount, shipping, total } = calculateOrderTotal(items, deliveryMethod)
 
   // 로딩 중
   if (loadingDefaultAddress) {
@@ -365,117 +381,9 @@ export default function CheckoutPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* 주문 정보 입력 */}
             <div className="lg:col-span-2 space-y-6">
-              {/* 배송 방법 선택 */}
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-bold mb-4">배송 방법</h2>
-                <div className="space-y-4">
-                  {/* 오늘 픽업 */}
-                  <label className="flex items-start space-x-3 cursor-pointer p-4 border-2 rounded-lg hover:border-primary-500 transition"
-                    style={{ borderColor: deliveryMethod === 'pickup' ? '#b45309' : '#e5e7eb' }}>
-                    <input
-                      type="radio"
-                      name="deliveryMethod"
-                      value="pickup"
-                      checked={deliveryMethod === 'pickup'}
-                      onChange={() => setDeliveryState(prev => ({ ...prev, method: 'pickup' }))}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <div className="font-semibold text-lg">오늘 픽업</div>
-                      <div className="text-sm text-gray-600 mt-1">매장에서 직접 픽업 • 무료</div>
-                      {deliveryMethod === 'pickup' && (
-                        <div className="mt-3">
-                          <label className="block text-sm font-medium mb-2">픽업 시간 선택</label>
-                        <select
-                          value={pickupTime}
-                          onChange={(e) => setDeliveryState(prev => ({ ...prev, pickupTime: e.target.value }))}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                          required
-                        >
-                            <option value="">시간을 선택하세요</option>
-                            {pickupTimeSlots.map(time => (
-                              <option key={time} value={time}>{time}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  </label>
-
-                  {/* 퀵배달 */}
-                  <label className="flex items-start space-x-3 cursor-pointer p-4 border-2 rounded-lg hover:border-primary-500 transition"
-                    style={{ borderColor: deliveryMethod === 'quick' ? '#b45309' : '#e5e7eb' }}>
-                    <input
-                      type="radio"
-                      name="deliveryMethod"
-                      value="quick"
-                      checked={deliveryMethod === 'quick'}
-                      onChange={() => setDeliveryState(prev => ({ ...prev, method: 'quick' }))}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <div className="font-semibold text-lg">퀵배달</div>
-                      <div className="text-sm text-gray-600 mt-1">1~2시간 내 신속 배달 • 5,000원</div>
-                      {deliveryMethod === 'quick' && (
-                        <div className="mt-3 space-y-3">
-                          <div>
-                            <label className="block text-sm font-medium mb-2">배달 지역 선택</label>
-                          <select
-                            value={quickDeliveryArea}
-                            onChange={(e) => setDeliveryState(prev => ({ ...prev, quickDeliveryArea: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                            required
-                          >
-                              <option value="">지역을 선택하세요</option>
-                              {quickDeliveryAreas.map(area => (
-                                <option key={area} value={area}>{area}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-2">배달 시간대 선택</label>
-                          <select
-                            value={quickDeliveryTime}
-                            onChange={(e) => setDeliveryState(prev => ({ ...prev, quickDeliveryTime: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                            required
-                          >
-                              <option value="">시간대를 선택하세요</option>
-                              {quickDeliveryTimeSlots.map(time => (
-                                <option key={time} value={time}>{time}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </label>
-
-                  {/* 일반 택배 */}
-                  <label className="flex items-start space-x-3 cursor-pointer p-4 border-2 rounded-lg hover:border-primary-500 transition"
-                    style={{ borderColor: deliveryMethod === 'regular' ? '#b45309' : '#e5e7eb' }}>
-                    <input
-                      type="radio"
-                      name="deliveryMethod"
-                      value="regular"
-                      checked={deliveryMethod === 'regular'}
-                      onChange={() => setDeliveryState(prev => ({ ...prev, method: 'regular' }))}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <div className="font-semibold text-lg">택배배송</div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        2~3일 내 배송 • {subtotal >= 50000 ? '무료' : '3,000원'}
-                        {subtotal < 50000 && <span className="text-primary-600"> (5만원 이상 무료)</span>}
-                      </div>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
               {/* 주문자 정보 */}
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-bold mb-4">주문자 정보</h2>
+                <h2 className="text-xl font-bold mb-4">주문자</h2>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">
@@ -506,19 +414,6 @@ export default function CheckoutPage() {
                       required
                       placeholder="01012345678"
                       maxLength={11}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      이메일
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="email@example.com"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
@@ -589,6 +484,7 @@ export default function CheckoutPage() {
                       value={formData.message}
                       onChange={handleInputChange}
                       rows={3}
+                      maxLength={50}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                       placeholder="예: 공동현관 비밀번호 #1234, 전화주세요"
                     />
@@ -622,73 +518,119 @@ export default function CheckoutPage() {
               {deliveryMethod === 'regular' && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-bold mb-4">배송 정보</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      우편번호
-                    </label>
-                    <div className="flex space-x-2">
-                      <input
-                        type="text"
-                        name="zipcode"
-                        value={formData.zipcode}
-                        readOnly
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                        placeholder="우편번호"
+                
+                {/* 기본 배송지가 있으면 텍스트로 표시 */}
+                {defaultAddress ? (
+                  <div className="space-y-4">
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="text-base font-bold text-gray-900">{defaultAddress.name}</h3>
+                            <span className="text-xs bg-primary-100 text-primary-800 px-2 py-0.5 rounded">기본</span>
+                          </div>
+                          <p className="text-sm text-gray-700 mb-1">
+                            {defaultAddress.recipient_name} · {defaultAddress.recipient_phone}
+                          </p>
+                          <p className="text-sm text-gray-700">
+                            {defaultAddress.address}
+                            {defaultAddress.address_detail && ` ${defaultAddress.address_detail}`}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => router.push('/profile/addresses')}
+                          className="ml-4 px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition whitespace-nowrap"
+                        >
+                          배송지 변경
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        배송 요청사항
+                      </label>
+                      <textarea
+                        name="message"
+                        value={formData.message}
+                        onChange={handleInputChange}
+                        rows={3}
+                        maxLength={50}
+                        placeholder="예: 공동현관 비밀번호 #1234, 문 앞에 놓아주세요"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
-                      <button
-                        type="button"
-                        onClick={handleSearchAddress}
-                        className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition whitespace-nowrap"
-                      >
-                        주소찾기
-                      </button>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      주소 <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="address"
-                      value={formData.address}
-                      readOnly
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                      placeholder="주소찾기 버튼을 클릭하세요"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      상세 주소
-                    </label>
-                    <input
-                      type="text"
-                      id="checkout_address_detail"
-                      name="addressDetail"
-                      value={formData.addressDetail}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="101동 101호"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      배송 요청사항
-                    </label>
-                    <textarea
-                      name="message"
-                      value={formData.message}
-                      onChange={handleInputChange}
-                      rows={3}
-                      placeholder="예: 공동현관 비밀번호 #1234, 문 앞에 놓아주세요"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
+                ) : (
+                  /* 기본 배송지가 없으면 입력 필드 표시 */
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        우편번호
+                      </label>
+                      <div className="flex space-x-2">
+                        <input
+                          type="text"
+                          name="zipcode"
+                          value={formData.zipcode}
+                          readOnly
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                          placeholder="우편번호"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSearchAddress}
+                          className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition whitespace-nowrap"
+                        >
+                          주소찾기
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        주소 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="address"
+                        value={formData.address}
+                        readOnly
+                        required
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                        placeholder="주소찾기 버튼을 클릭하세요"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        상세 주소
+                      </label>
+                      <input
+                        type="text"
+                        id="checkout_address_detail"
+                        name="addressDetail"
+                        value={formData.addressDetail}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        placeholder="101동 101호"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        배송 요청사항
+                      </label>
+                      <textarea
+                        name="message"
+                        value={formData.message}
+                        onChange={handleInputChange}
+                        rows={3}
+                        maxLength={50}
+                        placeholder="예: 공동현관 비밀번호 #1234, 문 앞에 놓아주세요"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    </div>
 
-                  {/* 기본 배송지로 저장 체크박스 */}
-                  {!hasDefaultAddress && (
+                    {/* 기본 배송지로 저장 체크박스 */}
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <div className="flex items-start">
                         <input
@@ -706,8 +648,8 @@ export default function CheckoutPage() {
                         </label>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
               )}
 
@@ -738,20 +680,40 @@ export default function CheckoutPage() {
             {/* 주문 요약 */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
-                <h2 className="text-xl font-bold mb-4">주문 상품</h2>
+                <h2 className="text-xl font-bold mb-4">주문 요약</h2>
                 
-                <div className="space-y-3 mb-6 max-h-60 overflow-y-auto">
-                  {items.map((item, index) => {
-                    const itemPrice = item.discount_percent && item.discount_percent > 0
-                      ? Math.round(item.price * (100 - item.discount_percent) / 100)
-                      : item.price
-                    return (
-                      <div key={item.id || `${item.productId}-${index}`} className="flex justify-between text-sm">
-                        <span className="flex-1 truncate">{item.name} x {item.quantity}</span>
-                        <span className="font-semibold ml-2">{formatPrice(itemPrice * item.quantity)}원</span>
-                      </div>
-                    )
-                  })}
+                {/* 배송 방법 표시 */}
+                <div className="mb-2 pb-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">배송 방법</span>
+                    <span className="font-semibold">
+                      {deliveryMethod === 'pickup' && '픽업'}
+                      {deliveryMethod === 'quick' && '퀵배송'}
+                      {deliveryMethod === 'regular' && '택배배송'}
+                    </span>
+                  </div>
+                  {deliveryMethod === 'pickup' && pickupTime && (
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-gray-600">픽업 시간</span>
+                      <span className="font-semibold">{pickupTime}</span>
+                    </div>
+                  )}
+                  {deliveryMethod === 'quick' && (
+                    <>
+                      {quickDeliveryArea && (
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-gray-600">배달 지역</span>
+                          <span className="font-semibold">{quickDeliveryArea}</span>
+                        </div>
+                      )}
+                      {quickDeliveryTime && (
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-gray-600">배달 시간</span>
+                          <span className="font-semibold">{quickDeliveryTime}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 {mounted ? (
@@ -759,8 +721,14 @@ export default function CheckoutPage() {
                     <div className="border-t pt-4 space-y-3 mb-6">
                       <div className="flex justify-between">
                         <span className="text-gray-600">상품 금액</span>
-                        <span className="font-semibold">{formatPrice(subtotal)}원</span>
+                        <span className="font-semibold">{formatPrice(originalTotal)}원</span>
                       </div>
+                      {discountAmount > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">즉시할인</span>
+                          <span className="font-semibold text-red-600">-{formatPrice(discountAmount)}원</span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-gray-600">배송비</span>
                         <span className="font-semibold">
@@ -769,7 +737,7 @@ export default function CheckoutPage() {
                       </div>
                       <div className="border-t pt-3">
                         <div className="flex justify-between text-lg font-bold">
-                          <span>총 결제 금액</span>
+                          <span>결제 예상 금액</span>
                           <span className="text-primary-900">{formatPrice(total)}원</span>
                         </div>
                       </div>
@@ -790,13 +758,13 @@ export default function CheckoutPage() {
 
         {/* 하단 고정 결제 버튼 */}
         {mounted && (
-          <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
-            <div className="container mx-auto px-4 py-3">
+          <div className="fixed bottom-0 left-0 right-0 z-40 bg-white shadow-lg">
+            <div className="px-0 pb-6">
               <button
                 type="submit"
                 form="checkout-form"
                 disabled={isProcessing}
-                className="w-full bg-primary-800 text-white py-4 rounded-lg font-bold text-lg hover:bg-primary-900 transition disabled:bg-gray-400 flex items-center justify-center gap-2"
+                className="w-full bg-red-600 text-white py-3 text-lg font-semibold hover:bg-red-700 transition disabled:bg-gray-400 flex items-center justify-center gap-2"
               >
                 {isProcessing ? (
                   <>
