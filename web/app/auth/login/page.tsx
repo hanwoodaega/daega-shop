@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import BottomNavbar from '@/components/BottomNavbar'
 
 function LoginForm() {
   const router = useRouter()
@@ -170,6 +171,7 @@ function LoginForm() {
       </main>
 
       <Footer />
+      <BottomNavbar />
     </div>
   )
 }
@@ -187,6 +189,7 @@ export default function LoginPage() {
           </div>
         </main>
         <Footer />
+        <BottomNavbar />
       </div>
     }>
       <LoginForm />
