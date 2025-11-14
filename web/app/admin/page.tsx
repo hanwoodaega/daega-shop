@@ -20,7 +20,6 @@ export default function AdminPage() {
     unit: '1팩',
     weight: '0',
     origin: '국내산',
-    discount_percent: '',
     product_info: '',
   })
   
@@ -88,7 +87,6 @@ export default function AdminPage() {
         unit: form.unit.trim(),
         weight: Number(form.weight),
         origin: form.origin.trim(),
-        discount_percent: form.discount_percent === '' ? null : Number(form.discount_percent),
       }
       const res = await fetch('/api/admin/products', {
         method: 'POST',
@@ -101,7 +99,7 @@ export default function AdminPage() {
         return
       }
       setUiState(prev => ({ ...prev, message: '상품이 등록되었습니다.', loading: false }))
-      setForm({ ...form, brand: '', name: '', description: '', price: '', image_url: '', stock: '999', weight: '0', discount_percent: '' })
+      setForm({ ...form, brand: '', name: '', description: '', price: '', image_url: '', stock: '999', weight: '0' })
       if (fileInputRef.current) fileInputRef.current.value = ''
       await fetchList()
     } catch (error) {
@@ -195,7 +193,6 @@ export default function AdminPage() {
           category: editing.category,
           unit: editing.unit,
           origin: editing.origin,
-          discount_percent: editing.discount_percent === '' || editing.discount_percent === undefined ? null : Number(editing.discount_percent),
           is_new: editing.is_new || false,
           is_best: editing.is_best || false,
           is_sale: editing.is_sale || false,
@@ -214,6 +211,7 @@ export default function AdminPage() {
     }
   }
 
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow">
@@ -221,10 +219,28 @@ export default function AdminPage() {
           <h1 className="text-lg font-bold">관리자 - 상품 등록</h1>
           <div className="flex items-center gap-3">
             <button 
+              onClick={() => router.push('/admin/discounts')}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+            >
+              할인 관리
+            </button>
+            <button 
               onClick={() => router.push('/admin/promotions')}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
             >
               프로모션 관리
+            </button>
+            <button 
+              onClick={() => router.push('/admin/flash-sales')}
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition text-sm font-medium"
+            >
+              타임딜 관리
+            </button>
+            <button 
+              onClick={() => router.push('/admin/coupons')}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm font-medium"
+            >
+              쿠폰 관리
             </button>
             <button 
               onClick={() => router.push('/admin/orders')}
@@ -266,10 +282,6 @@ export default function AdminPage() {
               <label className="block text-sm font-medium mb-1">중량(g)</label>
               <input name="weight" type="number" value={form.weight} onChange={handleChange} className="w-full border rounded px-3 py-2" />
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">할인율(%)</label>
-            <input name="discount_percent" type="number" min="0" max="100" value={form.discount_percent} onChange={handleChange} className="w-full border rounded px-3 py-2" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">원산지</label>

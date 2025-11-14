@@ -11,6 +11,8 @@ import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import { supabase, Product, isSupabaseConfigured } from '@/lib/supabase'
 import CategoryGrid from '@/components/CategoryGrid'
+import FlashSaleSection from '@/components/FlashSaleSection'
+import RecentlyViewedSection from '@/components/RecentlyViewedSection'
 
 export default function Home() {
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])
@@ -20,6 +22,8 @@ export default function Home() {
   const [sortOrder, setSortOrder] = useState<'default' | 'price_asc' | 'price_desc'>('default')
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  const [showSortModal, setShowSortModal] = useState(false)
+  const [totalProductCount, setTotalProductCount] = useState<number>(0)
   const PAGE_SIZE = 20
 
   const fetchProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
@@ -52,6 +56,7 @@ export default function Home() {
 
       if (pageNum === 1) {
         setDisplayedProducts(data || [])
+        setTotalProductCount(count || 0)
       } else {
         // 중복 방지: 이미 있는 상품은 제외하고 추가
         setDisplayedProducts(prev => {
@@ -135,26 +140,35 @@ export default function Home() {
         </section>
 
         {/* 카테고리 - 모바일만 표시 */}
-        <section className="py-3 bg-gray-100 md:hidden">
+        <section className="py-3 bg-white md:hidden">
           <div className="container mx-auto px-4">
             <CategoryGrid selectedCategory="" />
           </div>
         </section>
 
+        {/* 타임딜/플래시 세일 섹션 */}
+        <FlashSaleSection />
+
+        {/* 최근 본 상품 */}
+        <RecentlyViewedSection />
+
         {/* 전체 상품 */}
         <section className="pt-6 pb-16 bg-gray-50">
           <div className="container mx-auto px-4">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-primary-900">상품 목록</h2>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as 'default' | 'price_asc' | 'price_desc')}
-                className="px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-800 focus:border-transparent transition"
+              <div>
+                {!loading && totalProductCount > 0 && (
+                  <p className="text-sm text-gray-500">
+                    <span className="font-bold text-gray-900">{totalProductCount}</span>개의 상품이 있습니다
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setShowSortModal(true)}
+                className="px-3 py-1.5 text-xs text-gray-700 bg-white hover:bg-gray-50 transition"
               >
-                <option value="default">최신순</option>
-                <option value="price_asc">낮은 가격순</option>
-                <option value="price_desc">높은 가격순</option>
-              </select>
+                {sortOrder === 'default' ? '최신순' : sortOrder === 'price_asc' ? '낮은 가격순' : '높은 가격순'} ▼
+              </button>
             </div>
 
             {loading ? (
@@ -202,6 +216,85 @@ export default function Home() {
       <Footer />
       <BottomNavbar />
       <PromotionModalWrapper />
+
+      {/* 정렬 모달 (하단에서 올라오는) */}
+      {showSortModal && (
+        <>
+          <div 
+            className="fixed inset-0 z-40 bg-black/50"
+            onClick={() => setShowSortModal(false)}
+          />
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl animate-slide-up">
+            <div className="px-4 pt-4 pb-6">
+              <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+              <h3 className="text-sm font-bold text-center mb-3">정렬 기준</h3>
+              <div className="border-b border-gray-200 mb-4" />
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    setSortOrder('default')
+                    setShowSortModal(false)
+                  }}
+                  className="w-full py-3 px-4 flex items-center gap-3 text-left rounded-lg transition hover:bg-gray-50"
+                >
+                  <div className="flex-shrink-0">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      sortOrder === 'default'
+                        ? 'border-primary-800'
+                        : 'border-gray-300'
+                    }`}>
+                      {sortOrder === 'default' && (
+                        <div className="w-3 h-3 rounded-full bg-primary-800" />
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-700">최신순</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setSortOrder('price_asc')
+                    setShowSortModal(false)
+                  }}
+                  className="w-full py-3 px-4 flex items-center gap-3 text-left rounded-lg transition hover:bg-gray-50"
+                >
+                  <div className="flex-shrink-0">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      sortOrder === 'price_asc'
+                        ? 'border-primary-800'
+                        : 'border-gray-300'
+                    }`}>
+                      {sortOrder === 'price_asc' && (
+                        <div className="w-3 h-3 rounded-full bg-primary-800" />
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-700">낮은 가격순</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setSortOrder('price_desc')
+                    setShowSortModal(false)
+                  }}
+                  className="w-full py-3 px-4 flex items-center gap-3 text-left rounded-lg transition hover:bg-gray-50"
+                >
+                  <div className="flex-shrink-0">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      sortOrder === 'price_desc'
+                        ? 'border-primary-800'
+                        : 'border-gray-300'
+                    }`}>
+                      {sortOrder === 'price_desc' && (
+                        <div className="w-3 h-3 rounded-full bg-primary-800" />
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-700">높은 가격순</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -79,17 +79,6 @@ export default function ProductEditModal({ editing, setEditing, saveEdit, saving
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-600 mb-1">할인율(%)</label>
-            <input 
-              type="number" 
-              min={0} 
-              max={100} 
-              className="w-full border rounded px-3 py-2" 
-              value={editing.discount_percent ?? ''} 
-              onChange={(e)=>setEditing({ ...editing, discount_percent: e.target.value })} 
-            />
-          </div>
-                <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-2">상품 필터 태그 (중복 가능)</label>
                   <div className="grid grid-cols-2 gap-2">
               <label className="flex items-center space-x-2 cursor-pointer p-2 border rounded hover:bg-gray-50">

@@ -50,6 +50,8 @@ export async function POST(request: NextRequest) {
         name: userData.response.name,
         profile_image: userData.response.profile_image,
         mobile: userData.response.mobile, // 전화번호 (선택적 동의 필요)
+        birthday: userData.response.birthday || null, // 생일 (YYYY-MM-DD 형식, 선택적 동의 필요)
+        birthyear: userData.response.birthyear || null, // 출생연도 (선택적 동의 필요)
       },
     })
   } catch (error: any) {

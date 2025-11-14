@@ -6,6 +6,8 @@ import { supabase, Product } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { addCartItemWithDB } from '@/lib/cart-db'
 import { formatPrice, getPromotionRequiredCount, getPromotionPaidCount, getTotalPromoQuantity } from '@/lib/utils'
+import { generatePromotionGroupId, processPromotionItems } from '@/lib/promotion-utils'
+import { CartItem } from '@/lib/store'
 
 interface PromotionModalProps {
   isOpen: boolean
@@ -94,10 +96,10 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
     }
 
     // 프로모션 그룹 ID 생성
-    const groupId = `promo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const groupId = generatePromotionGroupId()
 
-    // 선택한 상품들을 가격 순으로 정렬
-    const selectedItems: {product: Product, quantity: number}[] = []
+    // 선택한 상품들을 배열로 변환
+    const selectedItems: { product: Product; quantity: number }[] = []
     Object.entries(promoQuantities).forEach(([productId, qty]) => {
       if (qty > 0) {
         const p = promotionProducts.find(p => p.id === productId)
@@ -107,31 +109,19 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
       }
     })
     
-    // 가격 순 정렬 (높은 가격 → 낮은 가격)
-    selectedItems.sort((a, b) => b.product.price - a.product.price)
-    
-    // 각 상품을 개별로 추가
+    // 프로모션 상품 처리 (가격 정렬 + 무료 상품 결정)
     const paidCount = getPromotionPaidCount(product.promotion_type)
-    let remaining = paidCount
+    const cartItems = processPromotionItems(selectedItems, paidCount)
     
-    selectedItems.forEach(({ product: p, quantity }) => {
-      for (let i = 0; i < quantity; i++) {
-        const isFree = remaining <= 0
-        const cartItem = {
-          productId: p.id,
-          name: p.name,
-          price: p.price,
-          quantity: 1,
-          imageUrl: p.image_url,
-          discount_percent: isFree ? 100 : (p.discount_percent ?? undefined),
-          brand: p.brand ?? undefined,
-          promotion_type: product.promotion_type ?? undefined,
-          promotion_group_id: groupId,
-          stock: p.stock,
-        }
-        addCartItemWithDB(user?.id || null, cartItem)
-        remaining--
+    // 각 상품을 장바구니에 추가 (같은 그룹 ID로 묶음)
+    cartItems.forEach(cartItem => {
+      const fullCartItem: CartItem = {
+        ...cartItem,
+        promotion_group_id: groupId,
+        promotion_type: product.promotion_type ?? undefined,
+        selected: true, // 기본값
       }
+      addCartItemWithDB(user?.id || null, fullCartItem)
     })
 
     onClose()

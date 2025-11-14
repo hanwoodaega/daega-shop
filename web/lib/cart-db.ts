@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import { useCartStore, CartItem } from './store'
 import toast from 'react-hot-toast'
 import { debugLog } from './debug'
+import { getDiscountPercent } from './promotion-utils'
 
 // DB에서 장바구니 불러오기
 export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
@@ -39,6 +40,13 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
     // localStorage 형식으로 변환 (상품의 최신 정보 우선 사용)
     const items = data?.map((item: any) => {
       const product = Array.isArray(item.products) ? item.products[0] : item.products
+      // 할인율 결정 (프로모션 그룹 여부에 따라 우선순위 다름)
+      const discountPercent = getDiscountPercent(
+        item.discount_percent,
+        product?.discount_percent,
+        !!item.promotion_group_id
+      )
+      
       return {
         id: item.id,
         productId: item.product_id,
@@ -46,7 +54,7 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
         price: product?.price || 0, // 상품의 최신 가격 사용
         quantity: item.quantity,
         imageUrl: product?.image_url || '',
-        discount_percent: product?.discount_percent ?? item.discount_percent, // 상품의 최신 할인율 우선
+        discount_percent: discountPercent,
         brand: product?.brand,
         promotion_type: item.promotion_type as '1+1' | '2+1' | '3+1' | undefined,
         promotion_group_id: item.promotion_group_id,
@@ -213,7 +221,11 @@ export async function removeFromCartDB(userId: string, cartId: string, promotion
   }
 }
 
-// 로그인 시 DB에서 불러와서 localStorage와 병합
+/**
+ * 로그인 시 장바구니 동기화
+ * - localStorage의 항목을 DB에 병합
+ * - DB의 최신 데이터로 전체 동기화
+ */
 export async function syncCartOnLogin(userId: string): Promise<void> {
   try {
     const localItems = useCartStore.getState().items
@@ -221,7 +233,7 @@ export async function syncCartOnLogin(userId: string): Promise<void> {
 
     // localStorage에만 있는 항목들을 DB에 추가
     for (const item of localItems) {
-      // DB에 이미 있는지 확인
+      // DB에 이미 있는지 확인 (일반 상품은 productId만, 프로모션은 group_id도 확인)
       const existsInDB = dbItems.some(dbItem => 
         dbItem.productId === item.productId && 
         dbItem.promotion_group_id === item.promotion_group_id
@@ -232,75 +244,123 @@ export async function syncCartOnLogin(userId: string): Promise<void> {
       }
     }
 
-    // DB 데이터로 전체 동기화
+    // DB의 최신 데이터로 전체 동기화 (가격, 재고 등 최신 정보 반영)
     const updatedItems = await loadCartFromDB(userId)
     useCartStore.setState({ items: updatedItems })
-
-    // 동기화 알림 제거 (조용하게 동기화)
   } catch (error) {
     console.error('장바구니 동기화 실패:', error)
+    // 동기화 실패해도 기존 localStorage 데이터는 유지
   }
 }
 
-// 장바구니 추가 (Optimistic Update + DB 저장)
+/**
+ * 장바구니 추가 (Optimistic Update + DB 저장)
+ * - 즉시 UI 업데이트 후 DB에 저장
+ * - 실패 시 자동 롤백
+ */
 export async function addCartItemWithDB(userId: string | null, item: CartItem): Promise<void> {
-  // Optimistic update
-  useCartStore.getState().addItem(item)
-
-  // DB 저장 (로그인 시)
+  const store = useCartStore.getState()
+  const previousItems = store.items
+  
+  // 1. Optimistic update: 즉시 UI 업데이트
+  store.addItem(item)
+  
+  // 2. DB 저장 (로그인 시만)
   if (userId) {
-    const dbId = await addToCartDB(userId, item)
-    
-    if (dbId) {
-      // DB ID로 업데이트
-      const items = useCartStore.getState().items
-      const lastItem = items[items.length - 1]
-      if (lastItem && !lastItem.id?.startsWith('cart-')) {
-        // 이미 DB ID를 가지고 있으면 건너뜀
+    try {
+      const dbId = await addToCartDB(userId, item)
+      
+      if (dbId) {
+        // DB ID로 업데이트
+        const currentItems = useCartStore.getState().items
+        const lastItem = currentItems[currentItems.length - 1]
+        
+        // 임시 ID를 DB ID로 교체
+        if (lastItem && lastItem.id?.startsWith('cart-')) {
+          useCartStore.setState({
+            items: currentItems.map((i, idx) => 
+              idx === currentItems.length - 1 ? { ...i, id: dbId } : i
+            )
+          })
+        }
       } else {
-        // DB ID로 교체
-        useCartStore.setState({
-          items: items.map((i, idx) => 
-            idx === items.length - 1 ? { ...i, id: dbId } : i
-          )
-        })
+        // DB 저장 실패 시 롤백
+        useCartStore.setState({ items: previousItems })
+        toast.error('장바구니 추가에 실패했습니다.')
       }
+    } catch (error) {
+      // 에러 발생 시 롤백
+      useCartStore.setState({ items: previousItems })
+      console.error('장바구니 추가 실패:', error)
+      toast.error('장바구니 추가에 실패했습니다.')
     }
   }
 }
 
-// 장바구니 제거 (Optimistic Update + DB 삭제)
+/**
+ * 장바구니 제거 (Optimistic Update + DB 삭제)
+ * - 즉시 UI 업데이트 후 DB에서 삭제
+ * - 실패 시 자동 롤백
+ */
 export async function removeCartItemWithDB(
   userId: string | null, 
   itemId: string, 
   promotionGroupId?: string
 ): Promise<void> {
-  // Optimistic update
-  useCartStore.getState().removeItem(itemId)
+  const store = useCartStore.getState()
+  const previousItems = store.items
+  
+  // 1. Optimistic update: 즉시 UI 업데이트
+  store.removeItem(itemId)
 
-  // DB 삭제 (로그인 시, DB ID인 경우만)
+  // 2. DB 삭제 (로그인 시, DB ID인 경우만)
   if (userId && itemId && !itemId.startsWith('cart-')) {
-    const success = await removeFromCartDB(userId, itemId, promotionGroupId)
-    if (!success) {
-      console.error('DB 삭제 실패 (로컬은 이미 삭제됨)')
+    try {
+      const success = await removeFromCartDB(userId, itemId, promotionGroupId)
+      if (!success) {
+        // DB 삭제 실패 시 롤백
+        useCartStore.setState({ items: previousItems })
+        toast.error('장바구니에서 제거하는데 실패했습니다.')
+      }
+    } catch (error) {
+      // 에러 발생 시 롤백
+      useCartStore.setState({ items: previousItems })
+      console.error('장바구니 제거 실패:', error)
+      toast.error('장바구니에서 제거하는데 실패했습니다.')
     }
   }
 }
 
-// 장바구니 수량 수정 (Optimistic Update + DB 수정)
+/**
+ * 장바구니 수량 수정 (Optimistic Update + DB 수정)
+ * - 즉시 UI 업데이트 후 DB에 반영
+ * - 실패 시 자동 롤백
+ */
 export async function updateCartQuantityWithDB(
   userId: string | null,
   itemId: string,
   quantity: number
 ): Promise<void> {
-  // Optimistic update
-  useCartStore.getState().updateQuantity(itemId, quantity)
+  const store = useCartStore.getState()
+  const previousItems = store.items
+  
+  // 1. Optimistic update: 즉시 UI 업데이트
+  store.updateQuantity(itemId, quantity)
 
-  // DB 수정 (로그인 시, DB ID인 경우만)
+  // 2. DB 수정 (로그인 시, DB ID인 경우만)
   if (userId && itemId && !itemId.startsWith('cart-')) {
-    const success = await updateCartQuantityDB(userId, itemId, quantity)
-    if (!success) {
-      console.error('DB 수량 수정 실패 (로컬은 이미 수정됨)')
+    try {
+      const success = await updateCartQuantityDB(userId, itemId, quantity)
+      if (!success) {
+        // DB 수정 실패 시 롤백
+        useCartStore.setState({ items: previousItems })
+        toast.error('수량 변경에 실패했습니다.')
+      }
+    } catch (error) {
+      // 에러 발생 시 롤백
+      useCartStore.setState({ items: previousItems })
+      console.error('장바구니 수량 수정 실패:', error)
+      toast.error('수량 변경에 실패했습니다.')
     }
   }
 }

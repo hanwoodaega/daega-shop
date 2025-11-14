@@ -30,7 +30,7 @@ export default function CategoryGrid({ selectedCategory = '전체' }: CategoryGr
           className="flex flex-col items-center"
         >
           <div
-            className={`relative w-16 h-16 rounded-full bg-gray-200 overflow-hidden hover:scale-110 transition shadow-md flex items-center justify-center ${
+            className={`relative w-16 h-16 rounded-full bg-white overflow-hidden hover:scale-110 transition shadow-lg flex items-center justify-center ${
               selectedCategory === cat ? 'border-[3px] border-black' : ''
             }`}
           >

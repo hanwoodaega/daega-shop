@@ -49,6 +49,18 @@ function NaverCallbackContent() {
       // 전화번호 처리 (하이픈 제거)
       const phoneNumber = user.mobile ? user.mobile.replace(/[^0-9]/g, '') : null
       
+      // 생일 처리 (birthday와 birthyear 조합)
+      let birthday = null
+      if (user.birthday && user.birthyear) {
+        // birthday는 MM-DD 형식, birthyear는 YYYY 형식
+        birthday = `${user.birthyear}-${user.birthday}`
+      } else if (user.birthday) {
+        // birthyear가 없으면 월-일만 있음 (MM-DD 형식)
+        // 생일 쿠폰 지급 시 월만 추출하기 위해 임의의 연도(1900) 사용
+        // 실제 연도는 중요하지 않음 (월만 비교하므로)
+        birthday = `1900-${user.birthday}`
+      }
+      
       // 먼저 로그인 시도
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user.email,
@@ -83,21 +95,34 @@ function NaverCallbackContent() {
             throw new Error('로그인에 실패했습니다. 고객센터에 문의해주세요.')
           }
         } else {
-          // 회원가입 성공 후 전화번호를 users 테이블에도 저장
-          if (phoneNumber) {
+          // 회원가입 성공 후 users 테이블에 정보 저장
+          const { data: authUser } = await supabase.auth.getUser()
+          if (authUser?.user) {
             await supabase
               .from('users')
-              .update({ phone: phoneNumber })
-              .eq('email', user.email)
+              .upsert({
+                id: authUser.user.id,
+                email: user.email,
+                name: user.name,
+                phone: phoneNumber || null,
+                birthday: birthday,
+              })
           }
         }
       } else {
-        // 기존 사용자 로그인 성공 - 전화번호 업데이트 (있는 경우)
-        if (phoneNumber) {
+        // 기존 사용자 로그인 성공 - 정보 업데이트 (있는 경우)
+        const { data: authUser } = await supabase.auth.getUser()
+        if (authUser?.user) {
+          const updateData: any = {
+            id: authUser.user.id,
+            email: user.email,
+            name: user.name,
+            phone: phoneNumber || null,
+            birthday: birthday, // 생일이 없으면 null로 저장
+          }
           await supabase
             .from('users')
-            .update({ phone: phoneNumber })
-            .eq('email', user.email)
+            .upsert(updateData)
         }
       }
 

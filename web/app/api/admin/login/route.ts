@@ -1,4 +1,17 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+
+// GET: 관리자 인증 상태 확인
+export async function GET() {
+  const cookieStore = cookies()
+  const cookie = cookieStore.get('admin_auth')
+  
+  if (!cookie || cookie.value !== '1') {
+    return NextResponse.json({ authenticated: false }, { status: 401 })
+  }
+  
+  return NextResponse.json({ authenticated: true })
+}
 
 export async function POST(request: Request) {
   const { password } = await request.json().catch(() => ({ password: '' }))

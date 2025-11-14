@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [name, setName] = useState('')
+  const [birthday, setBirthday] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -35,7 +36,7 @@ export default function SignupPage() {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data: authData, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -46,6 +47,28 @@ export default function SignupPage() {
       })
 
       if (error) throw error
+
+      // users 테이블에 생년월일 저장
+      if (authData.user && birthday) {
+        await supabase
+          .from('users')
+          .upsert({
+            id: authData.user.id,
+            email: email,
+            name: name,
+            birthday: birthday,
+          })
+      }
+
+      // 첫구매 쿠폰 지급
+      try {
+        await fetch('/api/users/signup-coupon', {
+          method: 'POST',
+        })
+      } catch (couponError) {
+        // 쿠폰 지급 실패해도 회원가입은 성공으로 처리
+        console.error('첫구매 쿠폰 지급 실패:', couponError)
+      }
 
       setSuccess(true)
     } catch (error: any) {
@@ -152,6 +175,23 @@ export default function SignupPage() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-700"
                   placeholder="비밀번호 재입력"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  생년월일
+                </label>
+                <input
+                  type="date"
+                  value={birthday}
+                  onChange={(e) => setBirthday(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-700"
+                  max={new Date().toISOString().split('T')[0]}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  생일 쿠폰 등 특별 혜택을 받으실 수 있습니다
+                </p>
               </div>
 
               <button

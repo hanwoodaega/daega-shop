@@ -52,19 +52,75 @@ function CartPageContent() {
     setMounted(true)
   }, [])
 
-  // 로그인 사용자 - DB에서 장바구니 로드 (최초 1회만)
-  const hasLoadedCart = useRef(false)
+  // 로그인 사용자 - DB에서 장바구니 로드 및 실시간 가격 갱신
+  const channelRef = useRef<any>(null)
+  
+  // productIds를 useMemo로 최적화하여 불필요한 재실행 방지
+  const productIdsString = useMemo(() => {
+    const ids = items.map(item => item.productId).filter(Boolean).sort()
+    return ids.join(',')
+  }, [items])
+  
   useEffect(() => {
+    if (!user?.id) return
+
     const loadCart = async () => {
-      if (user?.id && !hasLoadedCart.current) {
-        hasLoadedCart.current = true
-        const dbItems = await loadCartFromDB(user.id)
-        useCartStore.setState({ items: dbItems })
-      }
+      const dbItems = await loadCartFromDB(user.id)
+      useCartStore.setState({ items: dbItems })
     }
     
+    // 초기 로드
     loadCart()
-  }, [user?.id])
+    
+    // 페이지 포커스 시 갱신 (다른 탭에서 돌아올 때)
+    const handleFocus = () => {
+      loadCart()
+    }
+    window.addEventListener('focus', handleFocus)
+    
+    // Supabase Realtime 구독: 상품 가격/할인율 변경 시 장바구니 갱신
+    const productIds = items.map(item => item.productId).filter(Boolean)
+    
+    // 기존 channel이 있으면 먼저 제거 (중복 구독 방지)
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current)
+      channelRef.current = null
+    }
+    
+    if (productIds.length > 0) {
+      const channelName = `product-price-changes-${user.id}`
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'products',
+            filter: `id=in.(${productIds.join(',')})`
+          },
+          (payload: any) => {
+            // 상품 가격이나 할인율이 변경되면 장바구니 갱신
+            if (payload.new.price !== payload.old?.price || 
+                payload.new.discount_percent !== payload.old?.discount_percent) {
+              loadCart()
+            }
+          }
+        )
+        .subscribe()
+      
+      channelRef.current = channel
+    }
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      // cleanup: 기존 channel 제거
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+    }
+  }, [user?.id, productIdsString, items])
 
   // ✅ 공통 hook 사용
   const { address: defaultAddress, loading: loadingAddress, reload: reloadDefaultAddress } = useDefaultAddress(true)

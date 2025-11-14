@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { Product } from '@/lib/supabase'
-import { useCartStore, useWishlistStore, usePromotionModalStore } from '@/lib/store'
+import { useWishlistStore, usePromotionModalStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
 import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart-db'
@@ -19,7 +19,6 @@ interface ProductCardProps {
 
 function ProductCard({ product }: ProductCardProps) {
   // ✅ Zustand selector 패턴 - 필요한 것만 구독
-  const addItem = useCartStore((state) => state.addItem)
   const isWished = useWishlistStore((state) => state.items.includes(product.id))
   const openPromotionModal = usePromotionModalStore((state) => state.openModal)
   const { user } = useAuth()
@@ -179,6 +178,7 @@ function ProductCard({ product }: ProductCardProps) {
             </div>
           )}
           <h3 className="text-sm font-medium mb-0 line-clamp-1 text-primary-900 leading-tight tracking-tight">{product.name}</h3>
+          
           {/* 가격 영역을 2줄로 고정하여 카드 높이를 통일 */}
           {product.discount_percent && product.discount_percent > 0 ? (
             <>
@@ -204,20 +204,6 @@ function ProductCard({ product }: ProductCardProps) {
             </>
           )}
           
-          {/* 리뷰 정보 */}
-          {(product.review_count ?? 0) > 0 && (
-            <div className="flex items-center gap-1 mt-1">
-              {/* 별 5개 */}
-              <StarIcons rating={product.average_rating || 0} size="sm" />
-              <span className="text-sm text-black font-medium">
-                {product.average_rating?.toFixed(1) || '0.0'}
-              </span>
-              <span className="text-sm text-gray-500">
-                ({product.review_count})
-              </span>
-            </div>
-          )}
-          
           {/* 프로모션 상품 버튼 */}
           {product.promotion_type && (
             <button
@@ -231,6 +217,20 @@ function ProductCard({ product }: ProductCardProps) {
               <span>{product.promotion_type} 상품 골라담기</span>
               <span className="text-gray-600">❯</span>
             </button>
+          )}
+          
+          {/* 리뷰 정보 */}
+          {(product.review_count ?? 0) > 0 && (
+            <div className="flex items-center gap-1 mt-1">
+              {/* 별 5개 */}
+              <StarIcons rating={product.average_rating || 0} size="sm" />
+              <span className="text-sm text-black font-medium">
+                {product.average_rating?.toFixed(1) || '0.0'}
+              </span>
+              <span className="text-sm text-gray-500">
+                ({product.review_count})
+              </span>
+            </div>
           )}
         </div>
       </div>

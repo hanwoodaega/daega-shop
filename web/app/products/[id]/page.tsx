@@ -19,6 +19,7 @@ import {
   formatPrice, 
   calculateDiscountedPrice, 
 } from '@/lib/utils'
+import { saveRecentlyViewed } from '@/lib/recently-viewed'
 
 export default function ProductDetailPage() {
   const params = useParams()
@@ -69,6 +70,13 @@ export default function ProductDetailPage() {
   useEffect(() => {
     fetchProduct()
   }, [fetchProduct])
+
+  // 최근 본 상품 저장
+  useEffect(() => {
+    if (productId) {
+      saveRecentlyViewed(productId)
+    }
+  }, [productId])
 
   // product의 average_rating을 설정
   useEffect(() => {

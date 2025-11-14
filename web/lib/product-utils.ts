@@ -43,6 +43,54 @@ export function isOutOfStock(stock: number): boolean {
   return stock <= 0
 }
 
+/**
+ * 타임딜 진행 중인지 확인
+ */
+export function isFlashSaleActive(product: Product): boolean {
+  if (!product.flash_sale_end_time || !product.flash_sale_price) {
+    return false
+  }
+  const now = new Date().getTime()
+  const endTime = new Date(product.flash_sale_end_time).getTime()
+  
+  // 종료 시간이 지났으면 비활성화
+  if (now >= endTime) {
+    return false
+  }
+  
+  // 시작 시간이 설정되어 있으면 시작 시간 체크
+  if (product.flash_sale_start_time) {
+    const startTime = new Date(product.flash_sale_start_time).getTime()
+    return now >= startTime
+  }
+  
+  // 시작 시간이 없으면 즉시 시작 (활성화)
+  return true
+}
+
+/**
+ * 타임딜 남은 시간 계산 (초 단위)
+ */
+export function getFlashSaleRemainingSeconds(product: Product): number | null {
+  if (!product.flash_sale_end_time) {
+    return null
+  }
+  const endTime = new Date(product.flash_sale_end_time).getTime()
+  const now = new Date().getTime()
+  const remaining = Math.max(0, Math.floor((endTime - now) / 1000))
+  return remaining > 0 ? remaining : null
+}
+
+/**
+ * 타임딜 가격 가져오기 (활성화된 경우)
+ */
+export function getFlashSalePrice(product: Product): number | null {
+  if (isFlashSaleActive(product) && product.flash_sale_price) {
+    return product.flash_sale_price
+  }
+  return null
+}
+
 
 
 

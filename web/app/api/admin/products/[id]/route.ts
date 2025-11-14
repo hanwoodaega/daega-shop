@@ -51,7 +51,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   
   const body = await request.json().catch(() => ({}))
-  const allowed = ['brand','name','description','price','image_url','category','stock','unit','weight','origin','discount_percent','promotion_type','promotion_products','is_new','is_best','is_sale','is_budget'] as const
+  const allowed = ['brand','name','description','price','image_url','category','stock','unit','weight','origin','discount_percent','promotion_type','promotion_products','is_new','is_best','is_sale','is_budget','flash_sale_start_time','flash_sale_end_time','flash_sale_price','flash_sale_stock'] as const
   const updates: Record<string, any> = {}
   
   for (const key of allowed) {
@@ -78,6 +78,24 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   // 프로모션 타입 없으면 교차 상품도 null
   if ('promotion_type' in updates && !updates.promotion_type) {
     updates.promotion_products = null
+  }
+  
+  // 타임딜 필드 검증
+  if ('flash_sale_price' in updates) {
+    const v = Number(updates.flash_sale_price)
+    updates.flash_sale_price = isNaN(v) || v <= 0 ? null : v
+  }
+  
+  if ('flash_sale_stock' in updates) {
+    const v = Number(updates.flash_sale_stock)
+    updates.flash_sale_stock = isNaN(v) || v <= 0 ? null : v
+  }
+  
+  // 타임딜 종료 시간이 없으면 타임딜 시작 시간, 가격, 재고도 null
+  if ('flash_sale_end_time' in updates && !updates.flash_sale_end_time) {
+    updates.flash_sale_start_time = null
+    updates.flash_sale_price = null
+    updates.flash_sale_stock = null
   }
   
   if (Object.keys(updates).length === 0) {

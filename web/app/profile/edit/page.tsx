@@ -14,6 +14,7 @@ export default function ProfileEditPage() {
   
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [birthday, setBirthday] = useState('')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -41,7 +42,7 @@ export default function ProfileEditPage() {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('name, phone')
+        .select('name, phone, birthday')
         .eq('id', user!.id)
         .single()
 
@@ -50,6 +51,11 @@ export default function ProfileEditPage() {
       if (data) {
         setName(data.name || '')
         setPhone(data.phone || '')
+        // birthday를 YYYY-MM-DD 형식으로 변환
+        if (data.birthday) {
+          const date = new Date(data.birthday)
+          setBirthday(date.toISOString().split('T')[0])
+        }
       }
     } catch (error) {
       console.error('사용자 정보 조회 실패:', error)
@@ -69,6 +75,7 @@ export default function ProfileEditPage() {
         .update({
           name: name.trim(),
           phone: phone.trim(),
+          birthday: birthday || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', user!.id)
@@ -228,6 +235,22 @@ export default function ProfileEditPage() {
                 maxLength={11}
               />
               <p className="text-xs text-gray-500 mt-1">숫자만 입력하세요 (하이픈 없이)</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                생년월일
+              </label>
+              <input
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                max={new Date().toISOString().split('T')[0]}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                생일 쿠폰 등 특별 혜택을 받으실 수 있습니다
+              </p>
             </div>
 
             <button
