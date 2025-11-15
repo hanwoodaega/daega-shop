@@ -7,6 +7,7 @@ import { assertAdmin } from '@/lib/admin-auth'
  * POST /api/admin/coupons/issue
  * 
  * 조건:
+ * - conditions.phone: 특정 개인 지급용 전화번호 (하이픈 없이 숫자만)
  * - conditions.birthday_month: 이번 달 생일인 사용자 (1-12)
  * - conditions.min_purchase_amount: 최소 구매 금액
  * - conditions.purchase_period_start: 구매 기간 시작 (ISO string)
@@ -188,6 +189,7 @@ async function filterUsersByConditions(
   supabase: any,
   users: any[],
   conditions: {
+    phone?: string
     birthday_month?: number
     min_purchase_amount?: number
     purchase_period_start?: string
@@ -196,6 +198,33 @@ async function filterUsersByConditions(
   }
 ): Promise<any[]> {
   let filteredUsers = users
+
+  // 전화번호 조건: 특정 개인 지급
+  if (conditions.phone) {
+    const phoneNumber = conditions.phone.replace(/[^0-9]/g, '') // 숫자만 추출
+    
+    // users 테이블에서 전화번호로 사용자 조회
+    const { data: usersWithPhone } = await supabase
+      .from('users')
+      .select('id, phone')
+      .not('phone', 'is', null)
+    
+    if (usersWithPhone && usersWithPhone.length > 0) {
+      const phoneUserIds = usersWithPhone
+        .filter((u: any) => {
+          if (!u.phone) return false
+          // 전화번호에서 숫자만 추출하여 비교
+          const userPhone = u.phone.replace(/[^0-9]/g, '')
+          return userPhone === phoneNumber
+        })
+        .map((u: any) => u.id)
+      
+      filteredUsers = filteredUsers.filter(u => phoneUserIds.includes(u.id))
+    } else {
+      // 전화번호 정보가 없으면 조건에 맞는 사용자 없음
+      filteredUsers = []
+    }
+  }
 
   // 생일 조건: 지정한 월에 생일인 사용자
   if (conditions.birthday_month) {

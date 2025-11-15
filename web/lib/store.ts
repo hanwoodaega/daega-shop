@@ -144,6 +144,7 @@ export const useCartStore = create<CartStore>()(
       },
       getTotalItems: () => {
         const items = get().items
+        // 모든 상품을 개별적으로 카운트 (프로모션 그룹 내 상품도 포함)
         return items.reduce((total, item) => total + item.quantity, 0)
       },
     }),

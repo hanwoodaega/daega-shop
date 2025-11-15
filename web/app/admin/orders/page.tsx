@@ -49,6 +49,7 @@ export default function AdminOrdersPage() {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0])
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
+  const [processingAutoConfirm, setProcessingAutoConfirm] = useState(false)
 
   useEffect(() => {
     fetchOrders()
@@ -139,6 +140,45 @@ export default function AdminOrdersPage() {
     }
   }
 
+  const handleAutoConfirm = async () => {
+    if (!confirm('배송완료 후 7일 이상 지난 주문을 자동으로 구매확정하시겠습니까?\n\n구매확정된 주문은 포인트가 적립됩니다.')) {
+      return
+    }
+
+    setProcessingAutoConfirm(true)
+    try {
+      const response = await fetch('/api/admin/orders/auto-confirm', {
+        method: 'GET',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || '자동 구매확정 실패')
+      }
+
+      toast.success(
+        data.confirmedCount > 0
+          ? `${data.confirmedCount}개 주문이 자동 구매확정되었습니다.`
+          : '자동 구매확정할 주문이 없습니다.',
+        {
+          icon: '✅',
+          duration: 5000,
+        }
+      )
+
+      // 주문 목록 새로고침
+      await fetchOrders()
+    } catch (error: any) {
+      console.error('자동 구매확정 실패:', error)
+      toast.error(`자동 구매확정에 실패했습니다.\n\n${error.message || error}`, {
+        duration: 5000,
+      })
+    } finally {
+      setProcessingAutoConfirm(false)
+    }
+  }
+
   const getAvailableStatuses = (currentStatus: string, deliveryType: string) => {
     // 픽업의 경우
     if (deliveryType === 'pickup') {
@@ -190,6 +230,25 @@ export default function AdminOrdersPage() {
           >
             관리자 홈
           </button>
+        </div>
+
+        {/* 자동 구매확정 버튼 */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">자동 구매확정</h2>
+              <p className="text-sm text-gray-600">
+                배송완료 후 7일 이상 지난 주문을 자동으로 구매확정하고 포인트를 적립합니다.
+              </p>
+            </div>
+            <button
+              onClick={handleAutoConfirm}
+              disabled={processingAutoConfirm}
+              className="px-6 py-3 bg-primary-800 text-white rounded-lg hover:bg-primary-900 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {processingAutoConfirm ? '처리 중...' : '자동 구매확정 실행'}
+            </button>
+          </div>
         </div>
 
         {/* 필터 */}

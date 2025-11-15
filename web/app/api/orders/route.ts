@@ -73,19 +73,7 @@ async function createOrderWithoutTransaction(
     await usePoints(userId, usedPoints, order.id, `주문 #${order.id} 포인트 사용`)
   }
 
-  // 포인트 적립
-  if (order) {
-    const pointsToAdd = Math.floor(finalAmount * 0.01)
-    if (pointsToAdd > 0) {
-      await addPoints(
-        userId,
-        pointsToAdd,
-        'purchase',
-        `주문 #${order.id} 구매 적립`,
-        order.id
-      )
-    }
-  }
+  // 포인트 적립은 구매확정 시 처리 (배송완료 후 구매확정 버튼 클릭 시)
 
   return NextResponse.json({ order })
 }

@@ -25,6 +25,7 @@ interface OrderWithItems extends Order {
       image_url: string
     }
   }>
+  is_confirmed?: boolean  // 구매확정 여부
 }
 
 export default function OrdersPage() {
@@ -33,6 +34,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([])
   const [loadingOrders, setLoadingOrders] = useState(true)
   const [cancelingOrderId, setCancelingOrderId] = useState<string | null>(null)
+  const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null)
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -71,7 +73,25 @@ export default function OrdersPage() {
         .order('created_at', { ascending: false })
 
       if (error) throw handleSupabaseError(error)
-      setOrders(data || [])
+      
+      // 각 주문의 구매확정 여부 확인
+      const ordersWithConfirmation = await Promise.all(
+        (data || []).map(async (order: OrderWithItems) => {
+          const { data: pointHistory } = await supabase
+            .from('point_history')
+            .select('id')
+            .eq('order_id', order.id)
+            .eq('type', 'purchase')
+            .single()
+          
+          return {
+            ...order,
+            is_confirmed: !!pointHistory
+          }
+        })
+      )
+      
+      setOrders(ordersWithConfirmation)
     } catch (error) {
       showError(error)
     } finally {
@@ -89,18 +109,20 @@ export default function OrdersPage() {
 
     setCancelingOrderId(orderId)
     try {
-      // 주문 취소 및 환불 처리
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          status: 'cancelled',
-          refund_status: 'pending',
-          refund_amount: order.total_amount,
-          refund_requested_at: new Date().toISOString()
-        })
-        .eq('id', orderId)
+      // 주문 취소 API 호출 (포인트 환불 포함)
+      const response = await fetch('/api/orders/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId }),
+      })
 
-      if (error) throw handleSupabaseError(error)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || '주문 취소에 실패했습니다.')
+      }
 
       // 주문 목록 업데이트
       setOrders(orders.map(o => 
@@ -131,6 +153,69 @@ export default function OrdersPage() {
       icon: '📦',
       duration: 4000,
     })
+  }
+
+  const handleConfirmPurchase = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId)
+    if (!order) return
+
+    // 사용한 포인트 확인하여 적립될 포인트 계산
+    let pointsToEarn = 0
+    try {
+      const { data: pointUsage } = await supabase
+        .from('point_history')
+        .select('points')
+        .eq('order_id', orderId)
+        .eq('type', 'usage')
+        .single()
+
+      const usedPoints = pointUsage ? Math.abs(pointUsage.points) : 0
+      const finalAmount = order.total_amount - usedPoints
+      pointsToEarn = Math.floor(Math.max(0, finalAmount) * 0.01)
+    } catch (error) {
+      console.error('포인트 계산 실패:', error)
+    }
+
+    const confirmMessage = pointsToEarn > 0
+      ? `구매확정하시겠습니까?\n\n구매확정 시 ${pointsToEarn.toLocaleString()}포인트가 적립되며, 이후 교환/반품/환불은 불가합니다.`
+      : '구매확정하시겠습니까?\n\n구매확정 시 이후 교환/반품/환불은 불가합니다.'
+
+    if (!confirm(confirmMessage)) {
+      return
+    }
+
+    setConfirmingOrderId(orderId)
+    try {
+      const response = await fetch('/api/orders/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || '구매확정에 실패했습니다.')
+      }
+
+      showSuccess(
+        data.pointsEarned > 0
+          ? `구매확정이 완료되었습니다.\n${data.pointsEarned.toLocaleString()}포인트가 적립되었습니다.`
+          : '구매확정이 완료되었습니다.',
+        {
+          duration: 5000,
+        }
+      )
+
+      // 주문 목록 새로고침
+      await fetchOrders()
+    } catch (error: any) {
+      showError(error)
+    } finally {
+      setConfirmingOrderId(null)
+    }
   }
 
   const toggleOrderExpand = (orderId: string) => {
@@ -355,6 +440,24 @@ export default function OrdersPage() {
                         >
                           배송조회
                         </button>
+                      )}
+                      
+                      {/* 구매확정 버튼 - 배송완료 상태이고 아직 구매확정하지 않은 경우만 표시 */}
+                      {order.status === 'delivered' && !order.is_confirmed && (
+                        <button
+                          onClick={() => handleConfirmPurchase(order.id)}
+                          disabled={confirmingOrderId === order.id}
+                          className="flex-1 bg-primary-800 text-white py-2 rounded-lg text-sm font-medium hover:bg-primary-900 transition disabled:opacity-50"
+                        >
+                          {confirmingOrderId === order.id ? '처리 중...' : '구매확정'}
+                        </button>
+                      )}
+                      
+                      {/* 구매확정 완료 표시 */}
+                      {order.status === 'delivered' && order.is_confirmed && (
+                        <div className="flex-1 bg-green-50 border border-green-200 text-green-700 py-2 rounded-lg text-sm font-medium text-center">
+                          구매확정 완료
+                        </div>
                       )}
                       
                       {/* 주문취소 버튼 - 결제 완료 상태일 때만 표시 */}

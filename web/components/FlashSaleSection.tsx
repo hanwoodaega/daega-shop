@@ -17,6 +17,7 @@ import { toggleWishlistDB } from '@/lib/wishlist-db'
 export default function FlashSaleSection() {
   const [flashSaleProducts, setFlashSaleProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [flashSaleTitle, setFlashSaleTitle] = useState('오늘만 특가!')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const openPromotionModal = usePromotionModalStore((state) => state.openModal)
   const { user } = useAuth()
@@ -54,7 +55,22 @@ export default function FlashSaleSection() {
       }
     }
 
+    const fetchFlashSaleTitle = async () => {
+      try {
+        const res = await fetch('/api/admin/flash-sale-settings')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.title) {
+            setFlashSaleTitle(data.title)
+          }
+        }
+      } catch (error) {
+        console.error('타임딜 제목 조회 실패:', error)
+      }
+    }
+
     fetchFlashSaleProducts()
+    fetchFlashSaleTitle()
     
     // 1분마다 갱신 (타임딜 종료 확인)
     const interval = setInterval(fetchFlashSaleProducts, 60000)
@@ -69,7 +85,7 @@ export default function FlashSaleSection() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <span className="text-2xl">⏰</span>
-              <h2 className="text-xl font-bold text-primary-900">오늘만 특가!</h2>
+              <h2 className="text-xl font-bold text-primary-900">{flashSaleTitle}</h2>
             </div>
           </div>
           <div className="flex gap-4 overflow-hidden">
@@ -89,14 +105,14 @@ export default function FlashSaleSection() {
   }
 
   return (
-    <section className="py-6 bg-gradient-to-r from-red-50 to-orange-50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">⏰</span>
-              <h2 className="text-xl font-bold text-primary-900">오늘만 특가!</h2>
-            </div>
+      <section className="py-6 bg-gradient-to-r from-red-50 to-orange-50">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">⏰</span>
+                <h2 className="text-xl font-bold text-primary-900">{flashSaleTitle}</h2>
+              </div>
             {flashSaleProducts.length > 0 && flashSaleProducts[0].flash_sale_end_time && (
               <div className="flex items-center">
                 <FlashSaleCountdown product={flashSaleProducts[0]} />
@@ -203,8 +219,8 @@ export default function FlashSaleSection() {
 
                 <div className="p-3">
                   {product.brand && (
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="text-xs font-bold text-primary-900 line-clamp-1 flex-1">
+                    <div className="flex items-center justify-between mb-0">
+                      <div className="text-sm font-bold text-primary-900 line-clamp-1 flex-1 leading-tight tracking-tight">
                         {product.brand}
                       </div>
                       <button
@@ -227,11 +243,11 @@ export default function FlashSaleSection() {
                         aria-label="찜하기"
                       >
                         {wishlistIds.includes(product.id) ? (
-                          <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                           </svg>
                         ) : (
-                          <svg className="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                           </svg>
                         )}
@@ -260,46 +276,45 @@ export default function FlashSaleSection() {
                         aria-label="찜하기"
                       >
                         {wishlistIds.includes(product.id) ? (
-                          <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                           </svg>
                         ) : (
-                          <svg className="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                           </svg>
                         )}
                       </button>
                     </div>
                   )}
-                  <h3 className="text-sm font-medium mb-2 line-clamp-2 text-primary-900">
+                  <h3 className="text-sm font-medium mb-0 line-clamp-1 text-primary-900 leading-tight tracking-tight">
                     {product.name}
                   </h3>
 
-                  {/* 가격 */}
-                  <div className="space-y-1">
-                    {product.promotion_type ? (
-                      // 프로모션이 있으면 정가만 표시
-                      <div className="flex items-baseline">
-                        <span className="text-lg font-bold text-primary-900">
-                          {formatPrice(product.price)}
-                          <span className="text-xs text-gray-600">원</span>
+                  {/* 가격 영역을 2줄로 고정하여 카드 높이를 통일 */}
+                  {product.discount_percent && product.discount_percent > 0 ? (
+                    <>
+                      <div className="text-xs text-gray-500 line-through mt-0 leading-tight">
+                        {formatPrice(product.price)}원
+                      </div>
+                      <div className="flex items-baseline gap-2 mt-0 leading-tight">
+                        <span className="text-base md:text-lg font-bold text-red-600">{product.discount_percent}%</span>
+                        <span className="text-base font-extrabold text-primary-900">
+                          {flashSalePrice ? formatPrice(flashSalePrice) : formatPrice(product.price * (1 - product.discount_percent / 100))}<span className="text-xs text-gray-600">원</span>
                         </span>
                       </div>
-                    ) : (
-                      // 프로모션이 없으면 할인가 표시
-                      <>
-                        <div className="text-xs text-gray-500 line-through">
-                          {formatPrice(product.price)}원
-                        </div>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-lg font-bold text-red-600">
-                            {flashSalePrice ? formatPrice(flashSalePrice) : formatPrice(product.price)}
-                            <span className="text-xs text-gray-600">원</span>
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* 할인 미적용 시에도 1줄을 비워 동일 높이 확보 (줄간격 최소화) */}
+                      <div className="invisible h-1 leading-none">.</div>
+                      <div className="flex items-baseline mt-0 leading-tight">
+                        <span className="text-base font-bold text-primary-900">
+                          {flashSalePrice ? formatPrice(flashSalePrice) : formatPrice(product.price)}<span className="text-xs text-gray-600">원</span>
+                        </span>
+                      </div>
+                    </>
+                  )}
 
                   {/* 재고 표시 */}
                   {product.flash_sale_stock && product.flash_sale_stock > 0 && (

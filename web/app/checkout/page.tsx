@@ -15,6 +15,7 @@ import { useDefaultAddress, useUserProfile } from '@/lib/hooks/useAddress'
 import { calculateOrderTotal } from '@/lib/order-calc'
 import { getUserCoupons, isCouponValid } from '@/lib/coupons'
 import { UserCoupon, Coupon } from '@/lib/supabase'
+import { getUserPoints } from '@/lib/points'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -66,6 +67,11 @@ export default function CheckoutPage() {
   const [selectedCoupon, setSelectedCoupon] = useState<UserCoupon | null>(null)
   const [showCouponModal, setShowCouponModal] = useState(false)
   const [loadingCoupons, setLoadingCoupons] = useState(false)
+
+  // 포인트 관련 state
+  const [userPoints, setUserPoints] = useState(0)
+  const [usedPoints, setUsedPoints] = useState(0)
+  const [loadingPoints, setLoadingPoints] = useState(false)
 
   // Destructuring for backward compatibility
   const { method: deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime } = deliveryState
@@ -125,8 +131,23 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (user?.id) {
       loadAvailableCoupons()
+      loadUserPoints()
     }
   }, [user?.id])
+
+  const loadUserPoints = async () => {
+    if (!user?.id) return
+
+    setLoadingPoints(true)
+    try {
+      const pointsData = await getUserPoints(user.id)
+      setUserPoints(pointsData?.total_points || 0)
+    } catch (error) {
+      console.error('포인트 조회 실패:', error)
+    } finally {
+      setLoadingPoints(false)
+    }
+  }
 
   const loadAvailableCoupons = async () => {
     if (!user?.id) return
@@ -249,6 +270,18 @@ export default function CheckoutPage() {
       return
     }
 
+    // 포인트 사용 유효성 검사
+    if (usedPoints > 0) {
+      if (usedPoints > userPoints) {
+        showError({ message: '보유 포인트보다 많이 사용할 수 없습니다.' }, { icon: '⚠️' })
+        return
+      }
+      if (usedPoints > afterCouponDiscount) {
+        showError({ message: '결제 금액보다 많은 포인트를 사용할 수 없습니다.' }, { icon: '⚠️' })
+        return
+      }
+    }
+
     setFlags(prev => ({ ...prev, isProcessing: true }))
 
     try {
@@ -267,7 +300,8 @@ export default function CheckoutPage() {
         : `${formData.address}${formData.addressDetail ? ' ' + formData.addressDetail : ''}`
       
       const deliveryFee = getDeliveryFee()
-      const totalAmount = getTotalPrice() + deliveryFee
+      // total_amount는 쿠폰 할인 전 원래 금액 (API에서 쿠폰 할인과 포인트 차감 처리)
+      const totalAmount = subtotal + deliveryFee
 
       // 실제로는 여기서 결제 API를 호출합니다 (토스페이먼츠, 카카오페이 등)
       // 데모를 위해 주문 정보만 저장하고 완료 페이지로 이동
@@ -293,7 +327,7 @@ export default function CheckoutPage() {
           shipping_phone: formData.phone,
           delivery_note: formData.message.trim() || null,
           used_coupon_id: selectedCoupon?.id || null,
-          used_points: 0, // 포인트는 나중에 추가
+          used_points: usedPoints,
           items: items.map(item => ({
             productId: item.productId,
             quantity: item.quantity,
@@ -379,7 +413,8 @@ export default function CheckoutPage() {
   // 주문 금액 계산 (통합 유틸리티 사용)
   const { originalTotal, discountAmount, shipping, total: subtotal } = calculateOrderTotal(items, deliveryMethod)
   const couponDiscount = calculateCouponDiscount(subtotal)
-  const total = Math.max(0, subtotal - couponDiscount)
+  const afterCouponDiscount = Math.max(0, subtotal - couponDiscount)
+  const finalTotal = Math.max(0, afterCouponDiscount - usedPoints)
 
   // 로딩 중
   if (loadingDefaultAddress) {
@@ -756,6 +791,65 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
+              {/* 포인트 사용 */}
+              <div className="bg-white rounded-lg shadow-md p-4">
+                <h2 className="text-lg font-bold mb-3">포인트</h2>
+                {loadingPoints ? (
+                  <div className="text-sm text-gray-500">포인트 조회 중...</div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">보유 포인트</span>
+                      <span className="text-sm font-semibold text-primary-900">
+                        {userPoints.toLocaleString()}P
+                      </span>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        사용할 포인트
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          max={Math.min(userPoints, Math.max(0, afterCouponDiscount))}
+                          value={usedPoints}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value) || 0
+                            const maxPoints = Math.min(userPoints, Math.max(0, afterCouponDiscount))
+                            setUsedPoints(Math.min(value, maxPoints))
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          placeholder="0"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const maxPoints = Math.min(userPoints, Math.max(0, afterCouponDiscount))
+                            setUsedPoints(maxPoints)
+                          }}
+                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium"
+                        >
+                          전액사용
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        최대 {Math.min(userPoints, Math.max(0, afterCouponDiscount)).toLocaleString()}P 사용 가능
+                      </p>
+                    </div>
+                    {usedPoints > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setUsedPoints(0)}
+                        className="text-sm text-gray-500 hover:text-gray-700"
+                      >
+                        포인트 사용 취소
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* 결제 방법 */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-bold mb-4">결제 방법</h2>
@@ -838,6 +932,12 @@ export default function CheckoutPage() {
                           <span className="font-semibold text-red-600">-{formatPrice(couponDiscount)}원</span>
                         </div>
                       )}
+                      {usedPoints > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">포인트 사용</span>
+                          <span className="font-semibold text-red-600">-{formatPrice(usedPoints)}원</span>
+                        </div>
+                      )}
                       <div className="flex justify-between">
                         <span className="text-gray-600">배송비</span>
                         <span className="font-semibold">
@@ -847,7 +947,7 @@ export default function CheckoutPage() {
                       <div className="border-t pt-3">
                         <div className="flex justify-between text-lg font-bold">
                           <span>결제 예상 금액</span>
-                          <span className="text-primary-900">{formatPrice(total)}원</span>
+                          <span className="text-primary-900">{formatPrice(finalTotal + shipping)}원</span>
                         </div>
                       </div>
                     </div>
@@ -882,7 +982,7 @@ export default function CheckoutPage() {
                   </>
                 ) : (
                   <>
-                    <span>{formatPrice(total)}원 결제하기</span>
+                    <span>{formatPrice(finalTotal + shipping)}원 결제하기</span>
                   </>
                 )}
               </button>
@@ -962,9 +1062,18 @@ export default function CheckoutPage() {
                               <div className="text-sm text-gray-600 mb-2">{coupon.description}</div>
                             )}
                             <div className="text-sm text-gray-500">
-                              {coupon.discount_type === 'percentage'
-                                ? `${coupon.discount_value}% 할인`
-                                : `${formatPrice(coupon.discount_value)}원 할인`}
+                              {coupon.discount_type === 'percentage' ? (
+                                <>
+                                  {coupon.discount_value}% 할인
+                                  {coupon.max_discount_amount && (
+                                    <span className="ml-1">
+                                      (최대 {formatPrice(coupon.max_discount_amount)}원)
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                `${formatPrice(coupon.discount_value)}원 할인`
+                              )}
                               {coupon.min_purchase_amount && (
                                 <span className="ml-2">
                                   (최소 {formatPrice(coupon.min_purchase_amount)}원 이상 구매)

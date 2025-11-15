@@ -20,6 +20,7 @@ export default function CouponsPage() {
     purchase_period_start: '',
     purchase_period_end: '',
     min_purchase_count: '',
+    phone: '',  // 특정 개인 지급용 전화번호
   })
 
   // 새 쿠폰 폼 상태
@@ -257,6 +258,18 @@ export default function CouponsPage() {
     const conditions: any = {}
     let hasCondition = false
 
+    // 전화번호 조건 (특정 개인 지급)
+    if (issueConditions.phone) {
+      // 숫자만 추출 (하이픈 제거)
+      const phoneNumber = issueConditions.phone.replace(/[^0-9]/g, '')
+      if (phoneNumber.length < 10 || phoneNumber.length > 11) {
+        toast.error('올바른 전화번호를 입력해주세요.')
+        return
+      }
+      conditions.phone = phoneNumber
+      hasCondition = true
+    }
+
     if (issueConditions.birthday_month) {
       conditions.birthday_month = parseInt(issueConditions.birthday_month)
       hasCondition = true
@@ -417,6 +430,7 @@ export default function CouponsPage() {
                                   purchase_period_start: '',
                                   purchase_period_end: '',
                                   min_purchase_count: '',
+                                  phone: '',
                                 })
                                 setShowIssueModal(true)
                               }}
@@ -617,29 +631,56 @@ export default function CouponsPage() {
               </h2>
 
               <div className="space-y-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    생일 조건 (이번 달 생일인 사용자)
-                  </label>
-                  <select
-                    value={issueConditions.birthday_month}
-                    onChange={(e) => setIssueConditions({ ...issueConditions, birthday_month: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="">선택 안함</option>
-                    <option value="1">1월</option>
-                    <option value="2">2월</option>
-                    <option value="3">3월</option>
-                    <option value="4">4월</option>
-                    <option value="5">5월</option>
-                    <option value="6">6월</option>
-                    <option value="7">7월</option>
-                    <option value="8">8월</option>
-                    <option value="9">9월</option>
-                    <option value="10">10월</option>
-                    <option value="11">11월</option>
-                    <option value="12">12월</option>
-                  </select>
+                <div className="border-b pb-4">
+                  <h3 className="text-sm font-bold text-gray-700 mb-3">특정 개인 지급</h3>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      전화번호
+                    </label>
+                    <input
+                      type="tel"
+                      value={issueConditions.phone}
+                      onChange={(e) => {
+                        // 숫자만 입력 허용 (하이픈은 자동 제거)
+                        const numbers = e.target.value.replace(/[^0-9]/g, '')
+                        setIssueConditions({ ...issueConditions, phone: numbers })
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="01012345678"
+                      maxLength={11}
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      특정 개인에게 지급하려면 전화번호를 입력하세요. (하이픈 없이 숫자만)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <h3 className="text-sm font-bold text-gray-700 mb-3">생일 조건</h3>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      이번 달 생일인 사용자
+                    </label>
+                    <select
+                      value={issueConditions.birthday_month}
+                      onChange={(e) => setIssueConditions({ ...issueConditions, birthday_month: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="">선택 안함</option>
+                      <option value="1">1월</option>
+                      <option value="2">2월</option>
+                      <option value="3">3월</option>
+                      <option value="4">4월</option>
+                      <option value="5">5월</option>
+                      <option value="6">6월</option>
+                      <option value="7">7월</option>
+                      <option value="8">8월</option>
+                      <option value="9">9월</option>
+                      <option value="10">10월</option>
+                      <option value="11">11월</option>
+                      <option value="12">12월</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="border-t pt-4">
@@ -703,6 +744,7 @@ export default function CouponsPage() {
                 <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-800">
                   <p className="font-semibold mb-1">💡 조건 안내:</p>
                   <ul className="list-disc list-inside space-y-1">
+                    <li>전화번호: 특정 개인에게 지급하려면 전화번호만 입력하세요 (다른 조건과 함께 사용 가능)</li>
                     <li>생일 조건: 선택한 월에 생일인 사용자에게 지급</li>
                     <li>구매 금액: 지정한 기간 동안 총 구매 금액이 기준 이상인 사용자</li>
                     <li>구매 횟수: 지정한 기간 동안 구매 횟수가 기준 이상인 사용자</li>

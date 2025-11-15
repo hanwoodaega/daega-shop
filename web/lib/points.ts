@@ -165,6 +165,125 @@ export async function usePoints(
 }
 
 /**
+ * 포인트 회수 (주문 취소 시 적립 포인트 회수)
+ */
+export async function deductPoints(
+  userId: string,
+  points: number,
+  orderId: string,
+  description: string
+): Promise<boolean> {
+  try {
+    const userPoints = await getUserPoints(userId)
+    if (!userPoints) {
+      return false
+    }
+
+    // 포인트 차감 (음수가 될 수 있음 - 이미 사용한 경우)
+    const { error: updateError } = await supabase
+      .from('user_points')
+      .update({
+        total_points: Math.max(0, userPoints.total_points - points), // 최소 0으로 제한
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+
+    if (updateError) throw updateError
+
+    // 포인트 내역 기록 (음수로 기록)
+    const { error: historyError } = await supabase
+      .from('point_history')
+      .insert({
+        user_id: userId,
+        points: -points,
+        type: 'usage', // 취소로 인한 회수도 usage로 기록
+        description: description,
+        order_id: orderId,
+      })
+
+    if (historyError) throw historyError
+
+    return true
+  } catch (error) {
+    console.error('포인트 회수 실패:', error)
+    return false
+  }
+}
+
+/**
+ * 포인트 환불 (주문 취소 시 사용한 포인트 환불)
+ */
+export async function refundPoints(
+  userId: string,
+  points: number,
+  orderId: string,
+  description: string
+): Promise<boolean> {
+  try {
+    // 사용한 포인트를 다시 지급 (적립과 동일한 로직)
+    return await addPoints(userId, points, 'purchase', description, orderId)
+  } catch (error) {
+    console.error('포인트 환불 실패:', error)
+    return false
+  }
+}
+
+/**
+ * 주문 취소 시 포인트 처리 (적립 회수 + 사용 포인트 환불)
+ */
+export async function handleOrderCancellationPoints(
+  userId: string,
+  orderId: string,
+  finalAmount: number,
+  usedPoints: number = 0
+): Promise<{ success: boolean; deducted: number; refunded: number }> {
+  try {
+    let deducted = 0
+    let refunded = 0
+
+    // 1. 적립된 포인트 회수
+    const pointsEarned = Math.floor(finalAmount * 0.01)
+    if (pointsEarned > 0) {
+      const deductSuccess = await deductPoints(
+        userId,
+        pointsEarned,
+        orderId,
+        `주문 #${orderId} 취소로 인한 적립 포인트 회수`
+      )
+      if (deductSuccess) {
+        deducted = pointsEarned
+      }
+    }
+
+    // 2. 사용한 포인트 환불
+    if (usedPoints > 0) {
+      const refundSuccess = await refundPoints(
+        userId,
+        usedPoints,
+        orderId,
+        `주문 #${orderId} 취소로 인한 포인트 환불`
+      )
+      if (refundSuccess) {
+        refunded = usedPoints
+      }
+    }
+
+    return {
+      success: true,
+      deducted,
+      refunded,
+    }
+  } catch (error) {
+    console.error('주문 취소 포인트 처리 실패:', error)
+    return {
+      success: false,
+      deducted: 0,
+      refunded: 0,
+    }
+  }
+}
+
+/**
  * 포인트 내역 조회
  */
 export async function getPointHistory(

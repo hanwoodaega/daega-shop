@@ -45,7 +45,7 @@ export default function FlashSaleCountdown({ product, className = '' }: FlashSal
   return (
     <div className={`flex items-center ${className}`}>
       <span className="text-lg font-bold text-red-600">
-        D-{days} {formatTime(hours)}:{formatTime(minutes)}:{formatTime(seconds)}
+        {days > 0 ? `D-${days} ` : ''}{formatTime(hours)}:{formatTime(minutes)}:{formatTime(seconds)}
       </span>
     </div>
   )

@@ -56,10 +56,11 @@ function CartPageContent() {
   const channelRef = useRef<any>(null)
   
   // productIds를 useMemo로 최적화하여 불필요한 재실행 방지
-  const productIdsString = useMemo(() => {
-    const ids = items.map(item => item.productId).filter(Boolean).sort()
-    return ids.join(',')
+  // productId 목록만 추적 (selected 상태 변경은 무시)
+  const productIds = useMemo(() => {
+    return items.map(item => item.productId).filter(Boolean).sort()
   }, [items])
+  const productIdsString = productIds.join(',')
   
   useEffect(() => {
     if (!user?.id) return
@@ -79,7 +80,9 @@ function CartPageContent() {
     window.addEventListener('focus', handleFocus)
     
     // Supabase Realtime 구독: 상품 가격/할인율 변경 시 장바구니 갱신
-    const productIds = items.map(item => item.productId).filter(Boolean)
+    // 최신 items를 스토어에서 가져오기 (클로저 문제 방지)
+    const currentItems = useCartStore.getState().items
+    const productIds = currentItems.map(item => item.productId).filter(Boolean)
     
     // 기존 channel이 있으면 먼저 제거 (중복 구독 방지)
     if (channelRef.current) {
@@ -120,7 +123,7 @@ function CartPageContent() {
         channelRef.current = null
       }
     }
-  }, [user?.id, productIdsString, items])
+  }, [user?.id, productIdsString])
 
   // ✅ 공통 hook 사용
   const { address: defaultAddress, loading: loadingAddress, reload: reloadDefaultAddress } = useDefaultAddress(true)
@@ -297,7 +300,7 @@ function CartPageContent() {
             <button
               onClick={() => router.push('/wishlist')}
               aria-label="찜 목록"
-              className="p-2 text-gray-700 hover:text-gray-900"
+              className="p-2 text-red-600 hover:text-red-700"
             >
               <svg className="w-7 h-7 md:w-8 md:h-8" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
@@ -590,22 +593,28 @@ function CartPageContent() {
                 <div key={item.id} className={`py-6 border-b border-gray-200 ${index === groupedItems.standalone.length - 1 && Object.keys(groupedItems.groups).length === 0 ? 'border-b-0' : ''}`}>
                   <div className="flex items-start space-x-3">
                     {/* 상품 이미지 (각진 모서리, 크기 약간 축소) */}
-                    <Link href={`/products/${item.productId}`} className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center hover:opacity-80 transition">
+                    <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center">
                       {/* 체크박스 - 이미지 왼쪽 상단 */}
                       <div 
                         className="absolute top-0 left-0 z-10"
-                        onClick={(e) => e.preventDefault()}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <input
                           type="checkbox"
                           checked={item.selected !== false}
-                          onChange={() => toggleSelect(item.id!)}
-                          className="w-5 h-5 border-gray-300 focus:ring-red-500 bg-white accent-red-600"
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            toggleSelect(item.id!)
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-5 h-5 border-gray-300 focus:ring-red-500 bg-white accent-red-600 cursor-pointer"
                           style={{ accentColor: '#dc2626' }}
                         />
                       </div>
-                      <span className="text-gray-500 text-xs">이미지 준비중</span>
-                    </Link>
+                      <Link href={`/products/${item.productId}`} className="absolute inset-0 flex items-center justify-center hover:opacity-80 transition">
+                        <span className="text-gray-500 text-xs">이미지 준비중</span>
+                      </Link>
+                    </div>
 
                     {/* 상품 정보 */}
                     <div className="flex-1">
@@ -777,7 +786,7 @@ function CartPageContent() {
             style={{ width: '65%' }}
             suppressHydrationWarning
           >
-            주문하기 ({mounted ? getSelectedItems().length : 0})
+            주문하기 ({mounted ? getSelectedItems().reduce((total, item) => total + item.quantity, 0) : 0})
           </button>
         </div>
       </div>

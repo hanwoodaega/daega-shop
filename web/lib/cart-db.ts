@@ -38,6 +38,8 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
     }
 
     // localStorage 형식으로 변환 (상품의 최신 정보 우선 사용)
+    // 기존 상태의 selected 값을 보존하기 위해 현재 스토어 상태 가져오기
+    const currentItems = useCartStore.getState().items
     const items = data?.map((item: any) => {
       const product = Array.isArray(item.products) ? item.products[0] : item.products
       // 할인율 결정 (프로모션 그룹 여부에 따라 우선순위 다름)
@@ -46,6 +48,10 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
         product?.discount_percent,
         !!item.promotion_group_id
       )
+      
+      // 기존 아이템의 selected 상태 보존 (없으면 true)
+      const existingItem = currentItems.find(i => i.id === item.id)
+      const selected = existingItem?.selected ?? true
       
       return {
         id: item.id,
@@ -59,7 +65,7 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
         promotion_type: item.promotion_type as '1+1' | '2+1' | '3+1' | undefined,
         promotion_group_id: item.promotion_group_id,
         stock: product?.stock,
-        selected: true
+        selected: selected
       }
     }) || []
 

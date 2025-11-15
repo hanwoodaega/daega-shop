@@ -163,8 +163,8 @@ export default function RecentlyViewedSection() {
 
                 <div className="p-3">
                   {product.brand && (
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="text-xs font-bold text-primary-900 line-clamp-1 flex-1">
+                    <div className="flex items-center justify-between mb-0">
+                      <div className="text-sm font-bold text-primary-900 line-clamp-1 flex-1 leading-tight tracking-tight">
                         {product.brand}
                       </div>
                       <button
@@ -187,11 +187,11 @@ export default function RecentlyViewedSection() {
                         aria-label="찜하기"
                       >
                         {wishlistIds.includes(product.id) ? (
-                          <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                           </svg>
                         ) : (
-                          <svg className="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                           </svg>
                         )}
@@ -220,45 +220,45 @@ export default function RecentlyViewedSection() {
                         aria-label="찜하기"
                       >
                         {wishlistIds.includes(product.id) ? (
-                          <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                           </svg>
                         ) : (
-                          <svg className="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                           </svg>
                         )}
                       </button>
                     </div>
                   )}
-                  <h3 className="text-sm font-medium mb-2 line-clamp-2 text-primary-900">
+                  <h3 className="text-sm font-medium mb-0 line-clamp-1 text-primary-900 leading-tight tracking-tight">
                     {product.name}
                   </h3>
 
-                  {/* 가격 */}
-                  <div className="space-y-1">
-                    {product.discount_percent && product.discount_percent > 0 ? (
-                      <>
-                        <div className="text-xs text-gray-500 line-through">
-                          {formatPrice(product.price)}원
-                        </div>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-base font-bold text-red-600">{product.discount_percent}%</span>
-                          <span className="text-lg font-bold text-primary-900">
-                            {formatPrice(product.price * (1 - product.discount_percent / 100))}
-                            <span className="text-xs text-gray-600">원</span>
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex items-baseline">
-                        <span className="text-lg font-bold text-primary-900">
-                          {formatPrice(product.price)}
-                          <span className="text-xs text-gray-600">원</span>
+                  {/* 가격 영역을 2줄로 고정하여 카드 높이를 통일 */}
+                  {product.discount_percent && product.discount_percent > 0 ? (
+                    <>
+                      <div className="text-xs text-gray-500 line-through mt-0 leading-tight">
+                        {formatPrice(product.price)}원
+                      </div>
+                      <div className="flex items-baseline gap-2 mt-0 leading-tight">
+                        <span className="text-base md:text-lg font-bold text-red-600">{product.discount_percent}%</span>
+                        <span className="text-base font-extrabold text-primary-900">
+                          {formatPrice(product.price * (1 - product.discount_percent / 100))}<span className="text-xs text-gray-600">원</span>
                         </span>
                       </div>
-                    )}
-                  </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* 할인 미적용 시에도 1줄을 비워 동일 높이 확보 (줄간격 최소화) */}
+                      <div className="invisible h-1 leading-none">.</div>
+                      <div className="flex items-baseline mt-0 leading-tight">
+                        <span className="text-base font-bold text-primary-900">
+                          {formatPrice(product.price)}<span className="text-xs text-gray-600">원</span>
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </Link>
             )

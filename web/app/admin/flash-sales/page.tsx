@@ -24,6 +24,8 @@ export default function FlashSalesPage() {
   const [groups, setGroups] = useState<FlashSaleGroup[]>([])
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [flashSaleTitle, setFlashSaleTitle] = useState('오늘만 특가!')
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
   
   const [newGroup, setNewGroup] = useState({
     start_time: '',  // 선택 사항
@@ -35,7 +37,41 @@ export default function FlashSalesPage() {
 
   useEffect(() => {
     fetchData()
+    fetchFlashSaleTitle()
   }, [])
+
+  const fetchFlashSaleTitle = async () => {
+    try {
+      const res = await fetch('/api/admin/flash-sale-settings')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.title) {
+          setFlashSaleTitle(data.title)
+        }
+      }
+    } catch (error) {
+      console.error('타임딜 제목 조회 실패:', error)
+    }
+  }
+
+  const updateFlashSaleTitle = async () => {
+    try {
+      const res = await fetch('/api/admin/flash-sale-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: flashSaleTitle })
+      })
+      if (res.ok) {
+        toast.success('타임딜 제목이 수정되었습니다', { icon: '✅' })
+        setIsEditingTitle(false)
+      } else {
+        toast.error('제목 수정에 실패했습니다')
+      }
+    } catch (error) {
+      console.error('타임딜 제목 수정 실패:', error)
+      toast.error('제목 수정에 실패했습니다')
+    }
+  }
 
   const fetchData = async () => {
     setLoading(true)
@@ -348,6 +384,54 @@ export default function FlashSalesPage() {
           >
             관리자 홈
           </button>
+        </div>
+
+        {/* 타임딜 제목 설정 */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-lg font-bold mb-4">타임딜 섹션 제목 설정</h2>
+          <div className="flex items-center gap-3">
+            {isEditingTitle ? (
+              <>
+                <input
+                  type="text"
+                  value={flashSaleTitle}
+                  onChange={(e) => setFlashSaleTitle(e.target.value)}
+                  className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="타임딜 섹션 제목"
+                />
+                <button
+                  onClick={updateFlashSaleTitle}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                >
+                  저장
+                </button>
+                <button
+                  onClick={() => {
+                    setIsEditingTitle(false)
+                    fetchFlashSaleTitle()
+                  }}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                >
+                  취소
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex-1 px-3 py-2 bg-gray-50 border rounded-lg">
+                  <span className="text-gray-900 font-medium">{flashSaleTitle}</span>
+                </div>
+                <button
+                  onClick={() => setIsEditingTitle(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                >
+                  수정
+                </button>
+              </>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            메인 페이지의 타임딜 섹션에 표시되는 제목입니다.
+          </p>
         </div>
 
         {/* 새 타임딜 생성 */}
