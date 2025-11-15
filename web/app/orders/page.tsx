@@ -75,21 +75,34 @@ export default function OrdersPage() {
       if (error) throw handleSupabaseError(error)
       
       // 각 주문의 구매확정 여부 확인
-      const ordersWithConfirmation = await Promise.all(
-        (data || []).map(async (order: OrderWithItems) => {
-          const { data: pointHistory } = await supabase
+      // user_id로 필터링하여 RLS 정책 준수
+      const orderIds = (data || []).map((order: OrderWithItems) => order.id)
+      
+      let confirmedOrderIds = new Set<string>()
+      if (orderIds.length > 0 && user?.id) {
+        try {
+          const { data: pointHistories, error: pointError } = await supabase
             .from('point_history')
-            .select('id')
-            .eq('order_id', order.id)
+            .select('order_id')
+            .eq('user_id', user.id)
+            .in('order_id', orderIds)
             .eq('type', 'purchase')
-            .single()
           
-          return {
-            ...order,
-            is_confirmed: !!pointHistory
+          if (pointError) {
+            console.error('구매확정 여부 조회 실패:', pointError)
+          } else if (pointHistories) {
+            confirmedOrderIds = new Set(pointHistories.map((ph: any) => ph.order_id))
           }
-        })
-      )
+        } catch (error) {
+          console.error('구매확정 여부 조회 실패:', error)
+          // 에러가 발생해도 계속 진행
+        }
+      }
+      
+      const ordersWithConfirmation = (data || []).map((order: OrderWithItems) => ({
+        ...order,
+        is_confirmed: confirmedOrderIds.has(order.id)
+      }))
       
       setOrders(ordersWithConfirmation)
     } catch (error) {
