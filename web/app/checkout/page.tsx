@@ -16,6 +16,7 @@ import { calculateOrderTotal } from '@/lib/order-calc'
 import { getUserCoupons, isCouponValid } from '@/lib/coupons'
 import { UserCoupon, Coupon } from '@/lib/supabase'
 import { getUserPoints } from '@/lib/points'
+import { removeFromCartDB } from '@/lib/cart-db'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -25,7 +26,7 @@ export default function CheckoutPage() {
   // ✅ Selector 패턴 - 필요한 것만 구독
   const cartItems = useCartStore((state) => state.items)
   const getCartTotalPrice = useCartStore((state) => state.getTotalPrice)
-  const clearCart = useCartStore((state) => state.clearCart)
+  const removeSelectedFromCart = useCartStore((state) => state.removeSelectedItems)
   const getSelectedItems = useCartStore((state) => state.getSelectedItems)
   
   const directPurchaseItems = useDirectPurchaseStore((state) => state.items)
@@ -307,9 +308,8 @@ export default function CheckoutPage() {
         ? `${formData.address}${formData.addressDetail ? ' ' + formData.addressDetail : ''}`
         : `${formData.address}${formData.addressDetail ? ' ' + formData.addressDetail : ''}`
       
-      const deliveryFee = getDeliveryFee()
-      // total_amount는 쿠폰 할인 전 원래 금액 (API에서 쿠폰 할인과 포인트 차감 처리)
-      const totalAmount = subtotal + deliveryFee
+      // total_amount는 쿠폰 할인 전 금액 + 배송비 (API에서 쿠폰/포인트 처리)
+      const totalAmount = orderTotal
 
       // 실제로는 여기서 결제 API를 호출합니다 (토스페이먼츠, 카카오페이 등)
       // 데모를 위해 주문 정보만 저장하고 완료 페이지로 이동
@@ -354,28 +354,80 @@ export default function CheckoutPage() {
       // 기본 배송지로 저장 체크 시 배송지 저장 (택배 또는 퀵배달)
       if (saveAsDefaultAddress && (deliveryMethod === 'regular' || deliveryMethod === 'quick') && formData.address) {
         try {
-          await supabase.from('addresses').insert({
-            user_id: user.id,
-            name: deliveryMethod === 'quick' ? '퀵배달 주소' : '기본 배송지',
-            recipient_name: formData.name,
-            recipient_phone: formData.phone,
-            zipcode: formData.zipcode || null,
-            address: formData.address,
-            address_detail: formData.addressDetail || null,
-            delivery_note: formData.message || null,
-            is_default: true,
-          })
+          // 1) 기존 기본 배송지 해제
+          await supabase
+            .from('addresses')
+            .update({ is_default: false })
+            .eq('user_id', user.id)
+            .eq('is_default', true)
+
+          // 2) 동일 주소가 이미 있으면 업데이트하여 기본으로 지정, 없으면 새로 생성
+          const { data: existing, error: findError } = await supabase
+            .from('addresses')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('address', formData.address)
+            .eq('address_detail', formData.addressDetail || null)
+            .maybeSingle()
+
+          if (!findError && existing) {
+            await supabase
+              .from('addresses')
+              .update({
+                recipient_name: formData.name,
+                recipient_phone: formData.phone,
+                zipcode: formData.zipcode || null,
+                delivery_note: formData.message || null,
+                is_default: true,
+              })
+              .eq('id', existing.id)
+          } else {
+            await supabase.from('addresses').insert({
+              user_id: user.id,
+              name: deliveryMethod === 'quick' ? '퀵배달 주소' : '기본 배송지',
+              recipient_name: formData.name,
+              recipient_phone: formData.phone,
+              zipcode: formData.zipcode || null,
+              address: formData.address,
+              address_detail: formData.addressDetail || null,
+              delivery_note: formData.message || null,
+              is_default: true,
+            })
+          }
         } catch (error) {
           console.error('배송지 저장 실패:', error)
           // 배송지 저장 실패해도 주문은 완료
         }
       }
 
-      // 바로구매면 세션 스토리지 비우기, 아니면 장바구니 비우기
+      // 바로구매면 세션 스토리지 비우기, 아니면 장바구니에서 결제된(선택된) 상품만 제거
       if (isDirectPurchase) {
         clearDirectPurchase()
       } else {
-        clearCart()
+        removeSelectedFromCart()
+        // 로그인 상태라면 DB 장바구니에서도 삭제
+        try {
+          if (user?.id) {
+            // 프로모션 그룹은 중복 삭제 방지를 위해 그룹 단위로 한 번만 처리
+            const purchasedItems = items
+            const handledGroups = new Set<string>()
+            for (const it of purchasedItems) {
+              const dbId = it.id
+              const groupId = it.promotion_group_id
+              if (groupId) {
+                if (!handledGroups.has(groupId)) {
+                  await removeFromCartDB(user.id, '', groupId)
+                  handledGroups.add(groupId)
+                }
+              } else if (dbId && !dbId.startsWith('cart-')) {
+                await removeFromCartDB(user.id, dbId)
+              }
+            }
+          }
+        } catch (err) {
+          // DB 삭제 실패해도 UI는 진행
+          console.error('DB 장바구니 삭제 실패:', err)
+        }
       }
 
       // 주문 완료
@@ -427,7 +479,8 @@ export default function CheckoutPage() {
   }
 
   // 주문 금액 계산 (통합 유틸리티 사용)
-  const { originalTotal, discountAmount, shipping, total: subtotal } = calculateOrderTotal(items, deliveryMethod)
+  const { originalTotal, discountAmount, shipping, discountedTotal, total: orderTotal } = calculateOrderTotal(items, deliveryMethod)
+  const subtotal = discountedTotal
   const couponDiscount = calculateCouponDiscount(subtotal)
   const afterCouponDiscount = Math.max(0, subtotal - couponDiscount)
   const finalTotal = Math.max(0, afterCouponDiscount - usedPoints)

@@ -23,6 +23,7 @@ interface CartStore {
   items: CartItem[]
   addItem: (item: CartItem) => void
   removeItem: (itemId: string) => void
+  removeSelectedItems: () => void
   updateQuantity: (itemId: string, quantity: number) => void
   updateFreeProduct: (productId: string, freeProductId: string) => void
   toggleSelect: (itemId: string) => void
@@ -80,6 +81,10 @@ export const useCartStore = create<CartStore>()(
             ]
           }
         }),
+      removeSelectedItems: () =>
+        set((state) => ({
+          items: state.items.filter((i) => i.selected === false),
+        })),
       removeItem: (itemId) =>
         set((state) => {
           const item = state.items.find(i => i.id === itemId)

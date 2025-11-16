@@ -180,27 +180,13 @@ export default function AdminOrdersPage() {
   }
 
   const getAvailableStatuses = (currentStatus: string, deliveryType: string) => {
-    // 픽업의 경우
-    if (deliveryType === 'pickup') {
-      if (currentStatus === 'paid') {
-        return ['shipped', 'cancelled'] // 결제완료 → 준비중 or 취소
-      } else if (currentStatus === 'shipped') {
-        return ['delivered'] // 준비중 → 완료
-      }
-      return []
+    // 배송 유형과 무관하게 관리자는 결제완료/배송중에서 변경 가능
+    if (currentStatus === 'paid') {
+      return ['shipped', 'cancelled']
     }
-    
-    // 퀵배달의 경우
-    if (deliveryType === 'quick') {
-      if (currentStatus === 'paid') {
-        return ['shipped', 'cancelled'] // 결제완료 → 배송중 or 취소
-      } else if (currentStatus === 'shipped') {
-        return ['delivered'] // 배송중 → 배송완료
-      }
-      return []
+    if (currentStatus === 'shipped') {
+      return ['delivered']
     }
-
-    // 택배배달은 자동으로 처리되므로 상태 변경 불가
     return []
   }
 

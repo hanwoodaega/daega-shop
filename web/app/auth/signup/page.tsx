@@ -42,23 +42,17 @@ export default function SignupPage() {
         options: {
           data: {
             name: name,
+            // 메타데이터에도 생일 저장 (이후 서버에서 users로 동기화)
+            birthday: birthday || null,
           },
         },
       })
 
       if (error) throw error
 
-      // users 테이블에 생년월일 저장
-      if (authData.user && birthday) {
-        await supabase
-          .from('users')
-          .upsert({
-            id: authData.user.id,
-            email: email,
-            name: name,
-            birthday: birthday,
-          })
-      }
+      // 이메일 인증이 필요한 경우 즉시 세션이 없을 수 있어
+      // 클라이언트에서 users 테이블에 쓰기가 RLS에 의해 실패할 수 있음.
+      // 메타데이터로 전달했으므로 인증 완료 후 서버에서 users로 동기화됨.
 
       // 첫구매 쿠폰 지급
       try {

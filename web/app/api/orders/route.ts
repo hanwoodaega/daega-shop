@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server'
 import { addPoints } from '@/lib/points'
 import { useCoupon, isCouponValid } from '@/lib/coupons'
+import crypto from 'crypto'
 
 /**
  * 트랜잭션 함수가 없을 때 사용하는 폴백 함수
@@ -143,6 +144,71 @@ export async function POST(request: NextRequest) {
     // 포인트 사용 처리
     if (used_points > 0) {
       finalAmount = Math.max(0, finalAmount - used_points)
+    }
+
+    // 중복 주문 방지: 최근 동일 주문 탐지 (10분 이내 동일한 주문 내용을 다시 전송한 경우)
+    // 클라이언트/네트워크 재전송, 새로고침으로 인한 다중 POST를 서버에서 가드
+    const normalizeItems = (arr: any[]) => {
+      if (!Array.isArray(arr)) return []
+      // 제품 ID, 수량, 가격 기준 정렬 후 직렬화
+      const sorted = [...arr].map(i => ({
+        productId: i.productId,
+        quantity: i.quantity,
+        price: i.price,
+      })).sort((a, b) => {
+        if (a.productId !== b.productId) return (a.productId || 0) - (b.productId || 0)
+        if (a.price !== b.price) return (a.price || 0) - (b.price || 0)
+        return (a.quantity || 0) - (b.quantity || 0)
+      })
+      return sorted
+    }
+    const itemsFingerprint = crypto
+      .createHash('sha256')
+      .update(JSON.stringify(normalizeItems(items || [])))
+      .digest('hex')
+
+    const sinceIso = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+    // 후보 주문 조회 (같은 사용자, 같은 배송/수령 정보, 최근 10분)
+    const { data: candidateOrders, error: candidateError } = await supabase
+      .from('orders')
+      .select('id, delivery_type, delivery_time, shipping_address, shipping_name, shipping_phone, delivery_note, created_at, total_amount')
+      .eq('user_id', user.id)
+      .gte('created_at', sinceIso)
+      .eq('delivery_type', delivery_type)
+      .eq('delivery_time', delivery_time || null)
+      .eq('shipping_address', shipping_address)
+      .eq('shipping_name', shipping_name)
+      .eq('shipping_phone', shipping_phone)
+      .eq('delivery_note', delivery_note || null)
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (!candidateError && candidateOrders && candidateOrders.length > 0) {
+      // 각 후보에 대해 order_items를 조회하여 아이템 구성이 동일한지 확인
+      for (const cand of candidateOrders) {
+        const { data: candItems, error: candItemsError } = await supabase
+          .from('order_items')
+          .select('product_id, quantity, price')
+          .eq('order_id', cand.id)
+
+        if (candItemsError) continue
+        const candNormalized = normalizeItems(
+          (candItems || []).map(i => ({
+            productId: i.product_id,
+            quantity: i.quantity,
+            price: i.price,
+          }))
+        )
+        const candFingerprint = crypto
+          .createHash('sha256')
+          .update(JSON.stringify(candNormalized))
+          .digest('hex')
+
+        // 금액까지 동일하면 사실상 동일 주문으로 간주
+        if (candFingerprint === itemsFingerprint && Number(cand.total_amount) === Number(finalAmount)) {
+          return NextResponse.json({ order: cand })
+        }
+      }
     }
 
     // 트랜잭션으로 주문 생성 (모든 작업을 원자적으로 처리)
