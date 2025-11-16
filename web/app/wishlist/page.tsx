@@ -84,7 +84,7 @@ export default function WishlistPage() {
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-2 pt-6 pb-32">
+      <main className="flex-1 container mx-auto px-2 pt-6 pb-0 md:pb-32">
         {loading ? (
           <div className="flex justify-center items-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
@@ -109,7 +109,7 @@ export default function WishlistPage() {
         )}
       </main>
 
-      <div className="pb-20">
+      <div className="hidden md:block">
         <Footer />
       </div>
 

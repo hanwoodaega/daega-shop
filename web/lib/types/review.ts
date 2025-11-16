@@ -11,6 +11,8 @@ export interface Review {
   is_verified_purchase: boolean
   created_at: string
   updated_at?: string
+  admin_reply?: string | null
+  admin_replied_at?: string | null
 }
 
 export interface ReviewableProduct {

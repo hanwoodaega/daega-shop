@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Header from '@/components/Header'
@@ -26,6 +26,7 @@ export default function ProductDetailPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const productId = params.id as string
+  const timeoutsRef = useRef<number[]>([])
   
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
@@ -61,7 +62,8 @@ export default function ProductDetailPage() {
     } catch (error) {
       console.error('상품 조회 실패:', error)
       toast.error('상품을 찾을 수 없습니다.')
-      setTimeout(() => router.push('/products'), 1000)
+      const t = window.setTimeout(() => router.push('/products'), 1000)
+      timeoutsRef.current.push(t)
     } finally {
       setLoading(false)
     }
@@ -93,6 +95,9 @@ export default function ProductDetailPage() {
         if (response.ok) {
           const data = await response.json()
           setReviewCount(data.total || 0)
+          if (typeof data.averageApprovedRating === 'number') {
+            setAverageRating(data.averageApprovedRating || 0)
+          }
           // 리뷰 데이터를 미리 가져와서 브라우저 캐시에 저장 (프리페칭)
         }
       } catch (error) {
@@ -116,6 +121,13 @@ export default function ProductDetailPage() {
       window.history.replaceState({}, '', url.toString())
     }
   }, [searchParams, product?.promotion_type, productId, openPromotionModal])
+
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach((id) => clearTimeout(id))
+      timeoutsRef.current = []
+    }
+  }, [])
 
   const handleAddToCart = useCallback(() => {
     if (!product) return
@@ -211,6 +223,7 @@ export default function ProductDetailPage() {
                     reviewSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                   }}
                   className="flex items-center gap-0 hover:opacity-80 transition flex-shrink-0"
+                  suppressHydrationWarning
                 >
                   <div className="flex items-center -space-x-0.5">
                     {[1, 2, 3, 4, 5].map((star) => (
@@ -285,7 +298,7 @@ export default function ProductDetailPage() {
       </button>
 
       {/* 하단 고정 액션 바 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
         {/* 1+1 골라담기 버튼 (프로모션 상품일 때만 표시) */}
         {product.promotion_type && (
           <div className="border-b border-gray-200">
@@ -300,7 +313,7 @@ export default function ProductDetailPage() {
         )}
         
         {/* 찜 / 바로구매 / 장바구니 버튼 */}
-        <div className="px-0 pt-0 pb-8 flex gap-0">
+        <div className="px-0 pt-0 pb-0 flex gap-0">
           <button
             onClick={handleWishlistToggle}
             className="flex items-center justify-center bg-white py-3 hover:bg-gray-100 transition border border-gray-200"
@@ -477,7 +490,7 @@ export default function ProductDetailPage() {
       />
 
       {/* 상품 정보 안내 버튼 */}
-      <div className="container mx-auto px-2 py-6">
+      <div className="container mx-auto px-2 py-2">
         <div className="grid grid-cols-2 gap-2">
           {/* 상품고시정보 */}
           <button
@@ -503,7 +516,7 @@ export default function ProductDetailPage() {
 
       {/* 리뷰 섹션 */}
       {product && (
-        <div id="review-section" className="container mx-auto px-4 py-8">
+        <div id="review-section" className="container mx-auto px-4 py-2">
           <ReviewList 
             productId={productId} 
             limit={3}
@@ -532,7 +545,9 @@ export default function ProductDetailPage() {
         }}
       />
 
-      <Footer />
+      <div className="hidden md:block">
+        <Footer />
+      </div>
     </div>
   )
 }

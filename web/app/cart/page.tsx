@@ -319,7 +319,7 @@ function CartPageContent() {
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-2 pt-2 pb-32">
+      <main className="flex-1 container mx-auto px-2 pt-2 pb-0 md:pb-32">
         {/* 배송지 정보 */}
         {!loadingAddress && user && items.length > 0 && (
           <div className="mb-3 bg-white rounded-lg px-3 py-2">
@@ -418,7 +418,7 @@ function CartPageContent() {
                     <select
                       value={quickDeliveryArea}
                       onChange={(e) => setQuickDeliveryArea(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     >
                       <option value="">지역 선택</option>
                       {QUICK_DELIVERY_AREAS.map(area => (
@@ -428,7 +428,7 @@ function CartPageContent() {
                     <select
                       value={quickDeliveryTime}
                       onChange={(e) => setQuickDeliveryTime(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     >
                       <option value="">시간대 선택</option>
                       {QUICK_DELIVERY_TIME_SLOTS.map(time => (
@@ -444,7 +444,7 @@ function CartPageContent() {
                     <select
                       value={pickupTime}
                       onChange={(e) => setPickupTime(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     >
                       <option value="">시간 선택</option>
                       {PICKUP_TIME_SLOTS.map(time => (
@@ -770,8 +770,8 @@ function CartPageContent() {
       </main>
 
       {/* 하단 고정 액션 바: 선물하기 / 주문하기 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white shadow-lg">
-        <div className="px-0 pb-6 flex gap-0">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white shadow-lg" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
+        <div className="px-0 pb-0 flex gap-0">
           <button
             onClick={handleGiftCheckout}
             className="bg-gray-900 text-white py-3 text-base font-medium hover:bg-gray-800 flex items-center justify-center gap-1"
@@ -791,7 +791,7 @@ function CartPageContent() {
         </div>
       </div>
 
-      <div className="pb-20">
+      <div className="hidden md:block">
         <Footer />
       </div>
 

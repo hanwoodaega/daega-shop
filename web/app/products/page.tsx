@@ -82,14 +82,33 @@ function ProductsContent() {
       const { data, error, count } = await query
       
       if (error) throw error
+      
+      // 승인된 리뷰 기준 평균/개수로 덮어쓰기
+      const baseProducts = data || []
+      const enriched = await Promise.all(
+        baseProducts.map(async (p: any) => {
+          try {
+            const res = await fetch(`/api/reviews?productId=${p.id}&page=1&limit=1`, { cache: 'no-store' })
+            if (res.ok) {
+              const j = await res.json()
+              return {
+                ...p,
+                average_rating: typeof j.averageApprovedRating === 'number' ? j.averageApprovedRating : p.average_rating,
+                review_count: typeof j.total === 'number' ? j.total : p.review_count,
+              }
+            }
+          } catch {}
+          return p
+        })
+      )
 
       if (pageNum === 1) {
-        setDisplayedProducts(data || [])
+        setDisplayedProducts(enriched || [])
       } else {
         // 중복 방지: 이미 있는 상품은 제외하고 추가
         setDisplayedProducts(prev => {
           const existingIds = new Set(prev.map((p: any) => p.id))
-          const newProducts = (data || []).filter((p: any) => !existingIds.has(p.id))
+          const newProducts = (enriched || []).filter((p: any) => !existingIds.has(p.id))
           return [...prev, ...newProducts]
         })
       }

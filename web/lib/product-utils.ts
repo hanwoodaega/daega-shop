@@ -30,6 +30,8 @@ export function getProductTags(product: Product): string[] {
 export function isValidImageUrl(imageUrl: string): boolean {
   if (!imageUrl || typeof imageUrl !== 'string') return false
   const trimmed = imageUrl.trim()
+  // placeholder 도메인은 유효 이미지로 취급하지 않음
+  if (trimmed.includes('via.placeholder.com')) return false
   return trimmed.length > 0 && 
     (trimmed.startsWith('http://') || 
      trimmed.startsWith('https://') || 

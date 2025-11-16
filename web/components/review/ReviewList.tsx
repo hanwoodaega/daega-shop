@@ -99,6 +99,9 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
       setReviews(data.reviews || [])
       setTotal(data.total || 0)
       setTotalPages(data.totalPages || 1)
+      if (typeof data.averageApprovedRating === 'number') {
+        setAverageRating(data.averageApprovedRating || 0)
+      }
       
       if (data.reviews && data.reviews.length > 0) {
         const images: string[] = []
@@ -235,6 +238,7 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
               router.push(`/products/${productId}/reviews`)
             }}
             className="text-sm text-blue-600 font-bold hover:underline"
+            suppressHydrationWarning
           >
             전체보기 ❯
           </button>

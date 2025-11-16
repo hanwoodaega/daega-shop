@@ -108,6 +108,18 @@ function ReviewItem({ review, isOwner = false, onEdit, onDelete }: ReviewItemPro
 
       <p className="text-sm text-gray-700 mb-3 whitespace-pre-wrap">{review.content}</p>
 
+      {/* 관리자 답변 */}
+      {review.admin_reply && (
+        <div className="mb-3 rounded border border-gray-200 bg-gray-50 p-3">
+          <div className="text-xs text-gray-500 mb-1">
+            관리자 답변{review.admin_replied_at ? ` · ${formatDate(review.admin_replied_at)}` : ''}
+          </div>
+          <div className="text-sm text-gray-800 whitespace-pre-wrap">
+            {review.admin_reply}
+          </div>
+        </div>
+      )}
+
       {/* 삭제 확인 모달 */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

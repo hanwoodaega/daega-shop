@@ -26,6 +26,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const hasSyncedRef = useRef(false)
+  const currentUserRef = useRef<User | null>(null)
+  const timeoutsRef = useRef<number[]>([])
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -35,15 +37,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 현재 세션 확인
     supabase.auth.getSession().then(({ data: { session } }: any) => {
       setUser(session?.user ?? null)
+      currentUserRef.current = session?.user ?? null
       setLoading(false)
       
       // 로그인 상태라면 DB에서 데이터 불러오기
       if (session?.user && !hasSyncedRef.current) {
         hasSyncedRef.current = true
-        setTimeout(() => {
+        const t = window.setTimeout(() => {
           syncWishlistOnLogin(session.user.id)
           syncCartOnLogin(session.user.id)
         }, 100)
+        timeoutsRef.current.push(t)
       }
     })
 
@@ -52,15 +56,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
       const newUser = session?.user ?? null
-      const wasLoggedOut = user && !newUser
-      const justLoggedIn = !user && newUser
+      const prevUser = currentUserRef.current
+      const wasLoggedOut = !!prevUser && !newUser
+      const justLoggedIn = !prevUser && !!newUser
       
+      currentUserRef.current = newUser
       setUser(newUser)
 
       // 로그인 시: localStorage → DB 마이그레이션 + DB에서 불러오기
       if (justLoggedIn && !hasSyncedRef.current) {
         hasSyncedRef.current = true
-        setTimeout(async () => {
+        const t = window.setTimeout(async () => {
           try {
             await syncWishlistOnLogin(newUser.id)
             await syncCartOnLogin(newUser.id)
@@ -68,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error('데이터 마이그레이션 실패:', error)
           }
         }, 100)
+        timeoutsRef.current.push(t)
       }
       
       // 로그아웃 시: 동기화 플래그 리셋
@@ -76,8 +83,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
-    return () => subscription.unsubscribe()
-  }, [user])
+    return () => {
+      subscription.unsubscribe()
+      // clear any pending timeouts
+      timeoutsRef.current.forEach((id) => clearTimeout(id))
+      timeoutsRef.current = []
+    }
+  }, [])
 
   const signOut = async () => {
     if (!isSupabaseConfigured) return

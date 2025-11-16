@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState, useEffect, useMemo } from 'react'
+import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useCartStore, useSearchUIStore } from '@/lib/store'
@@ -17,7 +17,8 @@ export default function BottomNavbar() {
   const [showSearchModal, setShowSearchModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isVisible, setIsVisible] = useState(true)
-  const [lastScrollY, setLastScrollY] = useState(0)
+  const lastScrollYRef = useRef(0)
+  const tickingRef = useRef(false)
 
   useEffect(() => {
     setMounted(true)
@@ -26,27 +27,35 @@ export default function BottomNavbar() {
   // 스크롤 방향 감지
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollY = window.scrollY
-      
-      // 스크롤이 최상단일 때는 항상 표시
-      if (currentScrollY < 10) {
-        setIsVisible(true)
-      } 
-      // 스크롤 올릴 때 표시
-      else if (currentScrollY < lastScrollY) {
-        setIsVisible(true)
-      } 
-      // 스크롤 내릴 때 숨김
-      else if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        setIsVisible(false)
+      const current = window.scrollY
+
+      if (!tickingRef.current) {
+        tickingRef.current = true
+        requestAnimationFrame(() => {
+          const prev = lastScrollYRef.current
+
+          // 스크롤이 최상단일 때는 항상 표시
+          if (current < 10) {
+            setIsVisible((v) => (v ? v : true))
+          }
+          // 스크롤 올릴 때 표시
+          else if (current < prev) {
+            setIsVisible((v) => (v ? v : true))
+          }
+          // 스크롤 내릴 때 숨김
+          else if (current > prev && current > 100) {
+            setIsVisible((v) => (v ? false : v))
+          }
+
+          lastScrollYRef.current = current
+          tickingRef.current = false
+        })
       }
-      
-      setLastScrollY(currentScrollY)
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [lastScrollY])
+  }, [])
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault()

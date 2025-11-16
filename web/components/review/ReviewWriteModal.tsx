@@ -75,7 +75,7 @@ export default function ReviewWriteModal({
           throw new Error(error.error || '리뷰 수정 실패')
         }
 
-        showSuccessMessage('리뷰가 수정되었습니다!')
+        // 성공 토스트는 부모에서 처리
       } else {
         const response = await fetch('/api/reviews', {
           method: 'POST',
@@ -97,7 +97,7 @@ export default function ReviewWriteModal({
           throw new Error(error.error || '리뷰 작성 실패')
         }
 
-        showSuccessMessage('리뷰가 작성되었습니다!')
+        // 성공 토스트는 부모에서 처리
       }
       
       setRating(5)

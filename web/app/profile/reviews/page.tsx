@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth-context'
 import { formatDate, formatPrice } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { ReviewableProduct, MyReview } from '@/lib/types/review'
+import { isValidImageUrl } from '@/lib/product-utils'
 import { handleApiError, showSuccessMessage } from '@/lib/api-error-handler'
 
 export default function ProfileReviewsPage() {
@@ -263,18 +264,16 @@ export default function ProfileReviewsPage() {
               {reviewableProducts.map((product) => (
                 <div key={`${product.order_id}-${product.product_id}`} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start gap-4">
-                    {/* 상품 이미지 */}
-                    <div className="w-20 h-20 bg-gray-200 rounded flex-shrink-0 overflow-hidden">
-                      {product.product_image ? (
+                    {/* 상품 이미지 (없거나 무효면 회색 박스) */}
+                    <div className="w-20 h-20 bg-gray-200 rounded flex-shrink-0 overflow-hidden flex items-center justify-center">
+                      {product.product_image && isValidImageUrl(product.product_image) ? (
                         <img 
                           src={product.product_image} 
                           alt={product.product_name}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
-                          이미지 없음
-                        </div>
+                        <span className="text-xs text-gray-500">이미지 없음</span>
                       )}
                     </div>
 

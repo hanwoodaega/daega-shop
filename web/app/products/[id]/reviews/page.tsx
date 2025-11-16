@@ -54,6 +54,9 @@ export default function AllReviewsPage() {
       
       if (pageNum === 1) {
         setReviews(data.reviews || [])
+        if (typeof data.averageApprovedRating === 'number') {
+          setAverageRating(data.averageApprovedRating || 0)
+        }
       } else {
         setReviews(prev => [...prev, ...(data.reviews || [])])
       }
@@ -68,7 +71,7 @@ export default function AllReviewsPage() {
     }
   }, [productId, targetReviewId])
 
-  // 상품 정보 가져오기
+  // 상품 정보 가져오기 (이름만)
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -76,8 +79,6 @@ export default function AllReviewsPage() {
         if (response.ok) {
           const data = await response.json()
           setProductName(data.name || '')
-          // products 테이블의 average_rating 컬럼 사용
-          setAverageRating(data.average_rating || 0)
         }
       } catch (error) {
         console.error('상품 정보 로드 실패:', error)
@@ -179,11 +180,14 @@ export default function AllReviewsPage() {
     setShowEditModal(false)
     setEditingReview(null)
     
-    const productResponse = await fetch(`/api/products/${productId}`)
-    if (productResponse.ok) {
-      const productData = await productResponse.json()
-      setAverageRating(productData.average_rating || 0)
-      setTotal(productData.review_count || 0)
+    // 승인 리뷰 기준 평균/개수 갱신
+    const reviewsRes = await fetch(`/api/reviews?productId=${productId}&page=1&limit=10`)
+    if (reviewsRes.ok) {
+      const j = await reviewsRes.json()
+      if (typeof j.averageApprovedRating === 'number') {
+        setAverageRating(j.averageApprovedRating || 0)
+      }
+      setTotal(j.total || 0)
     }
     
     fetchReviews(1)
@@ -202,11 +206,13 @@ export default function AllReviewsPage() {
 
       showSuccessMessage('리뷰가 삭제되었습니다.')
       
-      const productResponse = await fetch(`/api/products/${productId}`)
-      if (productResponse.ok) {
-        const productData = await productResponse.json()
-        setAverageRating(productData.average_rating || 0)
-        setTotal(productData.review_count || 0)
+      const reviewsRes = await fetch(`/api/reviews?productId=${productId}&page=1&limit=10`)
+      if (reviewsRes.ok) {
+        const j = await reviewsRes.json()
+        if (typeof j.averageApprovedRating === 'number') {
+          setAverageRating(j.averageApprovedRating || 0)
+        }
+        setTotal(j.total || 0)
       }
       
       setReviews(prev => prev.filter(r => r.id !== reviewId))

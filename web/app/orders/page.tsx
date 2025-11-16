@@ -466,11 +466,14 @@ export default function OrdersPage() {
                         </button>
                       )}
                       
-                      {/* 구매확정 완료 표시 */}
+                      {/* 구매확정 완료 후: 리뷰 작성 유도 버튼 */}
                       {order.status === 'delivered' && order.is_confirmed && (
-                        <div className="flex-1 bg-green-50 border border-green-200 text-green-700 py-2 rounded-lg text-sm font-medium text-center">
-                          구매확정 완료
-                        </div>
+                        <button
+                          onClick={() => router.push('/profile/reviews')}
+                          className="flex-1 bg-white border border-blue-300 text-blue-700 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition"
+                        >
+                          리뷰 작성하기
+                        </button>
                       )}
                       
                       {/* 주문취소 버튼 - 결제 완료 상태일 때만 표시 */}

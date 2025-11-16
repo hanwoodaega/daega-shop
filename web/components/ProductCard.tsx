@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useCallback, useMemo } from 'react'
+import { memo, useCallback, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
@@ -18,6 +18,7 @@ interface ProductCardProps {
 }
 
 function ProductCard({ product }: ProductCardProps) {
+  const timeoutRef = useRef<number | null>(null)
   // ✅ Zustand selector 패턴 - 필요한 것만 구독
   const isWished = useWishlistStore((state) => state.items.includes(product.id))
   const openPromotionModal = usePromotionModalStore((state) => state.openModal)
@@ -70,7 +71,8 @@ function ProductCard({ product }: ProductCardProps) {
     })
     
     if (product.promotion_type) {
-      setTimeout(() => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      timeoutRef.current = window.setTimeout(() => {
         toast('상품 상세페이지에서 프로모션을 확인하세요', {
           icon: '💡',
           duration: 4000,
@@ -89,6 +91,15 @@ function ProductCard({ product }: ProductCardProps) {
     userId, 
     outOfStock
   ])
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+    }
+  }, [])
 
   const handleWishlistToggle = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault()

@@ -144,7 +144,10 @@ export default function AdminPage() {
     if (res.ok) {
       setListState(prev => ({ ...prev, items: prev.items.filter((i) => i.id !== id) }))
       setUiState(prev => ({ ...prev, message: '상품이 삭제되었습니다.' }))
-      setTimeout(() => setUiState(prev => ({ ...prev, message: null })), 3000)
+      // message 자동 해제 타이머 (언마운트 시 정리)
+      const t = window.setTimeout(() => setUiState(prev => ({ ...prev, message: null })), 3000)
+      ;(removeItem as any).__timeouts ??= []
+      ;(removeItem as any).__timeouts.push(t)
     } else {
       const data = await res.json().catch(() => ({ error: '삭제 실패' }))
       alert(data.error || '삭제에 실패했습니다.')
@@ -211,6 +214,14 @@ export default function AdminPage() {
     }
   }
 
+  // 타이머 정리 (removeItem에서 사용)
+  useEffect(() => {
+    return () => {
+      const arr: number[] = ((removeItem as any).__timeouts || []) as number[]
+      arr.forEach((id) => clearTimeout(id))
+      ;(removeItem as any).__timeouts = []
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -231,6 +242,12 @@ export default function AdminPage() {
               프로모션 관리
             </button>
             <button 
+              onClick={() => router.push('/admin/notifications')}
+              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition text-sm font-medium"
+            >
+              알림 발송
+            </button>
+            <button 
               onClick={() => router.push('/admin/flash-sales')}
               className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition text-sm font-medium"
             >
@@ -241,6 +258,12 @@ export default function AdminPage() {
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm font-medium"
             >
               쿠폰 관리
+            </button>
+            <button 
+              onClick={() => router.push('/admin/reviews')}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
+            >
+              리뷰 관리
             </button>
             <button 
               onClick={() => router.push('/admin/orders')}

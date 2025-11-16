@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Header from '@/components/Header'
@@ -20,6 +20,7 @@ import { getUserPoints } from '@/lib/points'
 export default function CheckoutPage() {
   const router = useRouter()
   const { user } = useAuth()
+  const timeoutsRef = useRef<number[]>([])
   
   // ✅ Selector 패턴 - 필요한 것만 구독
   const cartItems = useCartStore((state) => state.items)
@@ -72,6 +73,7 @@ export default function CheckoutPage() {
   const [userPoints, setUserPoints] = useState(0)
   const [usedPoints, setUsedPoints] = useState(0)
   const [loadingPoints, setLoadingPoints] = useState(false)
+  const [usedPointsInput, setUsedPointsInput] = useState('')
 
   // Destructuring for backward compatibility
   const { method: deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime } = deliveryState
@@ -149,6 +151,11 @@ export default function CheckoutPage() {
     }
   }
 
+  // usedPoints 변화에 맞춰 입력 필드 동기화
+  useEffect(() => {
+    setUsedPointsInput(usedPoints ? String(usedPoints) : '')
+  }, [usedPoints])
+
   const loadAvailableCoupons = async () => {
     if (!user?.id) return
 
@@ -214,12 +221,13 @@ export default function CheckoutPage() {
         address: data.address,
       }))
 
-      setTimeout(() => {
+      const t = window.setTimeout(() => {
         const detailInput = document.getElementById('checkout_address_detail')
         if (detailInput) {
           detailInput.focus()
         }
       }, 100)
+      timeoutsRef.current.push(t)
     })
   }
 
@@ -377,9 +385,10 @@ export default function CheckoutPage() {
       })
 
       // 주문 완료 페이지로 이동
-      setTimeout(() => {
+      const t = window.setTimeout(() => {
         router.push('/orders')
       }, 1500)
+      timeoutsRef.current.push(t)
 
     } catch (error) {
       showError(error)
@@ -387,6 +396,13 @@ export default function CheckoutPage() {
       setFlags(prev => ({ ...prev, isProcessing: false }))
     }
   }
+
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach((id) => clearTimeout(id))
+      timeoutsRef.current = []
+    }
+  }, [])
 
   // 쿠폰 할인 금액 계산
   const calculateCouponDiscount = (subtotal: number): number => {
@@ -810,14 +826,19 @@ export default function CheckoutPage() {
                       </label>
                       <div className="flex gap-2">
                         <input
-                          type="number"
-                          min="0"
-                          max={Math.min(userPoints, Math.max(0, afterCouponDiscount))}
-                          value={usedPoints}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={usedPointsInput}
                           onChange={(e) => {
-                            const value = parseInt(e.target.value) || 0
+                            const raw = e.target.value.replace(/[^0-9]/g, '')
+                            // 허용: 빈 문자열 또는 숫자
+                            setUsedPointsInput(raw)
+                          }}
+                          onBlur={() => {
+                            const parsed = parseInt(usedPointsInput || '0', 10) || 0
                             const maxPoints = Math.min(userPoints, Math.max(0, afterCouponDiscount))
-                            setUsedPoints(Math.min(value, maxPoints))
+                            setUsedPoints(Math.min(parsed, maxPoints))
                           }}
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="0"
@@ -827,6 +848,7 @@ export default function CheckoutPage() {
                           onClick={() => {
                             const maxPoints = Math.min(userPoints, Math.max(0, afterCouponDiscount))
                             setUsedPoints(maxPoints)
+                            setUsedPointsInput(String(maxPoints))
                           }}
                           className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium"
                         >
@@ -967,8 +989,8 @@ export default function CheckoutPage() {
 
         {/* 하단 고정 결제 버튼 */}
         {mounted && (
-          <div className="fixed bottom-0 left-0 right-0 z-40 bg-white shadow-lg">
-            <div className="px-0 pb-6">
+          <div className="fixed bottom-0 left-0 right-0 z-40 bg-white shadow-lg" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
+            <div className="px-0 pb-0">
               <button
                 type="submit"
                 form="checkout-form"
@@ -1100,7 +1122,7 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      <div className="pb-20">
+      <div className="hidden md:block">
         <Footer />
       </div>
     </div>
