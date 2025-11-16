@@ -262,7 +262,7 @@ export default function ProfileReviewsPage() {
           ) : (
             <div className="space-y-4">
               {reviewableProducts.map((product) => (
-                <div key={`${product.order_id}-${product.product_id}`} className="border border-gray-200 rounded-lg p-4">
+                <div key={product.order_item_id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start gap-4">
                     {/* 상품 이미지 (없거나 무효면 회색 박스) */}
                     <div className="w-20 h-20 bg-gray-200 rounded flex-shrink-0 overflow-hidden flex items-center justify-center">

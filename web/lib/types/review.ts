@@ -16,6 +16,7 @@ export interface Review {
 }
 
 export interface ReviewableProduct {
+  order_item_id: string
   order_id: string
   order_number: string
   order_date: string
