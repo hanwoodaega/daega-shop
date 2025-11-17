@@ -86,12 +86,6 @@ function CheckoutPageContent() {
     cardDesign: 'birthday' as 'birthday' | 'anniversary' | 'thanks' | 'custom',
   })
   
-
-  // 카카오톡 친구 선택
-  const [selectedKakaoFriend, setSelectedKakaoFriend] = useState<{
-    id: string
-    name: string
-  } | null>(null)
   const [kakaoSDKLoaded, setKakaoSDKLoaded] = useState(false)
 
   // Destructuring for backward compatibility
@@ -478,12 +472,6 @@ function CheckoutPageContent() {
           is_gift: isGiftMode,
           gift_message: isGiftMode ? giftData.message : null,
           gift_card_design: isGiftMode ? giftData.cardDesign : null,
-          gift_wrapping_ribbon: false,
-          gift_wrapping_premium_box: false,
-          gift_wrapping_handwritten_card: false,
-          gift_wrapping_fee: 0,
-          kakao_friend_id: isGiftMode && selectedKakaoFriend ? selectedKakaoFriend.id : null,
-          kakao_friend_name: isGiftMode && selectedKakaoFriend ? selectedKakaoFriend.name : null,
           items: items.map(item => ({
             productId: item.productId,
             quantity: item.quantity,

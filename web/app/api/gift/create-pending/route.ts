@@ -22,10 +22,6 @@ export async function POST(request: NextRequest) {
       items,
       gift_message = null,
       gift_card_design = null,
-      gift_wrapping_ribbon = false,
-      gift_wrapping_premium_box = false,
-      gift_wrapping_handwritten_card = false,
-      gift_wrapping_fee = 0,
       used_coupon_id = null,
       used_points = 0,
     } = body
@@ -36,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // 총 금액 계산
     const totalAmount = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
-    const finalAmount = totalAmount + gift_wrapping_fee - used_points
+    const finalAmount = totalAmount - used_points
 
     // 선물 토큰 생성
     const giftToken = crypto.randomBytes(32).toString('hex')
@@ -54,10 +50,6 @@ export async function POST(request: NextRequest) {
       gift_token: giftToken,
       gift_message: gift_message,
       gift_card_design: gift_card_design,
-      gift_wrapping_ribbon: gift_wrapping_ribbon,
-      gift_wrapping_premium_box: gift_wrapping_premium_box,
-      gift_wrapping_handwritten_card: gift_wrapping_handwritten_card,
-      gift_wrapping_fee: gift_wrapping_fee,
     }
 
     // gift_token 컬럼이 없으면 gift_info JSON에 저장
@@ -82,12 +74,6 @@ export async function POST(request: NextRequest) {
             token: giftToken,
             message: gift_message,
             card_design: gift_card_design,
-            wrapping: {
-              ribbon: gift_wrapping_ribbon,
-              premium_box: gift_wrapping_premium_box,
-              handwritten_card: gift_wrapping_handwritten_card,
-            },
-            wrapping_fee: gift_wrapping_fee
           })
         }
 
