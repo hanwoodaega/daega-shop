@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -28,20 +28,30 @@ interface OrderWithItems extends Order {
   is_confirmed?: boolean  // 구매확정 여부
 }
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, loading } = useAuth()
   const [orders, setOrders] = useState<OrderWithItems[]>([])
   const [loadingOrders, setLoadingOrders] = useState(true)
   const [cancelingOrderId, setCancelingOrderId] = useState<string | null>(null)
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null)
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set())
+  const [giftToken, setGiftToken] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/auth/login?next=/orders')
     }
   }, [user, loading, router])
+
+  useEffect(() => {
+    const token = searchParams?.get('giftToken')
+    if (token) {
+      setGiftToken(token)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (user?.id) {
@@ -282,6 +292,57 @@ export default function OrdersPage() {
           <h1 className="text-lg font-bold text-gray-900">주문내역</h1>
         </div>
 
+        {/* 선물 링크 표시 */}
+        {giftToken && (
+          <div className="mb-4 bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">🎁</span>
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-900 mb-2">선물 링크가 생성되었습니다!</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  아래 링크를 카카오톡으로 보내면 받는 분이 주소를 입력할 수 있습니다.
+                </p>
+                <div className="flex items-center gap-2 mb-3">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/gift/receive/${giftToken}`}
+                    className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm"
+                  />
+                  <button
+                    onClick={async () => {
+                      const giftLink = `${window.location.origin}/gift/receive/${giftToken}`
+                      try {
+                        await navigator.clipboard.writeText(giftLink)
+                        setCopied(true)
+                        showSuccess('링크가 복사되었습니다!', { icon: '📋' })
+                        setTimeout(() => setCopied(false), 2000)
+                      } catch (error) {
+                        showError({ message: '링크 복사에 실패했습니다.' })
+                      }
+                    }}
+                    className="px-4 py-2 bg-primary-900 text-white rounded-lg hover:bg-primary-800 transition text-sm font-medium whitespace-nowrap"
+                  >
+                    {copied ? '복사됨!' : '복사'}
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const giftLink = `${window.location.origin}/gift/receive/${giftToken}`
+                      const kakaoMessage = `선물을 받아보세요! 🎁\n\n${giftLink}`
+                      window.open(`https://talk.kakao.com/msgs?msg=${encodeURIComponent(kakaoMessage)}`, '_blank')
+                    }}
+                    className="flex-1 px-4 py-2 bg-yellow-300 text-gray-900 rounded-lg hover:bg-yellow-400 transition text-sm font-medium"
+                  >
+                    카카오톡으로 보내기
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 주문 목록 */}
         {loadingOrders ? (
           <div className="space-y-4">
@@ -498,6 +559,31 @@ export default function OrdersPage() {
       <Footer />
       <BottomNavbar />
     </div>
+  )
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-4 pb-24">
+          <div className="flex items-center mb-4">
+            <div className="w-5 h-5 bg-gray-200 rounded mr-3"></div>
+            <div className="h-5 bg-gray-200 rounded w-20"></div>
+          </div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <OrderItemSkeleton key={i} />
+            ))}
+          </div>
+        </main>
+        <Footer />
+        <BottomNavbar />
+      </div>
+    }>
+      <OrdersPageContent />
+    </Suspense>
   )
 }
 

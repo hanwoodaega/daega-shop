@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -29,6 +29,9 @@ export default function ProfileReviewsPage() {
   const [selectedProduct, setSelectedProduct] = useState<ReviewableProduct | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingReview, setEditingReview] = useState<MyReview | null>(null)
+  const isFetchingReviewableRef = useRef(false) // 중복 호출 방지
+  const isFetchingMyReviewsRef = useRef(false) // 중복 호출 방지
+  const isFetchingMyReviewsCountRef = useRef(false) // 탭 개수 중복 호출 방지
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -37,78 +40,98 @@ export default function ProfileReviewsPage() {
     }
   }, [user, authLoading, router])
 
-  // 초기 로드 시 양쪽 개수 모두 가져오기
+  // 초기 로드 시 작성한 리뷰 개수만 가져오기 (탭 표시용) - 최적화된 API 사용
   useEffect(() => {
     if (!userId) return
     
-    const fetchCounts = async () => {
+    const fetchMyReviewsCount = async () => {
+      if (isFetchingMyReviewsCountRef.current) return
+      isFetchingMyReviewsCountRef.current = true
       try {
-        // 작성 가능한 리뷰 개수
-        const reviewableRes = await fetch('/api/reviews/reviewable')
-        if (reviewableRes.ok) {
-          const data = await reviewableRes.json()
-          setReviewableCount(data.reviewableProducts?.length || 0)
-        }
-        
-        // 작성한 리뷰 개수
-        const myReviewsRes = await fetch('/api/reviews/my-reviews')
-        if (myReviewsRes.ok) {
-          const data = await myReviewsRes.json()
-          setMyReviewsCount(data.reviews?.length || 0)
+        // 개수만 가져오는 최적화된 API 호출
+        const response = await fetch('/api/reviews/my-reviews?countOnly=true')
+        if (response.ok) {
+          const data = await response.json()
+          setMyReviewsCount(data.count || 0)
         }
       } catch (error) {
-        handleApiError(error, '리뷰 개수 조회')
+        // 개수 조회 실패는 무시 (탭 표시에만 사용)
+      } finally {
+        isFetchingMyReviewsCountRef.current = false
       }
     }
     
-    fetchCounts()
+    fetchMyReviewsCount()
   }, [userId])
 
+  // 초기 로드 시 작성 가능한 리뷰만 가져오기
   useEffect(() => {
-    if (!userId) return
+    if (!userId || activeTab !== 'reviewable') return
     
-    const fetchData = async () => {
+    const fetchReviewable = async () => {
+      // 중복 호출 방지
+      if (isFetchingReviewableRef.current) return
+      
+      isFetchingReviewableRef.current = true
       try {
         setLoading(true)
+        const response = await fetch('/api/reviews/reviewable')
         
-        if (activeTab === 'reviewable') {
-          const response = await fetch('/api/reviews/reviewable')
-          
-          if (!response.ok) {
-            if (response.status === 401) {
-              console.log('로그인이 필요합니다.')
-              return
-            }
-            throw new Error('Failed to fetch reviewable products')
+        if (!response.ok) {
+          if (response.status === 401) {
+            console.log('로그인이 필요합니다.')
+            return
           }
-
-          const data = await response.json()
-          setReviewableProducts(data.reviewableProducts || [])
-          setReviewableCount(data.reviewableProducts?.length || 0)
-        } else {
-          // 내가 작성한 리뷰 목록 조회
-          const response = await fetch('/api/reviews/my-reviews')
-          
-          if (!response.ok) {
-            if (response.status === 401) {
-              console.log('로그인이 필요합니다.')
-              return
-            }
-            throw new Error('Failed to fetch my reviews')
-          }
-
-          const data = await response.json()
-          setMyReviews(data.reviews || [])
-          setMyReviewsCount(data.reviews?.length || 0)
+          throw new Error('Failed to fetch reviewable products')
         }
+
+        const data = await response.json()
+        setReviewableProducts(data.reviewableProducts || [])
+        setReviewableCount(data.reviewableProducts?.length || 0)
       } catch (error) {
         handleApiError(error, '데이터 조회')
       } finally {
         setLoading(false)
+        isFetchingReviewableRef.current = false
       }
     }
     
-    fetchData()
+    fetchReviewable()
+  }, [userId, activeTab])
+
+  // 작성한 리뷰 탭 클릭 시에만 호출
+  useEffect(() => {
+    if (!userId || activeTab !== 'written') return
+    
+    const fetchMyReviews = async () => {
+      // 중복 호출 방지
+      if (isFetchingMyReviewsRef.current) return
+      
+      isFetchingMyReviewsRef.current = true
+      try {
+        setLoading(true)
+        const response = await fetch('/api/reviews/my-reviews')
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            console.log('로그인이 필요합니다.')
+            return
+          }
+          throw new Error('Failed to fetch my reviews')
+        }
+
+        const data = await response.json()
+        setMyReviews(data.reviews || [])
+        setMyReviewsCount(data.reviews?.length || 0)
+      } catch (error) {
+        handleApiError(error, '데이터 조회')
+      } finally {
+        setLoading(false)
+        isFetchingMyReviewsRef.current = false
+      }
+    }
+    
+    fetchMyReviews()
   }, [userId, activeTab])
 
   const handleWriteReview = (product: ReviewableProduct) => {
@@ -121,21 +144,23 @@ export default function ProfileReviewsPage() {
     setSelectedProduct(null)
     
     try {
-      const [reviewableRes, myReviewsRes] = await Promise.all([
-        fetch('/api/reviews/reviewable'),
-        fetch('/api/reviews/my-reviews')
-      ])
-      
-      if (reviewableRes.ok) {
-        const data = await reviewableRes.json()
-        setReviewableProducts(data.reviewableProducts || [])
-        setReviewableCount(data.reviewableProducts?.length || 0)
+      // 작성 가능한 리뷰만 새로고침 (현재 탭이 reviewable이면)
+      if (activeTab === 'reviewable') {
+        const reviewableRes = await fetch('/api/reviews/reviewable')
+        if (reviewableRes.ok) {
+          const data = await reviewableRes.json()
+          setReviewableProducts(data.reviewableProducts || [])
+          setReviewableCount(data.reviewableProducts?.length || 0)
+        }
       }
-      
-      if (myReviewsRes.ok) {
-        const data = await myReviewsRes.json()
-        setMyReviews(data.reviews || [])
-        setMyReviewsCount(data.reviews?.length || 0)
+      // 작성한 리뷰 탭이 활성화되어 있으면 새로고침
+      if (activeTab === 'written') {
+        const myReviewsRes = await fetch('/api/reviews/my-reviews')
+        if (myReviewsRes.ok) {
+          const data = await myReviewsRes.json()
+          setMyReviews(data.reviews || [])
+          setMyReviewsCount(data.reviews?.length || 0)
+        }
       }
     } catch (error) {
       handleApiError(error, '리뷰 목록 새로고침')
@@ -419,6 +444,9 @@ export default function ProfileReviewsPage() {
           initialImages={editingReview.images || []}
         />
       )}
+
+      <Footer />
+      <BottomNavbar />
     </div>
   )
 }

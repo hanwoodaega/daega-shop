@@ -15,6 +15,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }
 
+    const searchParams = request.nextUrl.searchParams
+    const countOnly = searchParams.get('countOnly') === 'true'
+
+    // 개수만 필요한 경우 최적화된 쿼리
+    if (countOnly) {
+      const { count, error: countError } = await supabase
+        .from('reviews')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+
+      if (countError) {
+        console.error('리뷰 개수 조회 실패:', countError)
+        return NextResponse.json({ error: '리뷰 개수 조회 실패' }, { status: 500 })
+      }
+
+      return NextResponse.json({ count: count || 0 })
+    }
+
+    // 전체 리뷰 목록 조회
     const { data: reviews, error: reviewsError } = await supabase
       .from('reviews')
       .select(`

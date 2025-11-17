@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -9,7 +9,7 @@ import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
-import { supabase, Product, isSupabaseConfigured } from '@/lib/supabase'
+import { Product } from '@/lib/supabase'
 import CategoryGrid from '@/components/CategoryGrid'
 import FlashSaleSection from '@/components/FlashSaleSection'
 import RecentlyViewedSection from '@/components/RecentlyViewedSection'
@@ -24,58 +24,32 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(true)
   const [showSortModal, setShowSortModal] = useState(false)
   const [totalProductCount, setTotalProductCount] = useState<number>(0)
+  const isFetchingRef = useRef(false) // 중복 호출 방지 (useRef 사용)
   const PAGE_SIZE = 20
 
   const fetchProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
+    // 중복 호출 방지
+    if (isFetchingRef.current) return
+    
+    isFetchingRef.current = true
     try {
-      if (!isSupabaseConfigured) {
-        setLoading(false)
-        return
-      }
-
-      const from = (pageNum - 1) * PAGE_SIZE
-      const to = from + PAGE_SIZE - 1
-
-      let query = supabase
-        .from('products')
-        .select('*', { count: 'exact' })
-        .range(from, to)
-      
-      // 정렬 적용
-      if (sort === 'price_asc') {
-        query = query.order('price', { ascending: true })
-      } else if (sort === 'price_desc') {
-        query = query.order('price', { ascending: false })
-      } else {
-        query = query.order('created_at', { ascending: false })
-      }
-      
-      const { data, error, count } = await query
-      
-      if (error) throw error
-      
-      // 승인된 리뷰 기준 평균/개수로 덮어쓰기
-      const baseProducts = data || []
-      const enriched = await Promise.all(
-        baseProducts.map(async (p: any) => {
-          try {
-            const res = await fetch(`/api/reviews?productId=${p.id}&page=1&limit=1`, { cache: 'no-store' })
-            if (res.ok) {
-              const j = await res.json()
-              return {
-                ...p,
-                average_rating: typeof j.averageApprovedRating === 'number' ? j.averageApprovedRating : p.average_rating,
-                review_count: typeof j.total === 'number' ? j.total : p.review_count,
-              }
-            }
-          } catch {}
-          return p
-        })
+      // 새로운 API 사용: 상품 목록과 리뷰 통계를 한 번에 가져오기
+      const sortParam = sort === 'default' ? 'default' : sort
+      const response = await fetch(
+        `/api/products?page=${pageNum}&limit=${PAGE_SIZE}&sort=${sortParam}`,
+        { cache: 'no-store' }
       )
+
+      if (!response.ok) {
+        throw new Error('상품 조회 실패')
+      }
+
+      const data = await response.json()
+      const enriched = data.products || []
 
       if (pageNum === 1) {
         setDisplayedProducts(enriched)
-        setTotalProductCount(count || 0)
+        setTotalProductCount(data.total || 0)
       } else {
         // 중복 방지: 이미 있는 상품은 제외하고 추가
         setDisplayedProducts(prev => {
@@ -85,12 +59,13 @@ export default function Home() {
         })
       }
       
-      setHasMore((count || 0) > pageNum * PAGE_SIZE)
+      setHasMore(pageNum < data.totalPages)
     } catch (error) {
       console.error('상품 조회 실패:', error)
       setErrorMessage('상품 목록을 불러오지 못했습니다.')
     } finally {
       setLoading(false)
+      isFetchingRef.current = false
     }
   }, [])
 

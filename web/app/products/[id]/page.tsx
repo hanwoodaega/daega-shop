@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Header from '@/components/Header'
@@ -21,7 +21,7 @@ import {
 } from '@/lib/utils'
 import { saveRecentlyViewed } from '@/lib/recently-viewed'
 
-export default function ProductDetailPage() {
+function ProductDetailPageContent() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -88,8 +88,13 @@ export default function ProductDetailPage() {
   }, [product?.average_rating])
 
   // 리뷰 개수 가져오기 + 프리페칭
+  const isFetchingReviewCountRef = useRef(false)
   useEffect(() => {
     const fetchReviewCount = async () => {
+      // 중복 호출 방지
+      if (isFetchingReviewCountRef.current) return
+      
+      isFetchingReviewCountRef.current = true
       try {
         const response = await fetch(`/api/reviews?productId=${productId}&page=1&limit=3`)
         if (response.ok) {
@@ -102,6 +107,8 @@ export default function ProductDetailPage() {
         }
       } catch (error) {
         console.error('리뷰 개수 조회 실패:', error)
+      } finally {
+        isFetchingReviewCountRef.current = false
       }
     }
 
@@ -545,10 +552,24 @@ export default function ProductDetailPage() {
         }}
       />
 
-      <div className="hidden md:block">
+      <Footer />
+    </div>
+  )
+}
+
+export default function ProductDetailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col">
+        <Header hideMainMenu showCartButton sticky />
+        <div className="flex-1 flex justify-center items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
+        </div>
         <Footer />
       </div>
-    </div>
+    }>
+      <ProductDetailPageContent />
+    </Suspense>
   )
 }
 

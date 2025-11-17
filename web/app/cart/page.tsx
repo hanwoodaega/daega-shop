@@ -456,7 +456,7 @@ function CartPageContent() {
               </div>
 
               {/* 전체 선택 체크박스 */}
-              <div className={`pt-4 pb-4 ${deliveryMethod === 'regular' ? 'border-b' : ''} border-gray-300`}>
+              <div className={`bg-white pt-4 pb-4 ${deliveryMethod === 'regular' ? 'border-b border-gray-300' : ''}`}>
                 <label className="flex items-center cursor-pointer pl-2">
                   <input
                     type="checkbox"
@@ -791,9 +791,7 @@ function CartPageContent() {
         </div>
       </div>
 
-      <div className="hidden md:block">
-        <Footer />
-      </div>
+      <Footer />
 
       {/* 전역 프로모션 모달 */}
       <PromotionModalWrapper />

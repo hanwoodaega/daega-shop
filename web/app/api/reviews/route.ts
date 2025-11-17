@@ -8,6 +8,8 @@ export async function GET(request: NextRequest) {
     const productId = searchParams.get('productId')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
+    const photoOnly = searchParams.get('photoOnly') === 'true'
+    const sortBy = searchParams.get('sortBy') || 'latest' // 'latest' or 'recommended'
     const offset = (page - 1) * limit
 
     if (!productId) {
@@ -16,21 +18,42 @@ export async function GET(request: NextRequest) {
 
     const supabase = createSupabaseServerClient()
 
+    // 쿼리 빌더 시작
+    let query = supabase
+      .from('reviews')
+      .select(`
+        id, product_id, order_id, user_id, rating, title, content, images, is_verified_purchase, created_at, updated_at, status, admin_reply, admin_replied_at,
+        users!reviews_user_id_fkey(name)
+      `, { count: 'exact' })
+      .eq('product_id', productId)
+
+    // 포토 리뷰만 보기 필터
+    // Supabase에서 JSON 배열 필터링은 제한적이므로, 
+    // null이 아니고 빈 배열이 아닌 경우만 필터링
+    if (photoOnly) {
+      query = query.not('images', 'is', null)
+    }
+
+    // 정렬 설정
+    if (sortBy === 'recommended') {
+      // 추천순: 별점 높은 순 -> 리뷰 길이 긴 순
+      // Supabase에서는 문자열 길이로 직접 정렬이 어려우므로, 
+      // 데이터를 가져온 후 서버 측에서 정렬 처리
+      query = query.order('rating', { ascending: false })
+      query = query.order('created_at', { ascending: false })
+    } else {
+      // 최신순 (기본값)
+      query = query.order('created_at', { ascending: false })
+    }
+
     // 최적화: users 테이블과 JOIN하여 한 번의 쿼리로 처리
     // 우선 승인된 리뷰만 조회 시도 (status 컬럼이 없으면 폴백)
     let reviews: any[] | null = null
     let count: number | null = null
     let error: any = null
     try {
-      const res = await supabase
-        .from('reviews')
-        .select(`
-          id, product_id, order_id, user_id, rating, title, content, images, is_verified_purchase, created_at, updated_at, status, admin_reply, admin_replied_at,
-          users!reviews_user_id_fkey(name)
-        `, { count: 'exact' })
-        .eq('product_id', productId)
+      const res = await query
         .eq('status', 'approved')
-        .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
       reviews = res.data as any[] | null
       count = res.count as number | null
@@ -41,14 +64,29 @@ export async function GET(request: NextRequest) {
 
     // status 컬럼이 없거나 오류 시 기존 방식으로 폴백
     if (error) {
-      const res = await supabase
+      let fallbackQuery = supabase
         .from('reviews')
         .select(`
           id, product_id, order_id, user_id, rating, title, content, images, is_verified_purchase, created_at, updated_at, admin_reply, admin_replied_at,
           users!reviews_user_id_fkey(name)
         `, { count: 'exact' })
         .eq('product_id', productId)
-        .order('created_at', { ascending: false })
+
+      // 포토 리뷰만 보기 필터
+      if (photoOnly) {
+        fallbackQuery = fallbackQuery.not('images', 'is', null)
+      }
+
+      // 정렬 설정
+      // 추천순은 서버 측에서 처리하므로 여기서는 기본 정렬만
+      if (sortBy === 'recommended') {
+        fallbackQuery = fallbackQuery.order('rating', { ascending: false })
+        fallbackQuery = fallbackQuery.order('created_at', { ascending: false })
+      } else {
+        fallbackQuery = fallbackQuery.order('created_at', { ascending: false })
+      }
+
+      const res = await fallbackQuery
         .range(offset, offset + limit - 1)
       reviews = res.data as any[] | null
       count = res.count as number | null
@@ -85,7 +123,7 @@ export async function GET(request: NextRequest) {
     }
 
     // JOIN 결과를 바로 사용 (추가 쿼리 불필요)
-    const maskedReviews = (reviews || []).map((review: any) => {
+    let filteredReviews = (reviews || []).map((review: any) => {
       const userName = review.users?.name || '익명'
       
       return {
@@ -94,6 +132,31 @@ export async function GET(request: NextRequest) {
         users: undefined // 불필요한 중첩 객체 제거
       }
     })
+
+    // 포토 리뷰만 보기 필터: 빈 배열도 제외
+    if (photoOnly) {
+      filteredReviews = filteredReviews.filter((review: any) => {
+        return review.images && 
+               Array.isArray(review.images) && 
+               review.images.length > 0
+      })
+    }
+
+    // 추천순 정렬: 별점 높은 순 -> 리뷰 길이 긴 순
+    if (sortBy === 'recommended') {
+      filteredReviews.sort((a: any, b: any) => {
+        // 1차: 별점 내림차순
+        if (b.rating !== a.rating) {
+          return (b.rating || 0) - (a.rating || 0)
+        }
+        // 2차: 리뷰 길이 내림차순 (content 길이)
+        const aLength = (a.content || '').length
+        const bLength = (b.content || '').length
+        return bLength - aLength
+      })
+    }
+
+    const maskedReviews = filteredReviews
 
     // 승인된 리뷰의 평균 별점 계산 (가능하면 status 기준, 폴백 제공)
     let averageApproved = 0

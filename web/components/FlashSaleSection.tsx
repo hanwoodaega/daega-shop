@@ -19,6 +19,7 @@ export default function FlashSaleSection() {
   const [loading, setLoading] = useState(true)
   const [flashSaleTitle, setFlashSaleTitle] = useState('오늘만 특가!')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const isFetchingTitleRef = useRef(false) // 중복 호출 방지
   const openPromotionModal = usePromotionModalStore((state) => state.openModal)
   const { user } = useAuth()
   const wishlistIds = useWishlistStore((state) => state.items)
@@ -56,6 +57,10 @@ export default function FlashSaleSection() {
     }
 
     const fetchFlashSaleTitle = async () => {
+      // 중복 호출 방지
+      if (isFetchingTitleRef.current) return
+      
+      isFetchingTitleRef.current = true
       try {
         const res = await fetch('/api/admin/flash-sale-settings')
         if (res.ok) {
@@ -66,6 +71,8 @@ export default function FlashSaleSection() {
         }
       } catch (error) {
         console.error('타임딜 제목 조회 실패:', error)
+      } finally {
+        isFetchingTitleRef.current = false
       }
     }
 

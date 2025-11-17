@@ -109,9 +109,7 @@ export default function WishlistPage() {
         )}
       </main>
 
-      <div className="hidden md:block">
-        <Footer />
-      </div>
+      <Footer />
 
       <BottomNavbar />
       <PromotionModalWrapper />

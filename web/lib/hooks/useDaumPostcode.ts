@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 declare global {
   interface Window {
     daum: any
+    Kakao: any
   }
 }
 
@@ -79,6 +80,17 @@ export function openDaumPostcode(onComplete: AddressSearchCallback) {
       })
     }
   }).open()
+}
+
+/**
+ * Daum 우편번호 서비스를 사용하는 편의 hook
+ */
+export function useDaumPostcode(options: { onComplete: AddressSearchCallback }) {
+  useDaumPostcodeScript()
+  
+  return {
+    open: () => openDaumPostcode(options.onComplete)
+  }
 }
 
 

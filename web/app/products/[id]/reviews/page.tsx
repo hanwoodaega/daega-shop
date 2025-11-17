@@ -31,6 +31,10 @@ export default function AllReviewsPage() {
   const [editingReview, setEditingReview] = useState<Review | null>(null)
   const [targetReviewId, setTargetReviewId] = useState<string | null>(null)
   
+  // 필터 및 정렬 상태
+  const [photoOnly, setPhotoOnly] = useState(false)
+  const [sortBy, setSortBy] = useState<'latest' | 'recommended'>('latest')
+  
   const observerTarget = useRef<HTMLDivElement>(null)
   const loadingRef = useRef(false)
 
@@ -44,7 +48,14 @@ export default function AllReviewsPage() {
       // 해시로 특정 리뷰 접근 시 초기 로드량 3배 증가
       const initialLimit = targetReviewId ? 30 : 10
       const limit = pageNum === 1 ? initialLimit : 10
-      const response = await fetch(`/api/reviews?productId=${productId}&page=${pageNum}&limit=${limit}`)
+      const params = new URLSearchParams({
+        productId,
+        page: pageNum.toString(),
+        limit: limit.toString(),
+        photoOnly: photoOnly.toString(),
+        sortBy,
+      })
+      const response = await fetch(`/api/reviews?${params.toString()}`)
       
       if (!response.ok) {
         throw new Error('리뷰 조회 실패')
@@ -69,7 +80,7 @@ export default function AllReviewsPage() {
       loadingRef.current = false
       setLoading(false)
     }
-  }, [productId, targetReviewId])
+  }, [productId, targetReviewId, photoOnly, sortBy])
 
   // 상품 정보 가져오기 (이름만)
   useEffect(() => {
@@ -98,9 +109,21 @@ export default function AllReviewsPage() {
     }
   }, [])
 
+  // 필터 변경 시 페이지 리셋 및 재로드
   useEffect(() => {
+    setPage(1)
+    setReviews([])
     fetchReviews(1)
-  }, [productId, fetchReviews])
+  }, [productId, photoOnly, sortBy])
+
+  // 필터 변경 핸들러
+  const handlePhotoOnlyChange = (checked: boolean) => {
+    setPhotoOnly(checked)
+  }
+
+  const handleSortChange = (sort: 'latest' | 'recommended') => {
+    setSortBy(sort)
+  }
 
   // 특정 리뷰로 스크롤 (재시도 로직 포함)
   useEffect(() => {
@@ -245,7 +268,7 @@ export default function AllReviewsPage() {
         
         {/* 별점과 평균 */}
         {total > 0 && (
-          <div className="flex items-center gap-1 mb-5 px-3">
+          <div className="flex items-center gap-1 mb-4 px-3">
             {/* 별점 */}
             <StarIcons rating={averageRating} size="lg" />
             {/* 평균 별점 */}
@@ -254,6 +277,34 @@ export default function AllReviewsPage() {
             <span className="text-base text-gray-500">({total})</span>
           </div>
         )}
+
+        {/* 필터 및 정렬 UI */}
+        <div className="mb-4 px-3">
+          <div className="flex items-center justify-between gap-4">
+            {/* 포토 리뷰만 보기 */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={photoOnly}
+                onChange={(e) => handlePhotoOnlyChange(e.target.checked)}
+                className="w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+              />
+              <span className="text-sm font-medium text-gray-700">포토 리뷰만 보기</span>
+            </label>
+
+            {/* 정렬 드롭다운 */}
+            <div className="flex items-center gap-2">
+              <select
+                value={sortBy}
+                onChange={(e) => handleSortChange(e.target.value as 'latest' | 'recommended')}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+              >
+                <option value="latest">최신순</option>
+                <option value="recommended">추천순</option>
+              </select>
+            </div>
+          </div>
+        </div>
 
         {/* 리뷰 사진 갤러리 (4x2) */}
         {allImages.length > 0 && (

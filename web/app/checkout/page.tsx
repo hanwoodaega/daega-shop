@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -18,10 +18,14 @@ import { UserCoupon, Coupon } from '@/lib/supabase'
 import { getUserPoints } from '@/lib/points'
 import { removeFromCartDB } from '@/lib/cart-db'
 
-export default function CheckoutPage() {
+function CheckoutPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const timeoutsRef = useRef<number[]>([])
+  
+  // 선물 모드 확인
+  const isGiftMode = searchParams?.get('mode') === 'gift'
   
   // ✅ Selector 패턴 - 필요한 것만 구독
   const cartItems = useCartStore((state) => state.items)
@@ -76,6 +80,20 @@ export default function CheckoutPage() {
   const [loadingPoints, setLoadingPoints] = useState(false)
   const [usedPointsInput, setUsedPointsInput] = useState('')
 
+  // 선물 관련 state
+  const [giftData, setGiftData] = useState({
+    message: '',
+    cardDesign: 'birthday' as 'birthday' | 'anniversary' | 'thanks' | 'custom',
+  })
+  
+
+  // 카카오톡 친구 선택
+  const [selectedKakaoFriend, setSelectedKakaoFriend] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+  const [kakaoSDKLoaded, setKakaoSDKLoaded] = useState(false)
+
   // Destructuring for backward compatibility
   const { method: deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime } = deliveryState
   const { isProcessing, mounted, saveAsDefaultAddress } = flags
@@ -104,6 +122,31 @@ export default function CheckoutPage() {
       }))
     }
   }, [])
+
+  // 카카오톡 SDK 로드
+  useEffect(() => {
+    if (isGiftMode && typeof window !== 'undefined') {
+      const script = document.createElement('script')
+      script.src = 'https://developers.kakao.com/sdk/js/kakao.js'
+      script.async = true
+      script.onload = () => {
+        if (window.Kakao && !window.Kakao.isInitialized()) {
+          const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY || ''
+          if (kakaoAppKey) {
+            window.Kakao.init(kakaoAppKey)
+            setKakaoSDKLoaded(true)
+          }
+        } else if (window.Kakao?.isInitialized()) {
+          setKakaoSDKLoaded(true)
+        }
+      }
+      document.head.appendChild(script)
+
+      return () => {
+        // Cleanup은 하지 않음 (다른 곳에서도 사용할 수 있음)
+      }
+    }
+  }, [isGiftMode])
 
   // Daum 우편번호 스크립트 로드
   useDaumPostcodeScript()
@@ -214,6 +257,90 @@ export default function CheckoutPage() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  const handleSelectKakaoFriend = async () => {
+    if (!window.Kakao || !window.Kakao.isInitialized()) {
+      showError({ message: '카카오톡 SDK가 로드되지 않았습니다.' })
+      return
+    }
+
+    if (!user) {
+      showError({ message: '로그인이 필요합니다.' })
+      router.push('/auth/login?next=/checkout?mode=gift')
+      return
+    }
+
+    // 선물 모드일 때는 결제를 먼저 진행하고, 결제 완료 후 카카오톡 공유
+    // 결제는 handleSubmit에서 처리하고, 여기서는 카카오톡 공유만 처리
+    // 하지만 결제가 완료된 주문이 있어야 하므로, 
+    // 실제로는 handleSubmit에서 결제 완료 후 카카오톡 공유를 호출해야 함
+    
+    showError({ message: '먼저 결제를 완료해주세요. 결제 완료 후 카카오톡으로 공유할 수 있습니다.' })
+  }
+
+  // 결제 완료 후 카카오톡 공유 함수
+  const shareGiftToKakao = async (orderId: string, giftToken: string) => {
+    if (!window.Kakao || !window.Kakao.isInitialized()) {
+      // SDK가 로드되지 않았으면 로드 시도
+      const script = document.createElement('script')
+      script.src = 'https://developers.kakao.com/sdk/js/kakao.js'
+      script.async = true
+      script.onload = () => {
+        const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY || ''
+        if (kakaoAppKey) {
+          window.Kakao.init(kakaoAppKey)
+          performKakaoShare(orderId, giftToken)
+        }
+      }
+      document.head.appendChild(script)
+      return
+    }
+
+    performKakaoShare(orderId, giftToken)
+  }
+
+  const performKakaoShare = (orderId: string, giftToken: string) => {
+    const giftLink = `${window.location.origin}/gift/receive/${giftToken}`
+    
+    // 카드 디자인에 따른 제목 설정
+    const cardDesignTitles: Record<string, string> = {
+      birthday: '🎂 생일 축하 선물이 도착했습니다!',
+      anniversary: '💝 기념일 선물이 도착했습니다!',
+      thanks: '🙏 감사 인사 선물이 도착했습니다!',
+      custom: '🎁 특별한 선물이 도착했습니다!',
+    }
+    
+    const title = cardDesignTitles[giftData.cardDesign] || '🎁 선물이 도착했습니다!'
+
+    // 카드 디자인 이미지 URL (선택한 카드 디자인 이미지 사용)
+    const cardImageUrl = giftData.cardDesign 
+      ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.jpg`
+      : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
+
+    // 카카오톡 공유 API로 친구에게 공유
+    // 메시지는 description에 포함되어 전송됩니다
+    window.Kakao.Share.sendDefault({
+      objectType: 'feed',
+      content: {
+        title: title,
+        description: giftData.message || '선물을 받아보세요!',
+        imageUrl: cardImageUrl,
+        link: {
+          mobileWebUrl: giftLink,
+          webUrl: giftLink,
+        },
+      },
+      buttons: [
+        {
+          title: '선물 받기',
+          link: {
+            mobileWebUrl: giftLink,
+            webUrl: giftLink,
+          },
+        },
+      ],
+    })
+  }
+
   const handleSearchAddress = () => {
     openDaumPostcode((data: AddressSearchResult) => {
       setFormData(prev => ({
@@ -248,35 +375,42 @@ export default function CheckoutPage() {
       return
     }
 
-    if (!formData.name || !formData.phone) {
-      showError({ message: '필수 항목을 모두 입력해주세요.' }, { icon: '⚠️' })
-      return
-    }
+    // 선물 모드일 때는 카카오톡 공유를 통해 주문이 이미 생성되었을 수 있음
+    // 세션에서 pending_gift_order_id 확인
+    const pendingGiftOrderId = sessionStorage.getItem('pending_gift_order_id')
 
-    // 배송 방법별 유효성 검사
-    if (deliveryMethod === 'pickup' && !pickupTime) {
-      showError({ message: '픽업 시간을 선택해주세요.' }, { icon: '⏰' })
-      return
-    }
-
-    if (deliveryMethod === 'quick') {
-      if (!quickDeliveryArea) {
-        showError({ message: '배달 지역을 선택해주세요.' }, { icon: '📍' })
+    // 선물 모드가 아닐 때만 배송 정보 검증
+    if (!isGiftMode) {
+      if (!formData.name || !formData.phone) {
+        showError({ message: '필수 항목을 모두 입력해주세요.' }, { icon: '⚠️' })
         return
       }
-      if (!formData.address) {
-        showError({ message: '상세 주소를 입력해주세요.' }, { icon: '📍' })
-        return
-      }
-      if (!quickDeliveryTime) {
-        showError({ message: '배달 시간을 선택해주세요.' }, { icon: '⏰' })
-        return
-      }
-    }
 
-    if (deliveryMethod === 'regular' && !formData.address) {
-      showError({ message: '배송 주소를 입력해주세요.' }, { icon: '📍' })
-      return
+      // 배송 방법별 유효성 검사
+      if (deliveryMethod === 'pickup' && !pickupTime) {
+        showError({ message: '픽업 시간을 선택해주세요.' }, { icon: '⏰' })
+        return
+      }
+
+      if (deliveryMethod === 'quick') {
+        if (!quickDeliveryArea) {
+          showError({ message: '배달 지역을 선택해주세요.' }, { icon: '📍' })
+          return
+        }
+        if (!formData.address) {
+          showError({ message: '상세 주소를 입력해주세요.' }, { icon: '📍' })
+          return
+        }
+        if (!quickDeliveryTime) {
+          showError({ message: '배달 시간을 선택해주세요.' }, { icon: '⏰' })
+          return
+        }
+      }
+
+      if (deliveryMethod === 'regular' && !formData.address) {
+        showError({ message: '배송 주소를 입력해주세요.' }, { icon: '📍' })
+        return
+      }
     }
 
     // 포인트 사용 유효성 검사
@@ -302,7 +436,10 @@ export default function CheckoutPage() {
       }
 
       // 주문 생성
-      const shippingAddress = deliveryMethod === 'pickup'
+      // 선물 모드일 때는 배송 정보가 필요 없음 (받는 사람이 직접 입력)
+      const shippingAddress = isGiftMode 
+        ? '선물 수령 대기' 
+        : deliveryMethod === 'pickup'
         ? '매장 픽업'
         : deliveryMethod === 'quick'
         ? `${formData.address}${formData.addressDetail ? ' ' + formData.addressDetail : ''}`
@@ -315,7 +452,9 @@ export default function CheckoutPage() {
       // 데모를 위해 주문 정보만 저장하고 완료 페이지로 이동
       
       // 주문 저장 (API 통해서)
-      const deliveryTime = deliveryMethod === 'pickup' 
+      const deliveryTime = isGiftMode 
+        ? null 
+        : deliveryMethod === 'pickup' 
         ? pickupTime 
         : deliveryMethod === 'quick' 
         ? quickDeliveryTime 
@@ -328,14 +467,23 @@ export default function CheckoutPage() {
         },
         body: JSON.stringify({
           total_amount: totalAmount,
-          delivery_type: deliveryMethod,
+          delivery_type: isGiftMode ? 'regular' : deliveryMethod,
           delivery_time: deliveryTime,
           shipping_address: shippingAddress,
-          shipping_name: formData.name,
-          shipping_phone: formData.phone,
+          shipping_name: isGiftMode ? '선물 수령 대기' : formData.name,
+          shipping_phone: isGiftMode ? '' : formData.phone,
           delivery_note: formData.message.trim() || null,
           used_coupon_id: selectedCoupon?.id || null,
           used_points: usedPoints,
+          is_gift: isGiftMode,
+          gift_message: isGiftMode ? giftData.message : null,
+          gift_card_design: isGiftMode ? giftData.cardDesign : null,
+          gift_wrapping_ribbon: false,
+          gift_wrapping_premium_box: false,
+          gift_wrapping_handwritten_card: false,
+          gift_wrapping_fee: 0,
+          kakao_friend_id: isGiftMode && selectedKakaoFriend ? selectedKakaoFriend.id : null,
+          kakao_friend_name: isGiftMode && selectedKakaoFriend ? selectedKakaoFriend.name : null,
           items: items.map(item => ({
             productId: item.productId,
             quantity: item.quantity,
@@ -350,6 +498,14 @@ export default function CheckoutPage() {
       }
 
       const { order } = await response.json()
+
+      // 선물 모드이고 결제 완료된 경우 카카오톡 공유
+      if (isGiftMode && order.gift_token) {
+        // 결제 완료 후 카카오톡 공유
+        setTimeout(() => {
+          shareGiftToKakao(order.id, order.gift_token)
+        }, 500)
+      }
 
       // 기본 배송지로 저장 체크 시 배송지 저장 (택배 또는 퀵배달)
       if (saveAsDefaultAddress && (deliveryMethod === 'regular' || deliveryMethod === 'quick') && formData.address) {
@@ -438,7 +594,12 @@ export default function CheckoutPage() {
 
       // 주문 완료 페이지로 이동
       const t = window.setTimeout(() => {
-        router.push('/orders')
+        if (isGiftMode && order.gift_token) {
+          // 선물 모드일 때 토큰 포함하여 이동
+          router.push(`/orders?giftToken=${order.gift_token}`)
+        } else {
+          router.push('/orders')
+        }
       }, 1500)
       timeoutsRef.current.push(t)
 
@@ -481,6 +642,7 @@ export default function CheckoutPage() {
   // 주문 금액 계산 (통합 유틸리티 사용)
   const { originalTotal, discountAmount, shipping, discountedTotal, total: orderTotal } = calculateOrderTotal(items, deliveryMethod)
   const subtotal = discountedTotal
+  
   const couponDiscount = calculateCouponDiscount(subtotal)
   const afterCouponDiscount = Math.max(0, subtotal - couponDiscount)
   const finalTotal = Math.max(0, afterCouponDiscount - usedPoints)
@@ -545,7 +707,8 @@ export default function CheckoutPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* 주문 정보 입력 */}
             <div className="lg:col-span-2 space-y-6">
-              {/* 주문자 정보 */}
+              {/* 주문자 정보 - 선물 모드가 아닐 때만 표시 */}
+              {!isGiftMode && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-bold mb-4">주문자</h2>
                 <div className="space-y-4">
@@ -583,9 +746,10 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               </div>
+              )}
 
-              {/* 배송 정보 - 퀵배달일 때 표시 */}
-              {deliveryMethod === 'quick' && (
+              {/* 배송 정보 - 퀵배달일 때 표시 (선물 모드가 아닐 때만) */}
+              {!isGiftMode && deliveryMethod === 'quick' && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-bold mb-4">배송 정보</h2>
                 <div className="space-y-4">
@@ -678,8 +842,8 @@ export default function CheckoutPage() {
               </div>
               )}
 
-              {/* 배송 정보 - 택배배송일 때만 표시 */}
-              {deliveryMethod === 'regular' && (
+              {/* 배송 정보 - 택배배송일 때만 표시 (선물 모드가 아닐 때만) */}
+              {!isGiftMode && deliveryMethod === 'regular' && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-bold mb-4">배송 정보</h2>
                 
@@ -815,6 +979,131 @@ export default function CheckoutPage() {
                   </div>
                 )}
               </div>
+              )}
+
+              {/* 선물 옵션 - 선물 모드일 때만 표시 */}
+              {isGiftMode && (
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-2xl">🎁</span>
+                    <h2 className="text-xl font-bold">선물 옵션</h2>
+                  </div>
+                  
+                  {/* 선물 메시지 카드 */}
+                  <div className="space-y-4 mb-6">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <p className="text-sm text-blue-800">
+                        💌 카카오톡으로 선물을 보내면, 받는 분이 직접 주소를 입력하여 받을 수 있습니다.
+                      </p>
+                    </div>
+
+                    
+                    {/* 카드 디자인 선택 */}
+                    <div>
+                      <label className="block text-sm font-medium mb-3">
+                        카드 디자인 선택
+                      </label>
+                      <div className="overflow-x-auto pb-2 -mx-4 px-4">
+                        <div className="flex gap-3 min-w-max">
+                          {[
+                            { value: 'birthday', label: '생일 축하', emoji: '🎂', color: 'from-pink-200 to-pink-300' },
+                            { value: 'anniversary', label: '기념일', emoji: '💝', color: 'from-orange-200 to-orange-300' },
+                            { value: 'thanks', label: '감사 인사', emoji: '🙏', color: 'from-blue-200 to-blue-300' },
+                            { value: 'custom', label: '커스텀', emoji: '🎁', color: 'from-purple-200 to-purple-300' },
+                          ].map((design) => (
+                            <button
+                              key={design.value}
+                              type="button"
+                              onClick={() => setGiftData(prev => ({ ...prev, cardDesign: design.value as any }))}
+                              className={`relative flex-shrink-0 w-32 rounded-lg border-2 transition-all ${
+                                giftData.cardDesign === design.value
+                                  ? 'border-primary-600 ring-2 ring-primary-300 shadow-md'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <div className="aspect-[4/3] relative bg-gradient-to-br flex items-center justify-center" style={{
+                                background: giftData.cardDesign === design.value
+                                  ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
+                                  : design.value === 'birthday'
+                                  ? 'linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%)'
+                                  : design.value === 'anniversary'
+                                  ? 'linear-gradient(135deg, #fed7aa 0%, #fdba74 100%)'
+                                  : design.value === 'thanks'
+                                  ? 'linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%)'
+                                  : 'linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%)'
+                              }}>
+                                <div className="text-4xl">{design.emoji}</div>
+                                {giftData.cardDesign === design.value && (
+                                  <div className="absolute top-2 right-2 bg-primary-600 text-white rounded-full p-1">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-2 bg-white">
+                                <p className="text-xs font-medium text-center text-gray-700">{design.label}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 카드 미리보기 */}
+                    {giftData.cardDesign && (
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium mb-2">
+                          카드 미리보기
+                        </label>
+                        <div className="relative rounded-lg overflow-hidden border-2 border-gray-200 shadow-md" style={{ aspectRatio: '4/3' }}>
+                          <img
+                            src={`/images/gift-cards/${giftData.cardDesign}.jpg`}
+                            alt="카드 디자인"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement
+                              target.style.display = 'none'
+                              const parent = target.parentElement!
+                              parent.innerHTML = `
+                                <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                                  <span class="text-gray-400">카드 이미지를 추가해주세요</span>
+                                </div>
+                              `
+                            }}
+                          />
+                          {/* 메시지 오버레이 (CSS로만 표시) */}
+                          {giftData.message && (
+                            <div className="absolute inset-0 flex items-center justify-center p-8">
+                              <p className="text-white text-center whitespace-pre-wrap break-words drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" style={{ 
+                                fontSize: 'clamp(14px, 2.5vw, 18px)',
+                                lineHeight: '1.6',
+                                textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.5)'
+                              }}>
+                                {giftData.message}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        선물 메시지
+                      </label>
+                      <textarea
+                        value={giftData.message}
+                        onChange={(e) => setGiftData(prev => ({ ...prev, message: e.target.value }))}
+                        rows={4}
+                        maxLength={200}
+                        placeholder="받는 분께 전달할 메시지를 작성해주세요"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">{giftData.message.length}/200</p>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* 쿠폰 선택 */}
@@ -954,7 +1243,8 @@ export default function CheckoutPage() {
               <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
                 <h2 className="text-xl font-bold mb-4">주문 요약</h2>
                 
-                {/* 배송 방법 표시 */}
+                {/* 배송 방법 표시 - 선물 모드가 아닐 때만 */}
+                {!isGiftMode && (
                 <div className="mb-2 pb-2">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">배송 방법</span>
@@ -987,6 +1277,7 @@ export default function CheckoutPage() {
                     </>
                   )}
                 </div>
+                )}
 
                 {mounted ? (
                   <>
@@ -1021,7 +1312,7 @@ export default function CheckoutPage() {
                       </div>
                       <div className="border-t pt-3">
                         <div className="flex justify-between text-lg font-bold">
-                          <span>결제 예상 금액</span>
+                          <span>{isGiftMode ? '선물 예상 금액' : '결제 예상 금액'}</span>
                           <span className="text-primary-900">{formatPrice(finalTotal + shipping)}원</span>
                         </div>
                       </div>
@@ -1043,21 +1334,63 @@ export default function CheckoutPage() {
         {/* 하단 고정 결제 버튼 */}
         {mounted && (
           <div className="fixed bottom-0 left-0 right-0 z-40 bg-white shadow-lg" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
-            <div className="px-0 pb-0">
+            <div className={isGiftMode ? 'px-4 py-3' : 'px-0 pb-0'}>
               <button
                 type="submit"
                 form="checkout-form"
                 disabled={isProcessing}
-                className="w-full bg-red-600 text-white py-3 text-lg font-semibold hover:bg-red-700 transition disabled:bg-gray-400 flex items-center justify-center gap-2"
+                className={`w-full text-lg font-bold transition disabled:bg-gray-400 disabled:text-gray-500 flex items-center justify-center gap-2 ${
+                  isGiftMode 
+                    ? 'bg-[#FEE500] text-[#000000] hover:bg-[#FDD835] shadow-md rounded-xl py-2.5' 
+                    : 'bg-red-600 text-white hover:bg-red-700 py-3'
+                }`}
               >
                 {isProcessing ? (
                   <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <div className={`animate-spin rounded-full h-5 w-5 border-b-2 ${isGiftMode ? 'border-[#000000]' : 'border-white'}`}></div>
                     처리 중...
                   </>
                 ) : (
                   <>
-                    <span>{formatPrice(finalTotal + shipping)}원 결제하기</span>
+                    {isGiftMode ? (
+                      <>
+                        <svg 
+                          width="52" 
+                          height="36" 
+                          viewBox="0 0 60 40" 
+                          fill="none" 
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="flex-shrink-0"
+                        >
+                          {/* 말풍선 본체 (가로로 조금 더 긴 타원형, 세로로 더 길게) */}
+                          <ellipse 
+                            cx="30" 
+                            cy="20" 
+                            rx="23" 
+                            ry="19" 
+                            fill="#3C1E1E"
+                          />
+                          {/* TALK 텍스트 (중앙 정렬, 세로로 길게) */}
+                          <text 
+                            x="30" 
+                            y="21" 
+                            textAnchor="middle" 
+                            fontSize="13" 
+                            fontWeight="600" 
+                            fill="#FEE500"
+                            fontFamily="'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"
+                            letterSpacing="0.3"
+                            dominantBaseline="middle"
+                            transform="translate(30, 21) scale(1, 1.3) translate(-30, -21)"
+                          >
+                            TALK
+                          </text>
+                        </svg>
+                        <span className="font-bold">{formatPrice(finalTotal + shipping)}원 선물하기</span>
+                      </>
+                    ) : (
+                      <span>{formatPrice(finalTotal + shipping)}원 결제하기</span>
+                    )}
                   </>
                 )}
               </button>
@@ -1175,10 +1508,32 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      <div className="hidden md:block">
+      <Footer />
+    </div>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-8 pb-24">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="animate-pulse space-y-4">
+                <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+                <div className="h-4 bg-gray-200 rounded w-full"></div>
+                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+              </div>
+            </div>
+          </div>
+        </main>
         <Footer />
       </div>
-    </div>
+    }>
+      <CheckoutPageContent />
+    </Suspense>
   )
 }
 

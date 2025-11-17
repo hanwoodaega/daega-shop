@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense, useCallback, useMemo } from 'react'
+import { useEffect, useState, Suspense, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/Header'
@@ -8,7 +8,7 @@ import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
-import { supabase, Product } from '@/lib/supabase'
+import { Product } from '@/lib/supabase'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import CategoryGrid from '@/components/CategoryGrid'
@@ -27,6 +27,7 @@ function ProductsContent() {
   const [sortOrder, setSortOrder] = useState<'default' | 'price_asc' | 'price_desc'>('default')
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  const isFetchingRef = useRef(false) // 중복 호출 방지
   const PAGE_SIZE = 20
 
   // URL 파라미터가 변경되면 selectedCategory 업데이트
@@ -35,72 +36,38 @@ function ProductsContent() {
   }, [category])
 
   const fetchProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
+    // 중복 호출 방지
+    if (isFetchingRef.current) return
+    
+    isFetchingRef.current = true
     setLoading(pageNum === 1)
     setLoadingMore(pageNum > 1)
     
     try {
-      const from = (pageNum - 1) * PAGE_SIZE
-      const to = from + PAGE_SIZE - 1
+      // 새로운 API 사용: 상품 목록과 리뷰 통계를 한 번에 가져오기
+      const params = new URLSearchParams({
+        page: pageNum.toString(),
+        limit: PAGE_SIZE.toString(),
+        sort: sort === 'default' ? 'default' : sort,
+      })
 
-      let query = supabase
-        .from('products')
-        .select('*', { count: 'exact' })
-        .range(from, to)
-      
-      // 검색어가 있으면 검색어 필터만 적용 (카테고리 무시)
+      // 검색어, 필터, 카테고리 파라미터 추가
       if (searchQuery) {
-        // ✅ Full-Text Search 사용 (search_vector가 있는 경우)
-        // 없으면 fallback으로 ILIKE 사용
-        query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,origin.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%`)
+        params.append('search', searchQuery)
       } else if (filter) {
-        // 필터가 있으면 필터 적용
-        if (filter === 'new') {
-          query = query.eq('is_new', true)
-        } else if (filter === 'best') {
-          query = query.eq('is_best', true)
-        } else if (filter === 'sale') {
-          query = query.eq('is_sale', true)
-        } else if (filter === 'budget') {
-          query = query.eq('is_budget', true)
-        }
-      } else {
-        // 검색어가 없을 때만 카테고리 필터 적용
-        if (selectedCategory && selectedCategory !== '전체') {
-          query = query.eq('category', selectedCategory)
-        }
+        params.append('filter', filter)
+      } else if (selectedCategory && selectedCategory !== '전체') {
+        params.append('category', selectedCategory)
       }
-      
-      // 정렬 적용
-      if (sort === 'price_asc') {
-        query = query.order('price', { ascending: true })
-      } else if (sort === 'price_desc') {
-        query = query.order('price', { ascending: false })
-      } else {
-        query = query.order('created_at', { ascending: false })
+
+      const response = await fetch(`/api/products?${params.toString()}`, { cache: 'no-store' })
+
+      if (!response.ok) {
+        throw new Error('상품 조회 실패')
       }
-      
-      const { data, error, count } = await query
-      
-      if (error) throw error
-      
-      // 승인된 리뷰 기준 평균/개수로 덮어쓰기
-      const baseProducts = data || []
-      const enriched = await Promise.all(
-        baseProducts.map(async (p: any) => {
-          try {
-            const res = await fetch(`/api/reviews?productId=${p.id}&page=1&limit=1`, { cache: 'no-store' })
-            if (res.ok) {
-              const j = await res.json()
-              return {
-                ...p,
-                average_rating: typeof j.averageApprovedRating === 'number' ? j.averageApprovedRating : p.average_rating,
-                review_count: typeof j.total === 'number' ? j.total : p.review_count,
-              }
-            }
-          } catch {}
-          return p
-        })
-      )
+
+      const data = await response.json()
+      const enriched = data.products || []
 
       if (pageNum === 1) {
         setDisplayedProducts(enriched || [])
@@ -113,12 +80,13 @@ function ProductsContent() {
         })
       }
       
-      setHasMore((count || 0) > pageNum * PAGE_SIZE)
+      setHasMore(pageNum < data.totalPages)
     } catch (error) {
       console.error('상품 조회 실패:', error)
     } finally {
       setLoading(false)
       setLoadingMore(false)
+      isFetchingRef.current = false
     }
   }, [selectedCategory, searchQuery, filter])
 

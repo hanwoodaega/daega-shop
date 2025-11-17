@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import ReviewItem from './ReviewItem'
 import ReviewStars from './ReviewStars'
@@ -56,6 +56,7 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
   const [editingReview, setEditingReview] = useState<Review | null>(null)
   const [showImageModal, setShowImageModal] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const isFetchingReviewsRef = useRef(false) // 중복 호출 방지
 
   // 키보드 네비게이션
   useKeyboardNavigation(
@@ -78,6 +79,10 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
   }, [showImageModal])
 
   const fetchReviews = useCallback(async () => {
+    // 중복 호출 방지
+    if (isFetchingReviewsRef.current) return
+    
+    isFetchingReviewsRef.current = true
     try {
       setLoading(true)
       const response = await fetch(`/api/reviews?productId=${productId}&page=${page}&limit=${limit}`)
@@ -118,6 +123,7 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
       // Silent fail
     } finally {
       setLoading(false)
+      isFetchingReviewsRef.current = false
     }
   }, [productId, page, limit])
 

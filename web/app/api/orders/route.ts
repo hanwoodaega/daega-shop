@@ -21,12 +21,56 @@ async function createOrderWithoutTransaction(
   deliveryNote: string | null,
   items: any[],
   usedCouponId: string | null,
-  usedPoints: number
+  usedPoints: number,
+      // 선물 관련 파라미터 추가
+      isGift: boolean = false,
+      giftMessage: string | null = null,
+      giftCardDesign: string | null = null,
+      giftWrappingRibbon: boolean = false,
+      giftWrappingPremiumBox: boolean = false,
+      giftWrappingHandwrittenCard: boolean = false,
+      giftWrappingFee: number = 0
 ) {
   // 기존 방식 (트랜잭션 없음)
-  const { data: order, error: orderError } = await supabase
+  const orderData: any = {
+    user_id: userId,
+    total_amount: finalAmount,
+    status: process.env.NODE_ENV === 'development' ? 'delivered' : 'paid',
+    delivery_type: deliveryType,
+    delivery_time: deliveryTime,
+    shipping_address: shippingAddress,
+    shipping_name: shippingName,
+    shipping_phone: shippingPhone,
+    delivery_note: deliveryNote,
+  }
+  
+  // 선물 정보 추가
+  if (isGift) {
+    // 개별 컬럼으로 저장 시도
+    orderData.is_gift = true
+    orderData.gift_message = giftMessage
+    orderData.gift_card_design = giftCardDesign
+    orderData.gift_wrapping_ribbon = giftWrappingRibbon
+    orderData.gift_wrapping_premium_box = giftWrappingPremiumBox
+    orderData.gift_wrapping_handwritten_card = giftWrappingHandwrittenCard
+    orderData.gift_wrapping_fee = giftWrappingFee
+    // 만료일 설정 (7일 후)
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 7)
+    orderData.gift_expires_at = expiresAt.toISOString()
+  }
+  
+  let order: any = null
+  const { data: orderDataResult, error: orderError } = await supabase
     .from('orders')
-    .insert({
+    .insert(orderData)
+    .select()
+    .single()
+
+  // 컬럼이 없어서 에러가 발생하면 JSON 필드로 재시도
+  if (orderError && isGift && (orderError.code === '42703' || orderError.message?.includes('column'))) {
+    // 컬럼이 없는 경우 JSON 필드에 저장
+    const orderDataWithoutGiftColumns = {
       user_id: userId,
       total_amount: finalAmount,
       status: process.env.NODE_ENV === 'development' ? 'delivered' : 'paid',
@@ -36,12 +80,34 @@ async function createOrderWithoutTransaction(
       shipping_name: shippingName,
       shipping_phone: shippingPhone,
       delivery_note: deliveryNote,
-    })
-    .select()
-    .single()
-
-  if (orderError) {
+      gift_info: JSON.stringify({
+        message: giftMessage,
+        card_design: giftCardDesign,
+        wrapping: {
+          ribbon: giftWrappingRibbon,
+          premium_box: giftWrappingPremiumBox,
+          handwritten_card: giftWrappingHandwrittenCard,
+        },
+        wrapping_fee: giftWrappingFee,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7일 후
+      })
+    }
+    
+    const { data: retryOrder, error: retryError } = await supabase
+      .from('orders')
+      .insert(orderDataWithoutGiftColumns)
+      .select()
+      .single()
+    
+    if (retryError) {
+      throw new Error(retryError.message)
+    }
+    
+    order = retryOrder
+  } else if (orderError) {
     throw new Error(orderError.message)
+  } else {
+    order = orderDataResult
   }
 
   // 주문 아이템 저장
@@ -76,6 +142,39 @@ async function createOrderWithoutTransaction(
 
   // 포인트 적립은 구매확정 시 처리 (배송완료 후 구매확정 버튼 클릭 시)
 
+  // 선물 주문인 경우 토큰 생성 및 저장
+  if (isGift && order) {
+    const giftToken = crypto.randomBytes(32).toString('hex')
+    
+    // gift_token 컬럼이 있으면 사용, 없으면 gift_info JSON에 포함
+    try {
+      const { error: tokenError } = await supabase
+        .from('orders')
+        .update({ gift_token: giftToken })
+        .eq('id', order.id)
+      
+      if (tokenError && (tokenError.code === '42703' || tokenError.message?.includes('column'))) {
+        // gift_token 컬럼이 없으면 gift_info JSON에 추가
+        const currentGiftInfo = order.gift_info ? JSON.parse(order.gift_info) : {}
+        const updatedGiftInfo = {
+          ...currentGiftInfo,
+          token: giftToken
+        }
+        
+        await supabase
+          .from('orders')
+          .update({ gift_info: JSON.stringify(updatedGiftInfo) })
+          .eq('id', order.id)
+      }
+      
+      // order 객체에 토큰 추가 (응답에 포함)
+      order.gift_token = giftToken
+    } catch (error) {
+      console.error('선물 토큰 저장 실패:', error)
+      // 토큰 저장 실패해도 주문은 성공으로 처리
+    }
+  }
+
   return NextResponse.json({ order })
 }
 
@@ -102,7 +201,17 @@ export async function POST(request: NextRequest) {
       delivery_note,
       items,
       used_coupon_id,  // 사용한 쿠폰 ID (user_coupons 테이블의 id)
-      used_points = 0  // 사용한 포인트
+      used_points = 0,  // 사용한 포인트
+      // 선물 관련 필드
+      is_gift = false,
+      gift_message = null,
+      gift_card_design = null,
+      gift_wrapping_ribbon = false,
+      gift_wrapping_premium_box = false,
+      gift_wrapping_handwritten_card = false,
+      gift_wrapping_fee = 0,
+      kakao_friend_id = null,
+      kakao_friend_name = null
     } = body
 
     // 쿠폰 할인 금액 계산 (주문 생성 전)
@@ -246,7 +355,14 @@ export async function POST(request: NextRequest) {
             delivery_note,
             items,
             used_coupon_id,
-            used_points
+            used_points,
+            is_gift,
+            gift_message,
+            gift_card_design,
+            gift_wrapping_ribbon,
+            gift_wrapping_premium_box,
+            gift_wrapping_handwritten_card,
+            gift_wrapping_fee
           )
         }
         throw rpcError
@@ -258,6 +374,32 @@ export async function POST(request: NextRequest) {
       }
 
       const orderId = result[0].order_id
+
+      // 선물 주문이고 카카오톡 친구가 선택된 경우 메시지 전송
+      if (is_gift && kakao_friend_id && orderId) {
+        try {
+          // 카카오톡 메시지 전송은 별도 API로 처리 (비동기)
+          // 여기서는 주문 생성이 완료된 후 백그라운드에서 처리하도록 함
+          fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/gift/send-kakao-message`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              order_id: orderId,
+              friend_id: kakao_friend_id,
+              friend_name: kakao_friend_name,
+              gift_message: gift_message,
+            }),
+          }).catch(err => {
+            console.error('카카오톡 메시지 전송 실패:', err)
+            // 메시지 전송 실패해도 주문은 성공으로 처리
+          })
+        } catch (error) {
+          console.error('카카오톡 메시지 전송 요청 실패:', error)
+          // 메시지 전송 실패해도 주문은 성공으로 처리
+        }
+      }
 
       // 주문 정보 조회
       const { data: order, error: orderError } = await supabase
