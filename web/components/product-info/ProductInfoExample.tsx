@@ -44,3 +44,4 @@ export default function ProductInfoExample({ productId, productName }: ProductIn
   )
 }
 
+

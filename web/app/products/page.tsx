@@ -12,7 +12,7 @@ import { Product } from '@/lib/supabase'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import CategoryGrid from '@/components/CategoryGrid'
-import { CATEGORIES } from '@/lib/constants'
+import { CATEGORIES, DEFAULT_PAGE_SIZE } from '@/lib/constants'
 
 function ProductsContent() {
   const searchParams = useSearchParams()
@@ -30,7 +30,6 @@ function ProductsContent() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const isFetchingRef = useRef(false) // 중복 호출 방지
-  const PAGE_SIZE = 20
 
   // URL 파라미터가 변경되면 selectedCategory 업데이트
   useEffect(() => {
@@ -49,7 +48,7 @@ function ProductsContent() {
       // 새로운 API 사용: 상품 목록과 리뷰 통계를 한 번에 가져오기
       const params = new URLSearchParams({
         page: pageNum.toString(),
-        limit: PAGE_SIZE.toString(),
+        limit: DEFAULT_PAGE_SIZE.toString(),
         sort: sort === 'default' ? 'default' : sort,
       })
 

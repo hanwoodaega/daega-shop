@@ -15,10 +15,10 @@ import { useAuth } from '@/lib/auth-context'
 import { formatPrice } from '@/lib/utils'
 import { supabase, Product } from '@/lib/supabase'
 import { toggleWishlistDB } from '@/lib/wishlist-db'
-import { removeCartItemWithDB, updateCartQuantityWithDB, addCartItemWithDB, loadCartFromDB } from '@/lib/cart-db'
+import { removeCartItemWithDB, updateCartQuantityWithDB, addCartItemWithDB, loadCartFromDB, clearCartWithDB } from '@/lib/cart-db'
 import { calculateDiscountPrice } from '@/lib/product-utils'
 import { useDefaultAddress, useAddresses } from '@/lib/hooks/useAddress'
-import { PICKUP_TIME_SLOTS, QUICK_DELIVERY_AREAS, QUICK_DELIVERY_TIME_SLOTS } from '@/lib/constants'
+import { PICKUP_TIME_SLOTS, QUICK_DELIVERY_AREAS, QUICK_DELIVERY_TIME_SLOTS, GIFT_MIN_AMOUNT } from '@/lib/constants'
 import { calculateOrderTotal } from '@/lib/order-calc'
 
 function CartPageContent() {
@@ -249,10 +249,10 @@ function CartPageContent() {
       return
     }
     
-    // 선물하기는 상품금액(즉시할인 적용 후)이 50,000원 이상이어야 함 (배송비 제외)
+    // 선물하기는 상품금액(즉시할인 적용 후)이 최소 금액 이상이어야 함 (배송비 제외)
     const { discountedTotal } = calculateOrderTotal(selectedItems, deliveryMethod)
-    if (discountedTotal < 50000) {
-      toast.error('선물하기는 상품금액(할인 적용 후)이 50,000원 이상이어야 합니다.', { icon: '🎁' })
+    if (discountedTotal < GIFT_MIN_AMOUNT) {
+      toast.error(`선물하기는 상품금액(할인 적용 후)이 ${formatPrice(GIFT_MIN_AMOUNT)}원 이상이어야 합니다.`, { icon: '🎁' })
       return
     }
     
@@ -462,18 +462,29 @@ function CartPageContent() {
                 )}
               </div>
 
-              {/* 전체 선택 체크박스 */}
+              {/* 전체 선택 체크박스 및 장바구니 비우기 */}
               <div className={`bg-white pt-4 pb-4 ${deliveryMethod === 'regular' ? 'border-b border-gray-300' : ''}`}>
-                <label className="flex items-center cursor-pointer pl-2">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={(e) => toggleSelectAll(e.target.checked)}
-                    className="w-5 h-5 border-gray-300 focus:ring-blue-900 accent-blue-900"
-                    style={{ accentColor: '#1e3a8a' }}
-                  />
-                  <span className="ml-3 text-sm font-medium text-gray-900">전체선택</span>
-                </label>
+                <div className="flex items-center justify-between pl-2">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={(e) => toggleSelectAll(e.target.checked)}
+                      className="w-5 h-5 border-gray-300 focus:ring-blue-900 accent-blue-900"
+                      style={{ accentColor: '#1e3a8a' }}
+                    />
+                    <span className="ml-3 text-sm font-medium text-gray-900">전체선택</span>
+                  </label>
+                  <button
+                    onClick={async () => {
+                      if (!confirm('장바구니를 모두 비우시겠습니까?')) return
+                      await clearCartWithDB(user?.id || null)
+                    }}
+                    className="text-xs text-gray-600 hover:text-red-600 px-2 py-1"
+                  >
+                    장바구니 비우기
+                  </button>
+                </div>
               </div>
 
               {/* 무료배송 진행률 바 - 전체선택 아래 (택배배송일 때만) */}
@@ -785,7 +796,9 @@ function CartPageContent() {
               className="bg-gray-900 text-white py-3 text-base font-medium hover:bg-gray-800 flex items-center justify-center gap-1"
               style={{ width: '35%' }}
             >
-              <span>🎁</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+              </svg>
               <span>선물하기</span>
             </button>
           )}

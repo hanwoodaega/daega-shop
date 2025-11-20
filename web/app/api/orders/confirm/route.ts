@@ -58,28 +58,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // 쿠폰 할인 금액 계산 (주문 정보에서 추출)
-    // 주문 생성 시 finalAmount = total_amount - couponDiscount - usedPoints
-    // 포인트 적립은 최종 결제 금액 기준이므로, 주문 정보에서 계산
-    // 실제로는 주문 생성 시 저장된 final_amount를 사용해야 하지만,
-    // 현재 orders 테이블에 final_amount가 없으므로 total_amount 기준으로 계산
-    // (쿠폰 할인과 포인트 사용은 이미 반영된 상태)
-    
-    // 주문 생성 시 사용한 포인트 확인
-    const { data: pointUsage } = await supabase
-      .from('point_history')
-      .select('points')
-      .eq('order_id', orderId)
-      .eq('type', 'usage')
-      .single()
-
-    const usedPoints = pointUsage ? Math.abs(pointUsage.points) : 0
-    
-    // 최종 결제 금액 계산 (주문 생성 시와 동일한 로직)
-    // total_amount는 쿠폰 할인 전 금액이므로, 실제 결제 금액을 추정
-    // 정확한 계산을 위해서는 orders 테이블에 final_amount를 저장하는 것이 좋지만,
-    // 현재는 total_amount 기준으로 계산 (쿠폰 할인은 이미 반영되었다고 가정)
-    const finalAmount = order.total_amount - usedPoints
+    // 주문 생성 시 finalAmount = total_amount - couponDiscount - usedPoints로 계산되어
+    // orders 테이블의 total_amount에 이미 최종 결제 금액이 저장되어 있습니다.
+    // 따라서 order.total_amount가 바로 최종 결제 금액입니다.
+    const finalAmount = order.total_amount
 
     // 포인트 적립 (최종 결제 금액의 1%)
     const pointsToAdd = Math.floor(Math.max(0, finalAmount) * 0.01)
@@ -97,6 +79,45 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ 
           error: '포인트 적립에 실패했습니다.' 
         }, { status: 500 })
+      }
+
+      // 구매확정 포인트 적립 알림 생성
+      const orderNumber = order.order_number || order.id.slice(0, 8)
+      const notificationTitle = `구매확정 ${pointsToAdd.toLocaleString()}P 적립`
+      const notificationContent = `주문번호 ${orderNumber}가 구매확정이 되어 포인트가 적립되었습니다.`
+
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: user.id,
+          title: notificationTitle,
+          content: notificationContent,
+          type: 'point',
+          is_read: false,
+        })
+
+      if (notificationError) {
+        console.error('구매확정 알림 생성 실패:', notificationError)
+        // 알림 생성 실패해도 구매확정은 성공으로 처리
+      }
+
+      // 리뷰 작성 알림 생성
+      const reviewNotificationTitle = '리뷰 작성'
+      const reviewNotificationContent = `구매확정이 완료되었습니다. 상품 리뷰를 작성해주세요. 리뷰 작성하기`
+
+      const { error: reviewNotificationError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: user.id,
+          title: reviewNotificationTitle,
+          content: reviewNotificationContent,
+          type: 'general',
+          is_read: false,
+        })
+
+      if (reviewNotificationError) {
+        console.error('리뷰 작성 알림 생성 실패:', reviewNotificationError)
+        // 알림 생성 실패해도 구매확정은 성공으로 처리
       }
     }
 

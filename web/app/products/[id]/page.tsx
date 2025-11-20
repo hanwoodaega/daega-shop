@@ -15,10 +15,8 @@ import { useAuth } from '@/lib/auth-context'
 import { useCartStore, useDirectPurchaseStore, useWishlistStore, usePromotionModalStore } from '@/lib/store'
 import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart-db'
-import { 
-  formatPrice, 
-  calculateDiscountedPrice, 
-} from '@/lib/utils'
+import { formatPrice } from '@/lib/utils'
+import { calculateDiscountPrice } from '@/lib/product-utils'
 import { saveRecentlyViewed } from '@/lib/recently-viewed'
 
 function ProductDetailPageContent() {
@@ -363,7 +361,7 @@ function ProductDetailPageContent() {
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-2xl font-bold text-red-600">{product.discount_percent}%</span>
                     <span className="text-2xl font-extrabold text-gray-900">
-                      {formatPrice(calculateDiscountedPrice(product.price, product.discount_percent))}
+                      {formatPrice(calculateDiscountPrice(product.price, product.discount_percent))}
                     </span>
                     <span className="text-base text-gray-600">원</span>
                   </div>
@@ -464,7 +462,7 @@ function ProductDetailPageContent() {
                 
                 {/* 가격 (오른쪽 아래) */}
                 <span className="text-lg font-bold text-primary-900">
-                  {formatPrice(calculateDiscountedPrice(product.price, product.discount_percent) * quantity)}원
+                  {formatPrice(calculateDiscountPrice(product.price, product.discount_percent) * quantity)}원
                 </span>
               </div>
             </div>

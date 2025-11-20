@@ -183,22 +183,10 @@ function OrdersPageContent() {
     const order = orders.find(o => o.id === orderId)
     if (!order) return
 
-    // 사용한 포인트 확인하여 적립될 포인트 계산
-    let pointsToEarn = 0
-    try {
-      const { data: pointUsage } = await supabase
-        .from('point_history')
-        .select('points')
-        .eq('order_id', orderId)
-        .eq('type', 'usage')
-        .single()
-
-      const usedPoints = pointUsage ? Math.abs(pointUsage.points) : 0
-      const finalAmount = order.total_amount - usedPoints
-      pointsToEarn = Math.floor(Math.max(0, finalAmount) * 0.01)
-    } catch (error) {
-      console.error('포인트 계산 실패:', error)
-    }
+    // 적립될 포인트 계산
+    // order.total_amount는 이미 최종 결제 금액(상품금액 - 할인 - 쿠폰 - 포인트)입니다.
+    const finalAmount = order.total_amount
+    const pointsToEarn = Math.floor(Math.max(0, finalAmount) * 0.01)
 
     const confirmMessage = pointsToEarn > 0
       ? `구매확정하시겠습니까?\n\n구매확정 시 ${pointsToEarn.toLocaleString()}포인트가 적립되며, 이후 교환/반품/환불은 불가합니다.`

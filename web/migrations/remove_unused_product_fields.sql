@@ -22,3 +22,4 @@ ALTER TABLE products DROP COLUMN IF EXISTS is_budget;
 -- 7. product_info 컬럼 제거 (각 상품별 컴포넌트로 대체)
 ALTER TABLE products DROP COLUMN IF EXISTS product_info;
 
+

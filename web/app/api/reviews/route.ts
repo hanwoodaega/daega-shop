@@ -274,16 +274,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '배송 완료된 주문만 리뷰 작성이 가능합니다.' }, { status: 400 })
     }
 
-    const { data: orderItem, error: orderItemError } = await supabase
+    // 같은 주문에 같은 상품이 여러 개 있을 수 있으므로 limit(1) 사용
+    const { data: orderItems, error: orderItemError } = await supabase
       .from('order_items')
-      .select('id')
+      .select('id, order_id, product_id')
       .eq('order_id', order_id)
       .eq('product_id', product_id)
-      .single()
+      .limit(1)
 
-    if (orderItemError || !orderItem) {
+    if (orderItemError) {
+      console.error('주문 상품 조회 실패:', {
+        order_id,
+        product_id,
+        error: orderItemError,
+        message: orderItemError.message,
+        code: orderItemError.code
+      })
+      return NextResponse.json({ 
+        error: '주문에 해당 상품이 없습니다.',
+        details: orderItemError.message 
+      }, { status: 400 })
+    }
+
+    if (!orderItems || orderItems.length === 0) {
+      console.error('주문 상품이 존재하지 않음:', { order_id, product_id })
       return NextResponse.json({ error: '주문에 해당 상품이 없습니다.' }, { status: 400 })
     }
+
+    const orderItem = orderItems[0]
 
     const { data: existingReview, error: existingError } = await supabase
       .from('reviews')

@@ -4,10 +4,10 @@
 
 // ==================== Categories ====================
 
-export const CATEGORIES = ['전체', '한우', '돼지고기', '수입육', '닭', '가공육', '조리육', '야채', '선물세트']
+export const CATEGORIES = ['전체', '한우', '돼지고기', '수입육', '닭', '가공육', '조리육', '야채', '선물세트'] as const
 
-// 관리자용 (전체 제외)
-export const ADMIN_CATEGORIES = ['한우', '돼지고기', '수입육', '닭', '가공육', '조리육', '야채', '선물세트']
+// 관리자용 (전체 제외) - 동적으로 생성
+export const ADMIN_CATEGORIES = CATEGORIES.filter(cat => cat !== '전체') as readonly string[]
 
 // ==================== Menu ====================
 
@@ -16,22 +16,15 @@ export const MAIN_MENU_LINKS = [
   { name: '홈', href: '/' },
   { name: '베스트', href: '/products?filter=best' },
   { name: '특가', href: '/products?filter=sale' },
-  { name: '한우대가NO.9', href: '/hanwoo-daega-no9' },
+  { name: '한우대가 NO.9', href: '/hanwoo-daega-no9' },
   { name: '리뷰이벤트', href: '/review-event' },
 ]
 
-// 카테고리 메뉴 (두 번째 줄)
-export const CATEGORY_LINKS = [
-  { name: '전체', href: '/products' },
-  { name: '한우', href: '/products?category=한우' },
-  { name: '돼지고기', href: '/products?category=돼지고기' },
-  { name: '수입육', href: '/products?category=수입육' },
-  { name: '닭', href: '/products?category=닭' },
-  { name: '가공육', href: '/products?category=가공육' },
-  { name: '조리육', href: '/products?category=조리육' },
-  { name: '야채', href: '/products?category=야채' },
-  { name: '선물세트', href: '/products?category=선물세트' },
-]
+// 카테고리 메뉴 (두 번째 줄) - 동적으로 생성
+export const CATEGORY_LINKS = CATEGORIES.map(category => ({
+  name: category,
+  href: category === '전체' ? '/products' : `/products?category=${encodeURIComponent(category)}`
+}))
 
 // ==================== Order Status ====================
 
@@ -67,10 +60,16 @@ export const QUICK_DELIVERY_TIME_SLOTS = [
 // ==================== Pagination ====================
 
 export const DEFAULT_PAGE_SIZE = 20
-export const ADMIN_PAGE_SIZE = 20
+// 관리자 페이지도 같은 페이지 크기 사용
+export const ADMIN_PAGE_SIZE = DEFAULT_PAGE_SIZE
 
 // ==================== Promotion ====================
 
 export const PROMOTION_TYPES = ['1+1', '2+1', '3+1'] as const
 export type PromotionType = typeof PROMOTION_TYPES[number]
+
+// ==================== Gift ====================
+
+// 선물하기 최소 금액
+export const GIFT_MIN_AMOUNT = 50000
 

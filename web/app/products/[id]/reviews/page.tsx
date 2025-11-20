@@ -12,7 +12,7 @@ import ReviewItemSkeleton from '@/components/skeletons/ReviewItemSkeleton'
 import { useAuth } from '@/lib/auth-context'
 import toast from 'react-hot-toast'
 import { Review } from '@/lib/types/review'
-import { handleApiError, showSuccessMessage } from '@/lib/api-error-handler'
+import { handleApiError, showSuccessMessage } from '@/lib/error-handler'
 
 export default function AllReviewsPage() {
   const params = useParams()

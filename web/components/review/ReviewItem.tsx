@@ -6,7 +6,6 @@ import { formatDate } from '@/lib/utils'
 import { ReviewItemProps } from '@/lib/types/review'
 
 function ReviewItem({ review, isOwner = false, onEdit, onDelete }: ReviewItemProps) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showImageModal, setShowImageModal] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
@@ -43,13 +42,6 @@ function ReviewItem({ review, isOwner = false, onEdit, onDelete }: ReviewItemPro
     }
   }, [showImageModal])
 
-  const handleDelete = () => {
-    if (onDelete) {
-      onDelete(review.id)
-      setShowDeleteConfirm(false)
-    }
-  }
-
   return (
     <div className="border-b border-gray-200 pt-5 pb-4 last:border-b-0">
       <div className="flex items-start justify-between mb-2">
@@ -68,13 +60,6 @@ function ReviewItem({ review, isOwner = false, onEdit, onDelete }: ReviewItemPro
                 className="text-xs text-gray-600 hover:text-primary-800"
               >
                 수정
-              </button>
-              <span className="text-gray-300">|</span>
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="text-xs text-gray-600 hover:text-red-600"
-              >
-                삭제
               </button>
             </div>
           )}
@@ -116,32 +101,6 @@ function ReviewItem({ review, isOwner = false, onEdit, onDelete }: ReviewItemPro
           </div>
           <div className="text-sm text-gray-800 whitespace-pre-wrap">
             {review.admin_reply}
-          </div>
-        </div>
-      )}
-
-      {/* 삭제 확인 모달 */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
-            <h3 className="text-lg font-bold mb-2">리뷰 삭제</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              정말 이 리뷰를 삭제하시겠습니까?
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                삭제
-              </button>
-            </div>
           </div>
         </div>
       )}

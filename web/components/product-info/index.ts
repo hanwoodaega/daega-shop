@@ -54,3 +54,4 @@ export function hasProductInfo(productSlugOrName: string): boolean {
   return productSlugOrName in productInfoMap
 }
 
+

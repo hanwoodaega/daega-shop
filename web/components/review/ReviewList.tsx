@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { Review, ReviewListProps } from '@/lib/types/review'
-import { handleApiError, showSuccessMessage } from '@/lib/api-error-handler'
+import { handleApiError, showSuccessMessage } from '@/lib/error-handler'
 
 // 키보드 네비게이션 hook
 function useKeyboardNavigation(

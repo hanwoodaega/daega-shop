@@ -371,4 +371,43 @@ export async function updateCartQuantityWithDB(
   }
 }
 
+/**
+ * 장바구니 전체 비우기 (DB 삭제 포함)
+ * - localStorage와 DB 모두에서 삭제
+ */
+export async function clearCartWithDB(userId: string | null): Promise<void> {
+  const store = useCartStore.getState()
+  const previousItems = store.items
+  
+  // 1. Optimistic update: 즉시 UI 업데이트
+  store.clearCart()
+  
+  // 2. DB 삭제 (로그인 시)
+  if (userId) {
+    try {
+      const { error } = await supabase
+        .from('carts')
+        .delete()
+        .eq('user_id', userId)
+      
+      if (error) {
+        // DB 삭제 실패 시 롤백
+        useCartStore.setState({ items: previousItems })
+        toast.error('장바구니 비우기에 실패했습니다.')
+        console.error('장바구니 비우기 실패:', error)
+      } else {
+        toast.success('장바구니가 비워졌습니다.')
+      }
+    } catch (error) {
+      // 에러 발생 시 롤백
+      useCartStore.setState({ items: previousItems })
+      console.error('장바구니 비우기 에러:', error)
+      toast.error('장바구니 비우기에 실패했습니다.')
+    }
+  } else {
+    // 비로그인 사용자는 localStorage만 비우기
+    toast.success('장바구니가 비워졌습니다.')
+  }
+}
+
 

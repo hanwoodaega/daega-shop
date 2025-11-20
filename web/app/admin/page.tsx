@@ -69,6 +69,12 @@ const supportCards: AdminCard[] = [
     href: '/admin/reviews',
     accent: 'bg-rose-100 text-rose-700',
   },
+  {
+    title: '포인트 관리',
+    description: '고객 지정 포인트 적립 및 관리',
+    href: '/admin/points',
+    accent: 'bg-blue-100 text-blue-700',
+  },
 ]
 
 const insightItems = [

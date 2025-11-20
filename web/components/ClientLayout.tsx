@@ -1,7 +1,6 @@
 'use client'
 
 import { AuthProvider } from '@/lib/auth-context'
-import DeliveryCompleteNotification from '@/components/DeliveryCompleteNotification'
 
 export default function ClientLayout({
   children,
@@ -11,7 +10,6 @@ export default function ClientLayout({
   return (
     <AuthProvider>
       {children}
-      <DeliveryCompleteNotification />
     </AuthProvider>
   )
 }

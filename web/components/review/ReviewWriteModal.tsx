@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import ReviewStars from './ReviewStars'
 import toast from 'react-hot-toast'
 import { ReviewWriteModalProps } from '@/lib/types/review'
-import { handleApiError, showSuccessMessage } from '@/lib/api-error-handler'
+import { handleApiError, showSuccessMessage } from '@/lib/error-handler'
 
 export default function ReviewWriteModal({
   isOpen,

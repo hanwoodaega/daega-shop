@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { formatPrice } from '@/lib/utils'
 import { formatPhoneNumber } from '@/lib/format-phone'
 import { getStatusText, getDeliveryTypeText, getStatusColor, getStatusTextColor } from '@/lib/order-utils'
+import { SHIPPING } from '@/lib/constants'
 
 interface OrderItem {
   id: string
@@ -39,6 +40,10 @@ interface Order {
   created_at: string
   order_items?: OrderItem[]
   user?: User
+  immediateDiscount?: number
+  couponDiscount?: number
+  usedPoints?: number
+  shipping?: number
 }
 
 export default function AdminOrdersPage() {
@@ -394,16 +399,37 @@ export default function AdminOrdersPage() {
                       <div className="mb-4 pb-4 border-b">
                         <h3 className="text-sm font-semibold text-gray-900 mb-2">주문상품</h3>
                         <div className="space-y-2">
-                          {order.order_items.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between text-sm">
-                              <span className="text-gray-700">
-                                {item.product?.name || '상품'} × {item.quantity}
-                              </span>
-                              <span className="text-gray-900 font-medium">
-                                {formatPrice(item.price * item.quantity)}원
-                              </span>
-                            </div>
-                          ))}
+                          {order.order_items.map((item) => {
+                            const originalPrice = (item.product as any)?.price || item.price || 0
+                            const orderedPrice = item.price || 0
+                            const hasDiscount = originalPrice > orderedPrice
+                            
+                            return (
+                              <div key={item.id} className="flex items-center justify-between text-sm">
+                                <div className="flex-1">
+                                  <span className="text-gray-700">
+                                    {item.product?.name || '상품'} × {item.quantity}
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  {hasDiscount ? (
+                                    <>
+                                      <div className="text-gray-400 line-through text-xs">
+                                        {formatPrice(originalPrice * item.quantity)}원
+                                      </div>
+                                      <div className="text-gray-900 font-medium">
+                                        {formatPrice(orderedPrice * item.quantity)}원
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="text-gray-900 font-medium">
+                                      {formatPrice(orderedPrice * item.quantity)}원
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
                         </div>
                       </div>
                     )}
@@ -429,12 +455,70 @@ export default function AdminOrdersPage() {
                       </div>
                     </div>
 
-                    {/* 결제 금액 */}
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-base font-semibold text-gray-900">총 결제금액</span>
-                      <span className="text-xl font-bold text-primary-900">
-                        {formatPrice(order.total_amount)}원
-                      </span>
+                    {/* 결제 상세 금액 */}
+                    <div className="mb-4 pb-4 border-b">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3">결제 상세</h3>
+                      <div className="space-y-2 text-sm">
+                        {/* 상품 금액 (원가 기준) */}
+                        {order.order_items && order.order_items.length > 0 && (() => {
+                          const productTotal = order.order_items.reduce((sum, item) => {
+                            const originalPrice = (item.product as any)?.price || item.price || 0
+                            return sum + (originalPrice * item.quantity)
+                          }, 0)
+                          return (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">상품 금액</span>
+                              <span className="font-medium">{formatPrice(productTotal)}원</span>
+                            </div>
+                          )
+                        })()}
+                        
+                        {/* 즉시할인 */}
+                        {(() => {
+                          const immediateDiscount = order.immediateDiscount ?? 0
+                          if (immediateDiscount > 0) {
+                            return (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">즉시할인</span>
+                                <span className="font-medium text-red-600">-{formatPrice(immediateDiscount)}원</span>
+                              </div>
+                            )
+                          }
+                          return null
+                        })()}
+                        
+                        {/* 쿠폰 할인 */}
+                        {(order.couponDiscount ?? 0) > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">쿠폰 할인</span>
+                            <span className="font-medium text-red-600">-{formatPrice(order.couponDiscount ?? 0)}원</span>
+                          </div>
+                        )}
+                        
+                        {/* 포인트 사용 */}
+                        {(order.usedPoints ?? 0) > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">포인트 사용</span>
+                            <span className="font-medium text-red-600">-{formatPrice(order.usedPoints ?? 0)}원</span>
+                          </div>
+                        )}
+                        
+                        {/* 배송비 */}
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">배송비</span>
+                          <span className="font-medium">
+                            {(order.shipping ?? 0) === 0 ? '무료' : `${formatPrice(order.shipping ?? 0)}원`}
+                          </span>
+                        </div>
+                        
+                        {/* 총 결제 금액 */}
+                        <div className="flex justify-between pt-2 border-t">
+                          <span className="text-base font-semibold text-gray-900">총 결제금액</span>
+                          <span className="text-xl font-bold text-primary-900">
+                            {formatPrice(order.total_amount)}원
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
                     {/* 상태 변경 버튼 */}

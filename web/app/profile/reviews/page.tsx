@@ -11,7 +11,7 @@ import { formatDate, formatPrice } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { ReviewableProduct, MyReview } from '@/lib/types/review'
 import { isValidImageUrl } from '@/lib/product-utils'
-import { handleApiError, showSuccessMessage } from '@/lib/api-error-handler'
+import { handleApiError, showSuccessMessage } from '@/lib/error-handler'
 import { useCartStore } from '@/lib/store'
 
 export default function ProfileReviewsPage() {
@@ -321,7 +321,11 @@ export default function ProfileReviewsPage() {
           ) : (
             <div className="space-y-4">
               {reviewableProducts.map((product) => (
-                <div key={product.order_item_id} className="border border-gray-200 rounded-lg p-4">
+                <div 
+                  key={product.order_item_id} 
+                  className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition"
+                  onClick={() => router.push(`/products/${product.product_id}`)}
+                >
                   <div className="flex items-start gap-4">
                     {/* 상품 이미지 (없거나 무효면 회색 박스) */}
                     <div className="w-20 h-20 bg-gray-200 rounded flex-shrink-0 overflow-hidden flex items-center justify-center">
@@ -341,12 +345,9 @@ export default function ProfileReviewsPage() {
                       {product.product_brand && (
                         <p className="text-xs text-gray-600 mb-1">{product.product_brand}</p>
                       )}
-                      <button
-                        onClick={() => router.push(`/products/${product.product_id}`)}
-                        className="text-sm font-medium text-blue-600 hover:underline text-left block mb-1 truncate w-full"
-                      >
+                      <p className="text-sm font-medium text-gray-900 mb-1 truncate w-full">
                         {product.product_name}
-                      </button>
+                      </p>
                       <p className="text-xs text-gray-500 mb-2">
                         주문번호: {product.order_number}
                       </p>
@@ -357,8 +358,11 @@ export default function ProfileReviewsPage() {
 
                     {/* 리뷰 작성 버튼 */}
                     <button
-                      onClick={() => handleWriteReview(product)}
-                      className="px-4 py-2 bg-primary-800 text-white rounded text-sm font-medium hover:bg-primary-900 transition whitespace-nowrap flex-shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleWriteReview(product)
+                      }}
+                      className="px-3 py-1.5 bg-white text-blue-900 border border-blue-900 rounded text-sm font-medium hover:bg-blue-50 transition whitespace-nowrap flex-shrink-0 self-start"
                     >
                       리뷰 작성
                     </button>
@@ -415,19 +419,13 @@ export default function ProfileReviewsPage() {
                     
                     <p className="text-xs text-gray-500 mt-2">{formatDate(review.created_at)}</p>
                     
-                    {/* 수정/삭제 버튼 */}
+                    {/* 수정 버튼 */}
                     <div className="flex gap-2 mt-3">
                       <button
                         onClick={() => handleEditReview(review)}
                         className="px-4 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50"
                       >
                         수정
-                      </button>
-                      <button
-                        onClick={() => handleDeleteReview(review.id)}
-                        className="px-4 py-1.5 text-xs border border-red-300 text-red-600 rounded hover:bg-red-50"
-                      >
-                        삭제
                       </button>
                     </div>
                   </div>

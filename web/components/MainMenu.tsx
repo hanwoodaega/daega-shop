@@ -24,14 +24,14 @@ export default function MainMenu() {
               isActive = menuFilter === currentFilter
             }
             
-            // category 파라미터가 있는 페이지 체크 (한우대가NO.9)
+            // category 파라미터가 있는 페이지 체크 (한우대가 NO.9)
             if (pathname === '/products' && menu.href.includes('category=')) {
               const menuCategory = menu.href.split('category=')[1]
               const currentCategory = searchParams.get('category')
               isActive = menuCategory === currentCategory
             }
             
-            const isHanwooMenu = menu.name === '한우대가NO.9'
+            const isHanwooMenu = menu.name === '한우대가 NO.9'
             
             return (
               <Link
@@ -41,9 +41,10 @@ export default function MainMenu() {
                   isActive 
                     ? 'text-blue-900' 
                     : isHanwooMenu
-                    ? 'text-amber-800 hover:text-amber-900'
+                    ? 'hover:opacity-90'
                     : 'text-gray-700 hover:text-primary-800'
                 }`}
+                style={isHanwooMenu && !isActive ? { color: '#4a2c1a' } : undefined}
               >
                 <span>{menu.name}</span>
                 <span className={`absolute bottom-0 h-0.5 transition-all ${

@@ -274,7 +274,7 @@ export default function HanwooDaegaNo9Page() {
                     <span className="text-gray-400 text-sm">이미지 준비중</span>
                   </div>
                   <p className="text-base md:text-lg text-gray-600 text-center leading-relaxed">
-                    앞다리에 있는 살로, 근내지방이 많고 부드러운 식감의 부위입니다.
+                    앞다리에 있는 살로 근내지방이 많고 부드러운 식감의 부위입니다.
                   </p>
                 </div>
               </div>

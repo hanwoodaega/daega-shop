@@ -1,37 +1,10 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 
 // GET: 위시리스트 조회
 export async function GET() {
   try {
-    const cookieStore = cookies()
-    
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: any) {
-            try {
-              cookieStore.set(name, value, options)
-            } catch (error) {
-              // Server Component에서는 set이 작동하지 않을 수 있음
-            }
-          },
-          remove(name: string, options: any) {
-            try {
-              cookieStore.set(name, '', { ...options, maxAge: 0 })
-            } catch (error) {
-              // Server Component에서는 remove가 작동하지 않을 수 있음
-            }
-          },
-        },
-      }
-    )
+    const supabase = createSupabaseServerClient()
     
     // 사용자 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -82,33 +55,7 @@ export async function GET() {
 // POST: 위시리스트에 상품 추가
 export async function POST(request: Request) {
   try {
-    const cookieStore = cookies()
-    
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: any) {
-            try {
-              cookieStore.set(name, value, options)
-            } catch (error) {
-              // Server Component에서는 set이 작동하지 않을 수 있음
-            }
-          },
-          remove(name: string, options: any) {
-            try {
-              cookieStore.set(name, '', { ...options, maxAge: 0 })
-            } catch (error) {
-              // Server Component에서는 remove가 작동하지 않을 수 있음
-            }
-          },
-        },
-      }
-    )
+    const supabase = createSupabaseServerClient()
     
     // 사용자 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -160,33 +107,7 @@ export async function POST(request: Request) {
 // DELETE: 위시리스트에서 상품 제거
 export async function DELETE(request: Request) {
   try {
-    const cookieStore = cookies()
-    
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: any) {
-            try {
-              cookieStore.set(name, value, options)
-            } catch (error) {
-              // Server Component에서는 set이 작동하지 않을 수 있음
-            }
-          },
-          remove(name: string, options: any) {
-            try {
-              cookieStore.set(name, '', { ...options, maxAge: 0 })
-            } catch (error) {
-              // Server Component에서는 remove가 작동하지 않을 수 있음
-            }
-          },
-        },
-      }
-    )
+    const supabase = createSupabaseServerClient()
     
     // 사용자 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()

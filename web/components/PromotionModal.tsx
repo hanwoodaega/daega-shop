@@ -138,10 +138,10 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={() => { onClose(); setPromoQuantities({}) }}></div>
       <div className="relative w-full max-w-md bg-white rounded-md shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-        <div className="bg-gradient-to-r from-pink-100 to-pink-200 text-pink-700 px-5 py-4">
+        <div className="bg-teal-100 text-blue-900 px-5 py-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold">🎁 {product.promotion_type} 골라담기</h3>
-            <button onClick={() => { onClose(); setPromoQuantities({}) }} className="text-pink-700 text-2xl">×</button>
+            <button onClick={() => { onClose(); setPromoQuantities({}) }} className="text-blue-900 text-2xl">×</button>
           </div>
         </div>
         
@@ -220,7 +220,7 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
           <button
             onClick={handlePromotionAdd}
             disabled={getTotalPromoQuantity(promoQuantities) !== getPromotionRequiredCount(product.promotion_type)}
-            className="w-full py-3 bg-pink-500 text-white rounded font-bold hover:bg-pink-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-blue-900 text-white rounded font-bold hover:bg-blue-950 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             장바구니에 담기
           </button>

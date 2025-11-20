@@ -80,16 +80,9 @@ export async function GET(request: NextRequest) {
 
     for (const order of unconfirmedOrders) {
       try {
-        // 사용한 포인트 확인
-        const { data: pointUsage } = await supabase
-          .from('point_history')
-          .select('points')
-          .eq('order_id', order.id)
-          .eq('type', 'usage')
-          .single()
-
-        const usedPoints = pointUsage ? Math.abs(pointUsage.points) : 0
-        const finalAmount = order.total_amount - usedPoints
+        // 주문 생성 시 total_amount에 이미 최종 결제 금액(상품금액 - 할인 - 쿠폰 - 포인트)이 저장되어 있습니다.
+        // 따라서 order.total_amount가 바로 최종 결제 금액입니다.
+        const finalAmount = order.total_amount
 
         // 포인트 적립 (최종 결제 금액의 1%)
         const pointsToAdd = Math.floor(Math.max(0, finalAmount) * 0.01)
@@ -104,6 +97,48 @@ export async function GET(request: NextRequest) {
           )
 
           if (success) {
+            // 구매확정 알림 생성
+            const orderNumber = order.order_number || order.id.slice(0, 8)
+            const notificationTitle = `구매확정 ${pointsToAdd.toLocaleString()}P 적립`
+            const notificationContent = `주문번호 ${orderNumber}가 구매확정이 되어 포인트가 적립되었습니다.`
+
+          const { error: notificationError } = await supabase
+            .from('notifications')
+            .insert({
+              user_id: order.user_id,
+              title: notificationTitle,
+              content: notificationContent,
+              type: 'point',
+              is_read: false,
+            })
+
+          if (notificationError) {
+            console.error(`주문 ${order.id} 구매확정 알림 생성 실패:`, notificationError)
+          } else {
+            // 리뷰 작성 알림 생성
+            const reviewNotificationTitle = '리뷰 작성'
+            const reviewNotificationContent = `구매확정이 완료되었습니다. 상품 리뷰를 작성해주세요. 리뷰 작성하기`
+
+            const { error: reviewNotificationError } = await supabase
+              .from('notifications')
+              .insert({
+                user_id: order.user_id,
+                title: reviewNotificationTitle,
+                content: reviewNotificationContent,
+                type: 'general',
+                is_read: false,
+              })
+
+            if (reviewNotificationError) {
+              console.error(`주문 ${order.id} 리뷰 작성 알림 생성 실패:`, reviewNotificationError)
+            }
+          }
+
+            if (notificationError) {
+              console.error(`주문 #${order.id} 알림 생성 실패:`, notificationError)
+              // 알림 생성 실패해도 구매확정은 성공으로 처리
+            }
+
             successCount++
           } else {
             errors.push(`주문 #${order.id} 포인트 적립 실패`)

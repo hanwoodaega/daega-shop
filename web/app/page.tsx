@@ -13,6 +13,7 @@ import { Product } from '@/lib/supabase'
 import CategoryGrid from '@/components/CategoryGrid'
 import FlashSaleSection from '@/components/FlashSaleSection'
 import RecentlyViewedSection from '@/components/RecentlyViewedSection'
+import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
 
 export default function Home() {
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])
@@ -25,7 +26,6 @@ export default function Home() {
   const [showSortModal, setShowSortModal] = useState(false)
   const [totalProductCount, setTotalProductCount] = useState<number>(0)
   const isFetchingRef = useRef(false) // 중복 호출 방지 (useRef 사용)
-  const PAGE_SIZE = 20
 
   const fetchProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
     // 중복 호출 방지
@@ -41,7 +41,7 @@ export default function Home() {
       const timeoutId = setTimeout(() => controller.abort(), 10000)
       
       const response = await fetch(
-        `/api/products?page=${pageNum}&limit=${PAGE_SIZE}&sort=${sortParam}`,
+        `/api/products?page=${pageNum}&limit=${DEFAULT_PAGE_SIZE}&sort=${sortParam}`,
         { 
           cache: 'no-store',
           signal: controller.signal

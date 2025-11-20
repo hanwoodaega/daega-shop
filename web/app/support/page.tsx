@@ -142,7 +142,7 @@ export default function SupportPage() {
                 </summary>
                 <div className="mt-2 px-3 py-2 text-sm text-gray-700">
                   <p className="mb-2"><strong>매장 위치:</strong></p>
-                  <p className="mb-2">전라남도 순천시 해룡면 대가 정육백화점</p>
+                  <p className="mb-2">전라남도 순천시 해룡면 대가정육백화점</p>
                   <p className="mb-2"><strong>픽업 가능 시간:</strong></p>
                   <p className="mb-2">오전 10:00 ~ 오후 8:00 (매일)</p>
                   <p className="mb-2"><strong>픽업 방법:</strong></p>
@@ -267,7 +267,7 @@ export default function SupportPage() {
               매장 정보
             </h2>
             <div className="space-y-2 text-sm">
-              <p className="text-gray-900 font-medium">대가 정육백화점</p>
+              <p className="text-gray-900 font-medium">대가정육백화점</p>
               <p className="text-gray-600">주소: 전라남도 순천시 해룡면</p>
               <p className="text-gray-600">영업시간: 매일 10:00 ~ 20:00</p>
             </div>

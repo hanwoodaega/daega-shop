@@ -12,6 +12,7 @@ import { useDaumPostcodeScript, openDaumPostcode, AddressSearchResult } from '@/
 import { showError, showSuccess, handleSupabaseError, showInfo } from '@/lib/error-handler'
 import { useDefaultAddress, useUserProfile } from '@/lib/hooks/useAddress'
 import { calculateOrderTotal } from '@/lib/order-calc'
+import { SHIPPING, GIFT_MIN_AMOUNT } from '@/lib/constants'
 import { getUserCoupons, isCouponValid } from '@/lib/coupons'
 import { UserCoupon, Coupon } from '@/lib/supabase'
 import { getUserPoints } from '@/lib/points'
@@ -304,10 +305,10 @@ function CheckoutPageContent() {
     
     if (!isGiftMode || currentStep >= totalGiftSteps) return
 
-    // 선물하기는 결제 예상 금액이 50,000원 이상이어야 함
+    // 선물하기는 결제 예상 금액이 최소 금액 이상이어야 함
     const expectedAmount = finalTotal + shipping
-    if (expectedAmount < 50000) {
-      toast.error('선물하기는 결제 금액이 50,000원 이상이어야 합니다.', { icon: '🎁' })
+    if (expectedAmount < GIFT_MIN_AMOUNT) {
+      toast.error(`선물하기는 결제 금액이 ${formatPrice(GIFT_MIN_AMOUNT)}원 이상이어야 합니다.`, { icon: '🎁' })
       return
     }
 
@@ -429,9 +430,9 @@ function CheckoutPageContent() {
 
   const getDeliveryFee = () => {
     if (deliveryMethod === 'pickup') return 0
-    if (deliveryMethod === 'quick') return 5000
+    if (deliveryMethod === 'quick') return SHIPPING.QUICK_FEE
     // 일반 택배
-    return getTotalPrice() >= 50000 ? 0 : 3000
+    return getTotalPrice() >= SHIPPING.FREE_THRESHOLD ? 0 : SHIPPING.DEFAULT_FEE
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -634,20 +635,23 @@ function CheckoutPageContent() {
       if (isDirectPurchase) {
         clearDirectPurchase()
       } else {
-        removeSelectedFromCart()
-        // 로그인 상태라면 DB 장바구니에서도 삭제
+        // 주문에 사용된 항목들을 먼저 저장 (removeSelectedFromCart 호출 전)
+        const purchasedItems = [...items]
+        
+        // 로그인 상태라면 DB 장바구니에서 먼저 삭제
         try {
           if (user?.id) {
             // 프로모션 그룹은 중복 삭제 방지를 위해 그룹 단위로 한 번만 처리
-            const purchasedItems = items
             const handledGroups = new Set<string>()
             for (const it of purchasedItems) {
               const dbId = it.id
               const groupId = it.promotion_group_id
               if (groupId) {
                 if (!handledGroups.has(groupId)) {
-                  await removeFromCartDB(user.id, '', groupId)
-                  handledGroups.add(groupId)
+                  const success = await removeFromCartDB(user.id, '', groupId)
+                  if (success) {
+                    handledGroups.add(groupId)
+                  }
                 }
               } else if (dbId && !dbId.startsWith('cart-')) {
                 await removeFromCartDB(user.id, dbId)
@@ -658,6 +662,9 @@ function CheckoutPageContent() {
           // DB 삭제 실패해도 UI는 진행
           console.error('DB 장바구니 삭제 실패:', err)
         }
+        
+        // DB 삭제 후 localStorage에서도 제거
+        removeSelectedFromCart()
       }
 
       // 주문 완료
@@ -1892,10 +1899,10 @@ function CheckoutPageContent() {
                 disabled={isProcessing}
                 className={`w-full text-lg font-bold transition disabled:bg-gray-400 disabled:text-gray-500 flex items-center justify-center gap-2 ${
                     isGiftMode && currentStep === totalGiftSteps
-                      ? 'bg-red-600 text-white hover:bg-red-700 py-3'
+                      ? 'bg-blue-900 text-white hover:bg-blue-950 py-3'
                       : isGiftMode 
                     ? 'bg-[#FEE500] text-[#000000] hover:bg-[#FDD835] shadow-md rounded-xl py-2.5' 
-                    : 'bg-red-600 text-white hover:bg-red-700 py-3'
+                    : 'bg-blue-900 text-white hover:bg-blue-950 py-3'
                 }`}
               >
                 {isProcessing ? (

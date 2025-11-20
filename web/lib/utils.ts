@@ -40,14 +40,6 @@ export function getPromotionPaidCount(promotionType: string | null | undefined):
 }
 
 /**
- * 할인가 계산
- */
-export function calculateDiscountedPrice(price: number, discountPercent?: number | null): number {
-  if (!discountPercent || discountPercent <= 0) return price
-  return Math.round(price * (100 - discountPercent) / 100)
-}
-
-/**
  * 프로모션 수량 총합 계산
  */
 export function getTotalPromoQuantity(quantities: {[key: string]: number}): number {

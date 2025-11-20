@@ -10,3 +10,4 @@ CREATE UNIQUE INDEX IF NOT EXISTS products_slug_unique ON products(slug) WHERE s
 -- 기존 상품에 대한 slug 자동 생성 (선택사항)
 -- UPDATE products SET slug = lower(regexp_replace(name, '[^a-zA-Z0-9가-힣\s]', '', 'g')) WHERE slug IS NULL;
 
+

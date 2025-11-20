@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { assertAdmin } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
@@ -8,33 +7,7 @@ export const dynamic = 'force-dynamic'
 // GET: 타임딜 제목 조회
 export async function GET() {
   try {
-    const cookieStore = cookies()
-    
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: any) {
-            try {
-              cookieStore.set(name, value, options)
-            } catch (error) {
-              // Server Component에서는 set이 작동하지 않을 수 있음
-            }
-          },
-          remove(name: string, options: any) {
-            try {
-              cookieStore.set(name, '', { ...options, maxAge: 0 })
-            } catch (error) {
-              // Server Component에서는 remove가 작동하지 않을 수 있음
-            }
-          },
-        },
-      }
-    )
+    const supabase = createSupabaseServerClient()
 
     // flash_sale_settings 테이블에서 제목 조회
     // 없으면 기본값 반환
@@ -69,33 +42,7 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const cookieStore = cookies()
-    
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: any) {
-            try {
-              cookieStore.set(name, value, options)
-            } catch (error) {
-              // Server Component에서는 set이 작동하지 않을 수 있음
-            }
-          },
-          remove(name: string, options: any) {
-            try {
-              cookieStore.set(name, '', { ...options, maxAge: 0 })
-            } catch (error) {
-              // Server Component에서는 remove가 작동하지 않을 수 있음
-            }
-          },
-        },
-      }
-    )
+    const supabase = createSupabaseServerClient()
 
     const { title } = await request.json()
 

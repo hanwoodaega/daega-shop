@@ -17,11 +17,11 @@ const playfairDisplay = Playfair_Display({
 })
 
 export const metadata: Metadata = {
-  title: '대가 정육백화점',
+  title: '대가정육백화점',
   description: '신선한 한우와 고급 정육을 만나보세요',
   keywords: ['한우', '정육', '돼지고기', '수입육', '고기', '대가'],
   openGraph: {
-    title: '대가 정육백화점',
+    title: '대가정육백화점',
     description: '신선한 한우와 고급 정육을 만나보세요',
   },
 }

@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server'
 import { addPoints } from '@/lib/points'
 import { useCoupon, isCouponValid } from '@/lib/coupons'
+import { normalizeOrderItems } from '@/lib/order-utils'
 import crypto from 'crypto'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * 트랜잭션 함수가 없을 때 사용하는 폴백 함수
  */
 async function createOrderWithoutTransaction(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   totalAmount: number,
   finalAmount: number,
@@ -19,7 +21,7 @@ async function createOrderWithoutTransaction(
   shippingName: string,
   shippingPhone: string,
   deliveryNote: string | null,
-  items: any[],
+  items: Array<{ productId: string | number; quantity: number; price: number; [key: string]: unknown }>,
   usedCouponId: string | null,
   usedPoints: number,
       // 선물 관련 파라미터 추가
@@ -28,10 +30,10 @@ async function createOrderWithoutTransaction(
       giftCardDesign: string | null = null
 ) {
   // 기존 방식 (트랜잭션 없음)
-  const orderData: any = {
+  const orderData: Record<string, unknown> = {
     user_id: userId,
     total_amount: finalAmount,
-    status: process.env.NODE_ENV === 'development' ? 'delivered' : 'paid',
+    status: 'paid',
     delivery_type: deliveryType,
     delivery_time: deliveryTime,
     shipping_address: shippingAddress,
@@ -52,7 +54,7 @@ async function createOrderWithoutTransaction(
     orderData.gift_expires_at = expiresAt.toISOString()
   }
   
-  let order: any = null
+  let order: { id: string; [key: string]: unknown } | null = null
   const { data: orderDataResult, error: orderError } = await supabase
     .from('orders')
     .insert(orderData)
@@ -65,7 +67,7 @@ async function createOrderWithoutTransaction(
     const orderDataWithoutGiftColumns = {
       user_id: userId,
       total_amount: finalAmount,
-      status: process.env.NODE_ENV === 'development' ? 'delivered' : 'paid',
+      status: 'paid',
       delivery_type: deliveryType,
       delivery_time: deliveryTime,
       shipping_address: shippingAddress,
@@ -98,7 +100,7 @@ async function createOrderWithoutTransaction(
 
   // 주문 아이템 저장
   if (order && items && items.length > 0) {
-    const orderItems = items.map((item: any) => ({
+    const orderItems = items.map((item) => ({
       order_id: order.id,
       product_id: item.productId,
       quantity: item.quantity,
@@ -141,7 +143,9 @@ async function createOrderWithoutTransaction(
       
       if (tokenError && (tokenError.code === '42703' || tokenError.message?.includes('column'))) {
         // gift_token 컬럼이 없으면 gift_info JSON에 추가
-        const currentGiftInfo = order.gift_info ? JSON.parse(order.gift_info) : {}
+        const currentGiftInfo = (order.gift_info && typeof order.gift_info === 'string') 
+          ? JSON.parse(order.gift_info) 
+          : {}
         const updatedGiftInfo = {
           ...currentGiftInfo,
           token: giftToken
@@ -237,23 +241,9 @@ export async function POST(request: NextRequest) {
 
     // 중복 주문 방지: 최근 동일 주문 탐지 (10분 이내 동일한 주문 내용을 다시 전송한 경우)
     // 클라이언트/네트워크 재전송, 새로고침으로 인한 다중 POST를 서버에서 가드
-    const normalizeItems = (arr: any[]) => {
-      if (!Array.isArray(arr)) return []
-      // 제품 ID, 수량, 가격 기준 정렬 후 직렬화
-      const sorted = [...arr].map(i => ({
-        productId: i.productId,
-        quantity: i.quantity,
-        price: i.price,
-      })).sort((a, b) => {
-        if (a.productId !== b.productId) return (a.productId || 0) - (b.productId || 0)
-        if (a.price !== b.price) return (a.price || 0) - (b.price || 0)
-        return (a.quantity || 0) - (b.quantity || 0)
-      })
-      return sorted
-    }
     const itemsFingerprint = crypto
       .createHash('sha256')
-      .update(JSON.stringify(normalizeItems(items || [])))
+      .update(JSON.stringify(normalizeOrderItems(items || [])))
       .digest('hex')
 
     const sinceIso = new Date(Date.now() - 10 * 60 * 1000).toISOString()
@@ -281,7 +271,7 @@ export async function POST(request: NextRequest) {
           .eq('order_id', cand.id)
 
         if (candItemsError) continue
-        const candNormalized = normalizeItems(
+        const candNormalized = normalizeOrderItems(
           (candItems || []).map(i => ({
             productId: i.product_id,
             quantity: i.quantity,
@@ -364,13 +354,15 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({ order })
-    } catch (error: any) {
+    } catch (error) {
       console.error('주문 생성 트랜잭션 실패:', error)
-      return NextResponse.json({ error: error.message || '주문 생성에 실패했습니다.' }, { status: 500 })
+      const message = error instanceof Error ? error.message : '주문 생성에 실패했습니다.'
+      return NextResponse.json({ error: message }, { status: 500 })
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('주문 생성 에러:', error)
-    return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
+    const message = error instanceof Error ? error.message : '서버 오류'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
