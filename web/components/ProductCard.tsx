@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth-context'
 import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart-db'
 import { formatPrice } from '@/lib/utils'
-import { isValidImageUrl, isOutOfStock, calculateDiscountPrice } from '@/lib/product-utils'
+import { isValidImageUrl, isOutOfStock, calculateDiscountPrice, isFlashSaleActive } from '@/lib/product-utils'
 import StarIcons from '@/components/review/StarIcons'
 
 interface ProductCardProps {

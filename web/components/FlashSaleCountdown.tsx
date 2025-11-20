@@ -53,7 +53,7 @@ export default function FlashSaleCountdown({ product, className = '' }: FlashSal
           D-{days}
         </span>
       )}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         <div className="bg-white px-3 py-2 rounded-md shadow-sm">
           <span className={`${textSizeClass} font-bold text-blue-900`}>
             {formatTime(hours)}

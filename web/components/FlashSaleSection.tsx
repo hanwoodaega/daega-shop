@@ -199,13 +199,13 @@ export default function FlashSaleSection() {
                     </button>
                   </div>
 
-                  <div className="px-2 pt-1 pb-1">
+                  <div className="px-2 pt-1 pb-3">
                     {product.brand && (
-                      <div className="text-sm font-bold text-primary-900 line-clamp-1 leading-tight tracking-tight mb-0">
+                      <div className="text-sm font-bold text-primary-900 line-clamp-1 leading-tight tracking-tight mb-0 mt-1">
                         {product.brand}
                       </div>
                     )}
-                    <h3 className="text-sm font-medium mb-0 line-clamp-1 text-primary-900 leading-tight tracking-tight">
+                    <h3 className="text-sm font-medium mb-0 line-clamp-1 text-primary-900 leading-tight tracking-tight mt-1">
                       {product.name}
                     </h3>
 
@@ -264,7 +264,7 @@ export default function FlashSaleSection() {
           </div>
           
           {/* 전체보기 버튼 */}
-          <div className="mt-3 px-4 pb-4">
+          <div className="mt-5 px-4 pb-4">
             <Link href="/products?filter=flash-sale" className="block">
               <button className="w-full px-6 py-2.5 bg-white border border-gray-300 rounded-lg font-semibold text-gray-900 hover:bg-gray-50 transition flex items-center justify-center gap-2">
                 <span>전체보기</span>
