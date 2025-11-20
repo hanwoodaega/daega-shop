@@ -1897,7 +1897,7 @@ function CheckoutPageContent() {
                     e.stopPropagation()
                     handleNextStep(e)
                   }}
-                  className="w-full text-lg font-bold bg-red-600 text-white hover:bg-red-700 py-3 flex items-center justify-center transition"
+                  className="w-full text-lg font-bold bg-blue-800 text-white hover:bg-blue-900 py-3 flex items-center justify-center transition"
                 >
                   다음
                 </button>
@@ -1908,7 +1908,7 @@ function CheckoutPageContent() {
                 disabled={isProcessing}
                 className={`w-full text-lg font-bold transition disabled:bg-gray-400 disabled:text-gray-500 flex items-center justify-center gap-2 ${
                     isGiftMode && currentStep === totalGiftSteps
-                      ? 'bg-blue-900 text-white hover:bg-blue-950 py-3'
+                      ? 'bg-blue-800 text-white hover:bg-blue-900 py-3'
                       : isGiftMode 
                     ? 'bg-[#FEE500] text-[#000000] hover:bg-[#FDD835] shadow-md rounded-xl py-2.5' 
                     : 'bg-blue-900 text-white hover:bg-blue-950 py-3'

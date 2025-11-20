@@ -49,25 +49,25 @@ export default function FlashSaleCountdown({ product, className = '' }: FlashSal
   return (
     <div className="flex items-center gap-2">
       {days > 0 && (
-        <span className={`${textSizeClass} font-bold text-blue-900`}>
+        <span className={`${textSizeClass} font-bold text-red-600`}>
           D-{days}
         </span>
       )}
       <div className="flex items-center gap-2">
         <div className="bg-white px-3 py-2 rounded-md shadow-sm">
-          <span className={`${textSizeClass} font-bold text-blue-900`}>
+          <span className={`${textSizeClass} font-bold text-red-600`}>
             {formatTime(hours)}
           </span>
         </div>
-        <span className={`${textSizeClass} font-bold text-blue-900`}>:</span>
+        <span className={`${textSizeClass} font-bold text-red-600`}>:</span>
         <div className="bg-white px-3 py-2 rounded-md shadow-sm">
-          <span className={`${textSizeClass} font-bold text-blue-900`}>
+          <span className={`${textSizeClass} font-bold text-red-600`}>
             {formatTime(minutes)}
           </span>
         </div>
-        <span className={`${textSizeClass} font-bold text-blue-900`}>:</span>
+        <span className={`${textSizeClass} font-bold text-red-600`}>:</span>
         <div className="bg-white px-3 py-2 rounded-md shadow-sm">
-          <span className={`${textSizeClass} font-bold text-blue-900`}>
+          <span className={`${textSizeClass} font-bold text-red-600`}>
             {formatTime(seconds)}
           </span>
         </div>

@@ -5,7 +5,6 @@ import { useState, useMemo, useCallback, useEffect, useRef, Suspense } from 'rea
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 // Navbar 제거: 장바구니 전용 헤더 사용
-import Footer from '@/components/Footer'
 import ProductCard from '@/components/ProductCard'
 import BottomNavbar from '@/components/BottomNavbar'
 import FreeShippingProgress from '@/components/FreeShippingProgress'
@@ -709,7 +708,7 @@ function CartPageContent() {
 
             {/* 주문 요약 */}
             <div className="lg:col-span-1">
-              <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 sticky top-24">
+              <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 sticky top-24 mb-40">
                 <h2 className="text-xl font-bold mb-4">주문 요약</h2>
                 
                 {/* 배송 방법 표시 */}
@@ -811,8 +810,6 @@ function CartPageContent() {
           </button>
         </div>
       </div>
-
-      <Footer />
 
       {/* 전역 프로모션 모달 */}
       <PromotionModalWrapper />

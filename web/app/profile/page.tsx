@@ -172,7 +172,7 @@ export default function ProfilePage() {
         {user ? (
           <>
             {/* 사용자 정보 섹션 - 로그인 상태 */}
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="bg-teal-100 rounded-lg shadow-md p-6 mb-6">
               <div className="mb-3">
                 <Link
                   href="/profile/edit"
@@ -185,36 +185,36 @@ export default function ProfilePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </Link>
-                <p className="text-xs text-gray-500 mt-1">주문 금액의 1% 적립</p>
+                <p className="text-xs text-blue-900 mt-1">주문 금액의 1% 적립</p>
               </div>
               
               {/* 통계 버튼들 */}
               <div className="grid grid-cols-2 gap-3">
                 <Link
                   href="/orders"
-                  className="px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition text-left"
+                  className="px-4 py-2 bg-white rounded-lg hover:bg-gray-50 transition text-left border border-blue-900"
                 >
-                  <div className="text-sm text-gray-600 mb-0.5">주문 내역</div>
+                  <div className="text-sm text-blue-900 mb-0.5">주문 내역</div>
                   <div className="text-lg font-semibold text-gray-900">{orderCount}건</div>
                 </Link>
                 <Link
                   href="/profile/points"
-                  className="px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition text-left"
+                  className="px-4 py-2 bg-white rounded-lg hover:bg-gray-50 transition text-left border border-blue-900"
                 >
-                  <div className="text-sm text-gray-600 mb-0.5">포인트</div>
+                  <div className="text-sm text-blue-900 mb-0.5">포인트</div>
                   <div className="text-lg font-semibold text-gray-900">{points.toLocaleString()}원</div>
                 </Link>
                 <Link
                   href="/profile/coupons"
-                  className="px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition text-left"
+                  className="px-4 py-2 bg-white rounded-lg hover:bg-gray-50 transition text-left border border-blue-900"
                 >
-                  <div className="text-sm text-gray-600 mb-0.5">쿠폰</div>
+                  <div className="text-sm text-blue-900 mb-0.5">쿠폰</div>
                   <div className="text-lg font-semibold text-gray-900">{couponCount}장</div>
                 </Link>
                 <div
-                  className="px-4 py-2 bg-gray-50 rounded-lg text-left cursor-default"
+                  className="px-4 py-2 bg-white rounded-lg text-left cursor-default border border-blue-900"
                 >
-                  <div className="text-sm text-gray-600 mb-0.5">선물함</div>
+                  <div className="text-sm text-blue-900 mb-0.5">선물함</div>
                   <div className="text-lg font-semibold text-gray-900">{giftCount}건</div>
                 </div>
               </div>
@@ -287,9 +287,12 @@ export default function ProfilePage() {
                   </svg>
                   <span className="text-base font-medium text-gray-900">알림 설정</span>
                 </div>
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-blue-900">알림 설정하고 혜택받기</span>
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
               </Link>
 
               {/* 고객센터 */}
