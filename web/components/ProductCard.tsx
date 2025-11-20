@@ -126,9 +126,9 @@ function ProductCard({ product }: ProductCardProps) {
   }, [product.id, userId, isWished])
 
   return (
-    <Link href={`/products/${product.id}`}>
+    <Link href={`/products/${product.slug || product.id}`}>
       <div className="bg-white transition">
-        <div className="relative aspect-square bg-gray-200 overflow-hidden">
+        <div className="relative aspect-square bg-gray-200 overflow-hidden rounded-md">
           {/* 프로모션 배지 */}
           {product.promotion_type && (
             <div className="absolute top-0 left-0 z-10">
@@ -167,7 +167,7 @@ function ProductCard({ product }: ProductCardProps) {
             </svg>
           </button>
         </div>
-        <div className="pt-1 pb-3 pr-0 pl-0">
+        <div className="pt-1 pb-3 px-0">
           {product.brand && (
             <div className="flex items-center justify-between mb-0">
               <div className="text-sm font-bold text-primary-900 line-clamp-1 flex-1 leading-tight tracking-tight">{product.brand}</div>
@@ -177,7 +177,7 @@ function ProductCard({ product }: ProductCardProps) {
                 aria-label="찜하기"
               >
                 {isWished ? (
-                  <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-blue-900" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                   </svg>
                 ) : (

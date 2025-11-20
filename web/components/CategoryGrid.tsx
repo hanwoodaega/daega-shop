@@ -30,7 +30,7 @@ export default function CategoryGrid({ selectedCategory = '전체' }: CategoryGr
           className="flex flex-col items-center"
         >
           <div
-            className={`relative w-16 h-16 rounded-full bg-white overflow-hidden hover:scale-110 transition shadow-lg flex items-center justify-center ${
+            className={`relative w-[60px] h-[60px] rounded-full bg-white overflow-hidden hover:scale-110 transition shadow-lg flex items-center justify-center ${
               selectedCategory === cat ? 'border-[3px] border-black' : ''
             }`}
           >
@@ -38,18 +38,18 @@ export default function CategoryGrid({ selectedCategory = '전체' }: CategoryGr
               <span className="text-xl font-black text-black">ALL</span>
             ) : (
               <Image
-                src={CATEGORY_IMAGES[cat] || '/images/categories/all.png'}
+                src={CATEGORY_IMAGES[cat] || CATEGORY_IMAGES['한우']}
                 alt={cat}
                 fill
                 className="object-cover"
-                sizes="64px"
+                sizes="60px"
                 priority={idx < 5}
               />
             )}
           </div>
           <span className={`text-sm mt-2 ${
             selectedCategory === cat 
-              ? 'font-black text-red-600' 
+              ? 'font-black text-blue-900' 
               : 'font-medium text-gray-700'
           }`}>
             {cat}

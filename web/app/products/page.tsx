@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, Suspense, useCallback, useMemo, useRef } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -16,6 +16,7 @@ import { CATEGORIES } from '@/lib/constants'
 
 function ProductsContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const category = searchParams.get('category')
   const searchQuery = searchParams.get('search')
   const filter = searchParams.get('filter')
@@ -24,6 +25,7 @@ function ProductsContent() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState(category || '전체')
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string>('전체')
   const [sortOrder, setSortOrder] = useState<'default' | 'price_asc' | 'price_desc'>('default')
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
@@ -60,7 +62,16 @@ function ProductsContent() {
         params.append('category', selectedCategory)
       }
 
-      const response = await fetch(`/api/products?${params.toString()}`, { cache: 'no-store' })
+      // 타임아웃 설정 (10초)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+
+      const response = await fetch(`/api/products?${params.toString()}`, { 
+        cache: 'no-store',
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         throw new Error('상품 조회 실패')
@@ -81,8 +92,12 @@ function ProductsContent() {
       }
       
       setHasMore(pageNum < data.totalPages)
-    } catch (error) {
+    } catch (error: any) {
       console.error('상품 조회 실패:', error)
+      if (error.name === 'AbortError') {
+        // 타임아웃 에러는 사용자에게 알림
+        alert('상품 목록을 불러오는데 시간이 오래 걸립니다. 잠시 후 다시 시도해주세요.')
+      }
     } finally {
       setLoading(false)
       setLoadingMore(false)
@@ -139,13 +154,58 @@ function ProductsContent() {
     if (filter === 'best') return '베스트'
     if (filter === 'sale') return '전단행사'
     if (filter === 'budget') return '알뜰상품'
+    if (filter === 'flash-sale') return '타임딜'
     if (selectedCategory && selectedCategory !== '전체') return selectedCategory
     return '전체 상품'
   }, [searchQuery, filter, selectedCategory])
 
+  // 카테고리가 선택되었는지 확인
+  const hasCategory = Boolean(selectedCategory && selectedCategory !== '전체' && !searchQuery && !filter)
+
+  const handleCategoryNav = useCallback((cat: string) => {
+    if (cat === '전체') {
+      router.push('/products')
+    } else {
+      router.push(`/products?category=${encodeURIComponent(cat)}`)
+    }
+  }, [router])
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header hideMainMenu={hasCategory} />
+      
+      {/* 카테고리 메뉴 - MainMenu 대신 표시 */}
+      {hasCategory && (
+        <nav className="sticky top-0 z-50 shadow-sm bg-white">
+          <div className="bg-white border-b border-gray-200">
+            <div className="container mx-auto px-4">
+              <div className="flex items-center justify-start space-x-5 sm:space-x-7 md:space-x-14 pt-2 pb-1 overflow-x-auto whitespace-nowrap scrollbar-hide">
+                {CATEGORIES.map((cat) => {
+                  const isActive = selectedCategory === cat
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => handleCategoryNav(cat)}
+                      className={`font-medium text-base sm:text-lg md:text-xl transition relative group pb-1.5 whitespace-nowrap flex-shrink-0 ${
+                        isActive ? 'text-blue-900' : 'text-gray-700 hover:text-primary-800'
+                      }`}
+                    >
+                      <span>{cat}</span>
+                      <span
+                        className={`absolute -bottom-0.5 h-0.5 transition-all ${
+                          isActive
+                            ? 'bg-blue-900 left-[-8px] right-[-8px]'
+                            : 'w-0 left-0 right-0 bg-primary-800 group-hover:w-full'
+                        }`}
+                      ></span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </nav>
+      )}
       
       <main className="flex-1">
         {/* 히어로 섹션 - 신상품 */}
@@ -204,41 +264,73 @@ function ProductsContent() {
           </section>
         )}
 
-        {/* 카테고리 - 모바일만 표시 */}
-        {!searchQuery && !filter && (
-          <section className="py-3 bg-gray-100 md:hidden">
-            <div className="container mx-auto px-4">
-              <CategoryGrid selectedCategory={selectedCategory} />
+        {/* 히어로 섹션 - 타임딜 */}
+        {filter === 'flash-sale' && (
+          <section className="bg-gradient-to-r from-red-50 to-orange-50 text-gray-900 py-16">
+            <div className="container mx-auto px-4 text-center">
+              <h1 className="text-4xl font-bold mb-2">
+                ⏰ 타임딜
+              </h1>
+              <p className="text-sm tracking-widest text-gray-600">
+                FLASH SALE
+              </p>
             </div>
           </section>
         )}
+
       
         <div className="container mx-auto px-4 py-4 pt-6">
-        {/* 페이지 제목 & 정렬 */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-xl font-bold mb-1">
-              {pageTitle}
-            </h1>
-            {searchQuery && displayedProducts.length > 0 && (
-              <p className="text-gray-600 text-sm">
-                검색 결과
-              </p>
-            )}
+        {/* 페이지 제목 & 정렬 - 카테고리 선택 시 숨김 */}
+        {!hasCategory && (
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-xl font-bold mb-1">
+                {pageTitle}
+              </h1>
+              {searchQuery && displayedProducts.length > 0 && (
+                <p className="text-gray-600 text-sm">
+                  검색 결과
+                </p>
+              )}
+            </div>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'default' | 'price_asc' | 'price_desc')}
+              className="px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-800 focus:border-transparent transition"
+            >
+              <option value="default">최신순</option>
+              <option value="price_asc">낮은 가격순</option>
+              <option value="price_desc">높은 가격순</option>
+            </select>
           </div>
-          <select
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value as 'default' | 'price_asc' | 'price_desc')}
-            className="px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-800 focus:border-transparent transition"
-          >
-            <option value="default">최신순</option>
-            <option value="price_asc">낮은 가격순</option>
-            <option value="price_desc">높은 가격순</option>
-          </select>
-        </div>
+        )}
+        
+        {/* 서브 카테고리 - 한우 카테고리일 때만 표시 */}
+        {hasCategory && selectedCategory === '한우' && (
+          <div className="mb-4">
+            <div className="flex items-center justify-start space-x-3 overflow-x-auto whitespace-nowrap scrollbar-hide pb-2">
+              {['전체', '등심', '안심', '채끝', '특수', '구이용', '요리용', '간편식'].map((subCat) => {
+                const isActive = selectedSubCategory === subCat
+                return (
+                  <button
+                    key={subCat}
+                    onClick={() => setSelectedSubCategory(subCat)}
+                    className={`px-4 py-2 rounded-lg font-bold text-sm transition flex-shrink-0 ${
+                      isActive
+                        ? 'bg-white border-2 border-blue-900 text-blue-900 shadow-md'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {subCat}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
         
         {/* 카테고리 필터 - 데스크탑만 표시 */}
-        {!searchQuery && !filter && (
+        {!searchQuery && !filter && !hasCategory && (
           <div className="hidden md:flex flex-wrap gap-2 mb-8">
             {CATEGORIES.map((cat) => (
               <button

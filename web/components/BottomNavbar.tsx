@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useCartStore, useSearchUIStore } from '@/lib/store'
@@ -16,45 +16,9 @@ export default function BottomNavbar() {
   const [showCategoryMenu, setShowCategoryMenu] = useState(false)
   const [showSearchModal, setShowSearchModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [isVisible, setIsVisible] = useState(true)
-  const lastScrollYRef = useRef(0)
-  const tickingRef = useRef(false)
 
   useEffect(() => {
     setMounted(true)
-  }, [])
-
-  // 스크롤 방향 감지
-  useEffect(() => {
-    const handleScroll = () => {
-      const current = window.scrollY
-
-      if (!tickingRef.current) {
-        tickingRef.current = true
-        requestAnimationFrame(() => {
-          const prev = lastScrollYRef.current
-
-          // 스크롤이 최상단일 때는 항상 표시
-          if (current < 10) {
-            setIsVisible((v) => (v ? v : true))
-          }
-          // 스크롤 올릴 때 표시
-          else if (current < prev) {
-            setIsVisible((v) => (v ? v : true))
-          }
-          // 스크롤 내릴 때 숨김
-          else if (current > prev && current > 100) {
-            setIsVisible((v) => (v ? false : v))
-          }
-
-          lastScrollYRef.current = current
-          tickingRef.current = false
-        })
-      }
-    }
-
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   const handleSearch = useCallback((e: React.FormEvent) => {
@@ -143,9 +107,7 @@ export default function BottomNavbar() {
       )}
 
       {/* 하단 네비게이션 바 */}
-      <nav className={`fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg transition-transform duration-300 ${
-        isVisible ? 'translate-y-0' : 'translate-y-full'
-      }`}>
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
         <div className="container mx-auto px-2">
           <div className="flex items-center justify-around h-16">
             {/* 홈 */}
@@ -161,38 +123,61 @@ export default function BottomNavbar() {
               <span className="text-xs">홈</span>
             </Link>
 
-            {/* 카테고리 */}
-            <button
-              onClick={() => setShowCategoryMenu(true)}
+            {/* 검색 (카테고리 + 검색 통합) */}
+            <Link
+              href="/categories"
+              className={`flex flex-col items-center justify-center flex-1 py-2 relative ${
+                pathname === '/categories' ? 'text-primary-800' : 'text-gray-600'
+              }`}
+            >
+              {/* 검색 아이콘과 카테고리 아이콘을 합친 아이콘 */}
+              <div className="relative w-6 h-6 mb-1">
+                {/* 햄버거 메뉴 (카테고리 - 왼쪽에 배치, 위아래로 길게) */}
+                <svg className="absolute top-0 -left-1 w-5 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round">
+                  <path d="M3 4h18M3 12h18M3 20h18" />
+                </svg>
+                {/* 돋보기 아이콘 (작게, 오른쪽에 배치, 배경으로 카테고리 가림) */}
+                <div className="absolute -bottom-0.5 -right-1 w-[1.3rem] h-[1.3rem] z-10">
+                  {/* 돋보기 배경 (카테고리 가리기) */}
+                  <div className="absolute inset-0 bg-white rounded-full"></div>
+                  <svg className="absolute inset-0 w-[1.3rem] h-[1.3rem]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                    <circle cx="11" cy="11" r="7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35" />
+                  </svg>
+                </div>
+              </div>
+              <span className="text-xs">카테고리</span>
+            </Link>
+
+            {/* 선물 */}
+            <Link
+              href="/gift"
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
-                pathname?.startsWith('/products') ? 'text-primary-800' : 'text-gray-600'
+                pathname?.startsWith('/gift') ? 'text-primary-800' : 'text-gray-600'
               }`}
             >
               <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
               </svg>
-              <span className="text-xs">카테고리</span>
-            </button>
+              <span className="text-xs">선물관</span>
+            </Link>
 
-            {/* 검색 */}
-            <button
-              onClick={() => {
-                // 검색 모드 열기
-                useSearchUIStore.getState().openSearch()
-                // 상단으로 스크롤
-                window.scrollTo({ top: 0, behavior: 'smooth' })
-              }}
-              className="flex flex-col items-center justify-center flex-1 py-2 text-gray-600"
-            >
-              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <span className="text-xs">검색</span>
-            </button>
-
-            {/* 사용자 */}
+            {/* 찜 */}
             <Link
-              href={user ? '/profile' : '/auth/login'}
+              href="/wishlist"
+              className={`flex flex-col items-center justify-center flex-1 py-2 ${
+                pathname === '/wishlist' ? 'text-primary-800' : 'text-gray-600'
+              }`}
+            >
+              <svg className="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+              <span className="text-xs">찜</span>
+            </Link>
+
+            {/* 마이 */}
+            <Link
+              href="/profile"
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
                 pathname?.startsWith('/auth') || pathname?.startsWith('/profile') ? 'text-primary-800' : 'text-gray-600'
               }`}
@@ -200,30 +185,7 @@ export default function BottomNavbar() {
               <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              <span className="text-xs">MY</span>
-            </Link>
-
-            {/* 장바구니 */}
-            <Link
-              href="/cart"
-              className={`relative flex flex-col items-center justify-center flex-1 py-2 ${
-                pathname === '/cart' ? 'text-primary-800' : 'text-gray-600'
-              }`}
-            >
-              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              <span className="text-xs">장바구니</span>
-              {/* hydration 에러 방지: 항상 같은 DOM 구조 유지 */}
-              <span 
-                className={`absolute top-1 right-4 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold transition-all duration-200 ${
-                  !mounted || getTotalItems() === 0 ? 'opacity-0 pointer-events-none scale-0' : 'opacity-100 scale-100'
-                }`}
-                suppressHydrationWarning
-                aria-hidden={!mounted || getTotalItems() === 0}
-              >
-                {mounted ? getTotalItems() : ''}
-              </span>
+              <span className="text-xs">마이</span>
             </Link>
           </div>
         </div>

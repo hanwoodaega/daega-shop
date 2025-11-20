@@ -1,614 +1,230 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import ProductEditModal from '@/components/admin/ProductEditModal'
-import { ADMIN_CATEGORIES } from '@/lib/constants'
+
+type AdminCard = {
+  title: string
+  description: string
+  href: string
+  accent: string
+  badge?: string
+}
+
+const managementCards: AdminCard[] = [
+  {
+    title: '상품 관리',
+    description: '상품 등록, 품절 전환, 태그 관리까지 한 곳에서.',
+    href: '/admin/products',
+    accent: 'bg-primary-100 text-primary-800',
+    badge: 'NEW',
+  },
+  {
+    title: '프로모션 (1+1, 2+1)',
+    description: '묶음/증정 프로모션을 생성하고 실시간으로 관리하세요.',
+    href: '/admin/promotions',
+    accent: 'bg-fuchsia-100 text-fuchsia-700',
+  },
+  {
+    title: '할인 관리',
+    description: '상시 할인, 타임딜, 쿠폰 정책을 구성하고 성과를 확인해요.',
+    href: '/admin/discounts',
+    accent: 'bg-amber-100 text-amber-700',
+  },
+  {
+    title: '타임딜 관리',
+    description: '한정 재고, 초특가 프로모션을 빠르게 세팅하세요.',
+    href: '/admin/flash-sales',
+    accent: 'bg-orange-100 text-orange-700',
+  },
+  {
+    title: '주문 관리',
+    description: '주문 상태 변경, 리뷰 모니터링, 고객 응대까지 한번에.',
+    href: '/admin/orders',
+    accent: 'bg-emerald-100 text-emerald-700',
+  },
+  {
+    title: '알림',
+    description: '적립 정책, 알림 발송을 유연하게 설정합니다.',
+    href: '/admin/notifications',
+    accent: 'bg-indigo-100 text-indigo-700',
+  },
+  {
+    title: '선물관 관리',
+    description: '선물 대상별 상품을 설정하고 관리하세요.',
+    href: '/admin/gift-management',
+    accent: 'bg-pink-100 text-pink-700',
+  },
+]
+
+const supportCards: AdminCard[] = [
+  {
+    title: '쿠폰 관리',
+    description: '카테고리/기간별 쿠폰 전략을 설계하세요.',
+    href: '/admin/coupons',
+    accent: 'bg-purple-100 text-purple-700',
+  },
+  {
+    title: '리뷰 관리',
+    description: '리뷰 모더레이션, 답변, 노출 설정을 제어합니다.',
+    href: '/admin/reviews',
+    accent: 'bg-rose-100 text-rose-700',
+  },
+]
+
+const insightItems = [
+  { label: '오늘 신규 주문', value: '42건', trend: '+18% vs. 어제' },
+  { label: '대기 중 CS 티켓', value: '3건', trend: '빠른 응답 필요' },
+  { label: '활성 프로모션', value: '6건', trend: '상품 관리에서 확인' },
+]
 
 export default function AdminPage() {
   const router = useRouter()
   
-  // ✅ 상품 등록 폼 데이터 (이미 그룹화됨)
-  const [form, setForm] = useState({
-    brand: '',
-    name: '',
-    description: '',
-    price: '',
-    image_url: '',
-    category: ADMIN_CATEGORIES[0],
-    stock: '999',
-    unit: '1팩',
-    weight: '0',
-    origin: '국내산',
-    product_info: '',
-  })
-  
-  // ✅ UI 상태 그룹화
-  const [uiState, setUiState] = useState({
-    message: null as string | null,
-    error: null as string | null,
-    loading: false,
-    loadingList: false,
-  })
-  
-  // ✅ 목록 관련 state 그룹화
-  const [listState, setListState] = useState({
-    items: [] as any[],
-    filterCategory: '전체',
-    filterTag: '전체',
-    search: '',
-    page: 1,
-    total: 0,
-  })
-  
-  const limit = 20
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-
-  // Destructuring for backward compatibility
-  const { message, error, loading, loadingList } = uiState
-  const { items, filterCategory, filterTag, search, page, total } = listState
-
-  // 페이지나 필터 변경 시 자동 조회
-  useEffect(() => {
-    fetchList()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, filterCategory, filterTag])
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
+  const handleNavigate = (href: string) => {
+    router.push(href)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setUiState(prev => ({ ...prev, message: null, error: null, loading: true }))
-    try {
-      let imageUrl = form.image_url.trim()
-      const file = fileInputRef.current?.files?.[0]
-      if (file) {
-        const fd = new FormData()
-        fd.append('file', file)
-        const up = await fetch('/api/admin/upload-image', { method: 'POST', body: fd })
-        const upData = await up.json()
-        if (!up.ok) {
-          setUiState(prev => ({ ...prev, error: upData.error || '이미지 업로드 실패', loading: false }))
-          return
-        }
-        imageUrl = upData.url
-      }
-      const payload = {
-        brand: form.brand.trim() || null,
-        name: form.name.trim(),
-        description: form.description.trim(),
-        price: Number(form.price),
-        image_url: imageUrl,
-        category: form.category,
-        stock: Number(form.stock),
-        unit: form.unit.trim(),
-        weight: Number(form.weight),
-        origin: form.origin.trim(),
-      }
-      const res = await fetch('/api/admin/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        setUiState(prev => ({ ...prev, error: data.error || '등록에 실패했습니다.', loading: false }))
-        return
-      }
-      setUiState(prev => ({ ...prev, message: '상품이 등록되었습니다.', loading: false }))
-      setForm({ ...form, brand: '', name: '', description: '', price: '', image_url: '', stock: '999', weight: '0' })
-      if (fileInputRef.current) fileInputRef.current.value = ''
-      await fetchList()
-    } catch (error) {
-      console.error('상품 등록 실패:', error)
-      setUiState(prev => ({ ...prev, error: '상품 등록에 실패했습니다.', loading: false }))
-    }
-  }
-
-  const logout = async () => {
+  const handleLogout = async () => {
     await fetch('/api/admin/logout', { method: 'POST' })
     router.replace('/admin/login')
   }
 
-  const fetchList = async () => {
-    setUiState(prev => ({ ...prev, loadingList: true }))
-    try {
-      const params = new URLSearchParams()
-      if (filterCategory && filterCategory !== '전체') params.set('category', filterCategory)
-      if (filterTag && filterTag !== '전체') params.set('tag', filterTag)
-      if (search.trim()) params.set('q', search.trim())
-      params.set('page', String(page))
-      params.set('limit', String(limit))
-      const qs = params.toString() ? `?${params.toString()}` : ''
-      const res = await fetch(`/api/admin/products${qs}`)
-      const data = await res.json()
-      if (res.ok) {
-        setListState(prev => ({ 
-          ...prev, 
-          items: data.items || [], 
-          total: typeof data.total === 'number' ? data.total : prev.total 
-        }))
-      }
-    } finally {
-      setUiState(prev => ({ ...prev, loadingList: false }))
-    }
-  }
-
-  const removeItem = async (id: string) => {
-    const ok = confirm('삭제하시겠습니까?')
-    if (!ok) return
-    const res = await fetch(`/api/admin/products/${id}`, { method: 'DELETE' })
-    if (res.ok) {
-      setListState(prev => ({ ...prev, items: prev.items.filter((i) => i.id !== id) }))
-      setUiState(prev => ({ ...prev, message: '상품이 삭제되었습니다.' }))
-      // message 자동 해제 타이머 (언마운트 시 정리)
-      const t = window.setTimeout(() => setUiState(prev => ({ ...prev, message: null })), 3000)
-      ;(removeItem as any).__timeouts ??= []
-      ;(removeItem as any).__timeouts.push(t)
-    } else {
-      const data = await res.json().catch(() => ({ error: '삭제 실패' }))
-      alert(data.error || '삭제에 실패했습니다.')
-    }
-  }
-
-  const toggleSoldOut = async (id: string, currentStock: number) => {
-    const newStock = currentStock <= 0 ? 999 : 0
-    const action = currentStock <= 0 ? '판매 재개' : '품절 처리'
-    const ok = confirm(`${action}하시겠습니까?`)
-    if (!ok) return
-    
-    const res = await fetch(`/api/admin/products/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stock: newStock }),
-    })
-    
-    if (res.ok) {
-      setListState(prev => ({ 
-        ...prev, 
-        items: prev.items.map((i) => (i.id === id ? { ...i, stock: newStock } : i)) 
-      }))
-    }
-  }
-
-  const [editing, setEditing] = useState<any | null>(null)
-  const [savingEdit, setSavingEdit] = useState(false)
-
-  const startEdit = (it: any) => {
-    setEditing({ ...it })
-  }
-
-  const saveEdit = async () => {
-    if (!editing) return
-    setSavingEdit(true)
-    try {
-      const res = await fetch(`/api/admin/products/${editing.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          brand: editing.brand,
-          name: editing.name,
-          price: Number(editing.price),
-          stock: Number(editing.stock),
-          category: editing.category,
-          unit: editing.unit,
-          origin: editing.origin,
-          is_new: editing.is_new || false,
-          is_best: editing.is_best || false,
-          is_sale: editing.is_sale || false,
-          is_budget: editing.is_budget || false,
-        }),
-      })
-      if (res.ok) {
-        setListState((prev) => ({
-          ...prev,
-          items: prev.items.map((i) => (i.id === editing.id ? { ...i, ...editing } : i))
-        }))
-        setEditing(null)
-      }
-    } finally {
-      setSavingEdit(false)
-    }
-  }
-
-  // 타이머 정리 (removeItem에서 사용)
-  useEffect(() => {
-    return () => {
-      const arr: number[] = ((removeItem as any).__timeouts || []) as number[]
-      arr.forEach((id) => clearTimeout(id))
-      ;(removeItem as any).__timeouts = []
-    }
-  }, [])
-
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-lg font-bold">관리자 - 상품 등록</h1>
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-neutral-50 text-neutral-900">
+      <header className="bg-white border-b border-neutral-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-6">
+          <div className="flex flex-col gap-4">
+            <div className="space-y-2">
+              <p className="text-sm text-neutral-500">DAEGA Admin</p>
+              <h1 className="text-3xl font-semibold tracking-tight">운영 대시보드</h1>
+              <p className="text-neutral-500 text-sm">상품, 주문, 혜택 관리를 빠르게 시작하세요.</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
             <button 
-              onClick={() => router.push('/admin/discounts')}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+                onClick={() => handleNavigate('/admin/products')}
+                className="px-5 py-2.5 rounded-full bg-primary-800 text-white text-sm font-semibold hover:bg-primary-900 transition"
             >
-              할인 관리
+                상품 관리 바로가기
             </button>
-            <button 
-              onClick={() => router.push('/admin/promotions')}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
-            >
-              프로모션 관리
-            </button>
-            <button 
-              onClick={() => router.push('/admin/notifications')}
-              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition text-sm font-medium"
-            >
-              알림 발송
-            </button>
-            <button 
-              onClick={() => router.push('/admin/flash-sales')}
-              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition text-sm font-medium"
-            >
-              타임딜 관리
-            </button>
-            <button 
-              onClick={() => router.push('/admin/coupons')}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm font-medium"
-            >
-              쿠폰 관리
-            </button>
-            <button 
-              onClick={() => router.push('/admin/reviews')}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-medium"
-            >
-              리뷰 관리
-            </button>
-            <button 
-              onClick={() => router.push('/admin/orders')}
-              className="px-4 py-2 bg-primary-800 text-white rounded-lg hover:bg-primary-900 transition text-sm font-medium"
-            >
-              주문 관리
-            </button>
-            <button onClick={logout} className="text-sm text-red-600 hover:underline">로그아웃</button>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">브랜드</label>
-            <input name="brand" value={form.brand} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {insightItems.map((item) => (
+              <div
+                key={item.label}
+                className="bg-neutral-900 text-white rounded-2xl p-5 space-y-2 shadow-sm"
+              >
+                <p className="text-sm text-neutral-300">{item.label}</p>
+                <p className="text-2xl font-semibold">{item.value}</p>
+                <p className="text-xs text-neutral-400">{item.trend}</p>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">상품명</label>
-            <input name="name" value={form.name} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
+            ))}
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">설명</label>
-            <textarea name="description" value={form.description} onChange={handleChange} className="w-full border rounded px-3 py-2" rows={3} />
           </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-10">
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
           <div>
-            <label className="block text-sm font-medium mb-1">가격(원)</label>
-            <input name="price" type="number" value={form.price} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
+              <p className="text-sm text-neutral-500">Operations</p>
+              <h2 className="text-xl font-semibold">핵심 업무</h2>
+            </div>
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {managementCards.map((card) => (
+              <div key={card.title} className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex items-start justify-between gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">카테고리</label>
-            <select name="category" value={form.category} onChange={handleChange} className="w-full border rounded px-3 py-2">
-              {ADMIN_CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+                    <div className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${card.accent}`}>
+                      {card.title}
+                      {card.badge && (
+                        <span className="ml-2 bg-white/80 text-[10px] font-bold px-2 py-0.5 rounded-full text-neutral-700">
+                          {card.badge}
+                        </span>
+                      )}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+                    <p className="mt-3 text-sm text-neutral-600">{card.description}</p>
+          </div>
+          </div>
+                <button
+                  onClick={() => handleNavigate(card.href)}
+                  className="mt-2 inline-flex items-center text-sm font-semibold text-primary-800 hover:text-primary-900"
+                >
+                  바로가기 →
+                </button>
+          </div>
+            ))}
+            </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
             <div>
-              <label className="block text-sm font-medium mb-1">중량(g)</label>
-              <input name="weight" type="number" value={form.weight} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+              <p className="text-sm text-neutral-500">Customer & Promotion</p>
+              <h2 className="text-xl font-semibold">고객 / 혜택 / 콘텐츠</h2>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">원산지</label>
-            <input name="origin" value={form.origin} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">이미지 URL</label>
-            <input name="image_url" value={form.image_url} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">이미지 업로드</label>
-            <input ref={fileInputRef} type="file" accept="image/*" className="w-full" />
-            <p className="text-xs text-gray-500 mt-1">파일을 선택하면 URL 대신 업로드가 사용됩니다.</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">상품고시정보</label>
-            <textarea 
-              name="product_info" 
-              value={form.product_info} 
-              onChange={handleChange} 
-              className="w-full border rounded px-3 py-2 min-h-[120px]"
-              placeholder="품목, 중량, 원산지, 보관방법, 유통기한 등 상품고시정보를 입력하세요."
-            />
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {message && <p className="text-sm text-green-700">{message}</p>}
-          <button type="submit" disabled={loading} className="w-full bg-primary-800 text-white py-2 rounded hover:bg-primary-900 disabled:opacity-60">
-            {loading ? '등록 중...' : '상품 등록'}
-          </button>
-        </form>
-        <hr className="my-6" />
-        <div className="mb-4">
-          <h2 className="text-md font-semibold mb-3">상품 목록</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              value={search}
-              onChange={(e)=>setListState(prev => ({ ...prev, search: e.target.value }))}
-              onKeyDown={(e)=>{ if(e.key==='Enter'){ setListState(prev => ({ ...prev, page: 1 })); fetchList() } }}
-              placeholder="상품명/설명 검색"
-              className="border rounded px-2 py-1 text-sm"
-            />
-            <button onClick={()=>{ setListState(prev => ({ ...prev, page: 1 })); fetchList() }} className="text-sm px-2 py-1 border rounded">검색</button>
-            
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">카테고리</label>
-              <select className="border rounded px-2 py-1 text-sm" value={filterCategory} onChange={(e)=>{ setListState(prev => ({ ...prev, filterCategory: e.target.value, page: 1 })); }}>
-                <option value="전체">전체</option>
-                {ADMIN_CATEGORIES.map((c)=> (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">필터태그</label>
-              <select className="border rounded px-2 py-1 text-sm" value={filterTag} onChange={(e)=>{ setListState(prev => ({ ...prev, filterTag: e.target.value, page: 1 })); }}>
-                <option value="전체">전체</option>
-                <option value="new">신상품</option>
-                <option value="best">베스트</option>
-                <option value="sale">전단행사</option>
-                <option value="budget">알뜰상품</option>
-              </select>
-            </div>
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {supportCards.map((card) => (
+              <div key={card.title} className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm space-y-3">
+                <div className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${card.accent}`}>
+                  {card.title}
         </div>
-        {loadingList ? (
-          <p className="text-sm text-gray-500">불러오는 중...</p>
-        ) : items.length === 0 ? (
-          <p className="text-sm text-gray-500">등록된 상품이 없습니다.</p>
-        ) : (
-          <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="p-2 border">브랜드</th>
-                  <th className="p-2 border">이름</th>
-                  <th className="p-2 border">카테고리</th>
-                  <th className="p-2 border">필터태그</th>
-                  <th className="p-2 border">가격</th>
-                  <th className="p-2 border">할인율(%)</th>
-                  <th className="p-2 border">할인가</th>
-                  <th className="p-2 border">프로모션</th>
-                  <th className="p-2 border">판매상태</th>
-                  <th className="p-2 border">작업</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((it) => {
-                  const tags = []
-                  if (it.is_new) tags.push('신상품')
-                  if (it.is_best) tags.push('베스트')
-                  if (it.is_sale) tags.push('전단행사')
-                  if (it.is_budget) tags.push('알뜰상품')
-                  
-                  return (
-                    <tr key={it.id}>
-                      <td className="p-2 border">{it.brand || '-'}</td>
-                      <td className="p-2 border">{it.name}</td>
-                      <td className="p-2 border">{it.category}</td>
-                      <td className="p-2 border">
-                        {tags.length > 0 ? (
-                          <div className="flex flex-wrap gap-1 justify-center">
-                            {tags.map((tag, idx) => (
-                              <span 
-                                key={idx} 
-                                className="px-2 py-0.5 text-xs rounded bg-red-100 text-red-700"
-                              >
-                                {tag}
-                              </span>
+                <p className="text-sm text-neutral-600">{card.description}</p>
+                <button
+                  onClick={() => handleNavigate(card.href)}
+                  className="text-sm font-semibold text-neutral-700 hover:text-neutral-900"
+                >
+                  열기 →
+                </button>
+              </div>
                             ))}
                           </div>
-                        ) : '-'}
-                      </td>
-                      <td className="p-2 border">{Number(it.price).toLocaleString('ko-KR')}</td>
-                      <td className="p-2 border">{it.discount_percent ?? '-'}</td>
-                      <td className="p-2 border">{
-                        it.discount_percent && it.discount_percent > 0
-                          ? Math.round((Number(it.price) * (100 - Number(it.discount_percent))) / 100).toLocaleString('ko-KR')
-                          : '-'
-                      }</td>
-                      <td className="p-2 border">
-                        <div className="flex items-center justify-center">
-                          {(it.promotion_type || it.promotion_products) ? (
-                            <span className="text-xs px-3 py-1 rounded font-medium bg-purple-100 text-purple-700">
-                              {it.promotion_type || '프로모션'}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
+        </section>
+
+        <section className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
+          <div>
+            <p className="text-sm text-neutral-500">Guides</p>
+            <h2 className="text-xl font-semibold">이번 주 체크리스트</h2>
                         </div>
-                      </td>
-                      <td className="p-2 border">
-                        <div className="flex items-center justify-center">
-                          <span className={`text-xs px-3 py-1 rounded font-medium ${
-                            it.stock <= 0 
-                              ? 'bg-red-100 text-red-600' 
-                              : 'bg-green-100 text-green-700'
-                          }`}>
-                            {it.stock <= 0 ? '품절' : '판매중'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-2 border text-center space-x-2">
+          <ul className="space-y-2 text-sm text-neutral-600">
+            <li>• 추석 기획전 상품을 상품 관리 &gt; 기획전 태그로 묶어주세요.</li>
+            <li>• 인기 한우 세트 재고를 확인하고, 품절 상품은 대체 상품을 등록합니다.</li>
+            <li>• 리뷰 관리에서 신고 리뷰 2건을 확인하고 답변을 남겨주세요.</li>
+          </ul>
+          <div className="flex flex-wrap gap-3">
                         <button 
-                          onClick={() => toggleSoldOut(it.id, it.stock)} 
-                          className={`text-xs px-3 py-1.5 rounded font-medium ${
-                            it.stock <= 0 
-                              ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                              : 'bg-red-100 text-red-700 hover:bg-red-200'
-                          }`}
-                        >
-                          {it.stock <= 0 ? '판매재개' : '품절처리'}
+              onClick={() => handleNavigate('/admin/products')}
+              className="px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
+            >
+              상품 관리 열기
                         </button>
                         <button 
-                          onClick={() => !!(it.promotion_type || it.promotion_products) ? null : startEdit(it)} 
-                          disabled={!!(it.promotion_type || it.promotion_products)}
-                          className={`text-sm ${
-                            (it.promotion_type || it.promotion_products)
-                              ? 'text-gray-400 cursor-not-allowed' 
-                              : 'text-blue-600 hover:underline'
-                          }`}
-                          title={(it.promotion_type || it.promotion_products) ? '프로모션 중인 상품은 수정할 수 없습니다' : ''}
-                        >
-                          수정
+              onClick={() => handleNavigate('/admin/support')}
+              className="px-4 py-2 rounded-lg border border-neutral-300 text-sm font-semibold text-neutral-700 hover:bg-neutral-100"
+            >
+              운영 가이드 보기
                         </button>
-                        <button 
-                          onClick={() => removeItem(it.id)} 
-                          disabled={!!(it.promotion_type || it.promotion_products)}
-                          className={`text-sm ${
-                            (it.promotion_type || it.promotion_products)
-                              ? 'text-gray-400 cursor-not-allowed' 
-                              : 'text-red-600 hover:underline'
-                          }`}
-                          title={(it.promotion_type || it.promotion_products) ? '프로모션 중인 상품은 삭제할 수 없습니다' : ''}
-                        >
-                          삭제
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
           </div>
-          {/* 페이지네이션 */}
-          {total > 0 && (
-            <div className="mt-6 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="text-sm text-gray-600">
-                총 <span className="font-semibold text-primary-900">{total}</span>개 상품
-                {' | '}
-                <span className="font-semibold text-primary-900">{Math.ceil(total / limit)}</span>페이지 중{' '}
-                <span className="font-semibold text-primary-900">{page}</span>페이지
-              </div>
-              
-              <div className="flex items-center gap-2">
-                {/* 첫 페이지 */}
-                <button
-                  onClick={() => {
-                    setListState(prev => ({ ...prev, page: 1 }))
-                    setTimeout(fetchList, 0)
-                  }}
-                  disabled={page === 1}
-                  className="px-3 py-2 border rounded text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                  title="첫 페이지"
-                >
-                  «
-                </button>
+        </section>
 
-                {/* 이전 페이지 */}
-                <button
-                  onClick={() => {
-                    setListState(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))
-                    setTimeout(fetchList, 0)
-                  }}
-                  disabled={page === 1}
-                  className="px-3 py-2 border rounded text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                  title="이전 페이지"
-                >
-                  ‹
-                </button>
-
-                {/* 페이지 번호 표시 */}
-                <div className="flex items-center gap-1">
-                  {(() => {
-                    const totalPages = Math.ceil(total / limit)
-                    const pageNumbers = []
-                    let startPage = Math.max(1, page - 2)
-                    let endPage = Math.min(totalPages, page + 2)
-
-                    // 항상 5개 페이지 보이도록 조정
-                    if (endPage - startPage < 4) {
-                      if (startPage === 1) {
-                        endPage = Math.min(totalPages, startPage + 4)
-                      } else if (endPage === totalPages) {
-                        startPage = Math.max(1, endPage - 4)
-                      }
-                    }
-
-                    for (let i = startPage; i <= endPage; i++) {
-                      pageNumbers.push(
-                        <button
-                          key={i}
-                          onClick={() => {
-                            setListState(prev => ({ ...prev, page: i }))
-                            setTimeout(fetchList, 0)
-                          }}
-                          className={`min-w-[36px] px-3 py-2 border rounded text-sm font-medium transition ${
-                            page === i
-                              ? 'bg-primary-800 text-white border-primary-800'
-                              : 'hover:bg-gray-100'
-                          }`}
-                        >
-                          {i}
-                        </button>
-                      )
-                    }
-
-                    return pageNumbers
-                  })()}
+        <section className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-neutral-200 bg-white rounded-2xl p-6 shadow-sm">
+          <div>
+            <p className="text-sm text-neutral-500">Support</p>
+            <h3 className="text-lg font-semibold">운영팀이 필요하신가요?</h3>
+            <p className="text-sm text-neutral-600 mt-1">Slack #daega-admin 또는 ops@daega.com 으로 문의해주세요.</p>
                 </div>
-
-                {/* 다음 페이지 */}
                 <button
-                  onClick={() => {
-                    const totalPages = Math.ceil(total / limit)
-                    setListState(prev => ({ ...prev, page: Math.min(totalPages, prev.page + 1) }))
-                    setTimeout(fetchList, 0)
-                  }}
-                  disabled={page >= Math.ceil(total / limit)}
-                  className="px-3 py-2 border rounded text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                  title="다음 페이지"
-                >
-                  ›
+            onClick={() => handleNavigate('/admin/support')}
+            className="px-5 py-2.5 rounded-full bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
+          >
+            운영 지원 요청
                 </button>
-
-                {/* 마지막 페이지 */}
-                <button
-                  onClick={() => {
-                    const totalPages = Math.ceil(total / limit)
-                    setListState(prev => ({ ...prev, page: totalPages }))
-                    setTimeout(fetchList, 0)
-                  }}
-                  disabled={page >= Math.ceil(total / limit)}
-                  className="px-3 py-2 border rounded text-sm font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                  title="마지막 페이지"
-                >
-                  »
-                </button>
-              </div>
-            </div>
-          )}
-          </>
-        )}
-        <ProductEditModal 
-          editing={editing}
-          setEditing={setEditing}
-          saveEdit={saveEdit}
-          savingEdit={savingEdit}
-          allProducts={items}
-        />
-      </div>
+        </section>
+      </main>
     </div>
   )
 }
-
 

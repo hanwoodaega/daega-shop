@@ -79,3 +79,63 @@ export function scrollToTop(): void {
     behavior: 'smooth'
   })
 }
+
+/**
+ * 상품 이름을 slug로 변환합니다.
+ * 예: "한우대가 NO.9 프리미엄 세트" → "hanwoo-daega-no9-premium-set"
+ * @param name 상품 이름
+ * @returns slug 문자열
+ */
+export function nameToSlug(name: string): string {
+  // 한글을 영문으로 변환하는 매핑
+  const koreanMap: Record<string, string> = {
+    '한우': 'hanwoo',
+    '대가': 'daega',
+    '프리미엄': 'premium',
+    '세트': 'set',
+    '등심': 'tenderloin',
+    '갈비': 'rib',
+    '안심': 'sirloin',
+    '하림': 'harim',
+    '닭가슴살': 'breast',
+    '닭': 'chicken',
+    '가슴살': 'breast',
+    '블랙페퍼': 'blackpepper',
+    '페퍼': 'pepper',
+    '돼지고기': 'pork',
+    '수입육': 'imported',
+    '가공육': 'processed',
+    '조리육': 'cooked',
+    '야채': 'vegetable',
+    '채끝': 'tenderloin',
+    '갈비살': 'ribeye',
+    '살치살': 'chuck',
+    '부채살': 'flank',
+    '업진살': 'top-blade',
+  }
+  
+  let result = name.trim()
+  
+  // 기본적인 한글 단어 매핑 (긴 단어부터 매칭)
+  const sortedEntries = Object.entries(koreanMap).sort((a, b) => b[0].length - a[0].length)
+  sortedEntries.forEach(([kor, eng]) => {
+    result = result.replace(new RegExp(kor, 'gi'), eng)
+  })
+  
+  // 남은 한글과 특수문자 제거, 영어/숫자/하이픈만 남기기
+  result = result
+    .replace(/[가-힣]/g, '') // 한글 제거
+    .replace(/[^\w\s-]/g, '') // 특수문자 제거 (영어, 숫자, 공백, 하이픈만 남김)
+    .replace(/\s+/g, '-')      // 공백을 하이픈으로
+    .replace(/-+/g, '-')       // 연속된 하이픈을 하나로
+    .toLowerCase()             // 소문자로 변환
+    .trim()
+    .replace(/^-+|-+$/g, '')  // 앞뒤 하이픈 제거
+  
+  // 빈 문자열이거나 너무 짧으면 기본값
+  if (!result || result.length < 2) {
+    return 'product'
+  }
+  
+  return result
+}

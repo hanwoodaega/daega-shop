@@ -17,10 +17,8 @@ export function calculateDiscountPrice(price: number, discountPercent?: number |
  */
 export function getProductTags(product: Product): string[] {
   const tags: string[] = []
-  if (product.is_new) tags.push('신상품')
   if (product.is_best) tags.push('베스트')
   if (product.is_sale) tags.push('전단행사')
-  if (product.is_budget) tags.push('알뜰상품')
   return tags
 }
 

@@ -1,22 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 
+// UUID 형식인지 확인하는 함수
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(str)
+}
+
 // GET: 특정 상품의 리뷰 목록 조회
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    const productId = searchParams.get('productId')
+    const productIdOrSlug = searchParams.get('productId')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const photoOnly = searchParams.get('photoOnly') === 'true'
     const sortBy = searchParams.get('sortBy') || 'latest' // 'latest' or 'recommended'
     const offset = (page - 1) * limit
 
-    if (!productId) {
+    if (!productIdOrSlug) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 })
     }
 
     const supabase = createSupabaseServerClient()
+
+    // slug인 경우 UUID로 변환
+    let productId = productIdOrSlug
+    if (!isUUID(productIdOrSlug)) {
+      // slug로 상품 조회
+      const { data: product, error: productError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('slug', productIdOrSlug)
+        .single()
+      
+      if (productError || !product) {
+        // slug로 찾지 못했으면 UUID로 시도
+        const { data: productById } = await supabase
+          .from('products')
+          .select('id')
+          .eq('id', productIdOrSlug)
+          .single()
+        
+        if (!productById) {
+          return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+        }
+        productId = productById.id
+      } else {
+        productId = product.id
+      }
+    }
 
     // 쿼리 빌더 시작
     let query = supabase

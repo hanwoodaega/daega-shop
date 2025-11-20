@@ -41,6 +41,13 @@ export async function GET(request: NextRequest) {
         query = query.eq('is_sale', true)
       } else if (filter === 'budget') {
         query = query.eq('is_budget', true)
+      } else if (filter === 'flash-sale') {
+        // 타임딜 상품 필터: 종료 시간이 아직 지나지 않았고 재고가 있는 상품
+        const now = new Date().toISOString()
+        query = query
+          .not('flash_sale_end_time', 'is', null)
+          .gte('flash_sale_end_time', now)
+          .gt('flash_sale_stock', 0)
       }
     } else if (category && category !== '전체') {
       // 카테고리 필터
@@ -48,7 +55,10 @@ export async function GET(request: NextRequest) {
     }
 
     // 정렬 적용
-    if (sort === 'price_asc') {
+    if (filter === 'flash-sale') {
+      // 타임딜은 종료 시간 순으로 정렬
+      query = query.order('flash_sale_end_time', { ascending: true })
+    } else if (sort === 'price_asc') {
       query = query.order('price', { ascending: true })
     } else if (sort === 'price_desc') {
       query = query.order('price', { ascending: false })
@@ -76,15 +86,18 @@ export async function GET(request: NextRequest) {
     const productIds = products.map((p: any) => p.id)
 
     // 리뷰 통계를 한 번에 조회 (승인된 리뷰 기준)
+    // 리뷰 조회가 느려도 상품 목록은 반환되도록 처리
     let reviewStats: Record<string, { count: number; average: number }> = {}
     
+    // 리뷰 통계 조회 (에러가 나도 상품 목록은 반환)
     try {
-      // 승인된 리뷰만 조회 시도
+      // 승인된 리뷰만 조회 시도 (최대 5000개로 제한하여 성능 개선)
       const reviewsRes = await supabase
         .from('reviews')
         .select('product_id, rating, status')
         .in('product_id', productIds)
         .eq('status', 'approved')
+        .limit(5000) // 최대 리뷰 수 제한으로 성능 개선
 
       if (reviewsRes.data) {
         // 상품별로 그룹화하여 통계 계산
@@ -114,6 +127,7 @@ export async function GET(request: NextRequest) {
           .from('reviews')
           .select('product_id, rating')
           .in('product_id', productIds)
+          .limit(5000) // 최대 리뷰 수 제한으로 성능 개선
 
         if (reviewsRes.data) {
           const statsMap = new Map<string, { sum: number; count: number }>()
@@ -135,8 +149,8 @@ export async function GET(request: NextRequest) {
           })
         }
       } catch (fallbackError) {
-        console.error('리뷰 통계 조회 실패:', fallbackError)
-        // 리뷰 통계가 없어도 상품 목록은 반환
+        // 리뷰 통계 조회 실패해도 상품 목록은 반환
+        console.error('리뷰 통계 조회 실패 (무시됨):', fallbackError)
       }
     }
 

@@ -4,20 +4,20 @@
 
 // ==================== Categories ====================
 
-export const CATEGORIES = ['전체', '한우', '돼지고기', '수입육', '닭', '가공육', '조리육', '야채']
+export const CATEGORIES = ['전체', '한우', '돼지고기', '수입육', '닭', '가공육', '조리육', '야채', '선물세트']
 
 // 관리자용 (전체 제외)
-export const ADMIN_CATEGORIES = ['한우', '돼지고기', '수입육', '닭', '가공육', '조리육', '야채']
+export const ADMIN_CATEGORIES = ['한우', '돼지고기', '수입육', '닭', '가공육', '조리육', '야채', '선물세트']
 
 // ==================== Menu ====================
 
 // 메인 메뉴 (첫 번째 줄)
 export const MAIN_MENU_LINKS = [
   { name: '홈', href: '/' },
-  { name: '신상품', href: '/products?filter=new' },
   { name: '베스트', href: '/products?filter=best' },
-  { name: '전단행사', href: '/products?filter=sale' },
-  { name: '알뜰상품', href: '/products?filter=budget' },
+  { name: '특가', href: '/products?filter=sale' },
+  { name: '한우대가NO.9', href: '/hanwoo-daega-no9' },
+  { name: '리뷰이벤트', href: '/review-event' },
 ]
 
 // 카테고리 메뉴 (두 번째 줄)
@@ -30,6 +30,7 @@ export const CATEGORY_LINKS = [
   { name: '가공육', href: '/products?category=가공육' },
   { name: '조리육', href: '/products?category=조리육' },
   { name: '야채', href: '/products?category=야채' },
+  { name: '선물세트', href: '/products?category=선물세트' },
 ]
 
 // ==================== Order Status ====================

@@ -42,11 +42,36 @@ export default function FlashSaleCountdown({ product, className = '' }: FlashSal
 
   const formatTime = (num: number) => String(num).padStart(2, '0')
 
+  // className에서 text- 크기 클래스 추출
+  const textSizeMatch = className.match(/text-\w+/)
+  const textSizeClass = textSizeMatch ? textSizeMatch[0] : 'text-xl'
+  
   return (
-    <div className={`flex items-center ${className}`}>
-      <span className="text-lg font-bold text-red-600">
-        {days > 0 ? `D-${days} ` : ''}{formatTime(hours)}:{formatTime(minutes)}:{formatTime(seconds)}
-      </span>
+    <div className="flex items-center gap-2">
+      {days > 0 && (
+        <span className={`${textSizeClass} font-bold text-blue-900`}>
+          D-{days}
+        </span>
+      )}
+      <div className="flex items-center gap-1">
+        <div className="bg-white px-3 py-2 rounded-md shadow-sm">
+          <span className={`${textSizeClass} font-bold text-blue-900`}>
+            {formatTime(hours)}
+          </span>
+        </div>
+        <span className={`${textSizeClass} font-bold text-blue-900`}>:</span>
+        <div className="bg-white px-3 py-2 rounded-md shadow-sm">
+          <span className={`${textSizeClass} font-bold text-blue-900`}>
+            {formatTime(minutes)}
+          </span>
+        </div>
+        <span className={`${textSizeClass} font-bold text-blue-900`}>:</span>
+        <div className="bg-white px-3 py-2 rounded-md shadow-sm">
+          <span className={`${textSizeClass} font-bold text-blue-900`}>
+            {formatTime(seconds)}
+          </span>
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { assertAdmin } from '@/lib/admin-auth'
+import { nameToSlug } from '@/lib/utils'
 
 export async function GET(request: Request) {
   try { assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
@@ -48,17 +49,49 @@ export async function POST(request: Request) {
   // Basic auth check via cookie (middleware guards UI, API double-checks)
   // In route handlers, cookies are not directly accessible via Request; rely on middleware for now or parse headers if needed.
 
+  // slug 생성 (수동 입력이 있으면 사용, 없으면 자동 생성)
+  let slug: string | null = null
+  
+  // slug가 명시적으로 전달되었는지 확인 (빈 문자열도 명시적 입력으로 간주)
+  if ('slug' in body) {
+    const slugValue = String(body.slug || '').trim()
+    if (slugValue) {
+      // 수동으로 slug가 입력된 경우 - 그대로 사용
+      slug = slugValue
+    }
+  }
+  
+  // slug가 없으면 상품명에서 자동 생성
+  if (!slug && body.name) {
+    slug = nameToSlug(body.name)
+  }
+  
+  // slug 중복 체크 및 고유성 보장
+  if (slug) {
+    let uniqueSlug = slug
+    let counter = 1
+    while (true) {
+      const { data: existing } = await supabaseAdmin
+        .from('products')
+        .select('id')
+        .eq('slug', uniqueSlug)
+        .single()
+      
+      if (!existing) break
+      uniqueSlug = `${slug}-${counter}`
+      counter++
+    }
+    slug = uniqueSlug
+  }
+
   const payload = {
     brand: body.brand ? String(body.brand) : null,
     name: String(body.name),
-    description: String(body.description || ''),
+    slug: slug || null,
     price: Number(body.price),
     image_url: String(body.image_url || ''),
     category: String(body.category),
     stock: Number(body.stock),
-    unit: String(body.unit),
-    weight: Number(body.weight || 0),
-    origin: String(body.origin || ''),
     discount_percent: body.discount_percent !== undefined && body.discount_percent !== null && body.discount_percent !== ''
       ? Math.max(0, Math.min(100, Number(body.discount_percent)))
       : null,

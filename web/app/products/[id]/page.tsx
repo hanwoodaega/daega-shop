@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
+import { getProductDescription } from '@/components/product-descriptions'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import LoginPrompt from '@/components/common/LoginPrompt'
 import ConfirmModal from '@/components/common/ConfirmModal'
@@ -39,23 +39,46 @@ function ProductDetailPageContent() {
   const [reviewOrderId, setReviewOrderId] = useState<string>('')
   const [reviewCount, setReviewCount] = useState(0)
   const [averageRating, setAverageRating] = useState(0)
-  const [showProductInfo, setShowProductInfo] = useState(false)
+  const [ProductDescriptionComponent, setProductDescriptionComponent] = useState<React.ComponentType<{ productId: string; productName?: string }> | null>(null)
+  const [mounted, setMounted] = useState(false)
   const { user } = useAuth()
   
   // ✅ Selector 패턴 - 필요한 것만 구독
   const addItem = useCartStore((state) => state.addItem)
+  const cartCount = useCartStore((state) => state.getTotalItems())
+  
+  // Hydration 에러 방지
+  useEffect(() => {
+    setMounted(true)
+  }, [])
   const setDirectPurchaseItems = useDirectPurchaseStore((state) => state.setItems)
   const toggleItem = useWishlistStore((state) => state.toggleItem)
-  const isWished = useWishlistStore((state) => state.items.includes(productId))
+  const isWished = useWishlistStore((state) => product?.id ? state.items.includes(product.id) : false)
   const openPromotionModal = usePromotionModalStore((state) => state.openModal)
 
   const fetchProduct = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      // slug 또는 UUID로 조회 (먼저 slug로 시도, 없으면 UUID로)
+      let query = supabase
         .from('products')
         .select('*')
-        .eq('id', productId)
+        .eq('slug', productId)
         .single()
+
+      let { data, error } = await query
+
+      // slug로 찾지 못했으면 UUID로 시도
+      if (error || !data) {
+        query = supabase
+          .from('products')
+          .select('*')
+          .eq('id', productId)
+          .single()
+        
+        const result = await query
+        data = result.data
+        error = result.error
+      }
       
       if (error) throw error
       setProduct(data)
@@ -73,12 +96,23 @@ function ProductDetailPageContent() {
     fetchProduct()
   }, [fetchProduct])
 
+  // 상품 설명 컴포넌트 로드
+  useEffect(() => {
+    if (product) {
+      // slug가 있으면 slug를 우선 사용, 없으면 이름 사용
+      const slugOrName = product.slug || product.name
+      getProductDescription(slugOrName, product.id).then((Component) => {
+        setProductDescriptionComponent(() => Component)
+      })
+    }
+  }, [product?.slug, product?.name, product?.id])
+
   // 최근 본 상품 저장
   useEffect(() => {
-    if (productId) {
-      saveRecentlyViewed(productId)
+    if (product?.id) {
+      saveRecentlyViewed(product.id)
     }
-  }, [productId])
+  }, [product?.id])
 
   // product의 average_rating을 설정
   useEffect(() => {
@@ -91,12 +125,15 @@ function ProductDetailPageContent() {
   const isFetchingReviewCountRef = useRef(false)
   useEffect(() => {
     const fetchReviewCount = async () => {
+      // product가 로드되지 않았으면 대기
+      if (!product?.id) return
+      
       // 중복 호출 방지
       if (isFetchingReviewCountRef.current) return
       
       isFetchingReviewCountRef.current = true
       try {
-        const response = await fetch(`/api/reviews?productId=${productId}&page=1&limit=3`)
+        const response = await fetch(`/api/reviews?productId=${product.id}&page=1&limit=3`)
         if (response.ok) {
           const data = await response.json()
           setReviewCount(data.total || 0)
@@ -112,22 +149,22 @@ function ProductDetailPageContent() {
       }
     }
 
-    if (productId) {
+    if (product?.id) {
       fetchReviewCount()
     }
-  }, [productId])
+  }, [product?.id])
 
   // URL 쿼리 파라미터로 프로모션 모달 자동 열기
   useEffect(() => {
     const openPromotion = searchParams?.get('openPromotion')
-    if (openPromotion === 'true' && product?.promotion_type) {
-      openPromotionModal(productId)
+    if (openPromotion === 'true' && product?.promotion_type && product?.id) {
+      openPromotionModal(product.id)
       // URL에서 쿼리 파라미터 제거 (깔끔하게)
       const url = new URL(window.location.href)
       url.searchParams.delete('openPromotion')
       window.history.replaceState({}, '', url.toString())
     }
-  }, [searchParams, product?.promotion_type, productId, openPromotionModal])
+  }, [searchParams, product?.promotion_type, product?.id, openPromotionModal])
 
   useEffect(() => {
     return () => {
@@ -169,8 +206,10 @@ function ProductDetailPageContent() {
 
 
   const handleWishlistToggle = useCallback(async () => {
+    if (!product?.id) return
+    
     // 클라이언트에서 직접 DB 접근 (인증 문제 해결)
-    const success = await toggleWishlistDB(user?.id || null, productId)
+    const success = await toggleWishlistDB(user?.id || null, product.id)
     
     if (success) {
       if (isWished) {
@@ -187,12 +226,44 @@ function ProductDetailPageContent() {
         icon: '❌',
       })
     }
-  }, [productId, isWished])
+  }, [product?.id, isWished, user])
 
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header hideMainMenu showCartButton sticky />
+        {/* 커스텀 헤더 - 뒤로가기 + 상품명 */}
+        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+          <div className="container mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-2 text-gray-800 hover:text-gray-900 transition"
+              aria-label="뒤로가기"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            
+            {/* 장바구니 버튼 */}
+            <button
+              onClick={() => router.push('/cart')}
+              className="p-2 hover:bg-gray-100 rounded-full transition relative"
+              aria-label="장바구니"
+            >
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              {mounted && cartCount > 0 && (
+                <span
+                  className="absolute top-0 right-0 bg-blue-900 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                  aria-hidden={cartCount <= 0}
+                >
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </header>
         <div className="flex-1 flex justify-center items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>
@@ -207,7 +278,41 @@ function ProductDetailPageContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header hideMainMenu showCartButton sticky />
+      {/* 커스텀 헤더 - 뒤로가기 + 상품명 + 장바구니 */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+        <div className="container mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-gray-800 hover:text-gray-900 transition"
+            aria-label="뒤로가기"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="text-base md:text-lg font-semibold line-clamp-1">{product.name}</span>
+          </button>
+          
+          {/* 장바구니 버튼 */}
+          <button
+            onClick={() => router.push('/cart')}
+            className="p-2 hover:bg-gray-100 rounded-full transition relative"
+            aria-label="장바구니"
+          >
+            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            {cartCount > 0 && (
+              <span
+                className="absolute top-0 right-0 bg-blue-900 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                suppressHydrationWarning
+                aria-hidden={cartCount <= 0}
+              >
+                {cartCount > 99 ? '99+' : cartCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </header>
       
       <main className="flex-1">
 
@@ -273,36 +378,10 @@ function ProductDetailPageContent() {
               )}
             </div>
 
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold mb-2">상품 정보</h2>
-              <p className="text-gray-700 leading-relaxed mb-4">
-                {product.description}
-              </p>
-              <ul className="space-y-2 text-gray-700">
-                <li className="flex">
-                  <span className="font-medium w-24">원산지:</span>
-                  <span>{product.origin}</span>
-                </li>
-                <li className="flex">
-                  <span className="font-medium w-24">중량:</span>
-                  <span>{product.weight} {product.unit}</span>
-                </li>
-              </ul>
-            </div>
           </div>
         </div>
       </main>
 
-      {/* 하단 고정 뒤로가기 버튼 (좌측) */}
-      <button
-        onClick={() => router.back()}
-        aria-label="뒤로가기"
-        className="fixed bottom-28 left-4 z-50 bg-white/80 backdrop-blur-sm text-gray-800 border border-gray-200 shadow-lg rounded-full p-3 hover:bg-white hover:shadow-xl transition"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-      </button>
 
       {/* 하단 고정 액션 바 */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
@@ -348,7 +427,7 @@ function ProductDetailPageContent() {
           <button
             onClick={() => { setPendingAction('cart'); setShowQty(true) }}
             disabled={product.stock <= 0}
-            className="bg-red-600 text-white py-3 text-base font-semibold hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="bg-blue-900 text-white py-3 text-base font-semibold hover:bg-blue-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
             style={{ width: '50%' }}
           >
             장바구니
@@ -440,48 +519,6 @@ function ProductDetailPageContent() {
         message="주문을 계속하시려면 로그인해 주세요."
       />
 
-      {/* 상품고시정보 모달 */}
-      {showProductInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-lg max-h-[80vh] overflow-y-auto">
-            {/* 헤더 */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold">상품고시정보</h2>
-              <button
-                onClick={() => setShowProductInfo(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* 내용 */}
-            <div className="p-6">
-              {product.product_info ? (
-                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {product.product_info}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">등록된 상품고시정보가 없습니다.</p>
-                </div>
-              )}
-            </div>
-
-            {/* 버튼 */}
-            <div className="px-6 py-4 bg-gray-50 border-t">
-              <button
-                onClick={() => setShowProductInfo(false)}
-                className="w-full px-4 py-3 bg-primary-800 text-white rounded-lg hover:bg-primary-900"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 전역 프로모션 모달 */}
       <PromotionModalWrapper />
@@ -501,7 +538,12 @@ function ProductDetailPageContent() {
         <div className="grid grid-cols-2 gap-2">
           {/* 상품고시정보 */}
           <button
-            onClick={() => setShowProductInfo(true)}
+            onClick={() => {
+              const slugOrId = product?.slug || product?.id
+              if (slugOrId) {
+                router.push(`/products/${slugOrId}/product-info`)
+              }
+            }}
             className="bg-white border border-gray-300 py-2 px-2 flex items-center justify-between hover:bg-gray-50 transition"
           >
             <span className="text-sm text-gray-900 font-medium">상품고시정보</span>
@@ -521,11 +563,31 @@ function ProductDetailPageContent() {
         </div>
       </div>
 
+      {/* 상품 설명 섹션 */}
+      {product && (
+        <div id="product-description-section" className="container mx-auto px-4 py-6">
+          {/* 제목 */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold">상품 설명</h2>
+          </div>
+
+          {/* 구분선 */}
+          <div className="border-b border-gray-200 mb-4"></div>
+
+          {/* 설명 내용 영역 */}
+          {ProductDescriptionComponent ? (
+            <ProductDescriptionComponent productId={product.id} productName={product.name} />
+          ) : (
+            <p className="text-gray-500 text-sm">상품 설명이 준비 중입니다.</p>
+          )}
+        </div>
+      )}
+
       {/* 리뷰 섹션 */}
       {product && (
         <div id="review-section" className="container mx-auto px-4 py-2">
           <ReviewList 
-            productId={productId} 
+            productId={product.id} 
             limit={3}
             showViewAllButton={true}
             onWriteReview={() => {
@@ -542,7 +604,7 @@ function ProductDetailPageContent() {
           setShowReviewModal(false)
           setReviewOrderId('')
         }}
-        productId={productId}
+        productId={product?.id || ''}
         orderId={reviewOrderId}
         productName={product?.name || ''}
         productImage={product?.image_url}
@@ -561,7 +623,31 @@ export default function ProductDetailPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex flex-col">
-        <Header hideMainMenu showCartButton sticky />
+        {/* 커스텀 헤더 - 뒤로가기 + 장바구니 */}
+        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+          <div className="container mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
+            <button
+              onClick={() => window.history.back()}
+              className="flex items-center gap-2 text-gray-800 hover:text-gray-900 transition"
+              aria-label="뒤로가기"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            
+            {/* 장바구니 버튼 */}
+            <button
+              onClick={() => window.location.href = '/cart'}
+              className="p-2 hover:bg-gray-100 rounded-full transition relative"
+              aria-label="장바구니"
+            >
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </button>
+          </div>
+        </header>
         <div className="flex-1 flex justify-center items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>

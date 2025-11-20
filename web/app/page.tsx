@@ -35,10 +35,20 @@ export default function Home() {
     try {
       // 새로운 API 사용: 상품 목록과 리뷰 통계를 한 번에 가져오기
       const sortParam = sort === 'default' ? 'default' : sort
+      
+      // 타임아웃 설정 (10초)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+      
       const response = await fetch(
         `/api/products?page=${pageNum}&limit=${PAGE_SIZE}&sort=${sortParam}`,
-        { cache: 'no-store' }
+        { 
+          cache: 'no-store',
+          signal: controller.signal
+        }
       )
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         throw new Error('상품 조회 실패')
@@ -60,9 +70,13 @@ export default function Home() {
       }
       
       setHasMore(pageNum < data.totalPages)
-    } catch (error) {
+    } catch (error: any) {
       console.error('상품 조회 실패:', error)
-      setErrorMessage('상품 목록을 불러오지 못했습니다.')
+      if (error.name === 'AbortError') {
+        setErrorMessage('상품 목록을 불러오는데 시간이 오래 걸립니다. 잠시 후 다시 시도해주세요.')
+      } else {
+        setErrorMessage('상품 목록을 불러오지 못했습니다.')
+      }
     } finally {
       setLoading(false)
       isFetchingRef.current = false
@@ -122,14 +136,8 @@ export default function Home() {
       
       <main className="flex-1">
         {/* 히어로 섹션 */}
-        <section className="bg-gradient-to-r from-red-600 to-red-700 text-white py-24">
+        <section className="bg-black text-white py-32 md:py-40 lg:py-48">
           <div className="container mx-auto px-4 text-center">
-            <h1 className="text-5xl font-bold mb-4">
-              대가 정육백화점
-            </h1>
-            <p className="text-sm tracking-widest text-gray-300">
-              DAEGA PREMIUM MEAT
-            </p>
           </div>
         </section>
 

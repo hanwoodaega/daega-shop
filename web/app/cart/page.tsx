@@ -249,6 +249,13 @@ function CartPageContent() {
       return
     }
     
+    // 선물하기는 상품금액(즉시할인 적용 후)이 50,000원 이상이어야 함 (배송비 제외)
+    const { discountedTotal } = calculateOrderTotal(selectedItems, deliveryMethod)
+    if (discountedTotal < 50000) {
+      toast.error('선물하기는 상품금액(할인 적용 후)이 50,000원 이상이어야 합니다.', { icon: '🎁' })
+      return
+    }
+    
     // 배송 방법별 필수 입력 검증
     if (deliveryMethod === 'pickup' && !pickupTime) {
       toast.error('픽업 시간을 선택해주세요.', { icon: '⏰' })
@@ -300,7 +307,7 @@ function CartPageContent() {
             <button
               onClick={() => router.push('/wishlist')}
               aria-label="찜 목록"
-              className="p-2 text-red-600 hover:text-red-700"
+              className="p-2 text-blue-900 hover:text-blue-800"
             >
               <svg className="w-7 h-7 md:w-8 md:h-8" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
@@ -384,7 +391,7 @@ function CartPageContent() {
                     onClick={() => setDeliveryMethod('regular')}
                     className={`py-2.5 px-3 rounded-lg text-sm font-medium transition ${
                       deliveryMethod === 'regular'
-                        ? 'bg-red-600 text-white'
+                        ? 'bg-blue-900 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -394,7 +401,7 @@ function CartPageContent() {
                     onClick={() => setDeliveryMethod('quick')}
                     className={`py-2.5 px-3 rounded-lg text-sm font-medium transition ${
                       deliveryMethod === 'quick'
-                        ? 'bg-red-600 text-white'
+                        ? 'bg-blue-900 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -404,7 +411,7 @@ function CartPageContent() {
                     onClick={() => setDeliveryMethod('pickup')}
                     className={`py-2.5 px-3 rounded-lg text-sm font-medium transition ${
                       deliveryMethod === 'pickup'
-                        ? 'bg-red-600 text-white'
+                        ? 'bg-blue-900 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -418,7 +425,7 @@ function CartPageContent() {
                     <select
                       value={quickDeliveryArea}
                       onChange={(e) => setQuickDeliveryArea(e.target.value)}
-                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-transparent"
                     >
                       <option value="">지역 선택</option>
                       {QUICK_DELIVERY_AREAS.map(area => (
@@ -428,7 +435,7 @@ function CartPageContent() {
                     <select
                       value={quickDeliveryTime}
                       onChange={(e) => setQuickDeliveryTime(e.target.value)}
-                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-transparent"
                     >
                       <option value="">시간대 선택</option>
                       {QUICK_DELIVERY_TIME_SLOTS.map(time => (
@@ -444,7 +451,7 @@ function CartPageContent() {
                     <select
                       value={pickupTime}
                       onChange={(e) => setPickupTime(e.target.value)}
-                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-transparent"
                     >
                       <option value="">시간 선택</option>
                       {PICKUP_TIME_SLOTS.map(time => (
@@ -462,8 +469,8 @@ function CartPageContent() {
                     type="checkbox"
                     checked={allSelected}
                     onChange={(e) => toggleSelectAll(e.target.checked)}
-                    className="w-5 h-5 border-gray-300 focus:ring-red-500 accent-red-600"
-                    style={{ accentColor: '#dc2626' }}
+                    className="w-5 h-5 border-gray-300 focus:ring-blue-900 accent-blue-900"
+                    style={{ accentColor: '#1e3a8a' }}
                   />
                   <span className="ml-3 text-sm font-medium text-gray-900">전체선택</span>
                 </label>
@@ -483,19 +490,19 @@ function CartPageContent() {
               {Object.entries(groupedItems.groups).map(([groupId, groupItems]) => {
                 const groupSelected = groupItems.every(item => item.selected !== false)
                 return (
-                  <div key={groupId} className="py-6 border-b border-gray-200">
-                    {/* 프로모션 그룹 헤더 */}
-                    <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3 flex items-center justify-between">
+                  <div key={groupId} className="py-3 border-b border-gray-300">
+                    {/* 프로모션 그룹 헤더 - 체크박스와 삭제 버튼 */}
+                    <div className="mb-0 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
                           checked={groupSelected}
                           onChange={() => toggleSelectGroup(groupId)}
-                          className="w-5 h-5 border-gray-300 focus:ring-red-500 accent-red-600"
-                          style={{ accentColor: '#dc2626' }}
+                          className="w-5 h-5 border-gray-300 focus:ring-blue-900 accent-blue-900"
+                          style={{ accentColor: '#1e3a8a' }}
                         />
-                        <span className="text-base font-bold text-red-700">
-                          🎁 {groupItems[0].promotion_type || '1+1'} 프로모션
+                        <span className="text-base font-medium text-gray-900">
+                          {groupItems[0].promotion_type || '2+1'} 적용
                         </span>
                       </div>
                       <button
@@ -510,9 +517,9 @@ function CartPageContent() {
                     </div>
                   
                   {/* 그룹 내 상품들 */}
-                  {groupItems.map((item) => {
+                  {groupItems.map((item, itemIndex) => {
                     return (
-                    <div key={item.id} className="py-3">
+                    <div key={item.id} className={`${itemIndex === 0 ? 'pt-1' : 'pt-3'} pb-3 ${itemIndex < groupItems.length - 1 ? 'border-dashed-long' : ''}`}>
                       <div className="flex items-start space-x-3">
                         {/* 상품 이미지 */}
                         <Link href={`/products/${item.productId}`} className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 text-xs hover:opacity-80 transition">
@@ -532,14 +539,14 @@ function CartPageContent() {
 
                           <div className="flex-1">
                             {item.discount_percent === 100 ? (
-                              <>
+                              <div className="flex items-center gap-2">
                                 <div className="text-sm text-gray-500 line-through">
                                   {formatPrice(item.price)}원
                                 </div>
-                                <div className="text-lg font-bold text-red-600">
+                                <div className="text-lg font-bold text-gray-900">
                                   0원
                                 </div>
-                              </>
+                              </div>
                             ) : (
                               <div className="text-lg font-bold text-gray-900">
                                 {formatPrice(item.price)}원
@@ -553,7 +560,7 @@ function CartPageContent() {
                   })}
                   
                   {/* 그룹 수량 조절 - 하단에 배치 */}
-                  <div className="mt-2 flex items-center justify-end">
+                  <div className="mt-0.5 flex items-center justify-end">
                     <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-white">
                       <button
                         onClick={() => {
@@ -590,7 +597,7 @@ function CartPageContent() {
 
               {/* 일반 상품 표시 */}
               {groupedItems.standalone.map((item, index) => (
-                <div key={item.id} className={`py-6 border-b border-gray-200 ${index === groupedItems.standalone.length - 1 && Object.keys(groupedItems.groups).length === 0 ? 'border-b-0' : ''}`}>
+                <div key={item.id} className={`py-6 ${index < groupedItems.standalone.length - 1 || Object.keys(groupedItems.groups).length > 0 ? 'border-b border-gray-300' : ''}`}>
                   <div className="flex items-start space-x-3">
                     {/* 상품 이미지 (각진 모서리, 크기 약간 축소) */}
                     <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center">
@@ -607,8 +614,8 @@ function CartPageContent() {
                             toggleSelect(item.id!)
                           }}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-5 h-5 border-gray-300 focus:ring-red-500 bg-white accent-red-600 cursor-pointer"
-                          style={{ accentColor: '#dc2626' }}
+                          className="w-5 h-5 border-gray-300 focus:ring-blue-900 bg-white accent-blue-900 cursor-pointer"
+                          style={{ accentColor: '#1e3a8a' }}
                         />
                       </div>
                       <Link href={`/products/${item.productId}`} className="absolute inset-0 flex items-center justify-center hover:opacity-80 transition">
@@ -772,18 +779,20 @@ function CartPageContent() {
       {/* 하단 고정 액션 바: 선물하기 / 주문하기 */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white shadow-lg" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
         <div className="px-0 pb-0 flex gap-0">
-          <button
-            onClick={handleGiftCheckout}
-            className="bg-gray-900 text-white py-3 text-base font-medium hover:bg-gray-800 flex items-center justify-center gap-1"
-            style={{ width: '35%' }}
-          >
-            <span>🎁</span>
-            <span>선물하기</span>
-          </button>
+          {deliveryMethod === 'regular' && (
+            <button
+              onClick={handleGiftCheckout}
+              className="bg-gray-900 text-white py-3 text-base font-medium hover:bg-gray-800 flex items-center justify-center gap-1"
+              style={{ width: '35%' }}
+            >
+              <span>🎁</span>
+              <span>선물하기</span>
+            </button>
+          )}
           <button
             onClick={handleCheckout}
-            className="bg-red-600 text-white py-3 text-base font-medium hover:bg-red-700"
-            style={{ width: '65%' }}
+            className={`bg-blue-900 text-white py-3 text-base font-medium hover:bg-blue-800 ${deliveryMethod === 'regular' ? '' : 'w-full'}`}
+            style={{ width: deliveryMethod === 'regular' ? '65%' : '100%' }}
             suppressHydrationWarning
           >
             주문하기 ({mounted ? getSelectedItems().reduce((total, item) => total + item.quantity, 0) : 0})

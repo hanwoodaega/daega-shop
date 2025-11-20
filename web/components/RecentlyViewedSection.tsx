@@ -9,16 +9,13 @@ import { getRecentlyViewed } from '@/lib/recently-viewed'
 import { isValidImageUrl } from '@/lib/product-utils'
 import { formatPrice } from '@/lib/utils'
 import ProductCardSkeleton from './skeletons/ProductCardSkeleton'
-import { useWishlistStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
 import { addCartItemWithDB } from '@/lib/cart-db'
-import { toggleWishlistDB } from '@/lib/wishlist-db'
 
 export default function RecentlyViewedSection() {
   const [recentProducts, setRecentProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
-  const wishlistIds = useWishlistStore((state) => state.items)
 
   useEffect(() => {
     const fetchRecentProducts = async () => {
@@ -36,18 +33,64 @@ export default function RecentlyViewedSection() {
           return
         }
 
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .in('id', recentIds)
-          .order('created_at', { ascending: false })
+        // UUID 형식인지 확인하는 함수
+        const isUUID = (str: string): boolean => {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+          return uuidRegex.test(str)
+        }
 
-        if (error) throw error
+        // UUID와 slug 분리
+        const uuids = recentIds.filter(id => isUUID(id))
+        const slugs = recentIds.filter(id => !isUUID(id))
+
+        let allProducts: Product[] = []
+
+        // UUID로 조회
+        if (uuids.length > 0) {
+          const { data: uuidData, error: uuidError } = await supabase
+            .from('products')
+            .select('*')
+            .in('id', uuids)
+          
+          if (uuidError) throw uuidError
+          if (uuidData) allProducts = [...allProducts, ...uuidData]
+        }
+
+        // slug로 조회
+        if (slugs.length > 0) {
+          const { data: slugData, error: slugError } = await supabase
+            .from('products')
+            .select('*')
+            .in('slug', slugs)
+          
+          if (slugError) throw slugError
+          if (slugData) {
+            // 중복 제거: 이미 UUID로 조회된 상품은 제외
+            const existingIds = new Set(allProducts.map(p => p.id))
+            const newProducts = slugData.filter((p: Product) => !existingIds.has(p.id))
+            allProducts = [...allProducts, ...newProducts]
+          }
+        }
+
+        // 중복 제거 (같은 상품이 UUID와 slug로 각각 조회될 수 있음)
+        const uniqueProducts = new Map<string, Product>()
+        allProducts.forEach((p: Product) => {
+          if (!uniqueProducts.has(p.id)) {
+            uniqueProducts.set(p.id, p)
+          }
+        })
 
         // 최근 본 순서대로 정렬 (localStorage 순서 유지)
         const orderedProducts = recentIds
-          .map(id => data?.find((p: Product) => p.id === id))
+          .map(id => {
+            // UUID인 경우 id로 찾기, slug인 경우 slug로 찾기
+            return Array.from(uniqueProducts.values()).find((p: Product) => 
+              isUUID(id) ? p.id === id : p.slug === id
+            )
+          })
           .filter((p): p is Product => p !== undefined)
+          // 중복 제거 (같은 상품이 여러 번 나타날 수 있음)
+          .filter((p, index, self) => index === self.findIndex(pr => pr.id === p.id))
 
         setRecentProducts(orderedProducts)
       } catch (error) {
@@ -163,72 +206,8 @@ export default function RecentlyViewedSection() {
 
                 <div className="p-3">
                   {product.brand && (
-                    <div className="flex items-center justify-between mb-0">
-                      <div className="text-sm font-bold text-primary-900 line-clamp-1 flex-1 leading-tight tracking-tight">
-                        {product.brand}
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          toggleWishlistDB(user?.id || null, product.id).then((success) => {
-                            if (success) {
-                              const isWished = wishlistIds.includes(product.id)
-                              toast.success(
-                                isWished ? '찜 목록에서 제거되었습니다' : '찜 목록에 추가되었습니다!',
-                                { icon: isWished ? '💔' : '❤️' }
-                              )
-                            } else {
-                              toast.error('오류가 발생했습니다. 다시 시도해주세요.', { icon: '❌' })
-                            }
-                          })
-                        }}
-                        className="ml-2 p-1 hover:scale-110 transition-transform flex-shrink-0"
-                        aria-label="찜하기"
-                      >
-                        {wishlistIds.includes(product.id) ? (
-                          <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                          </svg>
-                        ) : (
-                          <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                  {!product.brand && (
-                    <div className="flex items-center justify-end mb-1">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          toggleWishlistDB(user?.id || null, product.id).then((success) => {
-                            if (success) {
-                              const isWished = wishlistIds.includes(product.id)
-                              toast.success(
-                                isWished ? '찜 목록에서 제거되었습니다' : '찜 목록에 추가되었습니다!',
-                                { icon: isWished ? '💔' : '❤️' }
-                              )
-                            } else {
-                              toast.error('오류가 발생했습니다. 다시 시도해주세요.', { icon: '❌' })
-                            }
-                          })
-                        }}
-                        className="p-1 hover:scale-110 transition-transform flex-shrink-0"
-                        aria-label="찜하기"
-                      >
-                        {wishlistIds.includes(product.id) ? (
-                          <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                          </svg>
-                        ) : (
-                          <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                          </svg>
-                        )}
-                      </button>
+                    <div className="text-sm font-bold text-primary-900 line-clamp-1 leading-tight tracking-tight mb-0">
+                      {product.brand}
                     </div>
                   )}
                   <h3 className="text-sm font-medium mb-0 line-clamp-1 text-primary-900 leading-tight tracking-tight">

@@ -129,11 +129,21 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
 
   useEffect(() => {
     const fetchProductData = async () => {
-      const { data } = await supabase
+      // UUID 형식인지 확인
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(productId)
+      
+      let query = supabase
         .from('products')
         .select('average_rating, name')
-        .eq('id', productId)
-        .single()
+      
+      if (isUUID) {
+        query = query.eq('id', productId)
+      } else {
+        // slug로 조회
+        query = query.eq('slug', productId)
+      }
+      
+      const { data } = await query.single()
       
       if (data) {
         setAverageRating(data.average_rating || 0)

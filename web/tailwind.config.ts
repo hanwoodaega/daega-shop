@@ -22,6 +22,10 @@ const config: Config = {
           900: '#0f172a',
         },
       },
+      fontFamily: {
+        sans: ['Pretendard', 'var(--font-inter)', 'sans-serif'],
+        display: ['var(--font-playfair)', 'serif'],
+      },
     },
   },
   plugins: [],
