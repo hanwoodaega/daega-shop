@@ -370,12 +370,11 @@ function CartPageContent() {
         )}
 
         {items.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">🛒</div>
+          <div className="text-center py-32 md:py-40">
             <p className="text-xl text-gray-600 mb-6">장바구니가 비어있습니다.</p>
             <button
               onClick={() => router.push('/products')}
-              className="bg-primary-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-900 transition"
+              className="bg-white text-blue-900 border border-blue-900 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
             >
               쇼핑 계속하기
             </button>

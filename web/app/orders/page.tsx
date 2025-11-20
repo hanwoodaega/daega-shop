@@ -576,7 +576,7 @@ function OrdersPageContent() {
                         <button
                           onClick={() => handleConfirmPurchase(order.id)}
                           disabled={confirmingOrderId === order.id}
-                          className="flex-1 bg-primary-800 text-white py-2 rounded-lg text-sm font-medium hover:bg-primary-900 transition disabled:opacity-50"
+                          className="flex-1 bg-white text-blue-900 border border-blue-900 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition disabled:opacity-50"
                         >
                           {confirmingOrderId === order.id ? '처리 중...' : '구매확정'}
                         </button>
