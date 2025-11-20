@@ -209,7 +209,15 @@ function CheckoutPageContent() {
         .order('is_default', { ascending: false })
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        // 테이블이 없는 경우 빈 배열 반환
+        if (error.code === 'PGRST205' || error.message?.includes('Could not find the table')) {
+          console.warn('payment_cards 테이블이 존재하지 않습니다. 마이그레이션을 실행해주세요.')
+          setSavedCards([])
+          return
+        }
+        throw error
+      }
       setSavedCards(data || [])
       // 기본 카드가 있으면 자동 선택
       const defaultCard = data?.find((card: any) => card.is_default)
@@ -218,6 +226,7 @@ function CheckoutPageContent() {
       }
     } catch (error) {
       console.error('카드 조회 실패:', error)
+      setSavedCards([])
     } finally {
       setLoadingCards(false)
     }

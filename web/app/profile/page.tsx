@@ -211,13 +211,12 @@ export default function ProfilePage() {
                   <div className="text-sm text-gray-600 mb-0.5">쿠폰</div>
                   <div className="text-lg font-semibold text-gray-900">{couponCount}장</div>
                 </Link>
-                <Link
-                  href="/gift/receive"
-                  className="px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition text-left"
+                <div
+                  className="px-4 py-2 bg-gray-50 rounded-lg text-left cursor-default"
                 >
                   <div className="text-sm text-gray-600 mb-0.5">선물함</div>
                   <div className="text-lg font-semibold text-gray-900">{giftCount}건</div>
-                </Link>
+                </div>
               </div>
             </div>
 
@@ -279,7 +278,7 @@ export default function ProfilePage() {
 
               {/* 알림 설정 */}
               <Link
-                href="/profile/notifications"
+                href="/notifications"
                 className="flex items-center justify-between p-4 hover:bg-gray-50 transition"
               >
                 <div className="flex items-center space-x-3">
@@ -314,22 +313,6 @@ export default function ProfilePage() {
                 </svg>
               </Link>
 
-              {/* 고객센터 */}
-              <Link
-                href="/support"
-                className="flex items-center justify-between p-4 hover:bg-gray-50 transition"
-              >
-                <div className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-base font-medium text-gray-900">고객센터</span>
-                </div>
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-
               {/* 자주 묻는 질문 */}
               <Link
                 href="/faq"
@@ -340,6 +323,22 @@ export default function ProfilePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span className="text-base font-medium text-gray-900">자주 묻는 질문</span>
+                </div>
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+
+              {/* 고객센터 */}
+              <Link
+                href="/support"
+                className="flex items-center justify-between p-4 hover:bg-gray-50 transition"
+              >
+                <div className="flex items-center space-x-3">
+                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <span className="text-base font-medium text-gray-900">고객센터</span>
                 </div>
                 <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -403,22 +402,6 @@ export default function ProfilePage() {
                 </svg>
               </Link>
 
-              {/* 고객센터 */}
-              <Link
-                href="/support"
-                className="flex items-center justify-between p-4 hover:bg-gray-50 transition"
-              >
-                <div className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-base font-medium text-gray-900">고객센터</span>
-                </div>
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-
               {/* 자주 묻는 질문 */}
               <Link
                 href="/faq"
@@ -434,6 +417,23 @@ export default function ProfilePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </Link>
+
+              {/* 고객센터 */}
+              <Link
+                href="/support"
+                className="flex items-center justify-between p-4 hover:bg-gray-50 transition"
+              >
+                <div className="flex items-center space-x-3">
+                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <span className="text-base font-medium text-gray-900">고객센터</span>
+                </div>
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+
             </div>
           </>
         )}

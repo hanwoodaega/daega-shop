@@ -14,6 +14,7 @@ export default function CouponsPage() {
   const { user, loading: authLoading } = useAuth()
   const cartCount = useCartStore((state) => state.getTotalItems())
   const [coupons, setCoupons] = useState<UserCoupon[]>([])
+  const [usedCouponsList, setUsedCouponsList] = useState<UserCoupon[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'available' | 'used'>('available')
 
@@ -34,8 +35,18 @@ export default function CouponsPage() {
 
     setLoading(true)
     try {
+      // 현재 탭에 맞는 쿠폰 로드
       const userCoupons = await getUserCoupons(user.id, activeTab === 'used')
       setCoupons(userCoupons)
+      
+      // 사용 완료 쿠폰 개수를 항상 표시하기 위해 사용 완료 쿠폰도 조회
+      // activeTab이 'available'일 때만 별도로 조회 (이미 'used'일 때는 userCoupons에 포함됨)
+      if (activeTab === 'available') {
+        const allCoupons = await getUserCoupons(user.id, true)
+        setUsedCouponsList(allCoupons.filter(uc => uc.is_used))
+      } else {
+        setUsedCouponsList(userCoupons.filter(uc => uc.is_used))
+      }
     } catch (error) {
       console.error('쿠폰 조회 실패:', error)
     } finally {
@@ -58,7 +69,9 @@ export default function CouponsPage() {
   }
 
   const availableCoupons = coupons.filter(uc => !uc.is_used && checkCouponValid(uc))
-  const usedCoupons = coupons.filter(uc => uc.is_used)
+  const usedCoupons = activeTab === 'used' 
+    ? coupons.filter(uc => uc.is_used)
+    : usedCouponsList
   const expiredCoupons = coupons.filter(uc => !uc.is_used && !checkCouponValid(uc))
 
   const displayCoupons = activeTab === 'available' 

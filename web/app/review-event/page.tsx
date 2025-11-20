@@ -9,8 +9,8 @@ export default function ReviewEventPage() {
       <Header />
       <div className="min-h-screen" style={{ backgroundColor: '#B2F5EA' }}>
         <div className="container mx-auto px-4 py-16">
-          <div className="text-center text-white mb-10">
-            <p className="text-4xl md:text-5xl font-bold uppercase tracking-[0.3em]">리뷰이벤트</p>
+          <div className="text-center mb-10">
+            <p className="text-4xl md:text-5xl font-bold uppercase tracking-[0.3em] text-blue-900">리뷰이벤트</p>
             <h1 className="text-2xl md:text-3xl font-light text-black mt-4">구매 후기를 남겨주신 고객님께 <br /> 감사 적립금을 제공합니다.</h1>
           </div>
           {/* 인스타그램 스타일 플레이스홀더 */}

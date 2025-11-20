@@ -58,10 +58,19 @@ export default function PaymentPage() {
         .order('is_default', { ascending: false })
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        // 테이블이 없는 경우 빈 배열 반환
+        if (error.code === 'PGRST205' || error.message?.includes('Could not find the table')) {
+          console.warn('payment_cards 테이블이 존재하지 않습니다. 마이그레이션을 실행해주세요.')
+          setCards([])
+          return
+        }
+        throw error
+      }
       setCards(data || [])
     } catch (error) {
       console.error('카드 조회 실패:', error)
+      setCards([])
     } finally {
       setLoadingCards(false)
     }
@@ -72,9 +81,20 @@ export default function PaymentPage() {
     setSaving(true)
 
     try {
-      // 카드 번호 마스킹 (마지막 4자리만 저장)
-      const last4 = formData.card_number.slice(-4)
-      const maskedCardNumber = `****-****-****-${last4}`
+      // 카드 번호에서 숫자만 추출 후 마지막 4자리만 가져오기
+      const numbersOnly = formData.card_number.replace(/[^0-9]/g, '')
+      
+      // 16자리가 아니면 에러
+      if (numbersOnly.length !== 16) {
+        alert('카드 번호는 16자리여야 합니다.')
+        setSaving(false)
+        return
+      }
+      
+      const last4 = numbersOnly.slice(-4)
+      // 정확히 4자리씩 띄어쓰기로 포맷팅하여 저장 (표시용)
+      // 형식: **** **** **** 1111 (총 19자: 4+1+4+1+4+1+4)
+      const maskedCardNumber = `**** **** **** ${last4}`
 
       // 기본 카드로 설정하는 경우, 기존 기본 카드 해제
       if (formData.is_default) {
@@ -159,8 +179,39 @@ export default function PaymentPage() {
   }
 
   const formatCardNumber = (cardNumber: string) => {
-    // 마스킹된 카드 번호 표시
-    return cardNumber.replace(/(.{4})/g, '$1 ').trim()
+    if (!cardNumber) return ''
+    
+    // 이미 올바르게 포맷팅되어 있으면 그대로 반환 (**** **** **** 1111 형식)
+    // 정규식: **** (공백) **** (공백) **** (공백) 1111
+    if (/^\*\*\*\* \*\*\*\* \*\*\*\* \d{4}$/.test(cardNumber.trim())) {
+      return cardNumber.trim()
+    }
+    
+    // 잘못된 포맷이 저장되어 있는 경우 수정
+    // 숫자와 *만 추출
+    const cleaned = cardNumber.replace(/[^0-9*]/g, '')
+    
+    // 16자리가 아니면 그대로 반환 (이상한 데이터)
+    if (cleaned.length !== 16) {
+      // 마지막 4자리가 숫자인지 확인
+      const last4 = cleaned.slice(-4)
+      if (/^\d{4}$/.test(last4)) {
+        return `**** **** **** ${last4}`
+      }
+      return cardNumber // 수정 불가능하면 원본 반환
+    }
+    
+    // 마지막 4자리 추출
+    const last4 = cleaned.slice(-4)
+    // 올바른 포맷으로 반환
+    return `**** **** **** ${last4}`
+  }
+
+  const formatCardNumberInput = (value: string) => {
+    // 숫자만 추출
+    const numbers = value.replace(/[^0-9]/g, '').slice(0, 16)
+    // 4자리씩 띄어쓰기
+    return numbers.replace(/(.{4})/g, '$1 ').trim()
   }
 
   if (loading || loadingCards) {
@@ -330,6 +381,11 @@ export default function PaymentPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-lg w-full max-w-md p-6">
               <h2 className="text-xl font-bold mb-4">카드 등록</h2>
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-xs text-yellow-800">
+                  ⚠️ <strong>주의:</strong> 현재는 실제 결제 기능이 없습니다. 테스트용 더미 카드 정보만 등록해주세요.
+                </p>
+              </div>
               <form onSubmit={handleAddCard} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -337,8 +393,9 @@ export default function PaymentPage() {
                   </label>
                   <input
                     type="text"
-                    value={formData.card_number}
+                    value={formatCardNumberInput(formData.card_number)}
                     onChange={(e) => {
+                      // 숫자만 추출하여 저장 (띄어쓰기 제거)
                       const numbers = e.target.value.replace(/[^0-9]/g, '').slice(0, 16)
                       setFormData({ ...formData, card_number: numbers })
                     }}
