@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import { useDaumPostcode } from '@/lib/hooks/useDaumPostcode'
 import { formatPrice } from '@/lib/utils'
 
@@ -71,8 +69,17 @@ export default function GiftReceivePage() {
 
   const fetchOrder = async () => {
     try {
+      console.log('선물 링크 조회 시작:', { token })
       const response = await fetch(`/api/gift/${token}`)
       const data = await response.json()
+
+      console.log('선물 링크 조회 응답:', { 
+        status: response.status, 
+        ok: response.ok,
+        error: data.error,
+        hasOrder: !!data.order,
+        orderId: data.order?.id
+      })
 
       if (!response.ok) {
         if (response.status === 410 || data.expired) {
@@ -83,6 +90,21 @@ export default function GiftReceivePage() {
         setLoading(false)
         return
       }
+
+      if (!data.order) {
+        console.error('주문 데이터가 없습니다:', data)
+        setError('선물 정보를 찾을 수 없습니다.')
+        setLoading(false)
+        return
+      }
+
+      console.log('주문 데이터 로드 성공:', { 
+        orderId: data.order.id,
+        is_gift: data.order.is_gift,
+        gift_token: data.order.gift_token,
+        gift_message: data.order.gift_message,
+        gift_card_design: data.order.gift_card_design
+      })
 
       setOrder(data.order)
       setExpiresAt(data.expires_at || null)
@@ -158,8 +180,7 @@ export default function GiftReceivePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
+      <div className="min-h-screen flex flex-col bg-blue-900">
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto">
             <div className="animate-pulse space-y-6">
@@ -169,15 +190,13 @@ export default function GiftReceivePage() {
             </div>
           </div>
         </main>
-        <Footer />
       </div>
     )
   }
 
   if (error && !order) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
+      <div className="min-h-screen flex flex-col bg-blue-900">
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto">
             <div className={`rounded-lg p-6 text-center ${
@@ -206,7 +225,6 @@ export default function GiftReceivePage() {
             </div>
           </div>
         </main>
-        <Footer />
       </div>
     )
   }
@@ -216,117 +234,117 @@ export default function GiftReceivePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      
+    <div className="min-h-screen flex flex-col bg-blue-900">
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold mb-2">🎁 선물 수령하기</h1>
-            <p className="text-gray-600">받으실 주소를 입력해주세요</p>
-            {expiresAt && (
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  ⏰ 선물 링크는 <strong>{new Date(expiresAt).toLocaleDateString('ko-KR')}</strong>까지 유효합니다.
-                  <br />
-                  <span className="text-xs">7일 이내에 주소를 입력하지 않으면 자동으로 환불 처리됩니다.</span>
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* 선물 정보 */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-bold mb-4">선물 정보</h2>
-            
-            {/* 카드 디자인 표시 */}
-            {order.gift_card_design && (
-              <div className="mb-4">
-                <div className="relative rounded-lg overflow-hidden border-2 border-gray-200 shadow-lg" style={{ aspectRatio: '4/3' }}>
-                  <img
-                    src={`/images/gift-cards/${order.gift_card_design}.jpg`}
-                    alt="선물 카드"
-                    className="w-full h-full object-cover"
+          {/* 선물 카드 */}
+          {order.gift_card_design && (
+            <div className="mb-6">
+              <div className="relative rounded-lg overflow-hidden border-2 border-gray-200 shadow-lg" style={{ aspectRatio: '1/1' }}>
+                <img
+                  src={`/images/gift-cards/${order.gift_card_design}.png`}
+                  alt="선물 카드"
+                  className="w-full h-full object-cover"
                     onError={(e) => {
                       // 이미지가 없을 경우 그라데이션 배경으로 폴백
                       const target = e.target as HTMLImageElement
                       target.style.display = 'none'
                       const parent = target.parentElement!
-                      const gradient = order.gift_card_design === 'birthday' 
-                        ? 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)'
-                        : order.gift_card_design === 'anniversary'
-                        ? 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
-                        : order.gift_card_design === 'thanks'
-                        ? 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'
-                        : 'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)'
-                      parent.innerHTML = `
-                        <div class="w-full h-full flex items-center justify-center" style="background: ${gradient}">
-                          <div class="text-center p-6">
-                            <div class="text-4xl mb-2">
-                              ${order.gift_card_design === 'birthday' ? '🎂' : order.gift_card_design === 'anniversary' ? '💝' : order.gift_card_design === 'thanks' ? '🙏' : '🎁'}
-                            </div>
-                            <p class="text-lg font-bold text-gray-800 mb-2">
-                              ${order.gift_card_design === 'birthday' ? '생일 축하' : order.gift_card_design === 'anniversary' ? '기념일' : order.gift_card_design === 'thanks' ? '감사 인사' : '특별한 선물'}
-                            </p>
+                      const cardDesign = order.gift_card_design || ''
+                      const cardType = cardDesign.startsWith('birthday') 
+                        ? 'birthday'
+                        : cardDesign.startsWith('thanks')
+                        ? 'thanks'
+                        : cardDesign.startsWith('celebration')
+                        ? 'celebration'
+                        : cardDesign.startsWith('anniversary')
+                        ? 'anniversary'
+                        : 'default'
+                    const gradient = cardType === 'birthday' 
+                      ? 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)'
+                      : cardType === 'anniversary'
+                      ? 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
+                      : cardType === 'thanks'
+                      ? 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'
+                      : 'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)'
+                    parent.innerHTML = `
+                      <div class="w-full h-full flex items-center justify-center" style="background: ${gradient}">
+                        <div class="text-center p-6">
+                          <div class="text-4xl mb-2">
+                            ${cardType === 'birthday' ? '🎂' : cardType === 'anniversary' ? '💝' : cardType === 'thanks' ? '🙏' : '🎁'}
                           </div>
+                          <p class="text-lg font-bold text-gray-800 mb-2">
+                            ${cardType === 'birthday' ? '생일 축하' : cardType === 'anniversary' ? '기념일' : cardType === 'thanks' ? '감사 인사' : '특별한 선물'}
+                          </p>
                         </div>
-                      `
-                    }}
-                  />
-                  {/* 메시지 오버레이 */}
-                  {order.gift_message && (
-                    <div className="absolute inset-0 flex items-center justify-center p-8">
-                      <div className="bg-white bg-opacity-90 rounded-lg p-4 max-w-full max-h-full overflow-auto shadow-lg">
-                        <p className="text-gray-800 text-center whitespace-pre-wrap break-words" style={{ 
-                          fontSize: 'clamp(14px, 2.5vw, 18px)',
-                          lineHeight: '1.6'
-                        }}>
-                          {order.gift_message}
-                        </p>
                       </div>
+                    `
+                  }}
+                />
+                {/* 메시지 오버레이 */}
+                {order.gift_message && (
+                  <div 
+                    className="absolute inset-0 flex items-center justify-center p-8"
+                    style={{
+                      top: '40%',
+                      height: '50%',
+                      alignItems: 'flex-start'
+                    }}
+                  >
+                    <div className="w-full h-full flex items-center justify-center p-4">
+                      <p 
+                        className="text-center whitespace-pre-wrap break-words w-full" 
+                        style={{ 
+                          fontSize: 'clamp(16px, 3vw, 24px)',
+                          lineHeight: '1.6',
+                          color: '#000000',
+                          fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
+                          fontWeight: 400,
+                          textShadow: 'none'
+                        }}
+                      >
+                        {order.gift_message}
+                      </p>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
-            )}
-            
-            {order.gift_message && !order.gift_card_design && (
-              <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-gray-600 mb-1">선물 메시지</p>
-                <p className="text-gray-900">{order.gift_message}</p>
-              </div>
-            )}
+            </div>
+          )}
+
+          {/* 선물 메시지 (카드 디자인이 없는 경우) */}
+          {order.gift_message && !order.gift_card_design && (
+            <div className="mb-6 p-4 bg-white rounded-lg shadow-md">
+              <p className="text-sm text-gray-600 mb-1">선물 메시지</p>
+              <p className="text-gray-900">{order.gift_message}</p>
+            </div>
+          )}
+
+          {/* 선물 정보 */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-bold mb-4">선물 정보</h2>
 
             <div className="space-y-3">
               {order.order_items.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                  {item.products.image_url && (
+                <div key={item.id} className="flex items-center justify-between gap-4 p-3 bg-gray-50 rounded-lg">
+                  {item.products.image_url ? (
                     <img
                       src={item.products.image_url}
                       alt={item.products.name}
                       className="w-16 h-16 object-cover rounded"
                     />
+                  ) : (
+                    <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
+                      <span className="text-gray-400 text-xs">이미지 없음</span>
+                    </div>
                   )}
-                  <div className="flex-1">
-                    <p className="font-medium">{item.products.name}</p>
-                    <p className="text-sm text-gray-600">
-                      {item.quantity}개 × {formatPrice(item.price)}원
+                  <div className="flex-1 text-right">
+                    <p className="font-medium">
+                      {item.products.name} x {item.quantity}개
                     </p>
                   </div>
-                  <p className="font-semibold">
-                    {formatPrice(item.quantity * item.price)}원
-                  </p>
                 </div>
               ))}
-            </div>
-
-            <div className="mt-4 pt-4 border-t">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-semibold">총 금액</span>
-                <span className="text-xl font-bold text-primary-900">
-                  {formatPrice(order.total_amount)}원
-                </span>
-              </div>
             </div>
           </div>
 
@@ -376,19 +394,19 @@ export default function GiftReceivePage() {
                 <label className="block text-sm font-medium mb-2">
                   우편번호
                 </label>
-                <div className="flex space-x-2">
+                <div className="flex gap-2">
                   <input
                     type="text"
                     name="zipcode"
                     value={formData.zipcode}
                     readOnly
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                    className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
                     placeholder="우편번호"
                   />
                   <button
                     type="button"
                     onClick={openPostcode}
-                    className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition whitespace-nowrap"
+                    className="flex-shrink-0 px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-950 transition whitespace-nowrap"
                   >
                     주소찾기
                   </button>
@@ -443,15 +461,24 @@ export default function GiftReceivePage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full mt-6 py-3 bg-primary-900 text-white rounded-lg font-semibold hover:bg-primary-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full mt-6 py-3 bg-blue-900 text-white rounded-lg font-semibold hover:bg-blue-950 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? '처리 중...' : '주소 등록하기'}
             </button>
           </form>
+
+          {/* 선물 링크 유효기간 정보 */}
+          {expiresAt && (
+            <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
+              <p className="text-sm text-gray-600">
+                ⏰ 선물 링크는 <strong className="text-gray-900">{new Date(expiresAt).toLocaleDateString('ko-KR')}</strong>까지 유효합니다.
+                <br />
+                <span className="text-xs text-gray-500">7일 이내에 주소를 입력하지 않으면 자동으로 환불 처리됩니다.</span>
+              </p>
+            </div>
+          )}
         </div>
       </main>
-
-      <Footer />
     </div>
   )
 }

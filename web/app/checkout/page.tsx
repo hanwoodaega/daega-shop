@@ -91,19 +91,14 @@ function CheckoutPageContent() {
   // 선물 관련 state
   const [giftData, setGiftData] = useState({
     message: '',
-    cardDesign: 'birthday' as 'birthday' | 'anniversary' | 'thanks' | 'custom',
+    cardDesign: 'birthday-1' as string,
     withMessage: true, // 메시지 함께 보내기 기본값
-  })
-  const [giftRecipient, setGiftRecipient] = useState({
-    name: '',
-    phone: '',
   })
   const totalGiftSteps = 3
   const [currentStep, setCurrentStep] = useState(1)
   const isGiftFinalStep = !isGiftMode || currentStep === totalGiftSteps
   const gridColumnsClass = isGiftFinalStep ? 'lg:grid-cols-3' : 'lg:grid-cols-1'
   
-  const [kakaoSDKLoaded, setKakaoSDKLoaded] = useState(false)
 
   // Destructuring for backward compatibility
   const { method: deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime } = deliveryState
@@ -138,30 +133,28 @@ function CheckoutPageContent() {
     setCurrentStep(1)
   }, [isGiftMode])
 
-  // 카카오톡 SDK 로드
+  // 카카오톡 SDK 로드 (페이지 로드 시 미리 로드)
   useEffect(() => {
-    if (isGiftMode && typeof window !== 'undefined') {
-      const script = document.createElement('script')
-      script.src = 'https://developers.kakao.com/sdk/js/kakao.js'
-      script.async = true
-      script.onload = () => {
-        if (window.Kakao && !window.Kakao.isInitialized()) {
-          const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY || ''
-          if (kakaoAppKey) {
-            window.Kakao.init(kakaoAppKey)
-            setKakaoSDKLoaded(true)
-          }
-        } else if (window.Kakao?.isInitialized()) {
-          setKakaoSDKLoaded(true)
+    if (typeof window === 'undefined' || window.Kakao) return
+
+    const script = document.createElement('script')
+    script.src = 'https://developers.kakao.com/sdk/js/kakao.js'
+    script.async = true
+    script.onload = () => {
+      const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY || ''
+      if (kakaoAppKey && window.Kakao && !window.Kakao.isInitialized()) {
+        try {
+          window.Kakao.init(kakaoAppKey)
+        } catch (error) {
+          console.error('카카오톡 SDK 초기화 실패:', error)
         }
       }
-      document.head.appendChild(script)
-
-      return () => {
-        // Cleanup은 하지 않음 (다른 곳에서도 사용할 수 있음)
-      }
     }
-  }, [isGiftMode])
+    script.onerror = () => {
+      console.error('카카오톡 SDK 스크립트 로드 실패')
+    }
+    document.head.appendChild(script)
+  }, [])
 
   // Daum 우편번호 스크립트 로드
   useDaumPostcodeScript()
@@ -315,7 +308,12 @@ function CheckoutPageContent() {
     if (!isGiftMode || currentStep >= totalGiftSteps) return
 
     // 선물하기는 결제 예상 금액이 최소 금액 이상이어야 함
+    const { originalTotal, discountAmount, shipping, discountedTotal } = calculateOrderTotal(items, deliveryMethod)
+    const couponDiscount = calculateCouponDiscount(discountedTotal)
+    const afterCouponDiscount = Math.max(0, discountedTotal - couponDiscount)
+    const finalTotal = Math.max(0, afterCouponDiscount - usedPoints)
     const expectedAmount = finalTotal + shipping
+    
     if (expectedAmount < GIFT_MIN_AMOUNT) {
       toast.error(`선물하기는 결제 금액이 ${formatPrice(GIFT_MIN_AMOUNT)}원 이상이어야 합니다.`, { icon: '🎁' })
       return
@@ -326,97 +324,306 @@ function CheckoutPageContent() {
         toast.error('보내는 분 정보를 입력해주세요.', { icon: '⚠️' })
         return
       }
-      if (!giftRecipient.name.trim() || !giftRecipient.phone.trim()) {
-        toast.error('받는 분 정보를 입력해주세요.', { icon: '🎁' })
-        return
-      }
     }
 
     setCurrentStep(prev => Math.min(prev + 1, totalGiftSteps))
   }
 
-  const handleSelectKakaoFriend = async () => {
-    if (!window.Kakao || !window.Kakao.isInitialized()) {
-      showError({ message: '카카오톡 SDK가 로드되지 않았습니다.' })
-      return
-    }
-
-    if (!user) {
-      showError({ message: '로그인이 필요합니다.' })
-      router.push('/auth/login?next=/checkout?mode=gift')
-      return
-    }
-
-    // 선물 모드일 때는 결제를 먼저 진행하고, 결제 완료 후 카카오톡 공유
-    // 결제는 handleSubmit에서 처리하고, 여기서는 카카오톡 공유만 처리
-    // 하지만 결제가 완료된 주문이 있어야 하므로, 
-    // 실제로는 handleSubmit에서 결제 완료 후 카카오톡 공유를 호출해야 함
-    
-    showError({ message: '먼저 결제를 완료해주세요. 결제 완료 후 카카오톡으로 공유할 수 있습니다.' })
-  }
 
   // 결제 완료 후 카카오톡 공유 함수
   const shareGiftToKakao = async (orderId: string, giftToken: string) => {
-    if (!window.Kakao || !window.Kakao.isInitialized()) {
-      // SDK가 로드되지 않았으면 로드 시도
-      const script = document.createElement('script')
-      script.src = 'https://developers.kakao.com/sdk/js/kakao.js'
-      script.async = true
-      script.onload = () => {
-        const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY || ''
-        if (kakaoAppKey) {
-          window.Kakao.init(kakaoAppKey)
-          performKakaoShare(orderId, giftToken)
-        }
+    try {
+      await performKakaoShare(orderId, giftToken)
+    } catch (error: any) {
+      const shareUrl = `${window.location.origin}/gift/receive/${giftToken}`
+      const isKakaoLinkError = error.message?.includes('kakaolink://') || 
+                               error.message?.includes('scheme does not have a registered handler')
+      
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        toast.success(
+          isKakaoLinkError
+            ? `PC에서는 카카오톡 앱이 없어 공유할 수 없습니다.\n선물 링크가 클립보드에 복사되었습니다.\n모바일로 링크를 보내거나, 모바일에서 다시 시도해주세요.`
+            : `카카오톡 공유에 실패했습니다. 선물 링크가 클립보드에 복사되었습니다.\n링크를 카카오톡으로 직접 보내주세요.`,
+          {
+            icon: isKakaoLinkError ? '📱' : '📋',
+            duration: 8000,
+          }
+        )
+      } catch (clipboardError) {
+        toast.error(
+          `카카오톡 공유에 실패했습니다. 아래 링크를 복사해서 보내주세요:\n${shareUrl}`,
+          {
+            icon: '❌',
+            duration: 10000,
+          }
+        )
       }
-      document.head.appendChild(script)
-      return
     }
-
-    performKakaoShare(orderId, giftToken)
   }
 
-  const performKakaoShare = (orderId: string, giftToken: string) => {
+  // 카드 이미지에 메시지를 오버레이하여 합성 이미지 생성
+  const createGiftCardImage = async (): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('Canvas context를 가져올 수 없습니다.'))
+        return
+      }
+
+      // 1080x1080 크기로 설정
+      const size = 1080
+      canvas.width = size
+      canvas.height = size
+
+      const cardImage = new Image()
+      cardImage.crossOrigin = 'anonymous'
+      
+      cardImage.onload = () => {
+        // 카드 이미지 그리기
+        ctx.drawImage(cardImage, 0, 0, size, size)
+
+        // 메시지가 있으면 텍스트 오버레이
+        if (giftData.message) {
+          // 카드 디자인별 메시지 스타일 가져오기
+          const getMessageStyle = (cardDesign: string) => {
+            const styles: Record<string, {
+              fontSize: number;
+              color: string;
+              fontFamily: string;
+              fontWeight: string;
+              lineHeight: number;
+            }> = {
+              'birthday-1': {
+                fontSize: 44, // 22 -> 44 (2배)
+                color: '#000000',
+                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
+                fontWeight: '400',
+                lineHeight: 1.5,
+              },
+              'thanks-1': {
+                fontSize: 40, // 20 -> 40 (2배)
+                color: '#000000',
+                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
+                fontWeight: '400',
+                lineHeight: 1.7,
+              },
+              'thanks-2': {
+                fontSize: 38, // 19 -> 38 (2배)
+                color: '#000000',
+                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
+                fontWeight: '400',
+                lineHeight: 1.6,
+              },
+              'celebration-1': {
+                fontSize: 48, // 24 -> 48 (2배)
+                color: '#000000',
+                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
+                fontWeight: '400',
+                lineHeight: 1.4,
+              },
+              'celebration-2': {
+                fontSize: 42, // 21 -> 42 (2배)
+                color: '#000000',
+                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
+                fontWeight: '400',
+                lineHeight: 1.5,
+              },
+            }
+            return styles[cardDesign] || {
+              fontSize: 36, // 18 -> 36 (2배)
+              color: '#000000',
+              fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
+              fontWeight: '400',
+              lineHeight: 1.6,
+            }
+          }
+
+          const messageStyle = getMessageStyle(giftData.cardDesign)
+          
+          // 텍스트 스타일 설정
+          ctx.fillStyle = messageStyle.color
+          ctx.font = `${messageStyle.fontWeight} ${messageStyle.fontSize}px ${messageStyle.fontFamily}`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'top'
+
+          // 텍스트 영역: 위에서 40% ~ 90% (높이 50%)
+          const textAreaTop = size * 0.4
+          const textAreaHeight = size * 0.5
+          const padding = size * 0.08 // 8% 패딩
+          const maxWidth = size - (padding * 2)
+
+          // 텍스트 줄바꿈 처리
+          const words = giftData.message.split(/\s+/)
+          const lines: string[] = []
+          let currentLine = ''
+
+          words.forEach(word => {
+            const testLine = currentLine ? `${currentLine} ${word}` : word
+            const metrics = ctx.measureText(testLine)
+            if (metrics.width > maxWidth && currentLine) {
+              lines.push(currentLine)
+              currentLine = word
+            } else {
+              currentLine = testLine
+            }
+          })
+          if (currentLine) {
+            lines.push(currentLine)
+          }
+
+          // 텍스트 그리기
+          const lineHeight = messageStyle.fontSize * messageStyle.lineHeight
+          lines.forEach((line, index) => {
+            const y = textAreaTop + (index * lineHeight)
+            ctx.fillText(line, size / 2, y)
+          })
+        }
+
+        // Canvas를 이미지로 변환
+        const dataUrl = canvas.toDataURL('image/png')
+        resolve(dataUrl)
+      }
+
+      cardImage.onerror = () => {
+        reject(new Error('카드 이미지를 로드할 수 없습니다.'))
+      }
+
+      // 카드 이미지 로드
+      const cardImageUrl = giftData.cardDesign 
+        ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
+        : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
+      
+      cardImage.src = cardImageUrl
+    })
+  }
+
+  const performKakaoShare = async (orderId: string, giftToken: string) => {
     const giftLink = `${window.location.origin}/gift/receive/${giftToken}`
     
     // 카드 디자인에 따른 제목 설정
-    const cardDesignTitles: Record<string, string> = {
-      birthday: '🎂 생일 축하 선물이 도착했습니다!',
-      anniversary: '💝 기념일 선물이 도착했습니다!',
-      thanks: '🙏 감사 인사 선물이 도착했습니다!',
-      custom: '🎁 특별한 선물이 도착했습니다!',
+    const getCardTitle = (cardDesign: string) => {
+      if (cardDesign.startsWith('birthday')) {
+        return '🎂 생일 축하 선물이 도착했습니다!'
+      } else if (cardDesign.startsWith('thanks')) {
+        return '🙏 감사 인사 선물이 도착했습니다!'
+      } else if (cardDesign.startsWith('celebration')) {
+        return '🎉 축하 선물이 도착했습니다!'
+      }
+      return '🎁 선물이 도착했습니다!'
     }
     
-    const title = cardDesignTitles[giftData.cardDesign] || '🎁 선물이 도착했습니다!'
+    const title = getCardTitle(giftData.cardDesign)
 
-    // 카드 디자인 이미지 URL (선택한 카드 디자인 이미지 사용)
-    const cardImageUrl = giftData.cardDesign 
-      ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.jpg`
-      : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
+    try {
+      // 메시지가 있으면 합성 이미지 생성, 없으면 원본 이미지 사용
+      let cardImageUrl: string
+      if (giftData.message && giftData.cardDesign) {
+        // 합성 이미지 생성
+        const dataUrl = await createGiftCardImage()
+        
+        // 서버에 업로드하여 공개 URL 생성
+        try {
+          const uploadResponse = await fetch('/api/gift/upload-card-image', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ imageData: dataUrl }),
+          })
+          
+          if (uploadResponse.ok) {
+            const uploadData = await uploadResponse.json()
+            cardImageUrl = uploadData.url
+          } else {
+            // 업로드 실패 시 원본 이미지 사용
+            console.error('이미지 업로드 실패:', await uploadResponse.json())
+            cardImageUrl = giftData.cardDesign 
+              ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
+              : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
+          }
+        } catch (uploadError) {
+          console.error('이미지 업로드 에러:', uploadError)
+          // 업로드 에러 시 원본 이미지 사용
+          cardImageUrl = giftData.cardDesign 
+            ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
+            : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
+        }
+      } else {
+        // 원본 카드 이미지 사용
+        cardImageUrl = giftData.cardDesign 
+          ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
+          : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
+      }
 
-    // 카카오톡 공유 API로 친구에게 공유
-    // 메시지는 description에 포함되어 전송됩니다
-    window.Kakao.Share.sendDefault({
-      objectType: 'feed',
-      content: {
-        title: title,
-        description: giftData.message || '선물을 받아보세요!',
-        imageUrl: cardImageUrl,
-        link: {
-          mobileWebUrl: giftLink,
-          webUrl: giftLink,
-        },
-      },
-      buttons: [
-        {
-          title: '선물 받기',
+      // 카카오톡 SDK 확인 및 초기화
+      if (!window.Kakao) {
+        throw new Error('카카오톡 SDK가 로드되지 않았습니다.')
+      }
+
+      if (!window.Kakao.isInitialized()) {
+        const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY || ''
+        if (!kakaoAppKey) {
+          throw new Error('카카오톡 앱 키가 설정되지 않았습니다.')
+        }
+        window.Kakao.init(kakaoAppKey)
+        await new Promise(resolve => setTimeout(resolve, 200))
+        
+        if (!window.Kakao.isInitialized()) {
+          throw new Error('카카오톡 SDK 초기화에 실패했습니다.')
+        }
+      }
+
+      if (!window.Kakao.Share) {
+        throw new Error('카카오톡 Share API를 사용할 수 없습니다.')
+      }
+
+      // 모바일 환경 확인
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      
+      // PC 환경에서는 링크 복사
+      if (!isMobile) {
+        await navigator.clipboard.writeText(giftLink)
+        toast.success(
+          `PC에서는 카카오톡 공유가 불가능합니다.\n선물 링크가 클립보드에 복사되었습니다.\n모바일로 링크를 보내거나, 모바일에서 다시 시도해주세요.`,
+          {
+            icon: '📱',
+            duration: 8000,
+          }
+        )
+        return
+      }
+
+      // 카카오톡 공유 실행
+      window.Kakao.Share.sendDefault({
+        objectType: 'feed',
+        content: {
+          title: title,
+          description: giftData.message || '선물을 받아보세요!',
+          imageUrl: cardImageUrl,
           link: {
             mobileWebUrl: giftLink,
             webUrl: giftLink,
           },
         },
-      ],
-    })
+        buttons: [
+          {
+            title: '선물 받기',
+            link: {
+              mobileWebUrl: giftLink,
+              webUrl: giftLink,
+            },
+          },
+        ],
+        serverCallbackArgs: {
+          orderId: orderId,
+          giftToken: giftToken,
+        },
+      })
+    } catch (error: any) {
+      throw new Error(`카카오톡 공유 실패: ${error.message || '알 수 없는 오류'}`)
+    }
   }
 
   const handleSearchAddress = () => {
@@ -494,11 +701,6 @@ function CheckoutPageContent() {
         showError({ message: '배송 주소를 입력해주세요.' }, { icon: '📍' })
         return
       }
-    } else {
-      if (!giftRecipient.name.trim() || !giftRecipient.phone.trim()) {
-        showError({ message: '받는 분 이름과 연락처를 입력해주세요.' }, { icon: '🎁' })
-        return
-      }
     }
 
     // 포인트 사용 유효성 검사
@@ -566,8 +768,8 @@ function CheckoutPageContent() {
           is_gift: isGiftMode,
           gift_message: isGiftMode ? giftData.message : null,
           gift_card_design: isGiftMode ? giftData.cardDesign : null,
-          gift_recipient_name: isGiftMode ? giftRecipient.name.trim() : null,
-          gift_recipient_phone: isGiftMode ? giftRecipient.phone.trim() : null,
+          gift_recipient_name: null, // 받는 분이 직접 입력
+          gift_recipient_phone: null, // 받는 분이 직접 입력
           items: items.map(item => ({
             productId: item.productId,
             quantity: item.quantity,
@@ -583,12 +785,26 @@ function CheckoutPageContent() {
 
       const { order } = await response.json()
 
+      // 디버깅: 주문 정보 확인
+      console.log('주문 완료:', { 
+        isGiftMode, 
+        giftToken: order.gift_token, 
+        orderId: order.id,
+        order: order 
+      })
+
       // 선물 모드이고 결제 완료된 경우 카카오톡 공유
       if (isGiftMode && order.gift_token) {
-        // 결제 완료 후 카카오톡 공유
-        setTimeout(() => {
-          shareGiftToKakao(order.id, order.gift_token)
-        }, 500)
+        console.log('선물 모드 주문 완료, 카카오톡 공유 시작:', { orderId: order.id, giftToken: order.gift_token })
+        // 카카오톡 공유 실행 (에러는 함수 내부에서 처리됨)
+        await shareGiftToKakao(order.id, order.gift_token)
+        // shareGiftToKakao는 에러를 throw하지 않으므로 여기서는 성공 로그를 남기지 않음
+      } else {
+        console.log('카카오톡 공유 조건 불만족:', { 
+          isGiftMode, 
+          hasGiftToken: !!order.gift_token,
+          giftToken: order.gift_token 
+        })
       }
 
       // 기본 배송지로 저장 체크 시 배송지 저장 (택배 또는 퀵배달)
@@ -677,12 +893,19 @@ function CheckoutPageContent() {
       }
 
       // 주문 완료
-      showSuccess('주문이 완료되었습니다!', {
-        icon: '🎉',
-        duration: 3000,
-      })
+      if (isGiftMode && order.gift_token) {
+        showSuccess('주문이 완료되었습니다! 카카오톡으로 선물을 공유해주세요.', {
+          icon: '🎁',
+          duration: 3000,
+        })
+      } else {
+        showSuccess('주문이 완료되었습니다!', {
+          icon: '🎉',
+          duration: 3000,
+        })
+      }
 
-      // 주문 완료 페이지로 이동
+      // 주문 완료 페이지로 이동 (선물 모드는 카카오톡 공유 후 이동)
       const t = window.setTimeout(() => {
         if (isGiftMode && order.gift_token) {
           // 선물 모드일 때 토큰 포함하여 이동
@@ -690,7 +913,7 @@ function CheckoutPageContent() {
         } else {
           router.push('/orders')
         }
-      }, 1500)
+      }, isGiftMode ? 2000 : 1500) // 선물 모드는 조금 더 기다림
       timeoutsRef.current.push(t)
 
     } catch (error) {
@@ -1051,46 +1274,6 @@ function CheckoutPageContent() {
                     )}
                   </div>
 
-                  {/* 받는 분 정보 - 선물 모드일 때만 표시 */}
-                  <div className="bg-white rounded-lg shadow-md p-6 mb-24">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-bold">받는 분</h2>
-                    </div>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          이름 <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={giftRecipient.name}
-                          onChange={(e) => setGiftRecipient(prev => ({ ...prev, name: e.target.value }))}
-                          placeholder="받는 분 이름을 입력하세요"
-                          required
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          연락처 <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="tel"
-                          value={giftRecipient.phone}
-                          onChange={(e) => {
-                            const numbers = e.target.value.replace(/[^0-9]/g, '')
-                            setGiftRecipient(prev => ({ ...prev, phone: numbers }))
-                          }}
-                          placeholder="01012345678"
-                          maxLength={11}
-                          required
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">연락처는 선물을 보내는 용도로만 사용돼요.</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="h-24"></div>
                 </>
               )}
 
@@ -1476,10 +1659,11 @@ function CheckoutPageContent() {
                       <div className="overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
                         <div className="flex gap-3 min-w-max">
                           {[
-                            { value: 'birthday', label: '생일 축하', emoji: '🎂', color: 'from-pink-200 to-pink-300' },
-                            { value: 'anniversary', label: '기념일', emoji: '💝', color: 'from-orange-200 to-orange-300' },
-                            { value: 'thanks', label: '감사 인사', emoji: '🙏', color: 'from-blue-200 to-blue-300' },
-                            { value: 'custom', label: '커스텀', emoji: '🎁', color: 'from-purple-200 to-purple-300' },
+                            { value: 'birthday-1', label: '생일 축하', emoji: '🎂', color: 'from-pink-200 to-pink-300' },
+                            { value: 'thanks-1', label: '감사 인사 1', emoji: '🙏', color: 'from-blue-200 to-blue-300' },
+                            { value: 'thanks-2', label: '감사 인사 2', emoji: '🙏', color: 'from-blue-200 to-blue-300' },
+                            { value: 'celebration-1', label: '축하 1', emoji: '🎉', color: 'from-orange-200 to-orange-300' },
+                            { value: 'celebration-2', label: '축하 2', emoji: '🎉', color: 'from-orange-200 to-orange-300' },
                           ].map((design) => (
                             <button
                               key={design.value}
@@ -1491,18 +1675,22 @@ function CheckoutPageContent() {
                                   : 'border-gray-200 hover:border-gray-300'
                               }`}
                             >
-                              <div className="aspect-[4/3] relative bg-gradient-to-br flex items-center justify-center" style={{
-                                background: giftData.cardDesign === design.value
-                                  ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
-                                  : design.value === 'birthday'
-                                  ? 'linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%)'
-                                  : design.value === 'anniversary'
-                                  ? 'linear-gradient(135deg, #fed7aa 0%, #fdba74 100%)'
-                                  : design.value === 'thanks'
-                                  ? 'linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%)'
-                                  : 'linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%)'
-                              }}>
-                                <div className="text-4xl">{design.emoji}</div>
+                              <div className="aspect-square relative overflow-hidden">
+                                <img
+                                  src={`/images/gift-cards/${design.value}.png`}
+                                  alt={design.label}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    target.style.display = 'none'
+                                    const parent = target.parentElement!
+                                    parent.innerHTML = `
+                                      <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                                        <span class="text-gray-400 text-2xl">${design.emoji}</span>
+                                      </div>
+                                    `
+                                  }}
+                                />
                                 {giftData.cardDesign === design.value && (
                                   <div className="absolute top-2 right-2 bg-primary-600 text-white rounded-full p-1">
                                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -1526,34 +1714,114 @@ function CheckoutPageContent() {
                         <label className="block text-sm font-medium mb-2">
                           카드 미리보기
                         </label>
-                        <div className="relative rounded-lg overflow-hidden border-2 border-gray-200 shadow-md" style={{ aspectRatio: '4/3' }}>
+                        <div className="relative rounded-lg overflow-hidden border-2 border-gray-200 shadow-md" style={{ aspectRatio: '1/1' }}>
                           <img
-                            src={`/images/gift-cards/${giftData.cardDesign}.jpg`}
+                            src={`/images/gift-cards/${giftData.cardDesign}.png`}
                             alt="카드 디자인"
                             className="w-full h-full object-cover"
+                            style={{ display: 'block' }}
                             onError={(e) => {
+                              console.error('카드 이미지 로드 실패:', `/images/gift-cards/${giftData.cardDesign}.png`)
                               const target = e.target as HTMLImageElement
                               target.style.display = 'none'
                               const parent = target.parentElement!
-                              parent.innerHTML = `
-                                <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-                                  <span class="text-gray-400">카드 이미지를 추가해주세요</span>
-                                </div>
-                              `
+                              if (!parent.querySelector('.error-fallback')) {
+                                const errorDiv = document.createElement('div')
+                                errorDiv.className = 'error-fallback w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200'
+                                errorDiv.innerHTML = '<span class="text-gray-400">카드 이미지를 추가해주세요</span>'
+                                parent.appendChild(errorDiv)
+                              }
+                            }}
+                            onLoad={() => {
+                              console.log('카드 이미지 로드 성공:', `/images/gift-cards/${giftData.cardDesign}.png`)
                             }}
                           />
                           {/* 메시지 오버레이 (CSS로만 표시) */}
-                          {giftData.message && (
-                            <div className="absolute inset-0 flex items-center justify-center p-8">
-                              <p className="text-white text-center whitespace-pre-wrap break-words drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" style={{ 
+                          {giftData.message && (() => {
+                            // 카드 디자인별 메시지 스타일 설정
+                            const getMessageStyle = (cardDesign: string) => {
+                              const styles: Record<string, {
+                                fontSize: string;
+                                color: string;
+                                fontFamily: string;
+                                fontWeight: string;
+                                textShadow: string;
+                                lineHeight: string;
+                              }> = {
+                                'birthday-1': {
+                                  fontSize: 'clamp(16px, 3vw, 22px)',
+                                  color: '#000000',
+                                  fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
+                                  fontWeight: '400',
+                                  textShadow: 'none',
+                                  lineHeight: '1.5',
+                                },
+                                'thanks-1': {
+                                  fontSize: 'clamp(15px, 2.8vw, 20px)',
+                                  color: '#000000',
+                                  fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
+                                  fontWeight: '400',
+                                  textShadow: 'none',
+                                  lineHeight: '1.7',
+                                },
+                                'thanks-2': {
+                                  fontSize: 'clamp(14px, 2.5vw, 19px)',
+                                  color: '#000000',
+                                  fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
+                                  fontWeight: '400',
+                                  textShadow: 'none',
+                                  lineHeight: '1.6',
+                                },
+                                'celebration-1': {
+                                  fontSize: 'clamp(17px, 3.2vw, 24px)',
+                                  color: '#000000',
+                                  fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
+                                  fontWeight: '400',
+                                  textShadow: 'none',
+                                  lineHeight: '1.4',
+                                },
+                                'celebration-2': {
+                                  fontSize: 'clamp(16px, 3vw, 21px)',
+                                  color: '#000000',
+                                  fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
+                                  fontWeight: '400',
+                                  textShadow: 'none',
+                                  lineHeight: '1.5',
+                                },
+                              }
+                              return styles[cardDesign] || {
                                 fontSize: 'clamp(14px, 2.5vw, 18px)',
+                                color: '#000000',
+                                fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
+                                fontWeight: '400',
+                                textShadow: 'none',
                                 lineHeight: '1.6',
-                                textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.5)'
+                              }
+                            }
+                            
+                            const messageStyle = getMessageStyle(giftData.cardDesign)
+                            
+                            return (
+                              <div className="absolute left-0 right-0 px-8 pointer-events-none z-10" style={{ 
+                                top: '40%',
+                                height: '50%',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                justifyContent: 'center',
                               }}>
-                                {giftData.message}
-                              </p>
-                            </div>
-                          )}
+                                <p className="text-center whitespace-pre-wrap break-words w-full" style={{ 
+                                  fontSize: messageStyle.fontSize,
+                                  color: messageStyle.color,
+                                  fontFamily: messageStyle.fontFamily,
+                                  fontWeight: messageStyle.fontWeight,
+                                  textShadow: messageStyle.textShadow,
+                                  lineHeight: messageStyle.lineHeight,
+                                }}>
+                                  {giftData.message}
+                                </p>
+                              </div>
+                            )
+                          })()}
                         </div>
                       </div>
                     )}
@@ -1566,11 +1834,11 @@ function CheckoutPageContent() {
                         value={giftData.message}
                         onChange={(e) => setGiftData(prev => ({ ...prev, message: e.target.value }))}
                         rows={4}
-                        maxLength={200}
+                        maxLength={100}
                         placeholder="받는 분께 전달할 메시지를 작성해주세요"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
-                      <p className="text-xs text-gray-500 mt-1">{giftData.message.length}/200</p>
+                      <p className="text-xs text-gray-500 mt-1">{giftData.message.length}/100</p>
                     </div>
                   </div>
                   )}

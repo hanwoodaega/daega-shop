@@ -12,12 +12,18 @@ export async function GET(
     const supabase = createSupabaseServerClient()
     const { token } = params
 
+    console.log('GET: API 호출 시작:', { token, params })
+
     if (!token) {
+      console.error('GET: 토큰이 없습니다')
       return NextResponse.json({ error: '토큰이 필요합니다.' }, { status: 400 })
     }
 
     // gift_token 컬럼 또는 gift_info JSON에서 토큰으로 주문 조회
-    // 먼저 gift_token 컬럼으로 조회 시도
+    console.log('GET: 선물 토큰으로 주문 조회 시작:', { token })
+    
+    // 먼저 gift_token 컬럼으로 조회 시도 (is_gift 필터 없이)
+    // gift_info 컬럼이 없을 수 있으므로 제외
     let { data: orders, error: orderError } = await supabase
       .from('orders')
       .select(`
@@ -27,7 +33,6 @@ export async function GET(
         status,
         is_gift,
         gift_token,
-        gift_info,
         gift_message,
         gift_card_design,
         gift_expires_at,
@@ -35,9 +40,6 @@ export async function GET(
         shipping_name,
         shipping_phone,
         created_at,
-        status,
-        user_id,
-        total_amount,
         order_items (
           id,
           quantity,
@@ -49,14 +51,21 @@ export async function GET(
           )
         )
       `)
-      .eq('is_gift', true)
       .eq('gift_token', token)
       .maybeSingle()
 
-    // gift_token 컬럼이 없거나 조회 실패한 경우 gift_info JSON에서 찾기
-    if ((orderError && (orderError.code === '42703' || orderError.message?.includes('column'))) || !orders) {
-      // 모든 선물 주문을 가져와서 gift_info에서 토큰 찾기
-      const { data: allGiftOrders, error: allOrdersError } = await supabase
+    console.log('GET: gift_token 컬럼으로 조회 결과:', { 
+      found: !!orders, 
+      error: orderError?.message,
+      errorCode: orderError?.code,
+      orderId: orders?.id
+    })
+
+    // 조회 실패한 경우 모든 주문에서 토큰 찾기
+    if (orderError || !orders) {
+      console.log('GET: 모든 주문 조회 시작 (토큰으로 찾기)')
+      // 모든 주문을 가져와서 gift_token으로 토큰 찾기
+      const { data: allOrders, error: allOrdersError } = await supabase
         .from('orders')
         .select(`
           id,
@@ -64,19 +73,15 @@ export async function GET(
           total_amount,
           status,
           is_gift,
-        gift_token,
-        gift_info,
-        gift_message,
-        gift_card_design,
-        gift_expires_at,
-        shipping_address,
-        shipping_name,
-        shipping_phone,
-        created_at,
-        status,
-        user_id,
-        total_amount,
-        order_items (
+          gift_token,
+          gift_message,
+          gift_card_design,
+          gift_expires_at,
+          shipping_address,
+          shipping_name,
+          shipping_phone,
+          created_at,
+          order_items (
             id,
             quantity,
             price,
@@ -87,30 +92,37 @@ export async function GET(
             )
           )
         `)
-        .eq('is_gift', true)
 
       if (allOrdersError) {
-        console.error('주문 조회 실패:', allOrdersError)
+        console.error('GET: 모든 주문 조회 실패:', allOrdersError)
         return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 })
       }
 
-      // gift_info JSON에서 토큰 찾기
-      orders = allGiftOrders?.find((order: any) => {
-        if (order.gift_token === token) return true
-        if (order.gift_info) {
-          try {
-            const giftInfo = typeof order.gift_info === 'string' 
-              ? JSON.parse(order.gift_info) 
-              : order.gift_info
-            return giftInfo.token === token
-          } catch (e) {
-            return false
-          }
+      console.log(`GET: 총 ${allOrders?.length || 0}개의 주문 발견`)
+
+      // 디버깅: gift_token이 있는 주문만 확인
+      const ordersWithToken = allOrders?.filter((o: any) => o.gift_token) || []
+      console.log(`GET: gift_token이 있는 주문: ${ordersWithToken.length}개`)
+      if (ordersWithToken.length > 0) {
+        console.log('GET: gift_token 목록:', ordersWithToken.map((o: any) => ({
+          id: o.id,
+          is_gift: o.is_gift,
+          gift_token: o.gift_token?.substring(0, 20) + '...'
+        })))
+      }
+
+      // gift_token으로 토큰 찾기
+      orders = allOrders?.find((order: any) => {
+        if (order.gift_token === token) {
+          console.log('GET: gift_token에서 토큰 발견:', order.id)
+          return true
         }
         return false
       }) || null
+
+      console.log('GET: 최종 조회 결과:', { found: !!orders, orderId: orders?.id, token })
     } else if (orderError) {
-      console.error('주문 조회 실패:', orderError)
+      console.error('GET: 주문 조회 실패:', orderError)
       return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 })
     }
 
@@ -130,17 +142,6 @@ export async function GET(
     let expiresAt: Date | null = null
     if (orders.gift_expires_at) {
       expiresAt = new Date(orders.gift_expires_at)
-    } else if (orders.gift_info) {
-      try {
-        const giftInfo = typeof orders.gift_info === 'string' 
-          ? JSON.parse(orders.gift_info) 
-          : orders.gift_info
-        if (giftInfo.expires_at) {
-          expiresAt = new Date(giftInfo.expires_at)
-        }
-      } catch (e) {
-        console.error('gift_info 파싱 실패:', e)
-      }
     }
 
     // 만료일이 있고 만료된 경우
@@ -207,45 +208,77 @@ export async function POST(
     }
 
     // 토큰으로 주문 조회
-    let { data: order, error: findError } = await supabase
+    console.log('POST: 선물 토큰으로 주문 조회 시작:', { token, tokenLength: token?.length })
+    
+    let order: any = null
+    let findError: any = null
+
+    // 먼저 gift_token 컬럼으로 조회 시도
+    const { data: orderByToken, error: tokenError } = await supabase
       .from('orders')
-      .select('id, shipping_address, status, gift_token, gift_info, gift_expires_at, user_id, total_amount, created_at')
-      .eq('is_gift', true)
+      .select('id, shipping_address, status, gift_token, gift_expires_at, user_id, total_amount, created_at, is_gift')
       .eq('gift_token', token)
       .maybeSingle()
 
-    // gift_token 컬럼이 없거나 조회 실패한 경우 gift_info JSON에서 찾기
-    if ((findError && (findError.code === '42703' || findError.message?.includes('column'))) || !order) {
-      const { data: allGiftOrders, error: allOrdersError } = await supabase
+    console.log('POST: gift_token 컬럼으로 조회 결과:', { 
+      found: !!orderByToken, 
+      error: tokenError?.message,
+      errorCode: tokenError?.code,
+      orderId: orderByToken?.id,
+      orderGiftToken: orderByToken?.gift_token?.substring(0, 20) + '...',
+      orderIsGift: orderByToken?.is_gift
+    })
+
+    if (orderByToken) {
+      order = orderByToken
+    } else {
+      // 조회 실패한 경우 모든 주문에서 토큰 찾기
+      console.log('POST: 모든 주문 조회 시작 (토큰으로 찾기)')
+      
+      const { data: allOrders, error: allOrdersError } = await supabase
         .from('orders')
-        .select('id, shipping_address, status, gift_token, gift_info, gift_expires_at, user_id, total_amount, created_at')
-        .eq('is_gift', true)
+        .select('id, shipping_address, status, gift_token, gift_expires_at, user_id, total_amount, created_at, is_gift')
 
       if (allOrdersError) {
-        return NextResponse.json({ error: '유효하지 않은 선물 링크입니다.' }, { status: 404 })
-      }
+        console.error('POST: 모든 주문 조회 실패:', allOrdersError)
+        findError = allOrdersError
+      } else {
+        console.log(`POST: 총 ${allOrders?.length || 0}개의 주문 발견`)
 
-      order = allGiftOrders?.find((o: any) => {
-        if (o.gift_token === token) return true
-        if (o.gift_info) {
-          try {
-            const giftInfo = typeof o.gift_info === 'string' ? JSON.parse(o.gift_info) : o.gift_info
-            return giftInfo.token === token
-          } catch (e) {
-            return false
-          }
+        // gift_token이 있는 주문만 필터링
+        const ordersWithToken = allOrders?.filter((o: any) => o.gift_token) || []
+        console.log(`POST: gift_token이 있는 주문: ${ordersWithToken.length}개`)
+        
+        if (ordersWithToken.length > 0) {
+          console.log('POST: gift_token 샘플:', ordersWithToken.slice(0, 3).map((o: any) => ({
+            id: o.id,
+            token: o.gift_token?.substring(0, 20) + '...',
+            is_gift: o.is_gift
+          })))
         }
-        return false
-      }) || null
 
-      if (!order) {
-        findError = { message: '주문을 찾을 수 없습니다.' } as any
+        // gift_token으로 토큰 찾기
+        order = ordersWithToken.find((o: any) => {
+          if (o.gift_token === token) {
+            console.log('POST: gift_token에서 토큰 발견:', { orderId: o.id, isGift: o.is_gift })
+            return true
+          }
+          return false
+        }) || null
+
+        console.log('POST: 최종 조회 결과:', { 
+          found: !!order, 
+          orderId: order?.id,
+          searchedToken: token?.substring(0, 20) + '...'
+        })
       }
-    } else if (findError) {
-      return NextResponse.json({ error: '유효하지 않은 선물 링크입니다.' }, { status: 404 })
     }
 
-    if (findError || !order) {
+    if (!order) {
+      console.error('POST: 주문을 찾을 수 없음:', { 
+        token: token?.substring(0, 20) + '...',
+        error: findError?.message || tokenError?.message
+      })
       return NextResponse.json({ error: '유효하지 않은 선물 링크입니다.' }, { status: 404 })
     }
 
@@ -258,17 +291,6 @@ export async function POST(
     let expiresAt: Date | null = null
     if (order.gift_expires_at) {
       expiresAt = new Date(order.gift_expires_at)
-    } else if (order.gift_info) {
-      try {
-        const giftInfo = typeof order.gift_info === 'string' 
-          ? JSON.parse(order.gift_info) 
-          : order.gift_info
-        if (giftInfo.expires_at) {
-          expiresAt = new Date(giftInfo.expires_at)
-        }
-      } catch (e) {
-        console.error('gift_info 파싱 실패:', e)
-      }
     }
 
     // 만료일이 있고 만료된 경우
@@ -295,10 +317,18 @@ export async function POST(
       }, { status: 410 })
     }
 
-    // 주문 정보 업데이트
+    // 주문 정보 업데이트 (RLS 우회를 위해 admin client 사용)
     const shippingAddress = `${address}${address_detail ? ' ' + address_detail : ''}`
     
-    const { data: updatedOrder, error: updateError } = await supabase
+    console.log('POST: 주문 업데이트 시작:', { 
+      orderId: order.id, 
+      recipient_name, 
+      recipient_phone,
+      shippingAddress 
+    })
+    
+    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+    const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from('orders')
       .update({
         shipping_name: recipient_name,
@@ -312,9 +342,11 @@ export async function POST(
       .single()
 
     if (updateError) {
-      console.error('주문 업데이트 실패:', updateError)
+      console.error('POST: 주문 업데이트 실패:', updateError)
       return NextResponse.json({ error: '주문 정보 업데이트에 실패했습니다.' }, { status: 500 })
     }
+
+    console.log('POST: 주문 업데이트 성공:', { orderId: updatedOrder?.id })
 
     return NextResponse.json({ 
       success: true, 
