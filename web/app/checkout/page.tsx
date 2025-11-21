@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState, useEffect, useRef, Suspense } from 'react'
+import { Fragment, useState, useEffect, useRef, Suspense, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Footer from '@/components/Footer'
@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { formatPrice } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useDaumPostcodeScript, openDaumPostcode, AddressSearchResult } from '@/lib/hooks/useDaumPostcode'
-import { showError, showSuccess, handleSupabaseError, showInfo } from '@/lib/error-handler'
+import { showError, showSuccess, showInfo } from '@/lib/error-handler'
 import { useDefaultAddress, useUserProfile } from '@/lib/hooks/useAddress'
 import { calculateOrderTotal } from '@/lib/order-calc'
 import { SHIPPING, GIFT_MIN_AMOUNT } from '@/lib/constants'
@@ -22,7 +22,6 @@ function CheckoutPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
-  const cartCount = useCartStore((state) => state.getTotalItems())
   const timeoutsRef = useRef<number[]>([])
   
   // 선물 모드 확인
@@ -146,12 +145,12 @@ function CheckoutPageContent() {
         try {
           window.Kakao.init(kakaoAppKey)
         } catch (error) {
-          console.error('카카오톡 SDK 초기화 실패:', error)
+          // SDK 초기화 실패 (조용히 처리)
         }
       }
     }
     script.onerror = () => {
-      console.error('카카오톡 SDK 스크립트 로드 실패')
+      // SDK 스크립트 로드 실패 (조용히 처리)
     }
     document.head.appendChild(script)
   }, [])
@@ -263,7 +262,14 @@ function CheckoutPageContent() {
     }
   }
 
-  const applyAddress = (address: any) => {
+  const applyAddress = useCallback((address: {
+    recipient_name?: string | null
+    recipient_phone?: string | null
+    zipcode?: string | null
+    address?: string | null
+    address_detail?: string | null
+    delivery_note?: string | null
+  }) => {
     setFormData(prev => ({
       ...prev,
       name: prev.name || address.recipient_name || '',
@@ -273,33 +279,33 @@ function CheckoutPageContent() {
       addressDetail: address.address_detail || '',
       message: address.delivery_note || '',
     }))
-  }
+  }, [])
 
-  // 픽업 가능 시간대 (오전 10시 ~ 오후 8시)
-  const pickupTimeSlots = [
+  // 픽업 가능 시간대 (오전 10시 ~ 오후 8시) - 메모이제이션
+  const pickupTimeSlots = useMemo(() => [
     '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
     '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
     '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
     '19:00', '19:30', '20:00'
-  ]
+  ], [])
 
-  // 퀵배달 가능 지역
-  const quickDeliveryAreas = [
+  // 퀵배달 가능 지역 - 메모이제이션
+  const quickDeliveryAreas = useMemo(() => [
     '연향동', '조례동', '풍덕동', '해룡면'
-  ]
+  ], [])
 
-  // 퀵배달 시간대 (오전 10시 ~ 오후 10시)
-  const quickDeliveryTimeSlots = [
+  // 퀵배달 시간대 (오전 10시 ~ 오후 10시) - 메모이제이션
+  const quickDeliveryTimeSlots = useMemo(() => [
     '10:00~11:00', '11:00~12:00', '12:00~13:00',
     '13:00~14:00', '14:00~15:00', '15:00~16:00',
     '16:00~17:00', '17:00~18:00', '18:00~19:00',
-    '19:00~20:00', '20:00~21:00',     '21:00~22:00'
-  ]
+    '19:00~20:00', '20:00~21:00', '21:00~22:00'
+  ], [])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-  }
+  }, [])
 
   const handleNextStep = (e?: React.MouseEvent) => {
     e?.preventDefault()
@@ -538,13 +544,11 @@ function CheckoutPageContent() {
             cardImageUrl = uploadData.url
           } else {
             // 업로드 실패 시 원본 이미지 사용
-            console.error('이미지 업로드 실패:', await uploadResponse.json())
             cardImageUrl = giftData.cardDesign 
               ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
               : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
           }
         } catch (uploadError) {
-          console.error('이미지 업로드 에러:', uploadError)
           // 업로드 에러 시 원본 이미지 사용
           cardImageUrl = giftData.cardDesign 
             ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
@@ -785,26 +789,9 @@ function CheckoutPageContent() {
 
       const { order } = await response.json()
 
-      // 디버깅: 주문 정보 확인
-      console.log('주문 완료:', { 
-        isGiftMode, 
-        giftToken: order.gift_token, 
-        orderId: order.id,
-        order: order 
-      })
-
       // 선물 모드이고 결제 완료된 경우 카카오톡 공유
       if (isGiftMode && order.gift_token) {
-        console.log('선물 모드 주문 완료, 카카오톡 공유 시작:', { orderId: order.id, giftToken: order.gift_token })
-        // 카카오톡 공유 실행 (에러는 함수 내부에서 처리됨)
         await shareGiftToKakao(order.id, order.gift_token)
-        // shareGiftToKakao는 에러를 throw하지 않으므로 여기서는 성공 로그를 남기지 않음
-      } else {
-        console.log('카카오톡 공유 조건 불만족:', { 
-          isGiftMode, 
-          hasGiftToken: !!order.gift_token,
-          giftToken: order.gift_token 
-        })
       }
 
       // 기본 배송지로 저장 체크 시 배송지 저장 (택배 또는 퀵배달)
@@ -851,7 +838,6 @@ function CheckoutPageContent() {
             })
           }
         } catch (error) {
-          console.error('배송지 저장 실패:', error)
           // 배송지 저장 실패해도 주문은 완료
         }
       }
@@ -885,7 +871,6 @@ function CheckoutPageContent() {
           }
         } catch (err) {
           // DB 삭제 실패해도 UI는 진행
-          console.error('DB 장바구니 삭제 실패:', err)
         }
         
         // DB 삭제 후 localStorage에서도 제거
@@ -1721,7 +1706,6 @@ function CheckoutPageContent() {
                             className="w-full h-full object-cover"
                             style={{ display: 'block' }}
                             onError={(e) => {
-                              console.error('카드 이미지 로드 실패:', `/images/gift-cards/${giftData.cardDesign}.png`)
                               const target = e.target as HTMLImageElement
                               target.style.display = 'none'
                               const parent = target.parentElement!
@@ -1731,9 +1715,6 @@ function CheckoutPageContent() {
                                 errorDiv.innerHTML = '<span class="text-gray-400">카드 이미지를 추가해주세요</span>'
                                 parent.appendChild(errorDiv)
                               }
-                            }}
-                            onLoad={() => {
-                              console.log('카드 이미지 로드 성공:', `/images/gift-cards/${giftData.cardDesign}.png`)
                             }}
                           />
                           {/* 메시지 오버레이 (CSS로만 표시) */}

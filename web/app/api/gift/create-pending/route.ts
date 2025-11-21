@@ -31,14 +31,27 @@ export async function POST(request: NextRequest) {
     }
 
     // 총 금액 계산
-    const totalAmount = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
+    const totalAmount = items.reduce((sum: number, item: { price: number; quantity: number }) => 
+      sum + (item.price * item.quantity), 0)
     const finalAmount = totalAmount - used_points
 
     // 선물 토큰 생성
     const giftToken = crypto.randomBytes(32).toString('hex')
 
     // 주문 생성 (결제 전 상태)
-    const orderData: any = {
+    const orderData: {
+      user_id: string
+      total_amount: number
+      status: string
+      delivery_type: string
+      shipping_address: string
+      shipping_name: string
+      shipping_phone: string
+      is_gift: boolean
+      gift_token: string
+      gift_message: string | null
+      gift_card_design: string | null
+    } = {
       user_id: user.id,
       total_amount: finalAmount,
       status: 'pending', // 결제 대기 상태
@@ -52,7 +65,6 @@ export async function POST(request: NextRequest) {
       gift_card_design: gift_card_design,
     }
 
-    // gift_token 컬럼이 없으면 gift_info JSON에 저장
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert(orderData)
@@ -60,57 +72,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (orderError) {
-      // 컬럼이 없으면 JSON 필드로 재시도
-      if (orderError.code === '42703' || orderError.message?.includes('column')) {
-        const orderDataWithoutGiftColumns = {
-          user_id: user.id,
-          total_amount: finalAmount,
-          status: 'pending',
-          delivery_type: 'regular',
-          shipping_address: '선물 수령 대기',
-          shipping_name: '선물 수령 대기',
-          shipping_phone: '',
-          gift_info: JSON.stringify({
-            token: giftToken,
-            message: gift_message,
-            card_design: gift_card_design,
-          })
-        }
-
-        const { data: retryOrder, error: retryError } = await supabase
-          .from('orders')
-          .insert(orderDataWithoutGiftColumns)
-          .select()
-          .single()
-
-        if (retryError) {
-          throw new Error(retryError.message)
-        }
-
-        // 주문 아이템 저장
-        if (retryOrder && items && items.length > 0) {
-          const orderItems = items.map((item: any) => ({
-            order_id: retryOrder.id,
-            product_id: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-          }))
-
-          await supabase.from('order_items').insert(orderItems)
-        }
-
-        return NextResponse.json({ 
-          order: retryOrder, 
-          gift_token: giftToken 
-        })
-      }
-      
       throw new Error(orderError.message)
     }
 
     // 주문 아이템 저장
     if (order && items && items.length > 0) {
-      const orderItems = items.map((item: any) => ({
+      const orderItems = items.map((item: { productId: string; quantity: number; price: number }) => ({
         order_id: order.id,
         product_id: item.productId,
         quantity: item.quantity,
@@ -122,7 +89,7 @@ export async function POST(request: NextRequest) {
         .insert(orderItems)
 
       if (itemsError) {
-        console.error('주문 아이템 저장 실패:', itemsError)
+        // 주문 아이템 저장 실패 (부분 실패)
       }
     }
 
@@ -131,7 +98,6 @@ export async function POST(request: NextRequest) {
       gift_token: giftToken 
     })
   } catch (error: any) {
-    console.error('선물 주문 생성 실패:', error)
     return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
   }
 }
