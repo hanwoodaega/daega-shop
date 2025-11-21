@@ -286,8 +286,8 @@ export default function GiftReceivePage() {
                   <div 
                     className="absolute inset-0 flex items-center justify-center p-8"
                     style={{
-                      top: '40%',
-                      height: '50%',
+                      top: '30%',
+                      height: '60%',
                       alignItems: 'flex-start'
                     }}
                   >
@@ -295,11 +295,11 @@ export default function GiftReceivePage() {
                       <p 
                         className="text-center whitespace-pre-wrap break-words w-full" 
                         style={{ 
-                          fontSize: 'clamp(16px, 3vw, 24px)',
+                          fontSize: 'clamp(14px, 2.8vw, 22px)',
                           lineHeight: '1.6',
                           color: '#000000',
                           fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-                          fontWeight: 400,
+                          fontWeight: 500,
                           textShadow: 'none'
                         }}
                       >

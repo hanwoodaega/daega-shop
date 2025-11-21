@@ -402,47 +402,47 @@ function CheckoutPageContent() {
               lineHeight: number;
             }> = {
               'birthday-1': {
-                fontSize: 44, // 22 -> 44 (2배)
+                fontSize: 42, // 줄임
                 color: '#000000',
                 fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-                fontWeight: '400',
-                lineHeight: 1.5,
-              },
-              'thanks-1': {
-                fontSize: 40, // 20 -> 40 (2배)
-                color: '#000000',
-                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-                fontWeight: '400',
-                lineHeight: 1.7,
-              },
-              'thanks-2': {
-                fontSize: 38, // 19 -> 38 (2배)
-                color: '#000000',
-                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-                fontWeight: '400',
+                fontWeight: '500',
                 lineHeight: 1.6,
               },
-              'celebration-1': {
-                fontSize: 48, // 24 -> 48 (2배)
+              'thanks-1': {
+                fontSize: 38, // 줄임
                 color: '#000000',
                 fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-                fontWeight: '400',
-                lineHeight: 1.4,
+                fontWeight: '500',
+                lineHeight: 1.8,
+              },
+              'thanks-2': {
+                fontSize: 36, // 줄임
+                color: '#000000',
+                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
+                fontWeight: '500',
+                lineHeight: 1.7,
+              },
+              'celebration-1': {
+                fontSize: 46, // 줄임
+                color: '#000000',
+                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
+                fontWeight: '500',
+                lineHeight: 1.5,
               },
               'celebration-2': {
-                fontSize: 42, // 21 -> 42 (2배)
+                fontSize: 40, // 줄임
                 color: '#000000',
                 fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-                fontWeight: '400',
-                lineHeight: 1.5,
+                fontWeight: '500',
+                lineHeight: 1.6,
               },
             }
             return styles[cardDesign] || {
-              fontSize: 36, // 18 -> 36 (2배)
+              fontSize: 34, // 줄임
               color: '#000000',
               fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-              fontWeight: '400',
-              lineHeight: 1.6,
+              fontWeight: '500',
+              lineHeight: 1.7,
             }
           }
 
@@ -454,29 +454,70 @@ function CheckoutPageContent() {
           ctx.textAlign = 'center'
           ctx.textBaseline = 'top'
 
-          // 텍스트 영역: 위에서 40% ~ 90% (높이 50%)
+          // 텍스트 영역: 위에서 40% ~ 90% 
           const textAreaTop = size * 0.4
           const textAreaHeight = size * 0.5
-          const padding = size * 0.08 // 8% 패딩
+          const padding = size * 0.1 // 10% 패딩
           const maxWidth = size - (padding * 2)
 
-          // 텍스트 줄바꿈 처리
-          const words = giftData.message.split(/\s+/)
+          // 텍스트 줄바꿈 처리 (한글 지원 개선)
           const lines: string[] = []
           let currentLine = ''
-
-          words.forEach(word => {
-            const testLine = currentLine ? `${currentLine} ${word}` : word
+          
+          // 공백과 줄바꿈을 모두 고려하여 처리
+          const segments = giftData.message.split(/(\s+|\n+)/)
+          
+          for (const segment of segments) {
+            if (!segment.trim() && segment.includes('\n')) {
+              // 줄바꿈이 있으면 현재 라인을 저장하고 새 라인 시작
+              if (currentLine.trim()) {
+                lines.push(currentLine.trim())
+              }
+              currentLine = ''
+              continue
+            }
+            
+            if (!segment.trim()) {
+              // 공백만 있는 경우 현재 라인에 추가
+              if (currentLine) {
+                currentLine += segment
+              }
+              continue
+            }
+            
+            // 단어나 문자 단위로 테스트
+            const testLine = currentLine ? `${currentLine}${segment}` : segment
             const metrics = ctx.measureText(testLine)
-            if (metrics.width > maxWidth && currentLine) {
-              lines.push(currentLine)
-              currentLine = word
+            
+            if (metrics.width > maxWidth) {
+              if (currentLine) {
+                // 현재 라인 저장
+                lines.push(currentLine.trim())
+                currentLine = segment
+              } else {
+                // 한 단어가 너무 길면 문자 단위로 분할 (한글 대응)
+                let charLine = ''
+                for (const char of segment) {
+                  const testCharLine = charLine + char
+                  const charMetrics = ctx.measureText(testCharLine)
+                  if (charMetrics.width > maxWidth && charLine) {
+                    lines.push(charLine)
+                    charLine = char
+                  } else {
+                    charLine = testCharLine
+                  }
+                }
+                if (charLine) {
+                  currentLine = charLine
+                }
+              }
             } else {
               currentLine = testLine
             }
-          })
-          if (currentLine) {
-            lines.push(currentLine)
+          }
+          
+          if (currentLine.trim()) {
+            lines.push(currentLine.trim())
           }
 
           // 텍스트 그리기
@@ -1733,7 +1774,7 @@ function CheckoutPageContent() {
                                   fontSize: 'clamp(16px, 3vw, 22px)',
                                   color: '#000000',
                                   fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-                                  fontWeight: '400',
+                                  fontWeight: '500',
                                   textShadow: 'none',
                                   lineHeight: '1.5',
                                 },
@@ -1741,7 +1782,7 @@ function CheckoutPageContent() {
                                   fontSize: 'clamp(15px, 2.8vw, 20px)',
                                   color: '#000000',
                                   fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-                                  fontWeight: '400',
+                                  fontWeight: '500',
                                   textShadow: 'none',
                                   lineHeight: '1.7',
                                 },
@@ -1749,7 +1790,7 @@ function CheckoutPageContent() {
                                   fontSize: 'clamp(14px, 2.5vw, 19px)',
                                   color: '#000000',
                                   fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-                                  fontWeight: '400',
+                                  fontWeight: '500',
                                   textShadow: 'none',
                                   lineHeight: '1.6',
                                 },
@@ -1757,7 +1798,7 @@ function CheckoutPageContent() {
                                   fontSize: 'clamp(17px, 3.2vw, 24px)',
                                   color: '#000000',
                                   fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-                                  fontWeight: '400',
+                                  fontWeight: '500',
                                   textShadow: 'none',
                                   lineHeight: '1.4',
                                 },
@@ -1765,7 +1806,7 @@ function CheckoutPageContent() {
                                   fontSize: 'clamp(16px, 3vw, 21px)',
                                   color: '#000000',
                                   fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-                                  fontWeight: '400',
+                                  fontWeight: '500',
                                   textShadow: 'none',
                                   lineHeight: '1.5',
                                 },
@@ -1774,7 +1815,7 @@ function CheckoutPageContent() {
                                 fontSize: 'clamp(14px, 2.5vw, 18px)',
                                 color: '#000000',
                                 fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-                                fontWeight: '400',
+                                fontWeight: '500',
                                 textShadow: 'none',
                                 lineHeight: '1.6',
                               }
