@@ -10,19 +10,19 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   const { id } = await context.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   
-  // 1. 프로모션 중인 상품인지 확인
-  const { data: product, error: fetchError } = await supabaseAdmin
-    .from('products')
-    .select('promotion_type, promotion_products')
-    .eq('id', id)
-    .single()
+  // 1. 프로모션 중인 상품인지 확인 (promotion_products 테이블에서 확인)
+  const { data: promotionProducts, error: fetchError } = await supabaseAdmin
+    .from('promotion_products')
+    .select('id')
+    .eq('product_id', id)
+    .limit(1)
   
   if (fetchError) {
     return NextResponse.json({ error: fetchError.message }, { status: 400 })
   }
   
   // 2. 프로모션 중이면 삭제 불가
-  if (product.promotion_type || product.promotion_products) {
+  if (promotionProducts && promotionProducts.length > 0) {
     return NextResponse.json({ 
       error: '프로모션 중인 상품은 삭제할 수 없습니다. 먼저 프로모션을 해제해주세요.' 
     }, { status: 400 })

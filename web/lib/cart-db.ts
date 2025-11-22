@@ -4,6 +4,7 @@ import { useCartStore, CartItem } from './store'
 import toast from 'react-hot-toast'
 import { debugLog } from './debug'
 import { getDiscountPercent } from './promotion-utils'
+import { extractPromotion, getPromotionTypeString } from './product-queries'
 
 // DB에서 장바구니 불러오기
 export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
@@ -14,7 +15,6 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
         id,
         product_id,
         quantity,
-        promotion_type,
         promotion_group_id,
         discount_percent,
         products (
@@ -23,7 +23,19 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
           name,
           price,
           image_url,
-          brand
+          brand,
+          promotion_products (
+            promotion_id,
+            promotions (
+              id,
+              type,
+              buy_qty,
+              discount_percent,
+              is_active,
+              start_at,
+              end_at
+            )
+          )
         )
       `)
       .eq('user_id', userId)
@@ -39,12 +51,19 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
     const currentItems = useCartStore.getState().items
     const items = data?.map((item: any) => {
       const product = Array.isArray(item.products) ? item.products[0] : item.products
+      
+      // 프로모션 정보 추출
+      const promotion = extractPromotion(product)
+      
       // 할인율 결정 (프로모션 그룹 여부에 따라 우선순위 다름)
       const discountPercent = getDiscountPercent(
         item.discount_percent,
-        product?.discount_percent,
+        promotion?.discount_percent,
         !!item.promotion_group_id
       )
+      
+      // 프로모션 타입 결정 (BOGO인 경우 buy_qty로부터 생성)
+      const promotionType = getPromotionTypeString(promotion)
       
       // 기존 아이템의 selected 상태 보존 (없으면 true)
       const existingItem = currentItems.find(i => i.id === item.id)
@@ -60,7 +79,7 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
         imageUrl: product?.image_url || '',
         discount_percent: discountPercent,
         brand: product?.brand,
-        promotion_type: item.promotion_type as '1+1' | '2+1' | '3+1' | undefined,
+        promotion_type: promotionType,
         promotion_group_id: item.promotion_group_id,
         selected: selected
       }

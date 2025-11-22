@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { PRODUCT_SELECT_FIELDS, extractActivePromotion } from '@/lib/product-queries'
 
 export async function GET(
   request: Request,
@@ -7,29 +8,7 @@ export async function GET(
 ) {
   try {
     // slug 또는 UUID로 조회 (프로모션 정보 포함)
-    const selectFields = `
-      id,
-      slug,
-      brand,
-      name,
-      price,
-      image_url,
-      category,
-      average_rating,
-      review_count,
-      promotion_products (
-        promotion_id,
-        promotions (
-          id,
-          type,
-          buy_qty,
-          discount_percent,
-          is_active,
-          start_at,
-          end_at
-        )
-      )
-    `
+    const selectFields = PRODUCT_SELECT_FIELDS
     
     let query = supabase
       .from('products')
@@ -57,24 +36,7 @@ export async function GET(
     }
 
     // 활성화된 프로모션 찾기
-    let activePromotion = null
-    if (data.promotion_products && data.promotion_products.length > 0) {
-      const now = new Date()
-      for (const pp of data.promotion_products) {
-        const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
-        if (promo && promo.is_active) {
-          // 날짜 체크
-          const startAt = promo.start_at ? new Date(promo.start_at) : null
-          const endAt = promo.end_at ? new Date(promo.end_at) : null
-          const isInDateRange = (!startAt || now >= startAt) && (!endAt || now <= endAt)
-          
-          if (isInDateRange) {
-            activePromotion = promo
-            break
-          }
-        }
-      }
-    }
+    const activePromotion = extractActivePromotion(data)
 
     return NextResponse.json({
       ...data,

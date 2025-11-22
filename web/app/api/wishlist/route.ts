@@ -25,8 +25,7 @@ export async function GET() {
           name,
           price,
           image_url,
-          brand,
-          discount_percent,
+          brand
         )
       `)
       .eq('user_id', user.id)

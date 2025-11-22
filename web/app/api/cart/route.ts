@@ -20,7 +20,6 @@ export async function GET() {
         id,
         product_id,
         quantity,
-        promotion_type,
         promotion_group_id,
         discount_percent,
         created_at,

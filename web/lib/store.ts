@@ -14,7 +14,6 @@ export interface CartItem {
   brand?: string
   selected?: boolean
   promotion_type?: '1+1' | '2+1' | '3+1'
-  promotion_products?: string[]
   free_product_id?: string  // 선택한 증정품 ID
   promotion_group_id?: string  // 프로모션 그룹 ID (같은 그룹끼리 묶음)
   stock?: number  // 품절 여부 확인용

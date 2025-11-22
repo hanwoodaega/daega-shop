@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { extractActivePromotion } from '@/lib/product-queries'
 
 export const dynamic = 'force-dynamic'
 

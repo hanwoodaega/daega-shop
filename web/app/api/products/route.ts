@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { PRODUCT_SELECT_FIELDS, extractActivePromotion } from '@/lib/product-queries'
 
 // 동적 라우트로 설정 (searchParams 사용)
 export const dynamic = 'force-dynamic'
@@ -21,31 +22,7 @@ export async function GET(request: NextRequest) {
     const supabase = createSupabaseServerClient()
 
     // 상품 조회 쿼리 구성 (프로모션 정보 포함)
-    const selectFields = `
-      id,
-      slug,
-      brand,
-      name,
-      price,
-      image_url,
-      category,
-      average_rating,
-      review_count,
-      created_at,
-      updated_at,
-      promotion_products (
-        promotion_id,
-        promotions (
-          id,
-          type,
-          buy_qty,
-          discount_percent,
-          is_active,
-          start_at,
-          end_at
-        )
-      )
-    `
+    const selectFields = PRODUCT_SELECT_FIELDS
     
     let query = supabase
       .from('products')
@@ -121,24 +98,7 @@ export async function GET(request: NextRequest) {
     // 프로모션 정보 처리 및 상품 데이터 정리
     const enrichedProducts = products.map((product: any) => {
       // 활성화된 프로모션 찾기
-      let activePromotion = null
-      if (product.promotion_products && product.promotion_products.length > 0) {
-        const now = new Date()
-        for (const pp of product.promotion_products) {
-          const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
-          if (promo && promo.is_active) {
-            // 날짜 체크
-            const startAt = promo.start_at ? new Date(promo.start_at) : null
-            const endAt = promo.end_at ? new Date(promo.end_at) : null
-            const isInDateRange = (!startAt || now >= startAt) && (!endAt || now <= endAt)
-            
-            if (isInDateRange) {
-              activePromotion = promo
-              break
-            }
-          }
-        }
-      }
+      const activePromotion = extractActivePromotion(product)
 
       return {
         ...product,

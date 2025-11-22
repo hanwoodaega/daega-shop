@@ -1,16 +1,26 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getFlashSaleRemainingSeconds } from '@/lib/product-utils'
 
 interface FlashSaleCountdownProps {
   flashSaleSettings?: { end_time?: string | null } | null
   className?: string
 }
 
+// 남은 시간 계산 (초 단위)
+function getRemainingSeconds(endTime: string | null | undefined): number | null {
+  if (!endTime) {
+    return null
+  }
+  const end = new Date(endTime).getTime()
+  const now = new Date().getTime()
+  const remaining = Math.max(0, Math.floor((end - now) / 1000))
+  return remaining > 0 ? remaining : null
+}
+
 export default function FlashSaleCountdown({ flashSaleSettings, className = '' }: FlashSaleCountdownProps) {
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(
-    getFlashSaleRemainingSeconds(flashSaleSettings)
+    getRemainingSeconds(flashSaleSettings?.end_time)
   )
 
   useEffect(() => {
@@ -19,7 +29,7 @@ export default function FlashSaleCountdown({ flashSaleSettings, className = '' }
     }
 
     const interval = setInterval(() => {
-      const newRemaining = getFlashSaleRemainingSeconds(flashSaleSettings)
+      const newRemaining = getRemainingSeconds(flashSaleSettings?.end_time)
       setRemainingSeconds(newRemaining)
       
       if (newRemaining === null || newRemaining <= 0) {

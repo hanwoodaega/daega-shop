@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { extractActivePromotion } from '@/lib/product-queries'
 
 // GET: 컬렉션별 상품 목록 조회 (공개 API)
 // params.slug는 실제로는 type (best, sale, no9)
@@ -81,23 +82,7 @@ export async function GET(
       if (!product) return null
 
       // 활성화된 프로모션 찾기
-      let activePromotion = null
-      if (product.promotion_products && product.promotion_products.length > 0) {
-        const now = new Date()
-        for (const pp of product.promotion_products) {
-          const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
-          if (promo && promo.is_active) {
-            const startAt = promo.start_at ? new Date(promo.start_at) : null
-            const endAt = promo.end_at ? new Date(promo.end_at) : null
-            const isInDateRange = (!startAt || now >= startAt) && (!endAt || now <= endAt)
-            
-            if (isInDateRange) {
-              activePromotion = promo
-              break
-            }
-          }
-        }
-      }
+      const activePromotion = extractActivePromotion(product)
 
       return {
         ...product,
