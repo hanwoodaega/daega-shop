@@ -30,11 +30,7 @@ export async function GET() {
           name,
           price,
           image_url,
-          brand,
-          discount_percent,
-          stock,
-          promotion_type,
-          promotion_products
+          brand
         )
       `)
       .eq('user_id', user.id)
@@ -55,11 +51,8 @@ export async function GET() {
         price: product?.price || 0,
         quantity: item.quantity,
         imageUrl: product?.image_url || '',
-        discount_percent: item.discount_percent ?? product?.discount_percent,
         brand: product?.brand,
-        promotion_type: item.promotion_type,
         promotion_group_id: item.promotion_group_id,
-        stock: product?.stock,
         selected: true // 기본값
       }
     }) || []

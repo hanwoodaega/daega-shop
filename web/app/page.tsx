@@ -12,7 +12,6 @@ import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import { Product } from '@/lib/supabase'
 import CategoryGrid from '@/components/CategoryGrid'
 import FlashSaleSection from '@/components/FlashSaleSection'
-import RecentlyViewedSection from '@/components/RecentlyViewedSection'
 import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
 
 export default function Home() {
@@ -151,11 +150,9 @@ export default function Home() {
         {/* 타임딜/플래시 세일 섹션 */}
         <FlashSaleSection />
 
-        {/* 최근 본 상품 */}
-        <RecentlyViewedSection />
 
         {/* 전체 상품 */}
-        <section className="pt-6 pb-16 bg-gray-50">
+        <section className="pt-6 pb-16 bg-white">
           <div className="container mx-auto px-4">
             <div className="flex justify-between items-center mb-6">
               <div>

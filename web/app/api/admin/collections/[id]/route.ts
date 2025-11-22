@@ -1,0 +1,147 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { assertAdmin } from '@/lib/admin-auth'
+
+// GET: 컬렉션 상세 조회 (상품 목록 포함)
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    assertAdmin()
+  } catch (e: any) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    // 컬렉션 정보
+    const { data: collection, error: collectionError } = await supabaseAdmin
+      .from('collections')
+      .select('*')
+      .eq('id', params.id)
+      .single()
+
+    if (collectionError || !collection) {
+      return NextResponse.json({ error: '컬렉션을 찾을 수 없습니다.' }, { status: 404 })
+    }
+
+    // 연결된 상품 목록
+    const { data: products, error: productsError } = await supabaseAdmin
+      .from('collection_products')
+      .select(`
+        id,
+        product_id,
+        priority,
+        products (
+          id,
+          name,
+          price,
+          image_url,
+          brand,
+          category
+        )
+      `)
+      .eq('collection_id', params.id)
+      .order('priority', { ascending: true })
+
+    if (productsError) {
+      return NextResponse.json({ error: productsError.message }, { status: 400 })
+    }
+
+    return NextResponse.json({
+      collection,
+      products: products || [],
+    })
+  } catch (error: any) {
+    console.error('컬렉션 조회 실패:', error)
+    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  }
+}
+
+// PUT: 컬렉션 수정
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    assertAdmin()
+  } catch (e: any) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const body = await request.json()
+    const { type, title, start_at, end_at } = body
+
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
+    }
+
+    if (type !== undefined) {
+      if (!['timedeal', 'best', 'sale', 'no9'].includes(type)) {
+        return NextResponse.json({ error: 'type은 timedeal, best, sale, no9 중 하나여야 합니다.' }, { status: 400 })
+      }
+      // 같은 type이 다른 컬렉션에 있는지 확인
+      const { data: existing } = await supabaseAdmin
+        .from('collections')
+        .select('id')
+        .eq('type', type)
+        .neq('id', params.id)
+        .maybeSingle()
+      
+      if (existing) {
+        return NextResponse.json({ error: '이미 존재하는 타입입니다.' }, { status: 400 })
+      }
+      updateData.type = type
+    }
+    if (title !== undefined) updateData.title = title || null
+    if (start_at !== undefined) updateData.start_at = start_at || null
+    if (end_at !== undefined) updateData.end_at = end_at || null
+
+    const { data, error } = await supabaseAdmin
+      .from('collections')
+      .update(updateData)
+      .eq('id', params.id)
+      .select()
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    return NextResponse.json({ collection: data })
+  } catch (error: any) {
+    console.error('컬렉션 수정 실패:', error)
+    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  }
+}
+
+// DELETE: 컬렉션 삭제
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    assertAdmin()
+  } catch (e: any) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    // CASCADE로 collection_products도 자동 삭제됨
+    const { error } = await supabaseAdmin
+      .from('collections')
+      .delete()
+      .eq('id', params.id)
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('컬렉션 삭제 실패:', error)
+    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  }
+}
+

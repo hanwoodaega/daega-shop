@@ -17,7 +17,6 @@ import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart-db'
 import { formatPrice } from '@/lib/utils'
 import { calculateDiscountPrice } from '@/lib/product-utils'
-import { saveRecentlyViewed } from '@/lib/recently-viewed'
 
 function ProductDetailPageContent() {
   const params = useParams()
@@ -56,26 +55,53 @@ function ProductDetailPageContent() {
 
   const fetchProduct = useCallback(async () => {
     try {
-      // slug 또는 UUID로 조회 (먼저 slug로 시도, 없으면 UUID로)
-      let query = supabase
-        .from('products')
-        .select('*')
-        .eq('slug', productId)
-        .single()
-
-      let { data, error } = await query
-
-      // slug로 찾지 못했으면 UUID로 시도
-      if (error || !data) {
+      // slug 또는 UUID로 조회
+      const selectFields = 'id,slug,brand,name,price,image_url'
+      
+      // UUID 형식인지 확인하는 함수
+      const isUUID = (str: string): boolean => {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        return uuidRegex.test(str)
+      }
+      
+      let query
+      let { data, error } = { data: null, error: null }
+      
+      // UUID인 경우 바로 id로 조회, 아니면 slug로 먼저 시도
+      if (isUUID(productId)) {
         query = supabase
           .from('products')
-          .select('*')
+          .select(selectFields)
           .eq('id', productId)
           .single()
         
         const result = await query
         data = result.data
         error = result.error
+      } else {
+        // slug로 먼저 시도
+        query = supabase
+          .from('products')
+          .select(selectFields)
+          .eq('slug', productId)
+          .single()
+
+        const result = await query
+        data = result.data
+        error = result.error
+
+        // slug로 찾지 못했으면 UUID로 시도
+        if (error || !data) {
+          query = supabase
+            .from('products')
+            .select(selectFields)
+            .eq('id', productId)
+            .single()
+          
+          const result = await query
+          data = result.data
+          error = result.error
+        }
       }
       
       if (error) throw error
@@ -105,12 +131,6 @@ function ProductDetailPageContent() {
     }
   }, [product?.slug, product?.name, product?.id])
 
-  // 최근 본 상품 저장
-  useEffect(() => {
-    if (product?.id) {
-      saveRecentlyViewed(product.id)
-    }
-  }, [product?.id])
 
   // product의 average_rating을 설정
   useEffect(() => {
@@ -155,14 +175,14 @@ function ProductDetailPageContent() {
   // URL 쿼리 파라미터로 프로모션 모달 자동 열기
   useEffect(() => {
     const openPromotion = searchParams?.get('openPromotion')
-    if (openPromotion === 'true' && product?.promotion_type && product?.id) {
+    if (openPromotion === 'true' && product?.promotion?.type === 'bogo' && product?.id) {
       openPromotionModal(product.id)
       // URL에서 쿼리 파라미터 제거 (깔끔하게)
       const url = new URL(window.location.href)
       url.searchParams.delete('openPromotion')
       window.history.replaceState({}, '', url.toString())
     }
-  }, [searchParams, product?.promotion_type, product?.id, openPromotionModal])
+  }, [searchParams, product?.promotion?.type, product?.id, openPromotionModal])
 
   useEffect(() => {
     return () => {
@@ -174,24 +194,13 @@ function ProductDetailPageContent() {
   const handleAddToCart = useCallback(() => {
     if (!product) return
     
-    if (product.stock <= 0) {
-      toast.error('품절된 상품입니다', {
-        icon: '😢',
-      })
-      return
-    }
-
     const cartItem = {
       productId: product.id,
       name: product.name,
       price: product.price,
       quantity,
       imageUrl: product.image_url,
-      discount_percent: product.discount_percent ?? undefined,
       brand: product.brand ?? undefined,
-      promotion_type: product.promotion_type ?? undefined,
-      promotion_products: product.promotion_products ?? undefined,
-      stock: product.stock, // 품절 여부 확인용
     }
 
     // DB 연동 장바구니 추가
@@ -353,15 +362,15 @@ function ProductDetailPageContent() {
             </div>
             
             <div className="py-2 mb-6">
-              {product.discount_percent && product.discount_percent > 0 ? (
+              {product.promotion?.discount_percent && product.promotion.discount_percent > 0 ? (
                 <>
                   <div className="text-sm text-gray-500 line-through mb-2">
                     {formatPrice(product.price)}원
                   </div>
                   <div className="flex items-baseline gap-2 mb-2">
-                    <span className="text-2xl font-bold text-red-600">{product.discount_percent}%</span>
+                    <span className="text-2xl font-bold text-red-600">{product.promotion.discount_percent}%</span>
                     <span className="text-2xl font-extrabold text-gray-900">
-                      {formatPrice(calculateDiscountPrice(product.price, product.discount_percent))}
+                      {formatPrice(calculateDiscountPrice(product.price, product.promotion.discount_percent))}
                     </span>
                     <span className="text-base text-gray-600">원</span>
                   </div>
@@ -383,15 +392,15 @@ function ProductDetailPageContent() {
 
       {/* 하단 고정 액션 바 */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
-        {/* 1+1 골라담기 버튼 (프로모션 상품일 때만 표시) */}
-        {product.promotion_type && (
+        {/* BOGO 골라담기 버튼 (프로모션 상품일 때만 표시) */}
+        {product.promotion?.type === 'bogo' && product.promotion?.buy_qty && (
           <div className="border-b border-gray-200">
             <button
               onClick={() => openPromotionModal(productId)}
               className="w-full py-3 bg-pink-100 text-pink-700 text-base font-bold hover:bg-pink-200 transition flex items-center justify-center gap-2"
             >
               <span>🎁</span>
-              <span>{product.promotion_type} 골라담기</span>
+              <span>{product.promotion.buy_qty}+1 골라담기</span>
             </button>
           </div>
         )}
@@ -416,16 +425,14 @@ function ProductDetailPageContent() {
           </button>
           <button
             onClick={() => { setPendingAction('buy'); setShowQty(true) }}
-            disabled={product.stock <= 0}
-            className="bg-gray-900 text-white py-3 text-base font-semibold hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="bg-gray-900 text-white py-3 text-base font-semibold hover:bg-gray-800"
             style={{ width: '35%' }}
           >
             바로구매
           </button>
           <button
             onClick={() => { setPendingAction('cart'); setShowQty(true) }}
-            disabled={product.stock <= 0}
-            className="bg-blue-900 text-white py-3 text-base font-semibold hover:bg-blue-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="bg-blue-900 text-white py-3 text-base font-semibold hover:bg-blue-800"
             style={{ width: '50%' }}
           >
             장바구니
@@ -462,7 +469,7 @@ function ProductDetailPageContent() {
                 
                 {/* 가격 (오른쪽 아래) */}
                 <span className="text-lg font-bold text-primary-900">
-                  {formatPrice(calculateDiscountPrice(product.price, product.discount_percent) * quantity)}원
+                  {formatPrice(calculateDiscountPrice(product.price, product.promotion?.discount_percent || 0) * quantity)}원
                 </span>
               </div>
             </div>
@@ -490,7 +497,7 @@ function ProductDetailPageContent() {
                       price: product.price,
                       quantity,
                       imageUrl: product.image_url,
-                      discount_percent: product.discount_percent ?? undefined,
+                      discount_percent: product.promotion?.discount_percent ?? undefined,
                       brand: product.brand ?? undefined,
                     }])
                     

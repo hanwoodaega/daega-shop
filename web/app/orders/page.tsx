@@ -29,6 +29,9 @@ interface OrderWithItems extends Order {
   gift_token?: string | null
   gift_card_design?: string | null
   gift_message?: string | null
+  tracking_number?: string | null
+  tracking_company?: string | null
+  refund_status?: 'pending' | 'processing' | 'completed' | null
 }
 
 function OrdersPageContent() {
@@ -213,11 +216,17 @@ function OrdersPageContent() {
   }
 
   const handleTrackDelivery = (order: OrderWithItems) => {
-    // 배송 조회 기능 (추후 구현)
-    toast(`배송 조회 기능은 준비 중입니다\n\n배송지: ${order.shipping_address}\n수령인: ${order.shipping_name}`, {
-      icon: '📦',
-      duration: 4000,
-    })
+    if (!order.tracking_number) {
+      toast.error('송장번호가 없습니다.')
+      return
+    }
+
+    // 롯데택배 배송조회 링크
+    const trackingNumber = order.tracking_number
+    const trackingUrl = `https://www.lotteglogis.com/home/reservation/tracking/index?InvNo=${trackingNumber}`
+
+    // 새 창에서 배송조회 링크 열기
+    window.open(trackingUrl, '_blank')
   }
 
   const handleConfirmPurchase = async (orderId: string) => {
@@ -504,39 +513,39 @@ function OrdersPageContent() {
                                   lineHeight: number;
                                 }> = {
                                   'birthday-1': {
-                                    fontSize: 42,
+                                    fontSize: 46, // 크게
                                     color: '#000000',
                                     fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
                                     fontWeight: '500',
                                     lineHeight: 1.6,
                                   },
                                   'thanks-1': {
-                                    fontSize: 38,
+                                    fontSize: 46, // 카톡 이미지용으로 크게
                                     color: '#000000',
                                     fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
                                     fontWeight: '500',
-                                    lineHeight: 1.8,
+                                    lineHeight: 1.7, // 위아래 간격 조금 좁힘
                                   },
                                   'thanks-2': {
-                                    fontSize: 36,
+                                    fontSize: 42, // 크게
                                     color: '#000000',
                                     fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
                                     fontWeight: '500',
                                     lineHeight: 1.7,
                                   },
                                   'celebration-1': {
-                                    fontSize: 46,
+                                    fontSize: 50, // 조금 더 크게
                                     color: '#000000',
                                     fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
                                     fontWeight: '500',
                                     lineHeight: 1.5,
                                   },
                                   'celebration-2': {
-                                    fontSize: 40,
+                                    fontSize: 48, // 더 크게
                                     color: '#000000',
                                     fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
                                     fontWeight: '500',
-                                    lineHeight: 1.6,
+                                    lineHeight: 1.4, // 위아래 간격 줄임
                                   },
                                 }
                                 return styles[design || ''] || {
@@ -550,73 +559,102 @@ function OrdersPageContent() {
 
                               const messageStyle = getMessageStyle(cardDesign)
                               
+                              // celebration-2는 왼쪽 정렬
+                              const isCelebration2 = cardDesign === 'celebration-2'
+                              const textAreaTop = isCelebration2 ? size * 0.39 : size * 0.37 // celebration-2는 아주 조금 더 아래로
+                              
                               ctx.fillStyle = messageStyle.color
                               ctx.font = `${messageStyle.fontWeight} ${messageStyle.fontSize}px ${messageStyle.fontFamily}`
-                              ctx.textAlign = 'center'
+                              ctx.textAlign = 'left'
                               ctx.textBaseline = 'top'
-
-                              const textAreaTop = size * 0.4
                               const textAreaHeight = size * 0.5
-                              const padding = size * 0.1
-                              const maxWidth = size - (padding * 2)
+                              // thanks-1, thanks-2, celebration-1, celebration-2, birthday-1 카드는 좌우 패딩을 더 넓게
+                              let leftPadding: number
+                              let rightPadding: number
+                              if (cardDesign === 'thanks-2') {
+                                leftPadding = size * 0.18
+                                rightPadding = size * 0.15 // 오른쪽 패딩 조금 줄임
+                              } else if (cardDesign === 'thanks-1' || cardDesign === 'celebration-1') {
+                                leftPadding = size * 0.15
+                                rightPadding = size * 0.15
+                              } else if (cardDesign === 'birthday-1') {
+                                leftPadding = size * 0.12 // 좌우 패딩 넓게
+                                rightPadding = size * 0.12
+                              } else if (isCelebration2) {
+                                leftPadding = size * 0.14 // 좌우 패딩 아주 조금 줄임
+                                rightPadding = size * 0.14
+                              } else {
+                                leftPadding = size * 0.1
+                                rightPadding = size * 0.1
+                              }
+                              const maxWidth = size - leftPadding - rightPadding
 
                               const lines: string[] = []
-                              let currentLine = ''
                               
-                              const segments = message.split(/(\s+|\n+)/)
+                              // 먼저 줄바꿈으로 분할하여 각 줄을 개별 처리
+                              const messageLines = message.split('\n')
                               
-                              for (const segment of segments) {
-                                if (!segment.trim() && segment.includes('\n')) {
-                                  if (currentLine.trim()) {
-                                    lines.push(currentLine.trim())
-                                  }
-                                  currentLine = ''
+                              for (const messageLine of messageLines) {
+                                // 빈 줄인 경우 빈 문자열 추가 (한 줄 띄기)
+                                if (!messageLine.trim()) {
+                                  lines.push('')
                                   continue
                                 }
                                 
-                                if (!segment.trim()) {
-                                  if (currentLine) {
-                                    currentLine += segment
+                                // 각 줄을 단어 단위로 분할하여 처리
+                                let currentLine = ''
+                                const words = messageLine.split(/(\s+)/)
+                                
+                                for (const word of words) {
+                                  if (!word.trim()) {
+                                    // 공백만 있는 경우 현재 라인에 추가
+                                    if (currentLine) {
+                                      currentLine += word
+                                    }
+                                    continue
                                   }
-                                  continue
-                                }
-                                
-                                const testLine = currentLine ? `${currentLine}${segment}` : segment
-                                const metrics = ctx.measureText(testLine)
-                                
-                                if (metrics.width > maxWidth) {
-                                  if (currentLine) {
-                                    lines.push(currentLine.trim())
-                                    currentLine = segment
-                                  } else {
-                                    let charLine = ''
-                                    for (const char of segment) {
-                                      const testCharLine = charLine + char
-                                      const charMetrics = ctx.measureText(testCharLine)
-                                      if (charMetrics.width > maxWidth && charLine) {
-                                        lines.push(charLine)
-                                        charLine = char
-                                      } else {
-                                        charLine = testCharLine
+                                  
+                                  // 단어나 문자 단위로 테스트
+                                  const testLine = currentLine ? `${currentLine}${word}` : word
+                                  const metrics = ctx.measureText(testLine)
+                                  
+                                  if (metrics.width > maxWidth) {
+                                    if (currentLine) {
+                                      // 현재 라인 저장
+                                      lines.push(currentLine.trim())
+                                      currentLine = word
+                                    } else {
+                                      // 한 단어가 너무 길면 문자 단위로 분할 (한글 대응)
+                                      let charLine = ''
+                                      for (const char of word) {
+                                        const testCharLine = charLine + char
+                                        const charMetrics = ctx.measureText(testCharLine)
+                                        if (charMetrics.width > maxWidth && charLine) {
+                                          lines.push(charLine)
+                                          charLine = char
+                                        } else {
+                                          charLine = testCharLine
+                                        }
+                                      }
+                                      if (charLine) {
+                                        currentLine = charLine
                                       }
                                     }
-                                    if (charLine) {
-                                      currentLine = charLine
-                                    }
+                                  } else {
+                                    currentLine = testLine
                                   }
-                                } else {
-                                  currentLine = testLine
                                 }
-                              }
-                              
-                              if (currentLine.trim()) {
-                                lines.push(currentLine.trim())
+                                
+                                // 마지막 라인 추가
+                                if (currentLine.trim()) {
+                                  lines.push(currentLine.trim())
+                                }
                               }
 
                               const lineHeight = messageStyle.fontSize * messageStyle.lineHeight
                               lines.forEach((line, index) => {
                                 const y = textAreaTop + (index * lineHeight)
-                                ctx.fillText(line, size / 2, y)
+                                ctx.fillText(line, leftPadding, y)
                               })
                             }
 
@@ -703,27 +741,35 @@ function OrdersPageContent() {
                         // 메시지가 있으면 합성 이미지 생성, 없으면 원본 이미지 사용
                         let cardImageUrl: string
                         if (giftMessage && cardDesign) {
-                          const dataUrl = await createGiftCardImage(cardDesign, giftMessage)
-                          
-                          // 서버에 업로드하여 공개 URL 생성
                           try {
-                            const uploadResponse = await fetch('/api/gift/upload-card-image', {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                              },
-                              body: JSON.stringify({ imageData: dataUrl }),
-                            })
+                            const dataUrl = await createGiftCardImage(cardDesign, giftMessage)
                             
-                            if (uploadResponse.ok) {
-                              const uploadData = await uploadResponse.json()
-                              cardImageUrl = uploadData.url
-                            } else {
+                            // 서버에 업로드하여 공개 URL 생성
+                            try {
+                              const uploadResponse = await fetch('/api/gift/upload-card-image', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ imageData: dataUrl }),
+                              })
+                              
+                              if (uploadResponse.ok) {
+                                const uploadData = await uploadResponse.json()
+                                cardImageUrl = uploadData.url
+                              } else {
+                                cardImageUrl = cardDesign 
+                                  ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
+                                  : giftOrder?.order_items?.[0]?.product?.image_url || `${window.location.origin}/images/gift-default.jpg`
+                              }
+                            } catch (uploadError) {
                               cardImageUrl = cardDesign 
                                 ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
                                 : giftOrder?.order_items?.[0]?.product?.image_url || `${window.location.origin}/images/gift-default.jpg`
                             }
-                          } catch (uploadError) {
+                          } catch (imageError) {
+                            // 이미지 생성 실패 시 원본 이미지 사용
+                            console.error('이미지 생성 실패:', imageError)
                             cardImageUrl = cardDesign 
                               ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
                               : giftOrder?.order_items?.[0]?.product?.image_url || `${window.location.origin}/images/gift-default.jpg`
@@ -797,12 +843,11 @@ function OrdersPageContent() {
             ))}
           </div>
         ) : orders.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">📦</div>
+          <div className="text-center py-32 md:py-40">
             <p className="text-xl text-gray-600 mb-6">주문 내역이 없습니다.</p>
             <button
               onClick={() => router.push('/products')}
-              className="bg-primary-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-900 transition"
+              className="bg-white text-blue-900 border border-blue-900 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
             >
               쇼핑 시작하기
             </button>
@@ -900,23 +945,36 @@ function OrdersPageContent() {
                           <span className="text-gray-900 font-medium">{order.delivery_time}</span>
                         </div>
                       )}
-                      <div className="text-sm">
-                        <span className="text-gray-600">배송지: </span>
-                        <span className="text-gray-900">{order.shipping_address}</span>
-                      </div>
-                      <div className="text-sm">
-                        <span className="text-gray-600">수령인: </span>
-                        <span className="text-gray-900">{order.shipping_name}</span>
-                      </div>
-                      <div className="text-sm">
-                        <span className="text-gray-600">연락처: </span>
-                        <span className="text-gray-900">{formatPhoneNumber(order.shipping_phone)}</span>
-                      </div>
-                      {order.delivery_note && (
-                        <div className="text-sm">
-                          <span className="text-gray-600">요청사항: </span>
-                          <span className="text-gray-900">{order.delivery_note}</span>
+                      {/* 선물 주문인 경우 배송 정보 대신 상태 메시지 표시 */}
+                      {order.gift_token ? (
+                        <div className="text-sm pt-2">
+                          <span className="text-gray-900 font-medium">
+                            {order.status === 'DELIVERED'
+                              ? '선물이 전달되었습니다.' 
+                              : '선물 받은 분에게 선물을 전달 중입니다.'}
+                          </span>
                         </div>
+                      ) : (
+                        <>
+                          <div className="text-sm">
+                            <span className="text-gray-600">배송지: </span>
+                            <span className="text-gray-900">{order.shipping_address}</span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-gray-600">수령인: </span>
+                            <span className="text-gray-900">{order.shipping_name}</span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-gray-600">연락처: </span>
+                            <span className="text-gray-900">{formatPhoneNumber(order.shipping_phone)}</span>
+                          </div>
+                          {order.delivery_note && (
+                            <div className="text-sm">
+                              <span className="text-gray-600">요청사항: </span>
+                              <span className="text-gray-900">{order.delivery_note}</span>
+                            </div>
+                          )}
+                        </>
                       )}
                       
                       {/* 환불 정보 */}
@@ -952,18 +1010,21 @@ function OrdersPageContent() {
 
                     {/* 버튼 영역 */}
                     <div className="flex gap-2">
-                      {/* 배송조회 버튼 - 배송 중이거나 배송 완료일 때만 표시 */}
-                      {(order.status === 'shipped' || order.status === 'delivered') && (
-                        <button
-                          onClick={() => handleTrackDelivery(order)}
-                          className="flex-1 bg-white border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-                        >
-                          배송조회
-                        </button>
+                      {/* 배송조회 버튼 - 송장번호가 있고 배송 중이거나 배송 완료일 때만 표시 */}
+                      {order.tracking_number && (
+                        (order.status === 'IN_TRANSIT' ||
+                         order.status === 'DELIVERED') && (
+                          <button
+                            onClick={() => handleTrackDelivery(order)}
+                            className="flex-1 bg-white border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+                          >
+                            배송조회
+                          </button>
+                        )
                       )}
                       
                       {/* 구매확정 버튼 - 배송완료 상태이고 아직 구매확정하지 않은 경우만 표시 */}
-                      {order.status === 'delivered' && !order.is_confirmed && (
+                      {order.status === 'DELIVERED' && !order.is_confirmed && (
                         <button
                           onClick={() => handleConfirmPurchase(order.id)}
                           disabled={confirmingOrderId === order.id}
@@ -974,7 +1035,7 @@ function OrdersPageContent() {
                       )}
                       
                       {/* 구매확정 완료 후: 리뷰 작성 유도 버튼 */}
-                      {order.status === 'delivered' && order.is_confirmed && (
+                      {order.status === 'DELIVERED' && order.is_confirmed && (
                         <button
                           onClick={() => router.push('/profile/reviews')}
                           className="flex-1 bg-white border border-blue-300 text-blue-700 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition"
@@ -983,8 +1044,8 @@ function OrdersPageContent() {
                         </button>
                       )}
                       
-                      {/* 주문취소 버튼 - 결제 완료 상태일 때만 표시 */}
-                      {order.status === 'paid' && (
+                      {/* 주문취소 버튼 - 주문완료 상태일 때만 표시 */}
+                      {order.status === 'ORDER_RECEIVED' && (
                         <button
                           onClick={() => handleCancelOrder(order.id)}
                           disabled={cancelingOrderId === order.id}

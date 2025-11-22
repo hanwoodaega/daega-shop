@@ -14,8 +14,8 @@ export const ADMIN_CATEGORIES = CATEGORIES.filter(cat => cat !== '전체') as re
 // 메인 메뉴 (첫 번째 줄)
 export const MAIN_MENU_LINKS = [
   { name: '홈', href: '/' },
-  { name: '베스트', href: '/products?filter=best' },
-  { name: '특가', href: '/products?filter=sale' },
+  { name: '베스트', href: '/collections/best' },
+  { name: '특가', href: '/collections/sale' },
   { name: '한우대가 NO.9', href: '/hanwoo-daega-no9' },
   { name: '리뷰이벤트', href: '/review-event' },
 ]
@@ -28,7 +28,14 @@ export const CATEGORY_LINKS = CATEGORIES.map(category => ({
 
 // ==================== Order Status ====================
 
-export const VALID_ORDER_STATUSES = ['pending', 'paid', 'shipped', 'delivered', 'cancelled'] as const
+export const VALID_ORDER_STATUSES = [
+  'pending', 
+  'ORDER_RECEIVED',      // 주문완료
+  'PREPARING',           // 상품준비중
+  'IN_TRANSIT',          // 배송중
+  'DELIVERED',           // 배송완료
+  'cancelled'
+] as const
 export const VALID_DELIVERY_TYPES = ['pickup', 'quick', 'regular'] as const
 
 // ==================== Delivery ====================

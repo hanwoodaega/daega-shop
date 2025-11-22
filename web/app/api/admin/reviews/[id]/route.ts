@@ -14,6 +14,7 @@ export async function PATCH(
     }
     const reviewId = params.id
     const supabase = createSupabaseServerClient()
+    const supabaseAdmin = createSupabaseAdminClient() // RLS 우회를 위한 관리자 클라이언트
     const body = await request.json()
     const { status, reply, deleteReply, points } = body as { status?: 'approved' | 'rejected', reply?: string, deleteReply?: boolean, points?: number }
     if (!status && typeof reply === 'undefined' && !deleteReply) {
@@ -21,7 +22,7 @@ export async function PATCH(
     }
 
     // 리뷰 조회
-    const { data: review, error: reviewError } = await supabase
+    const { data: review, error: reviewError } = await supabaseAdmin
       .from('reviews')
       .select('id, user_id, images, product_id')
       .eq('id', reviewId)
@@ -34,7 +35,7 @@ export async function PATCH(
     // 상품명 조회 (별도 쿼리)
     let productName = '상품'
     if (review.product_id) {
-      const { data: product } = await supabase
+      const { data: product } = await supabaseAdmin
         .from('products')
         .select('name')
         .eq('id', review.product_id)
@@ -45,7 +46,7 @@ export async function PATCH(
       }
     }
 
-    // 상태 업데이트
+    // 상태 업데이트 (관리자 클라이언트 사용)
     const updatePayload: any = {
       updated_at: new Date().toISOString(),
     }
@@ -61,10 +62,12 @@ export async function PATCH(
       updatePayload.admin_replied_at = null
     }
 
-    const { error: updateError } = await supabase
+    const { data: updatedReview, error: updateError } = await supabaseAdmin
       .from('reviews')
       .update(updatePayload)
       .eq('id', reviewId)
+      .select()
+      .single()
     if (updateError) {
       console.error('리뷰 상태 업데이트 실패:', updateError)
       console.error('업데이트 페이로드:', JSON.stringify(updatePayload, null, 2))
@@ -79,6 +82,19 @@ export async function PATCH(
         details: updateError.details,
         hint: updateError.hint,
         code: updateError.code
+      }, { status: 500 })
+    }
+
+    // 업데이트 확인
+    if (status && updatedReview && updatedReview.status !== status) {
+      console.error('상태 업데이트 확인 실패:', {
+        expected: status,
+        actual: updatedReview.status,
+        reviewId
+      })
+      return NextResponse.json({ 
+        error: '상태 업데이트가 제대로 반영되지 않았습니다.',
+        details: `예상: ${status}, 실제: ${updatedReview.status}`
       }, { status: 500 })
     }
 
@@ -145,6 +161,47 @@ export async function PATCH(
       }
     }
 
+    // products 테이블의 average_rating과 review_count 업데이트
+    // status가 변경되었을 때만 통계 업데이트 (approved만 반영)
+    if (status && review.product_id) {
+      try {
+        const { data: approvedReviews } = await supabaseAdmin
+          .from('reviews')
+          .select('rating')
+          .eq('product_id', review.product_id)
+          .eq('status', 'approved')
+        
+        if (approvedReviews && approvedReviews.length > 0) {
+          const totalRating = approvedReviews.reduce((sum, r) => sum + (r.rating || 0), 0)
+          const averageRating = totalRating / approvedReviews.length
+          const reviewCount = approvedReviews.length
+
+          const { error: updateError } = await supabaseAdmin
+            .from('products')
+            .update({
+              average_rating: Math.round(averageRating * 10) / 10,
+              review_count: reviewCount
+            })
+            .eq('id', review.product_id)
+          
+          if (updateError) {
+            console.error('상품 통계 업데이트 실패:', updateError)
+          }
+        } else {
+          // approved 리뷰가 없으면 0으로 설정
+          await supabaseAdmin
+            .from('products')
+            .update({
+              average_rating: 0,
+              review_count: 0
+            })
+            .eq('id', review.product_id)
+        }
+      } catch (updateError) {
+        console.error('상품 통계 업데이트 실패:', updateError)
+      }
+    }
+
     return NextResponse.json({ ok: true })
   } catch (error: any) {
     console.error('관리자 리뷰 상태변경 실패:', error)
@@ -165,15 +222,64 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const reviewId = params.id
-    const supabase = createSupabaseServerClient()
+    const supabaseAdmin = createSupabaseAdminClient() // RLS 우회를 위한 관리자 클라이언트
 
-    const { error } = await supabase
+    // 삭제 전 product_id 가져오기
+    const { data: reviewToDelete } = await supabaseAdmin
+      .from('reviews')
+      .select('product_id')
+      .eq('id', reviewId)
+      .single()
+
+    const productId = reviewToDelete?.product_id
+
+    const { error } = await supabaseAdmin
       .from('reviews')
       .delete()
       .eq('id', reviewId)
     if (error) {
       return NextResponse.json({ error: '리뷰 삭제 실패' }, { status: 500 })
     }
+
+    // products 테이블의 average_rating과 review_count 업데이트
+    if (productId) {
+      try {
+        const { data: approvedReviews } = await supabaseAdmin
+          .from('reviews')
+          .select('rating')
+          .eq('product_id', productId)
+          .eq('status', 'approved')
+        
+        if (approvedReviews && approvedReviews.length > 0) {
+          const totalRating = approvedReviews.reduce((sum, r) => sum + (r.rating || 0), 0)
+          const averageRating = totalRating / approvedReviews.length
+          const reviewCount = approvedReviews.length
+
+          const { error: updateError } = await supabaseAdmin
+            .from('products')
+            .update({
+              average_rating: Math.round(averageRating * 10) / 10,
+              review_count: reviewCount
+            })
+            .eq('id', productId)
+          
+          if (updateError) {
+            console.error('상품 통계 업데이트 실패:', updateError)
+          }
+        } else {
+          await supabaseAdmin
+            .from('products')
+            .update({
+              average_rating: 0,
+              review_count: 0
+            })
+            .eq('id', productId)
+        }
+      } catch (updateError) {
+        console.error('상품 통계 업데이트 실패:', updateError)
+      }
+    }
+
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('관리자 리뷰 삭제 실패:', error)

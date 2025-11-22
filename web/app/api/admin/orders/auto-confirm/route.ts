@@ -29,11 +29,11 @@ export async function GET(request: NextRequest) {
     const sevenDaysAgoISO = sevenDaysAgo.toISOString()
 
     // 배송완료된 주문 중 7일 이상 지난 주문 조회
-    // status='delivered'이고 updated_at이 7일 이상 지난 주문
+    // status='delivered' 또는 'DELIVERED'이고 updated_at이 7일 이상 지난 주문
     const { data: oldDeliveredOrders, error: ordersError } = await supabase
       .from('orders')
       .select('*')
-      .eq('status', 'delivered')
+      .in('status', ['delivered', 'DELIVERED'])
       .lt('updated_at', sevenDaysAgoISO) // 배송완료 후 7일 이상 지난 주문
       .order('updated_at', { ascending: true })
 

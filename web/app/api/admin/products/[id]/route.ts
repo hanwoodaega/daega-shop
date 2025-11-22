@@ -52,7 +52,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   
   const body = await request.json().catch(() => ({}))
-  const allowed = ['brand','name','slug','price','image_url','category','stock','discount_percent','promotion_type','promotion_products','is_best','is_sale','flash_sale_start_time','flash_sale_end_time','flash_sale_price','flash_sale_stock','gift_target','gift_display_order','gift_budget_targets','gift_budget_order','gift_featured','gift_featured_order'] as const
+  const allowed = ['brand','name','slug','price','image_url','category'] as const
   const updates: Record<string, any> = {}
   
   for (const key of allowed) {
@@ -61,78 +61,18 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
   }
   
-  // 할인율 검증
-  if ('discount_percent' in updates) {
-    const v = Number(updates.discount_percent)
-    updates.discount_percent = isNaN(v) ? null : Math.max(0, Math.min(100, v))
+  // 선물 관련 필드 처리
+  // 주의: products 테이블에는 gift 관련 컬럼이 없으므로 gift_categories와 gift_category_products 테이블을 사용해야 함
+  // 임시로 이 필드들은 무시하고, gift_category_products 테이블을 사용하도록 선물관 관리 페이지를 마이그레이션해야 함
+  
+  // gift_categories와 gift_category_products 테이블을 사용하는 새로운 구조로 마이그레이션 필요
+  // 현재는 이 필드들을 무시하여 에러 방지
+  if ('gift_target' in body || 'gift_display_order' in body || 'gift_budget_targets' in body || 
+      'gift_budget_order' in body || 'gift_featured' in body || 'gift_featured_order' in body) {
+    console.warn('⚠️ 선물 관련 필드는 gift_categories 시스템으로 마이그레이션되어야 합니다. 현재는 무시됩니다.')
+    // 이 필드들은 products 테이블에 없으므로 업데이트하지 않음
   }
   
-  // 프로모션 상품 배열 처리
-  if ('promotion_products' in updates) {
-    if (Array.isArray(updates.promotion_products)) {
-      updates.promotion_products = updates.promotion_products.length > 0 ? updates.promotion_products : null
-    } else {
-      updates.promotion_products = null
-    }
-  }
-  
-  // 선물 대상 배열 처리
-  if ('gift_target' in updates) {
-    if (Array.isArray(updates.gift_target)) {
-      updates.gift_target = updates.gift_target.length > 0 ? updates.gift_target : null
-    } else {
-      updates.gift_target = null
-    }
-  }
-  
-  // 예산 카테고리 배열 처리
-  if ('gift_budget_targets' in updates) {
-    if (Array.isArray(updates.gift_budget_targets)) {
-      updates.gift_budget_targets = updates.gift_budget_targets.length > 0 ? updates.gift_budget_targets : null
-    } else {
-      updates.gift_budget_targets = null
-    }
-  }
-  
-  // 예산별 순서 처리
-  if ('gift_budget_order' in updates) {
-    const v = Number(updates.gift_budget_order)
-    updates.gift_budget_order = isNaN(v) || v < 1 ? null : v
-  }
-  
-  // 실시간 인기 선물세트 여부 처리
-  if ('gift_featured' in updates) {
-    updates.gift_featured = updates.gift_featured === true || updates.gift_featured === 'true'
-  }
-  
-  // 실시간 인기 선물세트 순서 처리
-  if ('gift_featured_order' in updates) {
-    const v = Number(updates.gift_featured_order)
-    updates.gift_featured_order = isNaN(v) || v < 1 ? null : v
-  }
-  
-  // 프로모션 타입 없으면 교차 상품도 null
-  if ('promotion_type' in updates && !updates.promotion_type) {
-    updates.promotion_products = null
-  }
-  
-  // 타임딜 필드 검증
-  if ('flash_sale_price' in updates) {
-    const v = Number(updates.flash_sale_price)
-    updates.flash_sale_price = isNaN(v) || v <= 0 ? null : v
-  }
-  
-  if ('flash_sale_stock' in updates) {
-    const v = Number(updates.flash_sale_stock)
-    updates.flash_sale_stock = isNaN(v) || v <= 0 ? null : v
-  }
-  
-  // 타임딜 종료 시간이 없으면 타임딜 시작 시간, 가격, 재고도 null
-  if ('flash_sale_end_time' in updates && !updates.flash_sale_end_time) {
-    updates.flash_sale_start_time = null
-    updates.flash_sale_price = null
-    updates.flash_sale_stock = null
-  }
   
   // slug 처리: 명시적으로 전달되었는지 확인
   if ('slug' in updates) {
@@ -207,9 +147,21 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
   }
   
+  // 디버깅: 업데이트할 필드 확인
+  console.log('📝 Updating product:', id, 'Fields:', Object.keys(updates))
+  
   const { error } = await supabaseAdmin.from('products').update(updates).eq('id', id)
   if (error) {
     console.error('❌ Product update error:', error)
+    console.error('❌ Update data:', updates)
+    
+    // description 필드 관련 에러인 경우 특별 처리
+    if (error.message?.includes('description')) {
+      return NextResponse.json({ 
+        error: '데이터베이스 트리거 오류: description 필드가 없습니다. 관리자에게 문의하세요.' 
+      }, { status: 400 })
+    }
+    
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
   

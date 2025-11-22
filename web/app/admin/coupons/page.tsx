@@ -102,9 +102,6 @@ export default function CouponsPage() {
           ? formData.max_discount_amount 
           : null,
         validity_days: formData.validity_days,
-        // 호환성을 위해 valid_from, valid_until도 설정 (사용하지 않음)
-        valid_from: new Date().toISOString(),
-        valid_until: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
         is_active: true,
         usage_limit: formData.usage_limit ? parseInt(formData.usage_limit) : null,
         is_first_purchase_only: formData.is_first_purchase_only,
@@ -161,9 +158,6 @@ export default function CouponsPage() {
           ? formData.max_discount_amount 
           : null,
         validity_days: formData.validity_days,
-        // 호환성을 위해 valid_from, valid_until도 설정 (사용하지 않음)
-        valid_from: new Date().toISOString(),
-        valid_until: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
         usage_limit: formData.usage_limit ? parseInt(formData.usage_limit) : null,
         is_first_purchase_only: formData.is_first_purchase_only,
       }

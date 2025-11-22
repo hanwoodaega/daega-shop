@@ -402,39 +402,39 @@ function CheckoutPageContent() {
               lineHeight: number;
             }> = {
               'birthday-1': {
-                fontSize: 42, // 줄임
+                fontSize: 46, // 크게
                 color: '#000000',
                 fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
                 fontWeight: '500',
                 lineHeight: 1.6,
               },
               'thanks-1': {
-                fontSize: 38, // 줄임
+                fontSize: 46, // 카톡 이미지용으로 크게
                 color: '#000000',
                 fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
                 fontWeight: '500',
-                lineHeight: 1.8,
+                lineHeight: 1.7, // 위아래 간격 조금 좁힘
               },
               'thanks-2': {
-                fontSize: 36, // 줄임
+                fontSize: 42, // 크게
                 color: '#000000',
                 fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
                 fontWeight: '500',
                 lineHeight: 1.7,
               },
               'celebration-1': {
-                fontSize: 46, // 줄임
+                fontSize: 50, // 조금 더 크게
                 color: '#000000',
                 fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
                 fontWeight: '500',
                 lineHeight: 1.5,
               },
               'celebration-2': {
-                fontSize: 40, // 줄임
+                fontSize: 48, // 더 크게
                 color: '#000000',
                 fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
                 fontWeight: '500',
-                lineHeight: 1.6,
+                lineHeight: 1.4, // 위아래 간격 줄임
               },
             }
             return styles[cardDesign] || {
@@ -448,83 +448,105 @@ function CheckoutPageContent() {
 
           const messageStyle = getMessageStyle(giftData.cardDesign)
           
+          // celebration-2는 왼쪽 정렬
+          const isCelebration2 = giftData.cardDesign === 'celebration-2'
+          const textAreaTop = isCelebration2 ? size * 0.39 : size * 0.37 // celebration-2는 아주 조금 더 아래로
+          
           // 텍스트 스타일 설정
           ctx.fillStyle = messageStyle.color
           ctx.font = `${messageStyle.fontWeight} ${messageStyle.fontSize}px ${messageStyle.fontFamily}`
-          ctx.textAlign = 'center'
+          ctx.textAlign = 'left'
           ctx.textBaseline = 'top'
-
-          // 텍스트 영역: 위에서 40% ~ 90% 
-          const textAreaTop = size * 0.4
           const textAreaHeight = size * 0.5
-          const padding = size * 0.1 // 10% 패딩
-          const maxWidth = size - (padding * 2)
+          // thanks-1, thanks-2, celebration-1, celebration-2, birthday-1 카드는 좌우 패딩을 더 넓게
+          let leftPadding: number
+          let rightPadding: number
+          if (giftData.cardDesign === 'thanks-2') {
+            leftPadding = size * 0.18
+            rightPadding = size * 0.15 // 오른쪽 패딩 조금 줄임
+          } else if (giftData.cardDesign === 'thanks-1' || giftData.cardDesign === 'celebration-1') {
+            leftPadding = size * 0.15
+            rightPadding = size * 0.15
+          } else if (giftData.cardDesign === 'birthday-1') {
+            leftPadding = size * 0.12 // 좌우 패딩 넓게
+            rightPadding = size * 0.12
+          } else if (isCelebration2) {
+            leftPadding = size * 0.14 // 좌우 패딩 아주 조금 줄임
+            rightPadding = size * 0.14
+          } else {
+            leftPadding = size * 0.1
+            rightPadding = size * 0.1
+          }
+          const maxWidth = size - leftPadding - rightPadding
 
           // 텍스트 줄바꿈 처리 (한글 지원 개선)
           const lines: string[] = []
-          let currentLine = ''
           
-          // 공백과 줄바꿈을 모두 고려하여 처리
-          const segments = giftData.message.split(/(\s+|\n+)/)
+          // 먼저 줄바꿈으로 분할하여 각 줄을 개별 처리
+          const messageLines = giftData.message.split('\n')
           
-          for (const segment of segments) {
-            if (!segment.trim() && segment.includes('\n')) {
-              // 줄바꿈이 있으면 현재 라인을 저장하고 새 라인 시작
-              if (currentLine.trim()) {
-                lines.push(currentLine.trim())
-              }
-              currentLine = ''
+          for (const messageLine of messageLines) {
+            // 빈 줄인 경우 빈 문자열 추가 (한 줄 띄기)
+            if (!messageLine.trim()) {
+              lines.push('')
               continue
             }
             
-            if (!segment.trim()) {
-              // 공백만 있는 경우 현재 라인에 추가
-              if (currentLine) {
-                currentLine += segment
+            // 각 줄을 단어 단위로 분할하여 처리
+            let currentLine = ''
+            const words = messageLine.split(/(\s+)/)
+            
+            for (const word of words) {
+              if (!word.trim()) {
+                // 공백만 있는 경우 현재 라인에 추가
+                if (currentLine) {
+                  currentLine += word
+                }
+                continue
               }
-              continue
-            }
-            
-            // 단어나 문자 단위로 테스트
-            const testLine = currentLine ? `${currentLine}${segment}` : segment
-            const metrics = ctx.measureText(testLine)
-            
-            if (metrics.width > maxWidth) {
-              if (currentLine) {
-                // 현재 라인 저장
-                lines.push(currentLine.trim())
-                currentLine = segment
-              } else {
-                // 한 단어가 너무 길면 문자 단위로 분할 (한글 대응)
-                let charLine = ''
-                for (const char of segment) {
-                  const testCharLine = charLine + char
-                  const charMetrics = ctx.measureText(testCharLine)
-                  if (charMetrics.width > maxWidth && charLine) {
-                    lines.push(charLine)
-                    charLine = char
-                  } else {
-                    charLine = testCharLine
+              
+              // 단어나 문자 단위로 테스트
+              const testLine = currentLine ? `${currentLine}${word}` : word
+              const metrics = ctx.measureText(testLine)
+              
+              if (metrics.width > maxWidth) {
+                if (currentLine) {
+                  // 현재 라인 저장
+                  lines.push(currentLine.trim())
+                  currentLine = word
+                } else {
+                  // 한 단어가 너무 길면 문자 단위로 분할 (한글 대응)
+                  let charLine = ''
+                  for (const char of word) {
+                    const testCharLine = charLine + char
+                    const charMetrics = ctx.measureText(testCharLine)
+                    if (charMetrics.width > maxWidth && charLine) {
+                      lines.push(charLine)
+                      charLine = char
+                    } else {
+                      charLine = testCharLine
+                    }
+                  }
+                  if (charLine) {
+                    currentLine = charLine
                   }
                 }
-                if (charLine) {
-                  currentLine = charLine
-                }
+              } else {
+                currentLine = testLine
               }
-            } else {
-              currentLine = testLine
             }
-          }
-          
-          if (currentLine.trim()) {
-            lines.push(currentLine.trim())
+            
+            // 마지막 라인 추가
+            if (currentLine.trim()) {
+              lines.push(currentLine.trim())
+            }
           }
 
           // 텍스트 그리기
           const lineHeight = messageStyle.fontSize * messageStyle.lineHeight
           lines.forEach((line, index) => {
             const y = textAreaTop + (index * lineHeight)
-            ctx.fillText(line, size / 2, y)
+            ctx.fillText(line, leftPadding, y)
           })
         }
 
@@ -567,30 +589,38 @@ function CheckoutPageContent() {
       // 메시지가 있으면 합성 이미지 생성, 없으면 원본 이미지 사용
       let cardImageUrl: string
       if (giftData.message && giftData.cardDesign) {
-        // 합성 이미지 생성
-        const dataUrl = await createGiftCardImage()
-        
-        // 서버에 업로드하여 공개 URL 생성
         try {
-          const uploadResponse = await fetch('/api/gift/upload-card-image', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ imageData: dataUrl }),
-          })
+          // 합성 이미지 생성
+          const dataUrl = await createGiftCardImage()
           
-          if (uploadResponse.ok) {
-            const uploadData = await uploadResponse.json()
-            cardImageUrl = uploadData.url
-          } else {
-            // 업로드 실패 시 원본 이미지 사용
+          // 서버에 업로드하여 공개 URL 생성
+          try {
+            const uploadResponse = await fetch('/api/gift/upload-card-image', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ imageData: dataUrl }),
+            })
+            
+            if (uploadResponse.ok) {
+              const uploadData = await uploadResponse.json()
+              cardImageUrl = uploadData.url
+            } else {
+              // 업로드 실패 시 원본 이미지 사용
+              cardImageUrl = giftData.cardDesign 
+                ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
+                : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
+            }
+          } catch (uploadError) {
+            // 업로드 에러 시 원본 이미지 사용
             cardImageUrl = giftData.cardDesign 
               ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
               : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
           }
-        } catch (uploadError) {
-          // 업로드 에러 시 원본 이미지 사용
+        } catch (imageError) {
+          // 이미지 생성 실패 시 원본 이미지 사용
+          console.error('이미지 생성 실패:', imageError)
           cardImageUrl = giftData.cardDesign 
             ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
             : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
@@ -845,16 +875,17 @@ function CheckoutPageContent() {
             .eq('user_id', user.id)
             .eq('is_default', true)
 
-          // 2) 동일 주소가 이미 있으면 업데이트하여 기본으로 지정, 없으면 새로 생성
+          // 2) 동일 주소가 이미 있으면 기본 배송지로만 설정 (새로 저장하지 않음)
           const { data: existing, error: findError } = await supabase
             .from('addresses')
             .select('id')
             .eq('user_id', user.id)
-            .eq('address', formData.address)
-            .eq('address_detail', formData.addressDetail || null)
+            .eq('address', formData.address.trim())
+            .eq('address_detail', (formData.addressDetail || '').trim() || null)
             .maybeSingle()
 
           if (!findError && existing) {
+            // 주소가 같으면 기본 배송지로만 설정하고 정보 업데이트 (새로 저장하지 않음)
             await supabase
               .from('addresses')
               .update({
@@ -866,9 +897,22 @@ function CheckoutPageContent() {
               })
               .eq('id', existing.id)
           } else {
+            // 기존 주소 개수 확인하여 이름 생성
+            const { count } = await supabase
+              .from('addresses')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+            
+            const addressCount = (count || 0) + 1
+            const addressName = deliveryMethod === 'quick' 
+              ? `퀵배달 주소 ${addressCount}`
+              : addressCount === 1 
+                ? '기본 배송지'
+                : `배송지 ${addressCount}`
+            
             await supabase.from('addresses').insert({
               user_id: user.id,
-              name: deliveryMethod === 'quick' ? '퀵배달 주소' : '기본 배송지',
+              name: addressName,
               recipient_name: formData.name,
               recipient_phone: formData.phone,
               zipcode: formData.zipcode || null,
@@ -1416,19 +1460,19 @@ function CheckoutPageContent() {
                     <label className="block text-sm font-medium mb-2">
                       우편번호
                     </label>
-                    <div className="flex space-x-2">
+                    <div className="flex gap-2">
                       <input
                         type="text"
                         name="zipcode"
                         value={formData.zipcode}
                         readOnly
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                        className="flex-1 px-3 py-2 md:px-4 border border-gray-300 rounded-lg bg-gray-50 text-sm"
                         placeholder="우편번호"
                       />
                       <button
                         type="button"
                         onClick={handleSearchAddress}
-                        className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition whitespace-nowrap"
+                        className="px-3 py-2 md:px-4 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition whitespace-nowrap flex-shrink-0 text-sm md:text-base"
                       >
                         주소찾기
                       </button>
@@ -1558,19 +1602,19 @@ function CheckoutPageContent() {
                       <label className="block text-sm font-medium mb-2">
                         우편번호
                       </label>
-                      <div className="flex space-x-2">
+                      <div className="flex gap-2">
                         <input
                           type="text"
                           name="zipcode"
                           value={formData.zipcode}
                           readOnly
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                          className="flex-1 px-3 py-2 md:px-4 border border-gray-300 rounded-lg bg-gray-50 text-sm"
                           placeholder="우편번호"
                         />
                         <button
                           type="button"
                           onClick={handleSearchAddress}
-                          className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition whitespace-nowrap"
+                          className="px-3 py-2 md:px-4 bg-white text-blue-900 border border-blue-900 rounded-lg hover:bg-blue-50 transition whitespace-nowrap flex-shrink-0 text-sm md:text-base"
                         >
                           주소찾기
                         </button>
@@ -1822,16 +1866,17 @@ function CheckoutPageContent() {
                             }
                             
                             const messageStyle = getMessageStyle(giftData.cardDesign)
+                            const paddingClass = giftData.cardDesign === 'thanks-2' ? 'px-16' : 'px-12'
                             
                             return (
-                              <div className="absolute left-0 right-0 px-8 pointer-events-none z-10" style={{ 
+                              <div className={`absolute left-0 right-0 ${paddingClass} pointer-events-none z-10`} style={{ 
                                 top: '40%',
                                 height: '50%',
                                 display: 'flex',
                                 alignItems: 'flex-start',
-                                justifyContent: 'center',
+                                justifyContent: 'flex-start',
                               }}>
-                                <p className="text-center whitespace-pre-wrap break-words w-full" style={{ 
+                                <p className="text-left whitespace-pre-wrap break-words w-full" style={{ 
                                   fontSize: messageStyle.fontSize,
                                   color: messageStyle.color,
                                   fontFamily: messageStyle.fontFamily,
@@ -1856,11 +1901,11 @@ function CheckoutPageContent() {
                         value={giftData.message}
                         onChange={(e) => setGiftData(prev => ({ ...prev, message: e.target.value }))}
                         rows={4}
-                        maxLength={100}
+                        maxLength={150}
                         placeholder="받는 분께 전달할 메시지를 작성해주세요"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
-                      <p className="text-xs text-gray-500 mt-1">{giftData.message.length}/100</p>
+                      <p className="text-xs text-gray-500 mt-1">{giftData.message.length}/150</p>
                     </div>
                   </div>
                   )}
@@ -1946,7 +1991,7 @@ function CheckoutPageContent() {
                             const maxPoints = Math.min(userPoints, Math.max(0, afterCouponDiscount))
                             setUsedPoints(Math.min(parsed, maxPoints))
                           }}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          className="flex-1 px-1.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="0"
                         />
                         <button

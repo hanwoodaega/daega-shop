@@ -32,25 +32,24 @@ async function createOrderWithoutTransaction(
   const orderData: Record<string, unknown> = {
     user_id: userId,
     total_amount: finalAmount,
-    status: 'paid',
+    status: 'ORDER_RECEIVED', // 결제 완료 시 주문완료 상태
     delivery_type: deliveryType,
     delivery_time: deliveryTime,
     shipping_address: shippingAddress,
     shipping_name: shippingName,
     shipping_phone: shippingPhone,
-    delivery_note: deliveryNote,
+    delivery_note: isGift ? null : deliveryNote, // 선물 주문일 때는 null
   }
   
   // 선물 정보 추가
   if (isGift) {
-    // 개별 컬럼으로 저장 시도
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 5)
     orderData.is_gift = true
     orderData.gift_message = giftMessage
     orderData.gift_card_design = giftCardDesign
-    // 만료일 설정 (7일 후)
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 7)
     orderData.gift_expires_at = expiresAt.toISOString()
+    orderData.gift_status = 'pending'
   }
   
   let order: { id: string; [key: string]: unknown } | null = null
@@ -103,9 +102,11 @@ async function createOrderWithoutTransaction(
     
     try {
       const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + 7)
+      expiresAt.setDate(expiresAt.getDate() + 5) // 5일 후 만료
       
-      const { error: tokenError } = await supabase
+      // RLS 우회를 위해 admin client 사용
+      const { supabaseAdmin } = await import('@/lib/supabase-admin')
+      const { error: tokenError } = await supabaseAdmin
         .from('orders')
         .update({
           gift_token: giftToken,
@@ -113,6 +114,7 @@ async function createOrderWithoutTransaction(
           gift_message: giftMessage || null,
           gift_card_design: giftCardDesign || null,
           gift_expires_at: expiresAt.toISOString(),
+          gift_status: 'pending', // 초기 상태
         })
         .eq('id', order.id)
       
@@ -120,8 +122,8 @@ async function createOrderWithoutTransaction(
         throw tokenError
       }
       
-      // 업데이트 후 주문 정보 다시 조회
-      const { data: updatedOrder, error: refreshError } = await supabase
+      // 업데이트 후 주문 정보 다시 조회 (admin client 사용)
+      const { data: updatedOrder, error: refreshError } = await supabaseAdmin
         .from('orders')
         .select('*')
         .eq('id', order.id)
@@ -135,6 +137,7 @@ async function createOrderWithoutTransaction(
         order.is_gift = true
         order.gift_message = giftMessage
         order.gift_card_design = giftCardDesign
+        order.gift_status = 'pending'
       }
     } catch (error) {
       // 토큰 저장 실패해도 주문은 성공으로 처리
@@ -143,6 +146,7 @@ async function createOrderWithoutTransaction(
         order.is_gift = true
         order.gift_message = giftMessage
         order.gift_card_design = giftCardDesign
+        order.gift_status = 'pending'
       }
     }
   }
@@ -301,7 +305,7 @@ export async function POST(request: NextRequest) {
         p_shipping_address: shipping_address,
         p_shipping_name: shipping_name,
         p_shipping_phone: shipping_phone,
-        p_delivery_note: delivery_note || null,
+        p_delivery_note: is_gift ? null : (delivery_note || null), // 선물 주문일 때는 null
         p_order_items: items || [],
         p_used_coupon_id: used_coupon_id || null,
         p_used_points: used_points || 0,
@@ -331,7 +335,7 @@ export async function POST(request: NextRequest) {
             shipping_address,
             shipping_name,
             shipping_phone,
-            delivery_note,
+            is_gift ? null : delivery_note, // 선물 주문일 때는 null
             items,
             used_coupon_id,
             used_points,
@@ -371,9 +375,11 @@ export async function POST(request: NextRequest) {
         
         try {
           const expiresAt = new Date()
-          expiresAt.setDate(expiresAt.getDate() + 7)
+          expiresAt.setDate(expiresAt.getDate() + 5) // 5일 후 만료
           
-          const { error: tokenError } = await supabase
+          // RLS 우회를 위해 admin client 사용
+          const { supabaseAdmin } = await import('@/lib/supabase-admin')
+          const { error: tokenError } = await supabaseAdmin
             .from('orders')
             .update({
               gift_token: giftToken,
@@ -381,6 +387,7 @@ export async function POST(request: NextRequest) {
               gift_message: gift_message || null,
               gift_card_design: gift_card_design || null,
               gift_expires_at: expiresAt.toISOString(),
+              gift_status: 'pending', // 초기 상태
             })
             .eq('id', orderId)
           
@@ -388,8 +395,8 @@ export async function POST(request: NextRequest) {
             throw tokenError
           }
           
-          // 업데이트 후 주문 정보 다시 조회
-          const { data: updatedOrder, error: refreshError } = await supabase
+          // 업데이트 후 주문 정보 다시 조회 (admin client 사용)
+          const { data: updatedOrder, error: refreshError } = await supabaseAdmin
             .from('orders')
             .select('*')
             .eq('id', orderId)
@@ -403,6 +410,7 @@ export async function POST(request: NextRequest) {
             order.is_gift = true
             order.gift_message = gift_message
             order.gift_card_design = gift_card_design
+            order.gift_status = 'pending'
           }
         } catch (error) {
           // 저장 실패해도 주문은 성공으로 처리
@@ -410,6 +418,7 @@ export async function POST(request: NextRequest) {
           order.is_gift = true
           order.gift_message = gift_message
           order.gift_card_design = gift_card_design
+          order.gift_status = 'pending'
         }
       }
 

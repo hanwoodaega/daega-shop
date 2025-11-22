@@ -26,32 +26,96 @@ export default function GiftPage() {
 
   const fetchGiftProducts = useCallback(async () => {
     try {
-      // 모든 선물세트 상품 조회
-      const { data: allData, error: allError } = await supabase
-        .from('products')
-        .select('*')
-        .eq('category', '선물세트')
-        .order('created_at', { ascending: false })
-        .limit(100)
+      // 실시간 인기 카테고리 조회
+      const { data: categoryData, error: categoryError } = await supabase
+        .from('gift_categories')
+        .select('id')
+        .eq('slug', 'featured')
+        .single()
 
-      if (allError) throw allError
+      if (categoryError || !categoryData) {
+        setGiftProducts([])
+        setLoading(false)
+        return
+      }
+
+      // 실시간 인기 카테고리의 상품 조회 (프로모션 정보 포함)
+      const { data: productsData, error: productsError } = await supabase
+        .from('gift_category_products')
+        .select(`
+          priority,
+          products (
+            id,
+            slug,
+            brand,
+            name,
+            price,
+            image_url,
+            category,
+            average_rating,
+            review_count,
+            created_at,
+            updated_at,
+            promotion_products (
+              promotion_id,
+              promotions (
+                id,
+                type,
+                buy_qty,
+                discount_percent,
+                is_active,
+                start_at,
+                end_at
+              )
+            )
+          )
+        `)
+        .eq('gift_category_id', categoryData.id)
+        .order('priority', { ascending: true })
+
+      if (productsError) throw productsError
+
+      // 상품 데이터 변환 및 활성 프로모션 찾기
+      const now = new Date()
+      const featured = (productsData || [])
+        .map((cp: any) => {
+          const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
+          if (!product) return null
+
+          // 활성 프로모션 찾기
+          let activePromotion = null
+          if (product.promotion_products && product.promotion_products.length > 0) {
+            for (const pp of product.promotion_products) {
+              const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
+              if (promo && promo.is_active) {
+                const startAt = promo.start_at ? new Date(promo.start_at) : null
+                const endAt = promo.end_at ? new Date(promo.end_at) : null
+                if ((!startAt || startAt <= now) && (!endAt || endAt >= now)) {
+                  activePromotion = promo
+                  break
+                }
+              }
+            }
+          }
+
+          return {
+            ...product,
+            promotion: activePromotion,
+            gift_featured_order: cp.priority,
+          }
+        })
+        .filter((p: any) => p && p.id) // null 제거
+        .sort((a: any, b: any) => {
+          const orderA = a.gift_featured_order ?? 999999
+          const orderB = b.gift_featured_order ?? 999999
+          if (orderA !== orderB) return orderA - orderB
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        })
       
-      // 실시간 인기 선물세트로 설정된 상품만 필터링
-      const featured = (allData || []).filter((product: Product) => 
-        product.gift_featured === true
-      )
-      
-      // 순서대로 정렬
-      featured.sort((a: Product, b: Product) => {
-        const orderA = a.gift_featured_order ?? 999999
-        const orderB = b.gift_featured_order ?? 999999
-        if (orderA !== orderB) return orderA - orderB
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      })
-      
-      setGiftProducts(featured.slice(0, 20))
+      setGiftProducts(featured.slice(0, 20) as Product[])
     } catch (error) {
       console.error('선물세트 상품 조회 실패:', error)
+      setGiftProducts([])
     } finally {
       setLoading(false)
     }
@@ -66,43 +130,116 @@ export default function GiftPage() {
     try {
       console.log('선물 대상 상품 조회 시작:', target)
       
-      // 모든 상품 조회 (카테고리 필터 제거하여 더 넓게 검색)
-      const { data: allData, error: allError } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(200)
+      // 대상별 카테고리 slug 매핑
+      const targetSlugMap: Record<string, string> = {
+        '아이': 'child',
+        '부모님': 'parent',
+        '연인': 'lover',
+        '친구': 'friend',
+      }
 
-      if (allError) {
-        console.error('상품 조회 에러:', allError)
-        throw allError
+      const targetSlug = targetSlugMap[target]
+      if (!targetSlug) {
+        setTargetProducts([])
+        setLoadingTarget(false)
+        return
+      }
+
+      // 카테고리 조회
+      const { data: categoryData, error: categoryError } = await supabase
+        .from('gift_categories')
+        .select('id')
+        .eq('slug', targetSlug)
+        .single()
+
+      if (categoryError || !categoryData) {
+        console.log('카테고리를 찾을 수 없습니다:', targetSlug)
+        setTargetProducts([])
+        setLoadingTarget(false)
+        return
+      }
+
+      // 카테고리의 상품 조회 (프로모션 정보 포함)
+      const { data: productsData, error: productsError } = await supabase
+        .from('gift_category_products')
+        .select(`
+          priority,
+          products (
+            id,
+            slug,
+            brand,
+            name,
+            price,
+            image_url,
+            category,
+            average_rating,
+            review_count,
+            created_at,
+            updated_at,
+            promotion_products (
+              promotion_id,
+              promotions (
+                id,
+                type,
+                buy_qty,
+                discount_percent,
+                is_active,
+                start_at,
+                end_at
+              )
+            )
+          )
+        `)
+        .eq('gift_category_id', categoryData.id)
+        .order('priority', { ascending: true })
+
+      if (productsError) {
+        console.error('상품 조회 에러:', productsError)
+        throw productsError
       }
       
-      console.log('전체 상품 개수:', allData?.length || 0)
+      console.log('조회된 상품 개수:', productsData?.length || 0)
       
-      // 선물 대상으로 필터링
-      const filtered = (allData || []).filter((product: Product) => {
-        const targets = Array.isArray(product.gift_target) ? product.gift_target : []
-        const hasTarget = targets.includes(target)
-        if (hasTarget) {
-          console.log('매칭된 상품:', product.name, 'gift_target:', targets)
-        }
-        return hasTarget
-      })
-      
-      console.log('필터링된 상품 개수:', filtered.length)
-      
-      // 순서대로 정렬
-      filtered.sort((a: Product, b: Product) => {
-        const orderA = a.gift_display_order ?? 999999
-        const orderB = b.gift_display_order ?? 999999
-        if (orderA !== orderB) return orderA - orderB
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      })
+      // 상품 데이터 변환 및 활성 프로모션 찾기
+      const now = new Date()
+      const filtered = (productsData || [])
+        .map((cp: any) => {
+          const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
+          if (!product) return null
+
+          // 활성 프로모션 찾기
+          let activePromotion = null
+          if (product.promotion_products && product.promotion_products.length > 0) {
+            for (const pp of product.promotion_products) {
+              const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
+              if (promo && promo.is_active) {
+                const startAt = promo.start_at ? new Date(promo.start_at) : null
+                const endAt = promo.end_at ? new Date(promo.end_at) : null
+                if ((!startAt || startAt <= now) && (!endAt || endAt >= now)) {
+                  activePromotion = promo
+                  break
+                }
+              }
+            }
+          }
+
+          return {
+            ...product,
+            promotion: activePromotion,
+            gift_display_order: cp.priority,
+          }
+        })
+        .filter((p: any) => p && p.id) // null 제거
+        .sort((a: any, b: any) => {
+          const orderA = a.gift_display_order ?? 999999
+          const orderB = b.gift_display_order ?? 999999
+          if (orderA !== orderB) return orderA - orderB
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        })
       
       const result = filtered.slice(0, 20)
       console.log('최종 결과 개수:', result.length)
-      setTargetProducts(result)
+      setTargetProducts(result as Product[])
     } catch (error) {
       console.error('선물 대상 상품 조회 실패:', error)
       setTargetProducts([])
@@ -116,43 +253,104 @@ export default function GiftPage() {
     try {
       console.log('예산별 상품 조회 시작:', budgetType)
       
-      // 모든 상품 조회 (카테고리 필터 제거하여 더 넓게 검색)
-      const { data: allData, error: allError } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(200)
+      // 예산별 카테고리 slug는 이미 budgetType과 동일 (under-50k, over-50k 등)
+      const budgetSlug = budgetType
 
-      if (allError) {
-        console.error('상품 조회 에러:', allError)
-        throw allError
+      // 카테고리 조회
+      const { data: categoryData, error: categoryError } = await supabase
+        .from('gift_categories')
+        .select('id')
+        .eq('slug', budgetSlug)
+        .single()
+
+      if (categoryError || !categoryData) {
+        console.log('카테고리를 찾을 수 없습니다:', budgetSlug)
+        setBudgetProducts([])
+        setLoadingBudget(false)
+        return
+      }
+
+      // 카테고리의 상품 조회 (프로모션 정보 포함)
+      const { data: productsData, error: productsError } = await supabase
+        .from('gift_category_products')
+        .select(`
+          priority,
+          products (
+            id,
+            slug,
+            brand,
+            name,
+            price,
+            image_url,
+            category,
+            average_rating,
+            review_count,
+            created_at,
+            updated_at,
+            promotion_products (
+              promotion_id,
+              promotions (
+                id,
+                type,
+                buy_qty,
+                discount_percent,
+                is_active,
+                start_at,
+                end_at
+              )
+            )
+          )
+        `)
+        .eq('gift_category_id', categoryData.id)
+        .order('priority', { ascending: true })
+
+      if (productsError) {
+        console.error('상품 조회 에러:', productsError)
+        throw productsError
       }
       
-      console.log('전체 상품 개수:', allData?.length || 0)
+      console.log('조회된 상품 개수:', productsData?.length || 0)
       
-      // 관리자가 설정한 예산 카테고리로 필터링
-      const filtered = (allData || []).filter((product: any) => {
-        const budgets = Array.isArray(product.gift_budget_targets) ? product.gift_budget_targets : []
-        const hasBudget = budgets.includes(budgetType)
-        if (hasBudget) {
-          console.log('매칭된 상품:', product.name, 'gift_budget_targets:', budgets)
-        }
-        return hasBudget
-      })
-      
-      console.log('필터링된 상품 개수:', filtered.length)
-      
-      // 순서대로 정렬 (gift_budget_order가 null이면 뒤로)
-      filtered.sort((a: any, b: any) => {
-        const orderA = a.gift_budget_order ?? 999999
-        const orderB = b.gift_budget_order ?? 999999
-        if (orderA !== orderB) return orderA - orderB
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      })
+      // 상품 데이터 변환 및 활성 프로모션 찾기
+      const now = new Date()
+      const filtered = (productsData || [])
+        .map((cp: any) => {
+          const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
+          if (!product) return null
+
+          // 활성 프로모션 찾기
+          let activePromotion = null
+          if (product.promotion_products && product.promotion_products.length > 0) {
+            for (const pp of product.promotion_products) {
+              const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
+              if (promo && promo.is_active) {
+                const startAt = promo.start_at ? new Date(promo.start_at) : null
+                const endAt = promo.end_at ? new Date(promo.end_at) : null
+                if ((!startAt || startAt <= now) && (!endAt || endAt >= now)) {
+                  activePromotion = promo
+                  break
+                }
+              }
+            }
+          }
+
+          return {
+            ...product,
+            promotion: activePromotion,
+            gift_budget_order: cp.priority,
+          }
+        })
+        .filter((p: any) => p && p.id) // null 제거
+        .sort((a: any, b: any) => {
+          const orderA = a.gift_budget_order ?? 999999
+          const orderB = b.gift_budget_order ?? 999999
+          if (orderA !== orderB) return orderA - orderB
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        })
       
       const result = filtered.slice(0, 20)
       console.log('최종 결과 개수:', result.length)
-      setBudgetProducts(result)
+      setBudgetProducts(result as Product[])
     } catch (error) {
       console.error('예산별 상품 조회 실패:', error)
       setBudgetProducts([])
@@ -227,17 +425,17 @@ export default function GiftPage() {
       <main className="flex-1 pt-4 pb-20">
         {/* 선물하기 설명서 버튼 */}
         <section className="container mx-auto px-4 mb-6">
-          <button
-            onClick={() => router.push('/gift/guide')}
-            className="w-full px-4 py-4 bg-white rounded-lg hover:bg-gray-50 transition shadow-sm flex items-center justify-between"
+          <Link
+            href="/gift/guide"
+            className="w-full px-4 py-3 bg-teal-100 rounded-lg hover:bg-teal-200 transition shadow-sm flex items-center justify-between block"
           >
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-gray-900">소중한 분께 전하는 '선물하기' 설명서</span>
+              <span className="text-base font-medium text-gray-900">마음을 전하는 '선물하기' 이용 안내</span>
             </div>
             <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-          </button>
+          </Link>
         </section>
 
         {/* 실시간 인기 선물세트 */}
@@ -289,7 +487,7 @@ export default function GiftPage() {
                 onClick={() => setSelectedTarget(selectedTarget === target ? null : target)}
                 className={`px-4 py-2.5 text-base rounded-lg font-medium transition flex-shrink-0 ${
                   selectedTarget === target
-                    ? 'bg-primary-800 text-white'
+                    ? 'bg-blue-900 text-white hover:bg-blue-800'
                     : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
                 }`}
               >
@@ -339,21 +537,32 @@ export default function GiftPage() {
                             <div className="text-sm font-semibold text-gray-600 mb-1">{product.brand}</div>
                           )}
                           <h3 className="text-base font-medium text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
-                          {product.discount_percent && product.discount_percent > 0 ? (
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-base font-bold text-red-600">{product.discount_percent}%</span>
-                              <span className="text-lg font-bold text-gray-900">
-                                {formatPrice(product.price * (1 - product.discount_percent / 100))}원
-                              </span>
-                              <span className="text-sm text-gray-500 line-through">
-                                {formatPrice(product.price)}원
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="text-lg font-bold text-gray-900">
-                              {formatPrice(product.price)}원
-                            </div>
-                          )}
+                          {(() => {
+                            // 프로모션 할인율 계산
+                            const discountPercent = (product as any).promotion?.type === 'percent' 
+                              ? (product as any).promotion.discount_percent 
+                              : (product as any).discount_percent || 0
+                            
+                            if (discountPercent > 0) {
+                              return (
+                                <div className="flex items-baseline gap-2">
+                                  <span className="text-base font-bold text-red-600">{discountPercent}%</span>
+                                  <span className="text-lg font-bold text-gray-900">
+                                    {formatPrice(product.price * (1 - discountPercent / 100))}원
+                                  </span>
+                                  <span className="text-sm text-gray-500 line-through">
+                                    {formatPrice(product.price)}원
+                                  </span>
+                                </div>
+                              )
+                            } else {
+                              return (
+                                <div className="text-lg font-bold text-gray-900">
+                                  {formatPrice(product.price)}원
+                                </div>
+                              )
+                            }
+                          })()}
                         </div>
                       </div>
                     </Link>
@@ -383,7 +592,7 @@ export default function GiftPage() {
                 onClick={() => setSelectedBudget(selectedBudget === budget.value ? null : budget.value)}
                 className={`px-4 py-2.5 text-base rounded-lg font-medium transition flex-shrink-0 ${
                   selectedBudget === budget.value
-                    ? 'bg-primary-800 text-white'
+                    ? 'bg-blue-900 text-white hover:bg-blue-800'
                     : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
                 }`}
               >
@@ -433,21 +642,32 @@ export default function GiftPage() {
                             <div className="text-sm font-semibold text-gray-600 mb-1">{product.brand}</div>
                           )}
                           <h3 className="text-base font-medium text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
-                          {product.discount_percent && product.discount_percent > 0 ? (
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-base font-bold text-red-600">{product.discount_percent}%</span>
-                              <span className="text-lg font-bold text-gray-900">
-                                {formatPrice(product.price * (1 - product.discount_percent / 100))}원
-                              </span>
-                              <span className="text-sm text-gray-500 line-through">
-                                {formatPrice(product.price)}원
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="text-lg font-bold text-gray-900">
-                              {formatPrice(product.price)}원
-                            </div>
-                          )}
+                          {(() => {
+                            // 프로모션 할인율 계산
+                            const discountPercent = (product as any).promotion?.type === 'percent' 
+                              ? (product as any).promotion.discount_percent 
+                              : (product as any).discount_percent || 0
+                            
+                            if (discountPercent > 0) {
+                              return (
+                                <div className="flex items-baseline gap-2">
+                                  <span className="text-base font-bold text-red-600">{discountPercent}%</span>
+                                  <span className="text-lg font-bold text-gray-900">
+                                    {formatPrice(product.price * (1 - discountPercent / 100))}원
+                                  </span>
+                                  <span className="text-sm text-gray-500 line-through">
+                                    {formatPrice(product.price)}원
+                                  </span>
+                                </div>
+                              )
+                            } else {
+                              return (
+                                <div className="text-lg font-bold text-gray-900">
+                                  {formatPrice(product.price)}원
+                                </div>
+                              )
+                            }
+                          })()}
                         </div>
                       </div>
                     </Link>

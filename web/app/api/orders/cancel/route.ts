@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server'
+import { handleOrderCancellationPoints } from '@/lib/points'
 
 /**
  * 주문 취소 API
  * POST /api/orders/cancel
  * 
- * 주문을 취소합니다.
- * (구매확정 전이므로 포인트 적립이 없어 환불할 필요 없음)
+ * 주문을 취소하고 환불 처리를 시작합니다.
+ * - 포인트 적립 회수 (구매확정 전이면 없을 수 있음)
+ * - 사용한 포인트 환불
+ * - 환불 상태를 pending으로 설정
  */
 export async function POST(request: NextRequest) {
   try {
@@ -37,14 +40,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    // 취소 가능한 상태인지 확인 (결제 완료 상태만 취소 가능)
-    if (order.status !== 'paid') {
+    // 취소 가능한 상태인지 확인 (주문완료 상태만 취소 가능)
+    if (order.status !== 'paid' && order.status !== 'ORDER_RECEIVED') {
       return NextResponse.json({ 
-        error: '취소할 수 없는 주문 상태입니다.' 
+        error: '취소할 수 없는 주문 상태입니다. 주문완료 상태에서만 취소 가능합니다.' 
       }, { status: 400 })
     }
 
-    // 주문 취소 처리
+    // 사용한 포인트 조회
+    const { data: pointUsage } = await supabase
+      .from('point_history')
+      .select('points')
+      .eq('order_id', orderId)
+      .eq('type', 'usage')
+      .maybeSingle()
+
+    const usedPoints = pointUsage ? Math.abs(pointUsage.points) : 0
+
+    // 주문 취소 처리 (포인트 처리 포함)
     const { error: updateError } = await supabase
       .from('orders')
       .update({ 
@@ -61,9 +74,25 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // 포인트 처리 (적립 회수 + 사용 포인트 환불)
+    const pointResult = await handleOrderCancellationPoints(
+      user.id,
+      orderId,
+      order.total_amount,
+      usedPoints
+    )
+
     return NextResponse.json({ 
       success: true,
-      message: '주문이 취소되었습니다.'
+      message: '주문이 취소되었습니다. 환불이 진행됩니다.',
+      refund: {
+        amount: order.total_amount,
+        status: 'pending'
+      },
+      points: {
+        deducted: pointResult.deducted,
+        refunded: pointResult.refunded
+      }
     })
   } catch (error: any) {
     console.error('주문 취소 실패:', error)

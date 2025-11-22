@@ -4,184 +4,321 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 
-interface PromotionGroup {
+interface Promotion {
+  id: string
+  title: string
+  type: 'bogo' | 'percent'
+  buy_qty: number | null
+  discount_percent: number | null
+  start_at: string | null
+  end_at: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+interface PromotionProduct {
+  id: string
+  product_id: string
+  group_id: string | null
+  priority: number
+  products: {
+    id: string
+    name: string
+    price: number
+    image_url: string
+    brand: string | null
+  }
+}
+
+interface Product {
   id: string
   name: string
-  type: '1+1' | '2+1' | '3+1'
-  product_ids: string[]
-  created_at: string
+  price: number
+  image_url: string
+  brand: string | null
+  category: string
 }
 
 export default function PromotionsPage() {
   const router = useRouter()
-  const [groups, setGroups] = useState<PromotionGroup[]>([])
-  const [products, setProducts] = useState<any[]>([])
+  const [promotions, setPromotions] = useState<Promotion[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [promotedProductIds, setPromotedProductIds] = useState<Set<string>>(new Set())
+  const [promotionProductsMap, setPromotionProductsMap] = useState<Map<string, PromotionProduct[]>>(new Map())
   const [loading, setLoading] = useState(true)
-  
-  const [newGroup, setNewGroup] = useState({
-    type: '1+1' as '1+1' | '2+1' | '3+1',
-    product_ids: [] as string[]
-  })
-  const [showProductSelector, setShowProductSelector] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null)
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [showProductSelector, setShowProductSelector] = useState(false)
+
+  const [formData, setFormData] = useState({
+    title: '',
+    type: 'bogo' as 'bogo' | 'percent',
+    buy_qty: 1,
+    discount_percent: 0,
+    start_at: '',
+    end_at: '',
+    is_active: true,
+    group_id: '',
+  })
 
   useEffect(() => {
-    fetchData()
+    fetchPromotions()
+    fetchProducts()
+    fetchPromotedProducts()
   }, [])
 
-  const fetchData = async () => {
-    setLoading(true)
+  const fetchPromotedProducts = async () => {
     try {
-      // 상품 목록 가져오기
-      const res = await fetch('/api/admin/products?limit=1000')
+      // 모든 활성 프로모션의 상품 ID 수집
+      const res = await fetch('/api/admin/promotions')
       const data = await res.json()
-      if (res.ok) {
-        const allProducts = data.items || []
-        setProducts(allProducts)
+      if (res.ok && data.promotions) {
+        const productIds = new Set<string>()
         
-        // 프로모션이 설정된 상품들을 그룹화
-        const promoMap = new Map<string, any[]>()
-        
-        allProducts.forEach((product: any) => {
-          if (product.promotion_type && product.promotion_products) {
-            const key = product.promotion_products.sort().join(',')
-            if (!promoMap.has(key)) {
-              promoMap.set(key, [])
+        // 각 프로모션의 상품 조회
+        for (const promotion of data.promotions) {
+          if (promotion.is_active) {
+            const detailRes = await fetch(`/api/admin/promotions/${promotion.id}`)
+            const detailData = await detailRes.json()
+            if (detailRes.ok && detailData.products) {
+              detailData.products.forEach((pp: PromotionProduct) => {
+                productIds.add(pp.product_id)
+              })
             }
-            promoMap.get(key)!.push(product)
           }
-        })
+        }
         
-        // 그룹 목록 생성
-        const promoGroups: PromotionGroup[] = []
-        promoMap.forEach((products, key) => {
-          if (products.length > 0) {
-            promoGroups.push({
-              id: key,
-              name: products.map(p => p.name).join(', '),
-              type: products[0].promotion_type,
-              product_ids: products.map(p => p.id),
-              created_at: products[0].updated_at || products[0].created_at
-            })
-          }
-        })
-        
-        setGroups(promoGroups)
+        setPromotedProductIds(productIds)
       }
     } catch (error) {
-      console.error('데이터 조회 실패:', error)
+      console.error('프로모션 상품 조회 실패:', error)
+    }
+  }
+
+  const fetchPromotions = async () => {
+    try {
+      const res = await fetch('/api/admin/promotions')
+      const data = await res.json()
+      if (res.ok) {
+        const promotionsList = data.promotions || []
+        setPromotions(promotionsList)
+        
+        // 각 프로모션의 상품 목록 조회
+        const productsMap = new Map<string, PromotionProduct[]>()
+        for (const promotion of promotionsList) {
+          try {
+            const detailRes = await fetch(`/api/admin/promotions/${promotion.id}`)
+            const detailData = await detailRes.json()
+            if (detailRes.ok && detailData.products) {
+              productsMap.set(promotion.id, detailData.products)
+            }
+          } catch (error) {
+            console.error(`프로모션 ${promotion.id} 상품 조회 실패:`, error)
+          }
+        }
+        setPromotionProductsMap(productsMap)
+        
+        // 프로모션 목록이 업데이트되면 프로모션된 상품도 다시 조회
+        fetchPromotedProducts()
+      }
+    } catch (error) {
+      console.error('프로모션 조회 실패:', error)
+      toast.error('프로모션 조회에 실패했습니다')
     } finally {
       setLoading(false)
     }
   }
 
-  const toggleProduct = (productId: string) => {
-    const current = newGroup.product_ids
-    const isSelected = current.includes(productId)
-    setNewGroup({
-      ...newGroup,
-      product_ids: isSelected 
-        ? current.filter(id => id !== productId)
-        : [...current, productId]
-    })
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch('/api/admin/products?limit=1000')
+      const data = await res.json()
+      if (res.ok) {
+        setProducts(data.items || [])
+      }
+    } catch (error) {
+      console.error('상품 조회 실패:', error)
+    }
   }
 
-  const createGroup = async () => {
-    if (newGroup.product_ids.length < 1) {
-      toast.error('최소 1개 이상의 상품을 선택하세요', {
-        icon: '⚠️',
-      })
+  const handleCreate = async () => {
+    if (!formData.title.trim()) {
+      toast.error('제목을 입력하세요')
+      return
+    }
+
+    if (formData.type === 'bogo' && !formData.buy_qty) {
+      toast.error('BOGO 타입은 구매 개수를 입력하세요')
+      return
+    }
+
+    if (formData.type === 'percent' && !formData.discount_percent) {
+      toast.error('할인율을 입력하세요')
       return
     }
 
     try {
-      // 선택한 상품들에 프로모션 그룹 ID 저장
-      const groupId = crypto.randomUUID()
-      
-      for (const productId of newGroup.product_ids) {
-        await fetch(`/api/admin/products/${productId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            promotion_type: newGroup.type,
-            promotion_products: newGroup.product_ids, // 같은 그룹의 모든 상품
-          })
-        })
-      }
-
-      toast.success('프로모션이 생성되었습니다!', {
-        icon: '🎉',
+      const res = await fetch('/api/admin/promotions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          product_ids: selectedProducts,
+        }),
       })
-      setNewGroup({ type: '1+1' as '1+1' | '2+1' | '3+1', product_ids: [] })
-      fetchData()
+
+      const data = await res.json()
+
+      if (res.ok) {
+        toast.success('프로모션이 생성되었습니다')
+        setShowCreateModal(false)
+        resetForm()
+        await fetchPromotions()
+      } else {
+        toast.error(data.error || '프로모션 생성에 실패했습니다')
+      }
     } catch (error) {
       console.error('프로모션 생성 실패:', error)
       toast.error('프로모션 생성에 실패했습니다')
     }
   }
 
-  const deletePromotion = async (group: PromotionGroup) => {
-    if (!confirm(`"${group.name}" 프로모션을 삭제하시겠습니까?\n\n고객 장바구니에서도 해당 프로모션 상품이 제거됩니다.`)) return
+  const handleUpdate = async () => {
+    if (!editingPromotion) return
 
-    console.log('[deletePromotion] 프로모션 삭제 시작:', group)
+    if (!formData.title.trim()) {
+      toast.error('제목을 입력하세요')
+      return
+    }
 
     try {
-      // 1. 해당 상품들의 프로모션 설정 제거
-      console.log('[deletePromotion] 상품 프로모션 설정 제거 시작:', group.product_ids)
-      for (const productId of group.product_ids) {
-        const res = await fetch(`/api/admin/products/${productId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            promotion_type: null,
-            promotion_products: null,
-          })
-        })
-        console.log(`[deletePromotion] 상품 ${productId} 프로모션 제거:`, res.ok)
-      }
-
-      // 2. 모든 사용자 장바구니에서 해당 프로모션 상품 제거
-      console.log('[deletePromotion] 장바구니 정리 API 호출:', {
-        url: '/api/admin/promotions/cleanup-cart',
-        product_ids: group.product_ids
-      })
-      
-      const deleteResponse = await fetch('/api/admin/promotions/cleanup-cart', {
-        method: 'POST',
+      const res = await fetch(`/api/admin/promotions/${editingPromotion.id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          product_ids: group.product_ids
-        })
+        body: JSON.stringify(formData),
       })
 
-      const deleteResult = await deleteResponse.json()
-      console.log('[deletePromotion] 장바구니 정리 결과:', {
-        ok: deleteResponse.ok,
-        status: deleteResponse.status,
-        result: deleteResult
-      })
+      const data = await res.json()
 
-      if (!deleteResponse.ok) {
-        console.error('[deletePromotion] 장바구니 정리 실패:', deleteResult)
+      if (res.ok) {
+        toast.success('프로모션이 수정되었습니다')
+        setEditingPromotion(null)
+        resetForm()
+        await fetchPromotions()
       } else {
-        console.log(`[deletePromotion] 장바구니에서 ${deleteResult.deletedCount}개 아이템 제거됨`)
+        toast.error(data.error || '프로모션 수정에 실패했습니다')
       }
-
-      toast.success('프로모션이 삭제되었습니다', {
-        icon: '✅',
-      })
-      fetchData()
     } catch (error) {
-      console.error('[deletePromotion] 프로모션 삭제 실패:', error)
+      console.error('프로모션 수정 실패:', error)
+      toast.error('프로모션 수정에 실패했습니다')
+    }
+  }
+
+  const handleDelete = async (promotionId: string) => {
+    if (!confirm('이 프로모션을 삭제하시겠습니까?')) return
+
+    try {
+      const res = await fetch(`/api/admin/promotions/${promotionId}`, {
+        method: 'DELETE',
+      })
+
+      if (res.ok) {
+        toast.success('프로모션이 삭제되었습니다')
+        await fetchPromotions()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || '프로모션 삭제에 실패했습니다')
+      }
+    } catch (error) {
+      console.error('프로모션 삭제 실패:', error)
       toast.error('프로모션 삭제에 실패했습니다')
     }
   }
 
-  const filteredProducts = searchQuery
-    ? products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : products
+  const handleToggleActive = async (promotion: Promotion) => {
+    try {
+      const res = await fetch(`/api/admin/promotions/${promotion.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...promotion,
+          is_active: !promotion.is_active,
+        }),
+      })
 
-  const selectedProducts = products.filter(p => newGroup.product_ids.includes(p.id))
+      if (res.ok) {
+        toast.success(`프로모션이 ${!promotion.is_active ? '활성화' : '비활성화'}되었습니다`)
+        await fetchPromotions()
+      }
+    } catch (error) {
+      console.error('프로모션 상태 변경 실패:', error)
+      toast.error('프로모션 상태 변경에 실패했습니다')
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      type: 'bogo',
+      buy_qty: 1,
+      discount_percent: 0,
+      start_at: '',
+      end_at: '',
+      is_active: true,
+      group_id: '',
+    })
+    setSelectedProducts([])
+  }
+
+  const openEditModal = async (promotion: Promotion) => {
+    setEditingPromotion(promotion)
+    setFormData({
+      title: promotion.title,
+      type: promotion.type,
+      buy_qty: promotion.buy_qty || 1,
+      discount_percent: promotion.discount_percent || 0,
+      start_at: promotion.start_at ? promotion.start_at.split('T')[0] : '',
+      end_at: promotion.end_at ? promotion.end_at.split('T')[0] : '',
+      is_active: promotion.is_active,
+      group_id: '',
+    })
+
+    // 프로모션에 연결된 상품 조회
+    try {
+      const res = await fetch(`/api/admin/promotions/${promotion.id}`)
+      const data = await res.json()
+      if (res.ok && data.products) {
+        setSelectedProducts(data.products.map((p: PromotionProduct) => p.product_id))
+      }
+    } catch (error) {
+      console.error('상품 조회 실패:', error)
+    }
+
+    setShowCreateModal(true)
+  }
+
+  const toggleProduct = (productId: string) => {
+    setSelectedProducts((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId]
+    )
+  }
+
+  const filteredProducts = products.filter((p) =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const getPromotionTypeLabel = (promotion: Promotion) => {
+    if (promotion.type === 'bogo') {
+      return `${promotion.buy_qty}+1`
+    } else {
+      return `${promotion.discount_percent}% 할인`
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -199,218 +336,385 @@ export default function PromotionsPage() {
             </button>
             <h1 className="text-2xl font-bold text-gray-900">프로모션 관리</h1>
           </div>
-          <button
-            onClick={() => router.push('/admin')}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-          >
-            관리자 홈
-          </button>
-        </div>
-
-        {/* 새 프로모션 생성 */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-lg font-bold mb-4">새 프로모션 만들기</h2>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">프로모션 타입</label>
-              <select
-                value={newGroup.type}
-                onChange={(e)=>setNewGroup({...newGroup, type: e.target.value as '1+1' | '2+1' | '3+1'})}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-              >
-                <option value="1+1">1+1 (2개 중 1개 무료)</option>
-                <option value="2+1">2+1 (3개 중 1개 무료)</option>
-                <option value="3+1">3+1 (4개 중 1개 무료)</option>
-              </select>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium">선택된 상품 ({newGroup.product_ids.length}개)</label>
-                <button
-                  onClick={()=>setShowProductSelector(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-                >
-                  상품 선택
-                </button>
-              </div>
-              
-              {selectedProducts.length > 0 ? (
-                <div className="border rounded-lg p-3 bg-gray-50 max-h-40 overflow-y-auto">
-                  <div className="flex flex-wrap gap-2">
-                    {selectedProducts.map((p) => (
-                      <span key={p.id} className="px-3 py-1 bg-white border rounded-full text-sm flex items-center gap-2">
-                        {p.name}
-                        <button
-                          onClick={()=>toggleProduct(p.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="border rounded-lg p-4 bg-gray-50 text-center text-sm text-gray-500">
-                  상품을 선택하세요
-                </div>
-              )}
-            </div>
-
+          <div className="flex gap-2">
             <button
-              onClick={createGroup}
-              className="w-full py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition"
+              onClick={() => {
+                resetForm()
+                setEditingPromotion(null)
+                setShowCreateModal(true)
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
-              프로모션 생성
+              새 프로모션
+            </button>
+            <button
+              onClick={() => router.push('/admin')}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+            >
+              관리자 홈
             </button>
           </div>
         </div>
 
-        {/* 생성된 프로모션 목록 */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-xl font-bold mb-4">생성된 프로모션 목록 ({groups.length})</h2>
-          
-          {groups.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              생성된 프로모션이 없습니다
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {groups.map((group) => (
-                <div key={group.id} className="border rounded-lg p-4 hover:bg-gray-50 transition">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm font-bold">
-                          {group.type}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {group.product_ids.length}개 상품
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-700">
-                        {group.name}
-                      </div>
+        {/* 프로모션 목록 */}
+        {loading ? (
+          <div className="text-center py-12">로딩 중...</div>
+        ) : promotions.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+            <p className="text-gray-500 mb-4">생성된 프로모션이 없습니다</p>
+            <button
+              onClick={() => {
+                resetForm()
+                setShowCreateModal(true)
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              첫 프로모션 만들기
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {promotions.map((promotion) => (
+              <div
+                key={promotion.id}
+                className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-bold">{promotion.title}</h3>
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-bold ${
+                          promotion.type === 'bogo'
+                            ? 'bg-pink-100 text-pink-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}
+                      >
+                        {getPromotionTypeLabel(promotion)}
+                      </span>
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${
+                          promotion.is_active
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {promotion.is_active ? '활성' : '비활성'}
+                      </span>
                     </div>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      {promotion.start_at && (
+                        <p>시작: {new Date(promotion.start_at).toLocaleString('ko-KR')}</p>
+                      )}
+                      {promotion.end_at && (
+                        <p>종료: {new Date(promotion.end_at).toLocaleString('ko-KR')}</p>
+                      )}
+                      <p>생성일: {new Date(promotion.created_at).toLocaleString('ko-KR')}</p>
+                    </div>
+                    
+                    {/* 프로모션에 포함된 상품 목록 */}
+                    {promotionProductsMap.has(promotion.id) && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-xs font-medium text-gray-500 mb-2">
+                          포함된 상품 ({promotionProductsMap.get(promotion.id)?.length || 0}개)
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {promotionProductsMap.get(promotion.id)?.map((pp) => {
+                            const product = Array.isArray(pp.products) ? pp.products[0] : pp.products
+                            return product ? (
+                              <span
+                                key={pp.id}
+                                className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
+                              >
+                                {product.name}
+                              </span>
+                            ) : null
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => deletePromotion(group)}
-                      className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded transition"
+                      onClick={() => handleToggleActive(promotion)}
+                      className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                    >
+                      {promotion.is_active ? '비활성화' : '활성화'}
+                    </button>
+                    <button
+                      onClick={() => openEditModal(promotion)}
+                      className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                    >
+                      수정
+                    </button>
+                    <button
+                      onClick={() => handleDelete(promotion.id)}
+                      className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
                     >
                       삭제
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
 
-        {/* 안내 */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="font-semibold text-blue-900 mb-2">💡 프로모션 작동 방식</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• <strong>1+1</strong>: 고객이 선택한 상품 중 2개를 고르면, 1개는 정상가, 1개는 무료</li>
-            <li>• <strong>2+1</strong>: 고객이 선택한 상품 중 3개를 고르면, 2개는 정상가, 1개는 무료</li>
-            <li>• <strong>3+1</strong>: 고객이 선택한 상품 중 4개를 고르면, 3개는 정상가, 1개는 무료</li>
-            <li>• 같은 프로모션에 속한 상품끼리만 교차 적용됩니다</li>
-          </ul>
-        </div>
-      </main>
+        {/* 생성/수정 모달 */}
+        {showCreateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+                <h2 className="text-xl font-bold">
+                  {editingPromotion ? '프로모션 수정' : '새 프로모션 만들기'}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false)
+                    resetForm()
+                  }}
+                  className="text-2xl text-gray-400 hover:text-gray-600"
+                >
+                  ×
+                </button>
+              </div>
 
-      {/* 상품 선택 모달 */}
-      {showProductSelector && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={()=>setShowProductSelector(false)}></div>
-          <div className="relative bg-white rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold">프로모션 대상 상품 선택</h3>
-                <button onClick={()=>setShowProductSelector(false)} className="text-white text-2xl">×</button>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">제목 *</label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg"
+                    placeholder="예: 신상품 1+1 프로모션"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">프로모션 타입 *</label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) =>
+                      setFormData({ ...formData, type: e.target.value as 'bogo' | 'percent' })
+                    }
+                    className="w-full px-3 py-2 border rounded-lg"
+                  >
+                    <option value="bogo">BOGO (1+1, 2+1, 3+1)</option>
+                    <option value="percent">할인율 (%)</option>
+                  </select>
+                </div>
+
+                {formData.type === 'bogo' ? (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">구매 개수 *</label>
+                    <select
+                      value={formData.buy_qty}
+                      onChange={(e) =>
+                        setFormData({ ...formData, buy_qty: parseInt(e.target.value) })
+                      }
+                      className="w-full px-3 py-2 border rounded-lg"
+                    >
+                      <option value={1}>1+1 (2개 중 1개 무료)</option>
+                      <option value={2}>2+1 (3개 중 1개 무료)</option>
+                      <option value={3}>3+1 (4개 중 1개 무료)</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">할인율 (%) *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={formData.discount_percent}
+                      onChange={(e) =>
+                        setFormData({ ...formData, discount_percent: parseFloat(e.target.value) })
+                      }
+                      className="w-full px-3 py-2 border rounded-lg"
+                      placeholder="예: 20"
+                    />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">시작일</label>
+                    <input
+                      type="date"
+                      value={formData.start_at}
+                      onChange={(e) => setFormData({ ...formData, start_at: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">종료일</label>
+                    <input
+                      type="date"
+                      value={formData.end_at}
+                      onChange={(e) => setFormData({ ...formData, end_at: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_active}
+                      onChange={(e) =>
+                        setFormData({ ...formData, is_active: e.target.checked })
+                      }
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">활성화</span>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    상품 선택 ({selectedProducts.length}개)
+                  </label>
+                  <button
+                    onClick={() => setShowProductSelector(true)}
+                    className="w-full px-3 py-2 border rounded-lg text-left hover:bg-gray-50"
+                  >
+                    상품 선택하기 ({selectedProducts.length}개 선택됨)
+                  </button>
+                  {selectedProducts.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {selectedProducts.map((productId) => {
+                        const product = products.find((p) => p.id === productId)
+                        return product ? (
+                          <span
+                            key={productId}
+                            className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm flex items-center gap-2"
+                          >
+                            {product.name}
+                            <button
+                              onClick={() => toggleProduct(productId)}
+                              className="text-blue-900 hover:text-blue-950"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ) : null
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 pt-4">
+                  <button
+                    onClick={editingPromotion ? handleUpdate : handleCreate}
+                    className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                  >
+                    {editingPromotion ? '수정' : '생성'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCreateModal(false)
+                      resetForm()
+                    }}
+                    className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                  >
+                    취소
+                  </button>
+                </div>
               </div>
             </div>
+          </div>
+        )}
 
-            <div className="p-4">
-              <input
-                type="text"
-                placeholder="상품명 검색..."
-                value={searchQuery}
-                onChange={(e)=>setSearchQuery(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 mb-3 text-sm"
-              />
-            </div>
-            
-            <div className="flex-1 overflow-y-auto px-4">
-              <div className="space-y-2 pb-4">
-                {filteredProducts.map((product) => {
-                  const isSelected = newGroup.product_ids.includes(product.id)
-                  const hasDiscount = product.discount_percent && product.discount_percent > 0
-                  const hasPromotion = product.promotion_type
-                  const isDisabled = hasDiscount || hasPromotion  // 할인중이거나 프로모션 적용중이면 비활성화
-                  
-                  return (
-                    <div 
-                      key={product.id}
-                      onClick={() => {
-                        if (!isDisabled) {
-                          toggleProduct(product.id)
-                        }
-                      }}
-                      className={`flex items-center justify-between p-3 rounded-lg transition ${
-                        isDisabled 
-                          ? 'bg-gray-100 border-2 border-gray-200 cursor-not-allowed opacity-60'
-                          : isSelected 
-                            ? 'bg-blue-100 border-2 border-blue-500 cursor-pointer' 
+        {/* 상품 선택 모달 */}
+        {showProductSelector && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <div className="bg-white rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+              <div className="bg-blue-600 text-white px-6 py-4 flex items-center justify-between">
+                <h3 className="text-lg font-bold">상품 선택</h3>
+                <button
+                  onClick={() => setShowProductSelector(false)}
+                  className="text-white text-2xl hover:text-gray-200"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="p-4 border-b">
+                <input
+                  type="text"
+                  placeholder="상품명 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="space-y-2">
+                  {filteredProducts.map((product) => {
+                    const isSelected = selectedProducts.includes(product.id)
+                    const isPromoted = promotedProductIds.has(product.id)
+                    const isDisabled = isPromoted && (!editingPromotion || !selectedProducts.includes(product.id))
+                    
+                    return (
+                      <div
+                        key={product.id}
+                        onClick={() => {
+                          if (!isDisabled) {
+                            toggleProduct(product.id)
+                          }
+                        }}
+                        className={`flex items-center gap-3 p-3 rounded-lg transition ${
+                          isDisabled
+                            ? 'bg-gray-100 border-2 border-gray-300 cursor-not-allowed opacity-60'
+                            : isSelected
+                            ? 'bg-blue-100 border-2 border-blue-500 cursor-pointer'
                             : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent cursor-pointer'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3 flex-1">
-                        <input 
-                          type="checkbox" 
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
                           checked={isSelected}
                           disabled={isDisabled}
-                          onChange={()=>{}}
+                          onChange={() => {}}
                           className="w-5 h-5"
                         />
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-semibold">{product.name}</p>
-                            {hasDiscount && (
-                              <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded">
-                                {product.discount_percent}% 할인중
-                              </span>
-                            )}
-                            {hasPromotion && !hasDiscount && (
+                            <p className="font-medium">{product.name}</p>
+                            {isPromoted && (
                               <span className="px-2 py-0.5 bg-pink-100 text-pink-700 text-xs font-bold rounded">
-                                {product.promotion_type} 프로모션 적용중
+                                프로모션 적용중
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-gray-600">{product.category} • {product.price.toLocaleString()}원</p>
+                          <p className="text-sm text-gray-600">
+                            {product.category} • {product.price.toLocaleString()}원
+                          </p>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t flex justify-between items-center bg-gray-50">
+                <span className="text-sm text-gray-600">
+                  {selectedProducts.length}개 선택됨
+                </span>
+                <button
+                  onClick={() => setShowProductSelector(false)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  완료
+                </button>
               </div>
             </div>
-            
-            <div className="px-5 py-3 bg-gray-50 border-t flex justify-between items-center">
-              <span className="text-sm text-gray-600">
-                {newGroup.product_ids.length}개 선택됨
-              </span>
-              <button
-                onClick={()=>setShowProductSelector(false)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-              >
-                완료
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </main>
     </div>
   )
 }
-

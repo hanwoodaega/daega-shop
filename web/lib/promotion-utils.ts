@@ -37,11 +37,9 @@ export function processPromotionItems(
         price: product.price,
         quantity: 1,
         imageUrl: product.image_url,
-        // 무료 상품은 100% 할인, 유료 상품은 기존 할인율 유지
-        discount_percent: isFree ? 100 : (product.discount_percent ?? undefined),
+        // 무료 상품은 100% 할인, 유료 상품은 할인 없음
+        discount_percent: isFree ? 100 : undefined,
         brand: product.brand ?? undefined,
-        promotion_type: product.promotion_type ?? undefined,
-        stock: product.stock,
       })
       remaining--
     }

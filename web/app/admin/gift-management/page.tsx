@@ -83,41 +83,58 @@ export default function GiftManagementPage() {
   const fetchGiftProducts = async () => {
     setLoading(true)
     try {
-      // 모든 상품 조회
-      const response = await fetch(`/api/admin/products?limit=1000`)
-
-      if (response.status === 401) {
-        router.push('/admin/login?next=/admin/gift-management')
-        return
+      // 대상별 카테고리 slug 매핑
+      const targetSlugMap: Record<string, string> = {
+        '아이': 'child',
+        '부모님': 'parent',
+        '연인': 'lover',
+        '친구': 'friend',
       }
 
-      if (!response.ok) {
-        throw new Error('상품 조회 실패')
-      }
+      // 모든 대상 카테고리 조회
+      const categoriesRes = await fetch('/api/admin/gift-categories')
+      if (!categoriesRes.ok) throw new Error('카테고리 조회 실패')
+      const categoriesData = await categoriesRes.json()
+      const targetCategories = categoriesData.categories?.filter((c: any) => 
+        ['child', 'parent', 'lover', 'friend'].includes(c.slug)
+      ) || []
 
-      const data = await response.json()
-      // 선물 대상이 설정된 상품만 필터링
-      let withTargets = (data.items || []).filter((p: Product) => 
-        Array.isArray(p.gift_target) && p.gift_target.length > 0
-      )
-      
-      // 선물 대상으로 필터링
+      // 선택된 대상의 카테고리만 필터링
+      let categoriesToFetch = targetCategories
       if (selectedTarget !== '전체') {
-        withTargets = withTargets.filter((p: Product) => {
-          const targets = Array.isArray(p.gift_target) ? p.gift_target : []
-          return targets.includes(selectedTarget)
-        })
+        const targetSlug = targetSlugMap[selectedTarget]
+        categoriesToFetch = targetCategories.filter((c: any) => c.slug === targetSlug)
       }
-      
+
+      // 각 카테고리의 상품 조회
+      const allProducts: any[] = []
+      for (const category of categoriesToFetch) {
+        const productsRes = await fetch(`/api/admin/gift-categories/${category.id}`)
+        if (productsRes.ok) {
+          const productsData = await productsRes.json()
+          const categoryProducts = (productsData.products || []).map((cp: any) => ({
+            ...(Array.isArray(cp.products) ? cp.products[0] : cp.products),
+            gift_display_order: cp.priority,
+            gift_target: [category.name],
+          }))
+          allProducts.push(...categoryProducts)
+        }
+      }
+
+      // 중복 제거 (같은 상품이 여러 카테고리에 있을 수 있음)
+      const uniqueProducts = Array.from(
+        new Map(allProducts.map(p => [p.id, p])).values()
+      )
+
       // 순서대로 정렬
-      withTargets.sort((a: Product, b: Product) => {
+      uniqueProducts.sort((a: any, b: any) => {
         const orderA = a.gift_display_order ?? 999999
         const orderB = b.gift_display_order ?? 999999
         if (orderA !== orderB) return orderA - orderB
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       })
       
-      setGiftProducts(withTargets)
+      setGiftProducts(uniqueProducts as Product[])
     } catch (error) {
       console.error('상품 조회 실패:', error)
       toast.error('상품 조회에 실패했습니다')
@@ -129,41 +146,58 @@ export default function GiftManagementPage() {
   const fetchBudgetProducts = async () => {
     setLoading(true)
     try {
-      // 모든 상품 조회
-      const response = await fetch(`/api/admin/products?limit=1000`)
-
-      if (response.status === 401) {
-        router.push('/admin/login?next=/admin/gift-management')
-        return
+      // 예산별 카테고리 slug 매핑
+      const budgetSlugMap: Record<string, string> = {
+        '5만원 미만': 'under-50k',
+        '5만원 이상': 'over-50k',
+        '10만원 이상': 'over-100k',
+        '20만원 이상': 'over-200k',
       }
 
-      if (!response.ok) {
-        throw new Error('상품 조회 실패')
-      }
+      // 모든 예산 카테고리 조회
+      const categoriesRes = await fetch('/api/admin/gift-categories')
+      if (!categoriesRes.ok) throw new Error('카테고리 조회 실패')
+      const categoriesData = await categoriesRes.json()
+      const budgetCategories = categoriesData.categories?.filter((c: any) => 
+        ['under-50k', 'over-50k', 'over-100k', 'over-200k'].includes(c.slug)
+      ) || []
 
-      const data = await response.json()
-      // 예산 카테고리가 설정된 상품만 필터링
-      let withBudget = (data.items || []).filter((p: Product) => 
-        Array.isArray(p.gift_budget_targets) && p.gift_budget_targets.length > 0
-      )
-      
-      // 예산 카테고리로 필터링
+      // 선택된 예산의 카테고리만 필터링
+      let categoriesToFetch = budgetCategories
       if (selectedBudget !== '전체') {
-        withBudget = withBudget.filter((p: Product) => {
-          const budgets = Array.isArray(p.gift_budget_targets) ? p.gift_budget_targets : []
-          return budgets.includes(selectedBudget)
-        })
+        const budgetSlug = budgetSlugMap[selectedBudget]
+        categoriesToFetch = budgetCategories.filter((c: any) => c.slug === budgetSlug)
       }
-      
+
+      // 각 카테고리의 상품 조회
+      const allProducts: any[] = []
+      for (const category of categoriesToFetch) {
+        const productsRes = await fetch(`/api/admin/gift-categories/${category.id}`)
+        if (productsRes.ok) {
+          const productsData = await productsRes.json()
+          const categoryProducts = (productsData.products || []).map((cp: any) => ({
+            ...(Array.isArray(cp.products) ? cp.products[0] : cp.products),
+            gift_budget_order: cp.priority,
+            gift_budget_targets: [category.name],
+          }))
+          allProducts.push(...categoryProducts)
+        }
+      }
+
+      // 중복 제거
+      const uniqueProducts = Array.from(
+        new Map(allProducts.map(p => [p.id, p])).values()
+      )
+
       // 순서대로 정렬
-      withBudget.sort((a: Product, b: Product) => {
+      uniqueProducts.sort((a: any, b: any) => {
         const orderA = a.gift_budget_order ?? 999999
         const orderB = b.gift_budget_order ?? 999999
         if (orderA !== orderB) return orderA - orderB
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       })
       
-      setBudgetProducts(withBudget)
+      setBudgetProducts(uniqueProducts as Product[])
     } catch (error) {
       console.error('상품 조회 실패:', error)
       toast.error('상품 조회에 실패했습니다')
@@ -175,33 +209,37 @@ export default function GiftManagementPage() {
   const fetchFeaturedProducts = async () => {
     setLoading(true)
     try {
-      // 모든 상품 조회
-      const response = await fetch(`/api/admin/products?limit=1000`)
+      // 실시간 인기 카테고리 조회
+      const categoriesRes = await fetch('/api/admin/gift-categories')
+      if (!categoriesRes.ok) throw new Error('카테고리 조회 실패')
+      const categoriesData = await categoriesRes.json()
+      const featuredCategory = categoriesData.categories?.find((c: any) => c.slug === 'featured')
 
-      if (response.status === 401) {
-        router.push('/admin/login?next=/admin/gift-management')
+      if (!featuredCategory) {
+        setFeaturedProducts([])
         return
       }
 
-      if (!response.ok) {
-        throw new Error('상품 조회 실패')
-      }
-
-      const data = await response.json()
-      // 실시간 인기 선물세트로 설정된 상품만 필터링
-      let featured = (data.items || []).filter((p: Product) => 
-        p.gift_featured === true
-      )
+      // 실시간 인기 카테고리의 상품 조회
+      const productsRes = await fetch(`/api/admin/gift-categories/${featuredCategory.id}`)
+      if (!productsRes.ok) throw new Error('상품 조회 실패')
+      const productsData = await productsRes.json()
+      
+      const featured = (productsData.products || []).map((cp: any) => ({
+        ...(Array.isArray(cp.products) ? cp.products[0] : cp.products),
+        gift_featured_order: cp.priority,
+        gift_featured: true,
+      }))
       
       // 순서대로 정렬
-      featured.sort((a: Product, b: Product) => {
+      featured.sort((a: any, b: any) => {
         const orderA = a.gift_featured_order ?? 999999
         const orderB = b.gift_featured_order ?? 999999
         if (orderA !== orderB) return orderA - orderB
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       })
       
-      setFeaturedProducts(featured)
+      setFeaturedProducts(featured as Product[])
     } catch (error) {
       console.error('상품 조회 실패:', error)
       toast.error('상품 조회에 실패했습니다')
@@ -216,34 +254,68 @@ export default function GiftManagementPage() {
 
     setSaving(productId)
     try {
-      const currentTargets = Array.isArray(product.gift_target) ? product.gift_target : []
-      const newTargets = currentTargets.includes(target)
-        ? currentTargets.filter((t) => t !== target)
-        : [...currentTargets, target]
-
-      const response = await fetch(`/api/admin/gift-products/${productId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_target: newTargets.length > 0 ? newTargets : null }),
-      })
-
-      if (response.status === 401) {
-        router.push('/admin/login?next=/admin/gift-management')
-        return
+      // 대상별 카테고리 slug 매핑
+      const targetSlugMap: Record<string, string> = {
+        '아이': 'child',
+        '부모님': 'parent',
+        '연인': 'lover',
+        '친구': 'friend',
       }
 
-      if (!response.ok) {
-        throw new Error('업데이트 실패')
+      const targetSlug = targetSlugMap[target]
+      if (!targetSlug) {
+        throw new Error('잘못된 대상입니다')
       }
 
-      // 로컬 상태 업데이트
-      setGiftProducts((prev) => {
-        const updated = prev.map((p) =>
-          p.id === productId ? { ...p, gift_target: newTargets.length > 0 ? newTargets : null } : p
-        )
-        // 선물 대상이 없으면 목록에서 제거
-        return updated.filter((p) => Array.isArray(p.gift_target) && p.gift_target.length > 0)
-      })
+      // 카테고리 조회
+      const categoryRes = await fetch(`/api/admin/gift-categories?slug=${targetSlug}`)
+      if (!categoryRes.ok) throw new Error('카테고리 조회 실패')
+      const categoryData = await categoryRes.json()
+      const category = categoryData.categories?.find((c: any) => c.slug === targetSlug)
+      if (!category) throw new Error('카테고리를 찾을 수 없습니다')
+
+      // 현재 상품이 해당 카테고리에 있는지 확인
+      const categoryDetailRes = await fetch(`/api/admin/gift-categories/${category.id}`)
+      if (!categoryDetailRes.ok) throw new Error('카테고리 상세 조회 실패')
+      const categoryDetail = await categoryDetailRes.json()
+      const isInCategory = categoryDetail.products?.some((cp: any) => 
+        (Array.isArray(cp.products) ? cp.products[0]?.id : cp.products?.id) === productId
+      )
+
+      if (isInCategory) {
+        // 카테고리에서 제거
+        const response = await fetch(`/api/admin/gift-categories/${category.id}/products?product_id=${productId}`, {
+          method: 'DELETE',
+        })
+
+        if (response.status === 401) {
+          router.push('/admin/login?next=/admin/gift-management')
+          return
+        }
+
+        if (!response.ok) {
+          throw new Error('제거 실패')
+        }
+      } else {
+        // 카테고리에 추가
+        const response = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            product_ids: [productId],
+            priority: 999999, // 마지막에 추가
+          }),
+        })
+
+        if (response.status === 401) {
+          router.push('/admin/login?next=/admin/gift-management')
+          return
+        }
+
+        if (!response.ok) {
+          throw new Error('추가 실패')
+        }
+      }
 
       toast.success('선물 대상이 업데이트되었습니다')
       fetchGiftProducts() // 목록 새로고침
@@ -264,20 +336,45 @@ export default function GiftManagementPage() {
     setReordering(product.id)
     try {
       // 현재 상품과 이전 상품의 순서를 교환
-      const currentOrder = product.gift_display_order ?? 999999
-      const prevOrder = prevProduct.gift_display_order ?? 999999
+      const currentOrder = (product as any).gift_display_order ?? 999999
+      const prevOrder = (prevProduct as any).gift_display_order ?? 999999
+
+      // 선택된 대상의 카테고리 찾기
+      const targetSlugMap: Record<string, string> = {
+        '아이': 'child',
+        '부모님': 'parent',
+        '연인': 'lover',
+        '친구': 'friend',
+      }
+
+      let targetSlug = 'child' // 기본값
+      if (selectedTarget !== '전체') {
+        targetSlug = targetSlugMap[selectedTarget] || 'child'
+      } else {
+        // 전체인 경우 첫 번째 상품의 gift_target에서 찾기
+        const firstTarget = Array.isArray((product as any).gift_target) && (product as any).gift_target.length > 0 
+          ? (product as any).gift_target[0] 
+          : '아이'
+        targetSlug = targetSlugMap[firstTarget] || 'child'
+      }
+
+      const categoryRes = await fetch(`/api/admin/gift-categories?slug=${targetSlug}`)
+      if (!categoryRes.ok) throw new Error('카테고리 조회 실패')
+      const categoryData = await categoryRes.json()
+      const category = categoryData.categories?.find((c: any) => c.slug === targetSlug)
+      if (!category) throw new Error('카테고리를 찾을 수 없습니다')
 
       // 두 상품의 순서를 교환
-      const response1 = await fetch(`/api/admin/gift-products/${product.id}`, {
+      const response1 = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_display_order: prevOrder }),
+        body: JSON.stringify({ product_id: product.id, priority: prevOrder }),
       })
 
-      const response2 = await fetch(`/api/admin/gift-products/${prevProduct.id}`, {
+      const response2 = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_display_order: currentOrder }),
+        body: JSON.stringify({ product_id: prevProduct.id, priority: currentOrder }),
       })
 
       if (!response1.ok || !response2.ok) {
@@ -314,20 +411,45 @@ export default function GiftManagementPage() {
     setReordering(product.id)
     try {
       // 현재 상품과 다음 상품의 순서를 교환
-      const currentOrder = product.gift_display_order ?? 999999
-      const nextOrder = nextProduct.gift_display_order ?? 999999
+      const currentOrder = (product as any).gift_display_order ?? 999999
+      const nextOrder = (nextProduct as any).gift_display_order ?? 999999
+
+      // 선택된 대상의 카테고리 찾기
+      const targetSlugMap: Record<string, string> = {
+        '아이': 'child',
+        '부모님': 'parent',
+        '연인': 'lover',
+        '친구': 'friend',
+      }
+
+      let targetSlug = 'child' // 기본값
+      if (selectedTarget !== '전체') {
+        targetSlug = targetSlugMap[selectedTarget] || 'child'
+      } else {
+        // 전체인 경우 첫 번째 상품의 gift_target에서 찾기
+        const firstTarget = Array.isArray((product as any).gift_target) && (product as any).gift_target.length > 0 
+          ? (product as any).gift_target[0] 
+          : '아이'
+        targetSlug = targetSlugMap[firstTarget] || 'child'
+      }
+
+      const categoryRes = await fetch(`/api/admin/gift-categories?slug=${targetSlug}`)
+      if (!categoryRes.ok) throw new Error('카테고리 조회 실패')
+      const categoryData = await categoryRes.json()
+      const category = categoryData.categories?.find((c: any) => c.slug === targetSlug)
+      if (!category) throw new Error('카테고리를 찾을 수 없습니다')
 
       // 두 상품의 순서를 교환
-      const response1 = await fetch(`/api/admin/gift-products/${product.id}`, {
+      const response1 = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_display_order: nextOrder }),
+        body: JSON.stringify({ product_id: product.id, priority: nextOrder }),
       })
 
-      const response2 = await fetch(`/api/admin/gift-products/${nextProduct.id}`, {
+      const response2 = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_display_order: currentOrder }),
+        body: JSON.stringify({ product_id: nextProduct.id, priority: currentOrder }),
       })
 
       if (!response1.ok || !response2.ok) {
@@ -361,34 +483,68 @@ export default function GiftManagementPage() {
 
     setSaving(productId)
     try {
-      const currentBudgets = Array.isArray(product.gift_budget_targets) ? product.gift_budget_targets : []
-      const newBudgets = currentBudgets.includes(budget)
-        ? currentBudgets.filter((b) => b !== budget)
-        : [...currentBudgets, budget]
-
-      const response = await fetch(`/api/admin/products/${productId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_budget_targets: newBudgets.length > 0 ? newBudgets : null }),
-      })
-
-      if (response.status === 401) {
-        router.push('/admin/login?next=/admin/gift-management')
-        return
+      // 예산별 카테고리 slug 매핑
+      const budgetSlugMap: Record<string, string> = {
+        '5만원 미만': 'under-50k',
+        '5만원 이상': 'over-50k',
+        '10만원 이상': 'over-100k',
+        '20만원 이상': 'over-200k',
       }
 
-      if (!response.ok) {
-        throw new Error('업데이트 실패')
+      const budgetSlug = budgetSlugMap[budget]
+      if (!budgetSlug) {
+        throw new Error('잘못된 예산입니다')
       }
 
-      // 로컬 상태 업데이트
-      setBudgetProducts((prev) => {
-        const updated = prev.map((p) =>
-          p.id === productId ? { ...p, gift_budget_targets: newBudgets.length > 0 ? newBudgets : null } : p
-        )
-        // 예산 카테고리가 없으면 목록에서 제거
-        return updated.filter((p) => Array.isArray(p.gift_budget_targets) && p.gift_budget_targets.length > 0)
-      })
+      // 카테고리 조회
+      const categoryRes = await fetch(`/api/admin/gift-categories?slug=${budgetSlug}`)
+      if (!categoryRes.ok) throw new Error('카테고리 조회 실패')
+      const categoryData = await categoryRes.json()
+      const category = categoryData.categories?.find((c: any) => c.slug === budgetSlug)
+      if (!category) throw new Error('카테고리를 찾을 수 없습니다')
+
+      // 현재 상품이 해당 카테고리에 있는지 확인
+      const categoryDetailRes = await fetch(`/api/admin/gift-categories/${category.id}`)
+      if (!categoryDetailRes.ok) throw new Error('카테고리 상세 조회 실패')
+      const categoryDetail = await categoryDetailRes.json()
+      const isInCategory = categoryDetail.products?.some((cp: any) => 
+        (Array.isArray(cp.products) ? cp.products[0]?.id : cp.products?.id) === productId
+      )
+
+      if (isInCategory) {
+        // 카테고리에서 제거
+        const response = await fetch(`/api/admin/gift-categories/${category.id}/products?product_id=${productId}`, {
+          method: 'DELETE',
+        })
+
+        if (response.status === 401) {
+          router.push('/admin/login?next=/admin/gift-management')
+          return
+        }
+
+        if (!response.ok) {
+          throw new Error('제거 실패')
+        }
+      } else {
+        // 카테고리에 추가
+        const response = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            product_ids: [productId],
+            priority: 999999, // 마지막에 추가
+          }),
+        })
+
+        if (response.status === 401) {
+          router.push('/admin/login?next=/admin/gift-management')
+          return
+        }
+
+        if (!response.ok) {
+          throw new Error('추가 실패')
+        }
+      }
 
       toast.success('예산 카테고리가 업데이트되었습니다')
       fetchBudgetProducts() // 목록 새로고침
@@ -408,19 +564,45 @@ export default function GiftManagementPage() {
     
     setReordering(product.id)
     try {
-      const currentOrder = product.gift_budget_order ?? 999999
-      const prevOrder = prevProduct.gift_budget_order ?? 999999
+      const currentOrder = (product as any).gift_budget_order ?? 999999
+      const prevOrder = (prevProduct as any).gift_budget_order ?? 999999
 
-      const response1 = await fetch(`/api/admin/products/${product.id}`, {
+      // 선택된 예산의 카테고리 찾기
+      const budgetSlugMap: Record<string, string> = {
+        '5만원 미만': 'under-50k',
+        '5만원 이상': 'over-50k',
+        '10만원 이상': 'over-100k',
+        '20만원 이상': 'over-200k',
+      }
+
+      let budgetSlug = 'under-50k' // 기본값
+      if (selectedBudget !== '전체') {
+        budgetSlug = budgetSlugMap[selectedBudget] || 'under-50k'
+      } else {
+        // 전체인 경우 첫 번째 상품의 gift_budget_targets에서 찾기
+        const firstBudget = Array.isArray((product as any).gift_budget_targets) && (product as any).gift_budget_targets.length > 0 
+          ? (product as any).gift_budget_targets[0] 
+          : '5만원 미만'
+        budgetSlug = budgetSlugMap[firstBudget] || 'under-50k'
+      }
+
+      const categoryRes = await fetch(`/api/admin/gift-categories?slug=${budgetSlug}`)
+      if (!categoryRes.ok) throw new Error('카테고리 조회 실패')
+      const categoryData = await categoryRes.json()
+      const category = categoryData.categories?.find((c: any) => c.slug === budgetSlug)
+      if (!category) throw new Error('카테고리를 찾을 수 없습니다')
+
+      // 두 상품의 순서를 교환
+      const response1 = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_budget_order: prevOrder }),
+        body: JSON.stringify({ product_id: product.id, priority: prevOrder }),
       })
 
-      const response2 = await fetch(`/api/admin/products/${prevProduct.id}`, {
+      const response2 = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_budget_order: currentOrder }),
+        body: JSON.stringify({ product_id: prevProduct.id, priority: currentOrder }),
       })
 
       if (!response1.ok || !response2.ok) {
@@ -455,19 +637,45 @@ export default function GiftManagementPage() {
     
     setReordering(product.id)
     try {
-      const currentOrder = product.gift_budget_order ?? 999999
-      const nextOrder = nextProduct.gift_budget_order ?? 999999
+      const currentOrder = (product as any).gift_budget_order ?? 999999
+      const nextOrder = (nextProduct as any).gift_budget_order ?? 999999
 
-      const response1 = await fetch(`/api/admin/products/${product.id}`, {
+      // 선택된 예산의 카테고리 찾기
+      const budgetSlugMap: Record<string, string> = {
+        '5만원 미만': 'under-50k',
+        '5만원 이상': 'over-50k',
+        '10만원 이상': 'over-100k',
+        '20만원 이상': 'over-200k',
+      }
+
+      let budgetSlug = 'under-50k' // 기본값
+      if (selectedBudget !== '전체') {
+        budgetSlug = budgetSlugMap[selectedBudget] || 'under-50k'
+      } else {
+        // 전체인 경우 첫 번째 상품의 gift_budget_targets에서 찾기
+        const firstBudget = Array.isArray((product as any).gift_budget_targets) && (product as any).gift_budget_targets.length > 0 
+          ? (product as any).gift_budget_targets[0] 
+          : '5만원 미만'
+        budgetSlug = budgetSlugMap[firstBudget] || 'under-50k'
+      }
+
+      const categoryRes = await fetch(`/api/admin/gift-categories?slug=${budgetSlug}`)
+      if (!categoryRes.ok) throw new Error('카테고리 조회 실패')
+      const categoryData = await categoryRes.json()
+      const category = categoryData.categories?.find((c: any) => c.slug === budgetSlug)
+      if (!category) throw new Error('카테고리를 찾을 수 없습니다')
+
+      // 두 상품의 순서를 교환
+      const response1 = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_budget_order: nextOrder }),
+        body: JSON.stringify({ product_id: product.id, priority: nextOrder }),
       })
 
-      const response2 = await fetch(`/api/admin/products/${nextProduct.id}`, {
+      const response2 = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_budget_order: currentOrder }),
+        body: JSON.stringify({ product_id: nextProduct.id, priority: currentOrder }),
       })
 
       if (!response1.ok || !response2.ok) {
@@ -500,40 +708,54 @@ export default function GiftManagementPage() {
 
     setSaving(productId)
     try {
-      const newFeatured = !product.gift_featured
+      // 실시간 인기 카테고리 조회
+      const categoryRes = await fetch(`/api/admin/gift-categories?slug=featured`)
+      if (!categoryRes.ok) throw new Error('카테고리 조회 실패')
+      const categoryData = await categoryRes.json()
+      const category = categoryData.categories?.find((c: any) => c.slug === 'featured')
+      if (!category) throw new Error('카테고리를 찾을 수 없습니다')
 
-      const response = await fetch(`/api/admin/products/${productId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_featured: newFeatured }),
-      })
+      // 현재 상품이 해당 카테고리에 있는지 확인
+      const categoryDetailRes = await fetch(`/api/admin/gift-categories/${category.id}`)
+      if (!categoryDetailRes.ok) throw new Error('카테고리 상세 조회 실패')
+      const categoryDetail = await categoryDetailRes.json()
+      const isInCategory = categoryDetail.products?.some((cp: any) => 
+        (Array.isArray(cp.products) ? cp.products[0]?.id : cp.products?.id) === productId
+      )
 
-      if (response.status === 401) {
-        router.push('/admin/login?next=/admin/gift-management')
-        return
-      }
-
-      if (!response.ok) {
-        throw new Error('업데이트 실패')
-      }
-
-      // 로컬 상태 업데이트
-      if (newFeatured) {
-        // 인기 선물세트에 추가
-        setFeaturedProducts((prev) => {
-          const updated = [...prev]
-          const updatedProduct = { ...product, gift_featured: true }
-          updated.push(updatedProduct)
-          return updated.sort((a, b) => {
-            const orderA = a.gift_featured_order ?? 999999
-            const orderB = b.gift_featured_order ?? 999999
-            if (orderA !== orderB) return orderA - orderB
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          })
+      if (isInCategory) {
+        // 카테고리에서 제거
+        const response = await fetch(`/api/admin/gift-categories/${category.id}/products?product_id=${productId}`, {
+          method: 'DELETE',
         })
+
+        if (response.status === 401) {
+          router.push('/admin/login?next=/admin/gift-management')
+          return
+        }
+
+        if (!response.ok) {
+          throw new Error('제거 실패')
+        }
       } else {
-        // 인기 선물세트에서 제거
-        setFeaturedProducts((prev) => prev.filter((p) => p.id !== productId))
+        // 카테고리에 추가
+        const response = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            product_ids: [productId],
+            priority: 999999, // 마지막에 추가
+          }),
+        })
+
+        if (response.status === 401) {
+          router.push('/admin/login?next=/admin/gift-management')
+          return
+        }
+
+        if (!response.ok) {
+          throw new Error('추가 실패')
+        }
       }
 
       toast.success('인기 선물세트 설정이 업데이트되었습니다')
@@ -554,19 +776,27 @@ export default function GiftManagementPage() {
     
     setReordering(product.id)
     try {
-      const currentOrder = product.gift_featured_order ?? 999999
-      const prevOrder = prevProduct.gift_featured_order ?? 999999
+      const currentOrder = (product as any).gift_featured_order ?? 999999
+      const prevOrder = (prevProduct as any).gift_featured_order ?? 999999
 
-      const response1 = await fetch(`/api/admin/products/${product.id}`, {
+      // 실시간 인기 카테고리 조회
+      const categoryRes = await fetch(`/api/admin/gift-categories?slug=featured`)
+      if (!categoryRes.ok) throw new Error('카테고리 조회 실패')
+      const categoryData = await categoryRes.json()
+      const category = categoryData.categories?.find((c: any) => c.slug === 'featured')
+      if (!category) throw new Error('카테고리를 찾을 수 없습니다')
+
+      // 두 상품의 순서를 교환
+      const response1 = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_featured_order: prevOrder }),
+        body: JSON.stringify({ product_id: product.id, priority: prevOrder }),
       })
 
-      const response2 = await fetch(`/api/admin/products/${prevProduct.id}`, {
+      const response2 = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_featured_order: currentOrder }),
+        body: JSON.stringify({ product_id: prevProduct.id, priority: currentOrder }),
       })
 
       if (!response1.ok || !response2.ok) {
@@ -601,19 +831,27 @@ export default function GiftManagementPage() {
     
     setReordering(product.id)
     try {
-      const currentOrder = product.gift_featured_order ?? 999999
-      const nextOrder = nextProduct.gift_featured_order ?? 999999
+      const currentOrder = (product as any).gift_featured_order ?? 999999
+      const nextOrder = (nextProduct as any).gift_featured_order ?? 999999
 
-      const response1 = await fetch(`/api/admin/products/${product.id}`, {
+      // 실시간 인기 카테고리 조회
+      const categoryRes = await fetch(`/api/admin/gift-categories?slug=featured`)
+      if (!categoryRes.ok) throw new Error('카테고리 조회 실패')
+      const categoryData = await categoryRes.json()
+      const category = categoryData.categories?.find((c: any) => c.slug === 'featured')
+      if (!category) throw new Error('카테고리를 찾을 수 없습니다')
+
+      // 두 상품의 순서를 교환
+      const response1 = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_featured_order: nextOrder }),
+        body: JSON.stringify({ product_id: product.id, priority: nextOrder }),
       })
 
-      const response2 = await fetch(`/api/admin/products/${nextProduct.id}`, {
+      const response2 = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gift_featured_order: currentOrder }),
+        body: JSON.stringify({ product_id: nextProduct.id, priority: currentOrder }),
       })
 
       if (!response1.ok || !response2.ok) {
@@ -666,31 +904,101 @@ export default function GiftManagementPage() {
         return
       }
 
-      const body: any = {}
+      // gift_categories slug 매핑
+      const targetSlugMap: Record<string, string> = {
+        '아이': 'child',
+        '부모님': 'parent',
+        '연인': 'lover',
+        '친구': 'friend',
+      }
+      
+      const budgetSlugMap: Record<string, string> = {
+        '5만원 미만': 'under-50k',
+        '5만원 이상': 'over-50k',
+        '10만원 이상': 'over-100k',
+        '20만원 이상': 'over-200k',
+      }
+
       if (activeTab === 'target') {
-        body.gift_target = selectedTargets
-        body.gift_display_order = order
+        // 각 대상별로 gift_category_products에 추가
+        for (const target of selectedTargets) {
+          const slug = targetSlugMap[target]
+          if (!slug) continue
+
+          // 카테고리 조회
+          const categoryRes = await fetch(`/api/admin/gift-categories?slug=${slug}`)
+          if (!categoryRes.ok) continue
+          const categoryData = await categoryRes.json()
+          const category = categoryData.categories?.find((c: any) => c.slug === slug)
+          if (!category) continue
+
+          // 상품 추가
+          const response = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              product_ids: [selectedProductId],
+              priority: order,
+            }),
+          })
+
+          if (!response.ok) {
+            throw new Error(`${target} 카테고리에 추가 실패`)
+          }
+        }
       } else if (activeTab === 'budget') {
-        body.gift_budget_targets = selectedBudgetTargets
-        body.gift_budget_order = order
+        // 각 예산별로 gift_category_products에 추가
+        // selectedBudgetTargets에는 이미 slug 값이 들어있음 (under-50k, over-50k 등)
+        for (const budgetSlug of selectedBudgetTargets) {
+          // 카테고리 조회
+          const categoryRes = await fetch(`/api/admin/gift-categories?slug=${budgetSlug}`)
+          if (!categoryRes.ok) {
+            console.error(`카테고리 조회 실패: ${budgetSlug}`)
+            continue
+          }
+          const categoryData = await categoryRes.json()
+          const category = categoryData.categories?.find((c: any) => c.slug === budgetSlug)
+          if (!category) {
+            console.error(`카테고리를 찾을 수 없습니다: ${budgetSlug}`)
+            continue
+          }
+
+          // 상품 추가
+          const response = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              product_ids: [selectedProductId],
+              priority: order,
+            }),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            console.error(`상품 추가 실패: ${budgetSlug}`, errorData)
+            throw new Error(`${budgetSlug} 카테고리에 추가 실패: ${errorData.error || response.statusText}`)
+          }
+        }
       } else {
-        body.gift_featured = true
-        body.gift_featured_order = order
-      }
+        // 실시간 인기 카테고리
+        const categoryRes = await fetch(`/api/admin/gift-categories?slug=featured`)
+        if (!categoryRes.ok) throw new Error('실시간 인기 카테고리를 찾을 수 없습니다')
+        const categoryData = await categoryRes.json()
+        const category = categoryData.categories?.find((c: any) => c.slug === 'featured')
+        if (!category) throw new Error('실시간 인기 카테고리를 찾을 수 없습니다')
 
-      const response = await fetch(`/api/admin/products/${selectedProductId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
+        const response = await fetch(`/api/admin/gift-categories/${category.id}/products`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            product_ids: [selectedProductId],
+            priority: order,
+          }),
+        })
 
-      if (response.status === 401) {
-        router.push('/admin/login?next=/admin/gift-management')
-        return
-      }
-
-      if (!response.ok) {
-        throw new Error('추가 실패')
+        if (!response.ok) {
+          throw new Error('추가 실패')
+        }
       }
 
       toast.success('상품이 추가되었습니다')
@@ -959,15 +1267,15 @@ export default function GiftManagementPage() {
               const isSaving = saving === product.id
               const isReordering = reordering === product.id
               const currentTargets = activeTab === 'target' 
-                ? (Array.isArray(product.gift_target) ? product.gift_target : [])
+                ? (Array.isArray((product as any).gift_target) ? (product as any).gift_target : [])
                 : activeTab === 'budget'
-                ? (Array.isArray(product.gift_budget_targets) ? product.gift_budget_targets : [])
+                ? (Array.isArray((product as any).gift_budget_targets) ? (product as any).gift_budget_targets : [])
                 : []
               const displayOrder = activeTab === 'target' 
-                ? product.gift_display_order 
+                ? (product as any).gift_display_order 
                 : activeTab === 'budget'
-                ? product.gift_budget_order
-                : product.gift_featured_order
+                ? (product as any).gift_budget_order
+                : (product as any).gift_featured_order
 
               return (
                 <div

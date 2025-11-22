@@ -28,9 +28,11 @@ export default function WishlistPage() {
 
       setLoading(true)
       try {
+        const selectFields = 'id,slug,brand,name,price,image_url,category,average_rating,review_count,created_at,updated_at'
+        
         const { data, error } = await supabase
           .from('products')
-          .select('*')
+          .select(selectFields)
           .in('id', wishlistIds)
 
         if (!error && data) {

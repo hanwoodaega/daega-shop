@@ -14,11 +14,12 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get('search') || ''
 
   try {
+    const selectFields = 'id,slug,brand,name,price,image_url,category,average_rating,review_count,created_at,updated_at'
+    
     let query = supabaseAdmin
       .from('products')
-      .select('*')
+      .select(selectFields)
       .eq('category', category)
-      .order('gift_display_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
 
     if (search) {

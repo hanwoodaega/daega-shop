@@ -24,20 +24,39 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
   // 프로모션 상품 불러오기
   useEffect(() => {
     const fetchPromotionProducts = async () => {
-      if (!isOpen || !product?.promotion_type || !product?.promotion_products?.length) {
+      if (!isOpen || !product?.promotion || product.promotion.type !== 'bogo' || !product.promotion.id) {
         setPromotionProducts([])
         return
       }
 
       setLoading(true)
       try {
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .in('id', product.promotion_products)
+        // 같은 promotion_id를 가진 상품들 조회
+        const { data: promotionProductsData, error: ppError } = await supabase
+          .from('promotion_products')
+          .select(`
+            product_id,
+            products (
+              id,
+              slug,
+              brand,
+              name,
+              price,
+              image_url,
+              category
+            )
+          `)
+          .eq('promotion_id', product.promotion.id)
         
-        if (error) throw error
-        setPromotionProducts(data || [])
+        if (ppError) throw ppError
+        
+        // 상품 데이터 변환
+        const products = (promotionProductsData || []).map((pp: any) => {
+          const prod = Array.isArray(pp.products) ? pp.products[0] : pp.products
+          return prod
+        }).filter(Boolean)
+        
+        setPromotionProducts(products)
       } catch (error) {
         console.error('프로모션 상품 조회 실패:', error)
         toast.error('프로모션 상품을 불러오지 못했습니다.')
@@ -47,7 +66,7 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
     }
 
     fetchPromotionProducts()
-  }, [isOpen, product?.id, product?.promotion_type, product?.promotion_products?.join(',')])
+  }, [isOpen, product?.id, product?.promotion?.id])
 
   // 모달 닫을 때 초기화
   useEffect(() => {
@@ -57,9 +76,10 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
   }, [isOpen])
 
   const updatePromoQuantity = useCallback((productId: string, change: number) => {
-    if (!product) return
+    if (!product?.promotion || product.promotion.type !== 'bogo') return
     
-    const requiredCount = getPromotionRequiredCount(product.promotion_type)
+    const buyQty = product.promotion.buy_qty || 1
+    const requiredCount = buyQty + 1 // 2+1이면 3개
     const currentQty = promoQuantities[productId] || 0
     const newQty = Math.max(0, currentQty + change)
     
@@ -82,13 +102,14 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
   }, [product, promoQuantities])
 
   const handlePromotionAdd = useCallback(() => {
-    if (!product) return
+    if (!product?.promotion || product.promotion.type !== 'bogo') return
     
-    const requiredCount = getPromotionRequiredCount(product.promotion_type)
+    const buyQty = product.promotion.buy_qty || 1
+    const requiredCount = buyQty + 1 // 2+1이면 3개
     const totalSelected = getTotalPromoQuantity(promoQuantities)
     
     if (totalSelected !== requiredCount) {
-      toast.error(`${product.promotion_type} 프로모션은 정확히 ${requiredCount}개를 선택해야 합니다\n현재: ${totalSelected}개`, {
+      toast.error(`${buyQty}+1 프로모션은 정확히 ${requiredCount}개를 선택해야 합니다\n현재: ${totalSelected}개`, {
         icon: '⚠️',
         duration: 4000,
       })
@@ -110,7 +131,7 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
     })
     
     // 프로모션 상품 처리 (가격 정렬 + 무료 상품 결정)
-    const paidCount = getPromotionPaidCount(product.promotion_type)
+    const paidCount = buyQty
     const cartItems = processPromotionItems(selectedItems, paidCount)
     
     // 각 상품을 장바구니에 추가 (같은 그룹 ID로 묶음)
@@ -118,7 +139,7 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
       const fullCartItem: CartItem = {
         ...cartItem,
         promotion_group_id: groupId,
-        promotion_type: product.promotion_type ?? undefined,
+        promotion_type: `${buyQty}+1` as '1+1' | '2+1' | '3+1',
         selected: true, // 기본값
       }
       addCartItemWithDB(user?.id || null, fullCartItem)
@@ -140,14 +161,22 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
       <div className="relative w-full max-w-md bg-white rounded-md shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
         <div className="bg-teal-100 text-blue-900 px-5 py-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold">🎁 {product.promotion_type} 골라담기</h3>
+            <h3 className="text-lg font-bold">
+              🎁 {product.promotion?.type === 'bogo' && product.promotion.buy_qty ? `${product.promotion.buy_qty}+1` : '프로모션'} 골라담기
+            </h3>
             <button onClick={() => { onClose(); setPromoQuantities({}) }} className="text-blue-900 text-2xl">×</button>
           </div>
         </div>
         
         <div className="px-5 py-3 bg-gray-50 border-b">
           <p className="text-sm text-gray-700">
-            상품을 <strong>{getPromotionRequiredCount(product.promotion_type)}개</strong> 담으면, 1개가 <strong>무료</strong>로 적용됩니다.
+            {product.promotion?.type === 'bogo' && product.promotion.buy_qty ? (
+              <>
+                상품을 <strong>{product.promotion.buy_qty + 1}개</strong> 담으면, 1개가 <strong>무료</strong>로 적용됩니다.
+              </>
+            ) : (
+              <>프로모션 상품을 선택하세요.</>
+            )}
           </p>
         </div>
         
@@ -208,22 +237,28 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
         </div>
         
         <div className="px-5 py-4 bg-white border-t">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium">
-              선택: {getTotalPromoQuantity(promoQuantities)} / {getPromotionRequiredCount(product.promotion_type)}
-            </span>
-            <span className="text-xs text-gray-600">
-              {getTotalPromoQuantity(promoQuantities) < getPromotionRequiredCount(product.promotion_type) && 
-                `${getPromotionRequiredCount(product.promotion_type) - getTotalPromoQuantity(promoQuantities)}개 더 선택`}
-            </span>
-          </div>
-          <button
-            onClick={handlePromotionAdd}
-            disabled={getTotalPromoQuantity(promoQuantities) !== getPromotionRequiredCount(product.promotion_type)}
-            className="w-full py-3 bg-blue-900 text-white rounded font-bold hover:bg-blue-950 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            장바구니에 담기
-          </button>
+          {product.promotion?.type === 'bogo' && product.promotion.buy_qty ? (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium">
+                  선택: {getTotalPromoQuantity(promoQuantities)} / {product.promotion.buy_qty + 1}
+                </span>
+                <span className="text-xs text-gray-600">
+                  {getTotalPromoQuantity(promoQuantities) < product.promotion.buy_qty + 1 && 
+                    `${product.promotion.buy_qty + 1 - getTotalPromoQuantity(promoQuantities)}개 더 선택`}
+                </span>
+              </div>
+              <button
+                onClick={handlePromotionAdd}
+                disabled={getTotalPromoQuantity(promoQuantities) !== product.promotion.buy_qty + 1}
+                className="w-full py-3 bg-blue-900 text-white rounded font-bold hover:bg-blue-950 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                장바구니에 담기
+              </button>
+            </>
+          ) : (
+            <p className="text-sm text-gray-500 text-center">프로모션 정보를 불러올 수 없습니다.</p>
+          )}
         </div>
       </div>
     </div>

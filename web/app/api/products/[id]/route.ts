@@ -6,10 +6,34 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // slug 또는 UUID로 조회 (먼저 slug로 시도, 없으면 UUID로)
+    // slug 또는 UUID로 조회 (프로모션 정보 포함)
+    const selectFields = `
+      id,
+      slug,
+      brand,
+      name,
+      price,
+      image_url,
+      category,
+      average_rating,
+      review_count,
+      promotion_products (
+        promotion_id,
+        promotions (
+          id,
+          type,
+          buy_qty,
+          discount_percent,
+          is_active,
+          start_at,
+          end_at
+        )
+      )
+    `
+    
     let query = supabase
       .from('products')
-      .select('*')
+      .select(selectFields)
       .eq('slug', params.id)
       .single()
 
@@ -19,7 +43,7 @@ export async function GET(
     if (error || !data) {
       query = supabase
         .from('products')
-        .select('*')
+        .select(selectFields)
         .eq('id', params.id)
         .single()
       
@@ -32,7 +56,30 @@ export async function GET(
       return NextResponse.json({ error: '상품을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    return NextResponse.json(data)
+    // 활성화된 프로모션 찾기
+    let activePromotion = null
+    if (data.promotion_products && data.promotion_products.length > 0) {
+      const now = new Date()
+      for (const pp of data.promotion_products) {
+        const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
+        if (promo && promo.is_active) {
+          // 날짜 체크
+          const startAt = promo.start_at ? new Date(promo.start_at) : null
+          const endAt = promo.end_at ? new Date(promo.end_at) : null
+          const isInDateRange = (!startAt || now >= startAt) && (!endAt || now <= endAt)
+          
+          if (isInDateRange) {
+            activePromotion = promo
+            break
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({
+      ...data,
+      promotion: activePromotion,
+    })
   } catch (error) {
     console.error('상품 조회 실패:', error)
     return NextResponse.json({ error: '상품 조회 실패' }, { status: 500 })

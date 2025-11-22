@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    // 배송완료 상태인지 확인
-    if (order.status !== 'delivered') {
+    // 배송완료 상태인지 확인 (기존 상태와 새로운 상태 모두 체크)
+    if (order.status !== 'delivered' && order.status !== 'DELIVERED') {
       return NextResponse.json({ 
         error: '배송완료된 주문만 구매확정할 수 있습니다.' 
       }, { status: 400 })

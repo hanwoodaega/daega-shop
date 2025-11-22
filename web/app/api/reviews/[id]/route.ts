@@ -46,6 +46,13 @@ export async function PATCH(
     if (images !== undefined) updateData.images = images
     updateData.updated_at = new Date().toISOString()
 
+    // 수정 전 product_id 가져오기
+    const { data: oldReview } = await supabase
+      .from('reviews')
+      .select('product_id')
+      .eq('id', reviewId)
+      .single()
+
     const { data: updatedReview, error: updateError } = await supabase
       .from('reviews')
       .update(updateData)
@@ -56,6 +63,70 @@ export async function PATCH(
     if (updateError) {
       console.error('리뷰 수정 실패:', updateError)
       return NextResponse.json({ error: '리뷰 수정에 실패했습니다.' }, { status: 500 })
+    }
+
+    // products 테이블의 average_rating과 review_count 업데이트
+    // pending 리뷰는 통계에 반영하지 않음, approved만 반영
+    if (oldReview?.product_id) {
+      try {
+        let finalReviews: any[] = []
+        
+        try {
+          const { data: approvedReviews } = await supabase
+            .from('reviews')
+            .select('rating')
+            .eq('product_id', oldReview.product_id)
+            .eq('status', 'approved')
+          
+          if (approvedReviews) {
+            finalReviews = approvedReviews
+          } else {
+            const { data: allReviews } = await supabase
+              .from('reviews')
+              .select('rating')
+              .eq('product_id', oldReview.product_id)
+            if (allReviews) {
+              finalReviews = allReviews
+            }
+          }
+        } catch {
+          const { data: allReviews } = await supabase
+            .from('reviews')
+            .select('rating')
+            .eq('product_id', oldReview.product_id)
+          if (allReviews) {
+            finalReviews = allReviews
+          }
+        }
+
+        if (finalReviews && finalReviews.length > 0) {
+          const totalRating = finalReviews.reduce((sum, r) => sum + (r.rating || 0), 0)
+          const averageRating = totalRating / finalReviews.length
+          const reviewCount = finalReviews.length
+
+          const { error: updateError } = await supabase
+            .from('products')
+            .update({
+              average_rating: Math.round(averageRating * 10) / 10,
+              review_count: reviewCount
+            })
+            .eq('id', oldReview.product_id)
+          
+          if (updateError) {
+            console.error('상품 통계 업데이트 실패:', updateError)
+          }
+        } else {
+          await supabase
+            .from('products')
+            .update({
+              average_rating: 0,
+              review_count: 0
+            })
+            .eq('id', oldReview.product_id)
+        }
+      } catch (updateError) {
+        console.error('상품 통계 업데이트 실패:', updateError)
+      }
     }
 
     return NextResponse.json({ review: updatedReview })
@@ -95,6 +166,15 @@ export async function DELETE(
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 })
     }
 
+    // 삭제 전 product_id 가져오기
+    const { data: reviewToDelete } = await supabase
+      .from('reviews')
+      .select('product_id')
+      .eq('id', reviewId)
+      .single()
+
+    const productId = reviewToDelete?.product_id
+
     const { error: deleteError } = await supabase
       .from('reviews')
       .delete()
@@ -103,6 +183,70 @@ export async function DELETE(
     if (deleteError) {
       console.error('리뷰 삭제 실패:', deleteError)
       return NextResponse.json({ error: '리뷰 삭제에 실패했습니다.' }, { status: 500 })
+    }
+
+    // products 테이블의 average_rating과 review_count 업데이트
+    // pending 리뷰는 통계에 반영하지 않음, approved만 반영
+    if (productId) {
+      try {
+        let finalReviews: any[] = []
+        
+        try {
+          const { data: approvedReviews } = await supabase
+            .from('reviews')
+            .select('rating')
+            .eq('product_id', productId)
+            .eq('status', 'approved')
+          
+          if (approvedReviews) {
+            finalReviews = approvedReviews
+          } else {
+            const { data: allReviews } = await supabase
+              .from('reviews')
+              .select('rating')
+              .eq('product_id', productId)
+            if (allReviews) {
+              finalReviews = allReviews
+            }
+          }
+        } catch {
+          const { data: allReviews } = await supabase
+            .from('reviews')
+            .select('rating')
+            .eq('product_id', productId)
+          if (allReviews) {
+            finalReviews = allReviews
+          }
+        }
+
+        if (finalReviews && finalReviews.length > 0) {
+          const totalRating = finalReviews.reduce((sum, r) => sum + (r.rating || 0), 0)
+          const averageRating = totalRating / finalReviews.length
+          const reviewCount = finalReviews.length
+
+          const { error: updateError } = await supabase
+            .from('products')
+            .update({
+              average_rating: Math.round(averageRating * 10) / 10,
+              review_count: reviewCount
+            })
+            .eq('id', productId)
+          
+          if (updateError) {
+            console.error('상품 통계 업데이트 실패:', updateError)
+          }
+        } else {
+          await supabase
+            .from('products')
+            .update({
+              average_rating: 0,
+              review_count: 0
+            })
+            .eq('id', productId)
+        }
+      } catch (updateError) {
+        console.error('상품 통계 업데이트 실패:', updateError)
+      }
     }
 
     return NextResponse.json({ message: '리뷰가 삭제되었습니다.' })

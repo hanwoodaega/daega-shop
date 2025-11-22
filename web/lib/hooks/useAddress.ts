@@ -47,9 +47,9 @@ export function useDefaultAddress(enabled: boolean = true) {
         .select('*')
         .eq('user_id', user.id)
         .eq('is_default', true)
-        .single()
+        .maybeSingle()
 
-      if (error) {
+      if (error || !defaultAddr) {
         // 기본 배송지가 없으면 첫 번째 배송지 조회
         const { data: firstAddr } = await supabase
           .from('addresses')
@@ -57,7 +57,7 @@ export function useDefaultAddress(enabled: boolean = true) {
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single()
+          .maybeSingle()
 
         if (firstAddr) {
           setAddress(firstAddr)

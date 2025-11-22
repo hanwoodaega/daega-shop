@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('orders.user_id', user.id)
-      .eq('orders.status', 'delivered')
+      .in('orders.status', ['delivered', 'DELIVERED'])
       .order('created_at', { ascending: false })
 
     if (orderItemsError) {

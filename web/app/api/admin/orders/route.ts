@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const deliveryType = searchParams.get('delivery_type')
     const date = searchParams.get('date')
+    const startDate = searchParams.get('start_date')
+    const endDate = searchParams.get('end_date')
     const status = searchParams.get('status')
 
     const supabase = createSupabaseAdminClient()
@@ -38,7 +40,18 @@ export async function GET(request: NextRequest) {
             name,
             image_url,
             price,
-            discount_percent
+            promotion_products (
+              promotion_id,
+              promotions (
+                id,
+                type,
+                buy_qty,
+                discount_percent,
+                is_active,
+                start_at,
+                end_at
+              )
+            )
           )
         )
       `)
@@ -49,13 +62,23 @@ export async function GET(request: NextRequest) {
       query = query.eq('delivery_type', deliveryType)
     }
     
-    if (date) {
-      const startDate = new Date(date)
-      startDate.setHours(0, 0, 0, 0)
-      const endDate = new Date(date)
-      endDate.setHours(23, 59, 59, 999)
-      query = query.gte('created_at', startDate.toISOString())
-                   .lte('created_at', endDate.toISOString())
+    // 날짜 필터: 단일 날짜 또는 날짜 범위
+    if (startDate && endDate) {
+      // 날짜 범위 필터
+      const start = new Date(startDate)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(endDate)
+      end.setHours(23, 59, 59, 999)
+      query = query.gte('created_at', start.toISOString())
+                   .lte('created_at', end.toISOString())
+    } else if (date) {
+      // 단일 날짜 필터 (기존 방식)
+      const start = new Date(date)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(date)
+      end.setHours(23, 59, 59, 999)
+      query = query.gte('created_at', start.toISOString())
+                   .lte('created_at', end.toISOString())
     }
 
     if (status) {
@@ -67,6 +90,23 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('주문 조회 실패:', error)
       return NextResponse.json({ error: '주문 조회에 실패했습니다.' }, { status: 500 })
+    }
+
+    // 사용자 정보 조회 (선물 주문의 경우 구매자 정보 표시용)
+    const userIds = Array.from(new Set((orders || []).map((o: any) => o.user_id)))
+    const userMap: Record<string, any> = {}
+    
+    if (userIds.length > 0) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, name, email, phone')
+        .in('id', userIds)
+      
+      if (users) {
+        users.forEach((u: any) => {
+          userMap[u.id] = u
+        })
+      }
     }
 
     // 각 주문에 대해 쿠폰 할인, 포인트 사용, 즉시할인 정보 추가
@@ -90,8 +130,25 @@ export async function GET(request: NextRequest) {
             productOriginalTotal += originalPrice * item.quantity
             
             // 할인된 가격 계산
-            // discount_percent가 있으면 할인된 가격, 없으면 원가
-            const discountPercent = item.product?.discount_percent || 0
+            // 프로모션 정보에서 할인율 확인
+            let discountPercent = 0
+            if (item.product?.promotion_products && item.product.promotion_products.length > 0) {
+              const now = new Date()
+              for (const pp of item.product.promotion_products) {
+                const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
+                if (promo && promo.is_active && promo.type === 'percent' && promo.discount_percent) {
+                  const startAt = promo.start_at ? new Date(promo.start_at) : null
+                  const endAt = promo.end_at ? new Date(promo.end_at) : null
+                  const isInDateRange = (!startAt || now >= startAt) && (!endAt || now <= endAt)
+                  
+                  if (isInDateRange) {
+                    discountPercent = promo.discount_percent
+                    break
+                  }
+                }
+              }
+            }
+            
             const discountedPrice = discountPercent > 0
               ? Math.round(originalPrice * (100 - discountPercent) / 100)
               : originalPrice
@@ -101,16 +158,22 @@ export async function GET(request: NextRequest) {
         }
 
         // 포인트 사용 금액 조회
-        const { data: pointUsage } = await supabase
+        // 취소된 주문의 경우 환불 내역도 있을 수 있으므로, 가장 오래된 usage 내역을 찾음
+        const { data: pointUsageList } = await supabase
           .from('point_history')
-          .select('points')
+          .select('points, created_at')
           .eq('order_id', order.id)
           .eq('type', 'usage')
-          .maybeSingle()
+          .order('created_at', { ascending: true })
+          .limit(1)
 
-        const usedPoints = pointUsage ? Math.abs(pointUsage.points) : 0
+        // 가장 오래된 usage 내역이 원래 사용한 포인트 (음수)
+        const usedPoints = pointUsageList && pointUsageList.length > 0 && pointUsageList[0].points < 0
+          ? Math.abs(pointUsageList[0].points)
+          : 0
 
         // 쿠폰 할인 금액 조회
+        // 주문 취소 시 쿠폰은 복구하지 않으므로 is_used=true로 조회
         const { data: userCoupon } = await supabase
           .from('user_coupons')
           .select(`
@@ -180,6 +243,7 @@ export async function GET(request: NextRequest) {
           productOriginalTotal,
           productOrderedTotal,
           calculatedTotal, // 디버깅용
+          user: userMap[order.user_id] || null, // 사용자 정보 추가
         }
       })
     )
@@ -200,17 +264,24 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { orderId, status } = body
+    const { orderId, status, trackingNumber, refundStatus, refundCompletedAt } = body
 
-    // 필수 필드 검증
-    if (!orderId || !status) {
-      return NextResponse.json({ error: 'orderId와 status는 필수입니다.' }, { status: 400 })
+    // 필수 필드 검증 (status 또는 refundStatus 중 하나는 필수)
+    if (!orderId || (!status && !refundStatus)) {
+      return NextResponse.json({ error: 'orderId와 status 또는 refundStatus는 필수입니다.' }, { status: 400 })
     }
 
-    // 상태 유효성 검증
-    if (!VALID_ORDER_STATUSES.includes(status)) {
+    // 상태 유효성 검증 (status가 있는 경우에만)
+    if (status && !VALID_ORDER_STATUSES.includes(status)) {
       return NextResponse.json({ 
         error: `올바른 주문 상태를 선택해주세요. (${VALID_ORDER_STATUSES.join(', ')})` 
+      }, { status: 400 })
+    }
+
+    // 환불 상태 유효성 검증 (refundStatus가 있는 경우에만)
+    if (refundStatus && !['pending', 'completed'].includes(refundStatus)) {
+      return NextResponse.json({ 
+        error: `올바른 환불 상태를 선택해주세요. (pending, completed)` 
       }, { status: 400 })
     }
 
@@ -219,13 +290,40 @@ export async function PATCH(request: NextRequest) {
     // 이전 상태 확인
     const { data: oldOrder } = await supabase
       .from('orders')
-      .select('status, user_id, order_number, total_amount')
+      .select('status, user_id, order_number, total_amount, refund_status, refund_amount')
       .eq('id', orderId)
       .single()
 
+    // 업데이트할 데이터 준비
+    const updateData: Record<string, unknown> = {}
+    
+    // 주문 상태 변경
+    if (status) {
+      updateData.status = status
+    }
+    
+    // 송장번호 입력 시 배송중 상태로 자동 변경
+    if (trackingNumber && trackingNumber.trim()) {
+      updateData.tracking_number = trackingNumber.trim()
+      // 송장번호가 입력되면 자동으로 배송중 상태로 변경
+      if (status === 'PREPARING' || !status || status === 'ORDER_RECEIVED') {
+        updateData.status = 'IN_TRANSIT'
+      }
+    }
+    
+    // 환불 상태 변경
+    if (refundStatus) {
+      updateData.refund_status = refundStatus
+      if (refundStatus === 'completed' && refundCompletedAt) {
+        updateData.refund_completed_at = refundCompletedAt
+      } else if (refundStatus === 'completed' && !refundCompletedAt) {
+        updateData.refund_completed_at = new Date().toISOString()
+      }
+    }
+
     const { data, error } = await supabase
       .from('orders')
-      .update({ status })
+      .update(updateData)
       .eq('id', orderId)
       .select()
       .single()
@@ -235,8 +333,39 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: '주문 상태 변경에 실패했습니다.' }, { status: 500 })
     }
 
+    // 환불 완료 시 알림 발송
+    if (refundStatus === 'completed' && oldOrder && oldOrder.refund_status !== 'completed') {
+      try {
+        const orderNumber = oldOrder.order_number || orderId.slice(0, 8)
+        const refundAmount = data?.refund_amount || oldOrder.refund_amount || oldOrder.total_amount
+        
+        const notificationTitle = '환불 완료'
+        const notificationContent = `주문번호 ${orderNumber}의 환불이 완료되었습니다. 환불 금액: ${refundAmount.toLocaleString()}원`
+        
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert({
+            user_id: oldOrder.user_id,
+            title: notificationTitle,
+            content: notificationContent,
+            type: 'general',
+            is_read: false,
+          })
+
+        if (notificationError) {
+          console.error('환불 완료 알림 생성 실패:', notificationError)
+          // 알림 생성 실패해도 환불 완료 처리는 성공으로 처리
+        } else {
+          console.log(`환불 완료 알림 생성 성공: 주문 ${orderId}, 사용자 ${oldOrder.user_id}`)
+        }
+      } catch (error: any) {
+        console.error('환불 완료 알림 생성 중 예외 발생:', error)
+      }
+    }
+
     // 배송완료로 변경될 때 알림 발송
-    if (status === 'delivered' && oldOrder && oldOrder.status !== 'delivered') {
+    const finalStatus = updateData.status as string
+    if ((finalStatus === 'DELIVERED' || status === 'DELIVERED') && oldOrder && oldOrder.status !== 'DELIVERED' && oldOrder.status !== 'delivered') {
       try {
         // 최종 결제 금액의 1% 포인트 계산
         const pointsToEarn = Math.floor(Math.max(0, oldOrder.total_amount) * 0.01)

@@ -149,10 +149,10 @@ function ProductsContent() {
   // 페이지 타이틀 메모이제이션
   const pageTitle = useMemo(() => {
     if (searchQuery) return `"${searchQuery}" 검색 결과`
-    if (filter === 'new') return '신상품'
+    // if (filter === 'new') return '신상품' // is_new 컬럼이 없어서 제거
     if (filter === 'best') return '베스트'
     if (filter === 'sale') return '전단행사'
-    if (filter === 'budget') return '알뜰상품'
+    // if (filter === 'budget') return '알뜰상품' // is_budget 컬럼이 없어서 제거
     if (filter === 'flash-sale') return '타임딜'
     if (selectedCategory && selectedCategory !== '전체') return selectedCategory
     return '전체 상품'
@@ -207,19 +207,6 @@ function ProductsContent() {
       )}
       
       <main className="flex-1">
-        {/* 히어로 섹션 - 신상품 */}
-        {filter === 'new' && (
-          <section className="bg-gradient-to-r from-green-600 to-green-700 text-white py-16">
-            <div className="container mx-auto px-4 text-center">
-              <h1 className="text-4xl font-bold mb-2">
-                ✨ 신상품
-              </h1>
-              <p className="text-sm tracking-widest text-green-100">
-                NEW ARRIVALS
-              </p>
-            </div>
-          </section>
-        )}
 
         {/* 히어로 섹션 - 베스트 */}
         {filter === 'best' && (
@@ -249,19 +236,6 @@ function ProductsContent() {
           </section>
         )}
 
-        {/* 히어로 섹션 - 알뜰상품 */}
-        {filter === 'budget' && (
-          <section className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-16">
-            <div className="container mx-auto px-4 text-center">
-              <h1 className="text-4xl font-bold mb-2">
-                💰 알뜰상품
-              </h1>
-              <p className="text-sm tracking-widest text-blue-100">
-                BUDGET FRIENDLY
-              </p>
-            </div>
-          </section>
-        )}
 
         {/* 히어로 섹션 - 타임딜 */}
         {filter === 'flash-sale' && (

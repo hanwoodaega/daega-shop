@@ -19,14 +19,11 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
         discount_percent,
         products (
           id,
+          slug,
           name,
           price,
           image_url,
-          brand,
-          discount_percent,
-          stock,
-          promotion_type,
-          promotion_products
+          brand
         )
       `)
       .eq('user_id', userId)
@@ -56,6 +53,7 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
       return {
         id: item.id,
         productId: item.product_id,
+        slug: product?.slug || null,
         name: product?.name || '',
         price: product?.price || 0, // 상품의 최신 가격 사용
         quantity: item.quantity,
@@ -64,7 +62,6 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
         brand: product?.brand,
         promotion_type: item.promotion_type as '1+1' | '2+1' | '3+1' | undefined,
         promotion_group_id: item.promotion_group_id,
-        stock: product?.stock,
         selected: selected
       }
     }) || []

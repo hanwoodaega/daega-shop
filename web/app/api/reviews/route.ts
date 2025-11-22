@@ -270,7 +270,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    if (order.status !== 'delivered') {
+    if (order.status !== 'delivered' && order.status !== 'DELIVERED') {
       return NextResponse.json({ error: '배송 완료된 주문만 리뷰 작성이 가능합니다.' }, { status: 400 })
     }
 
@@ -356,6 +356,73 @@ export async function POST(request: NextRequest) {
     if (insertError) {
       console.error('리뷰 작성 실패:', insertError)
       return NextResponse.json({ error: '리뷰 작성에 실패했습니다.' }, { status: 500 })
+    }
+
+    // products 테이블의 average_rating과 review_count 업데이트
+    // pending 리뷰는 통계에 반영하지 않음, approved만 반영
+    try {
+      let finalReviews: any[] = []
+      
+      try {
+        // status 컬럼이 있으면 approved만 포함
+        const { data: approvedReviews } = await supabase
+          .from('reviews')
+          .select('rating')
+          .eq('product_id', product_id)
+          .eq('status', 'approved')
+        
+        if (approvedReviews) {
+          finalReviews = approvedReviews
+        } else {
+          // status 컬럼이 없으면 전체 리뷰 사용 (하위 호환성)
+          const { data: allReviews } = await supabase
+            .from('reviews')
+            .select('rating')
+            .eq('product_id', product_id)
+          if (allReviews) {
+            finalReviews = allReviews
+          }
+        }
+      } catch {
+        // status 컬럼이 없으면 전체 리뷰 사용 (하위 호환성)
+        const { data: allReviews } = await supabase
+          .from('reviews')
+          .select('rating')
+          .eq('product_id', product_id)
+        if (allReviews) {
+          finalReviews = allReviews
+        }
+      }
+
+      if (finalReviews && finalReviews.length > 0) {
+        const totalRating = finalReviews.reduce((sum, r) => sum + (r.rating || 0), 0)
+        const averageRating = totalRating / finalReviews.length
+        const reviewCount = finalReviews.length
+
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({
+            average_rating: Math.round(averageRating * 10) / 10, // 소수점 첫째자리까지
+            review_count: reviewCount
+          })
+          .eq('id', product_id)
+        
+        if (updateError) {
+          console.error('상품 통계 업데이트 실패:', updateError)
+        }
+      } else {
+        // 리뷰가 없으면 0으로 설정
+        await supabase
+          .from('products')
+          .update({
+            average_rating: 0,
+            review_count: 0
+          })
+          .eq('id', product_id)
+      }
+    } catch (updateError) {
+      // 통계 업데이트 실패는 로그만 남기고 리뷰 작성은 성공으로 처리
+      console.error('상품 통계 업데이트 실패:', updateError)
     }
 
     return NextResponse.json({ review }, { status: 201 })

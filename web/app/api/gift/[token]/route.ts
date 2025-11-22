@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
 
 /**
  * 선물 토큰으로 주문 정보 조회
@@ -9,15 +8,15 @@ export async function GET(
   { params }: { params: { token: string } }
 ) {
   try {
-    const supabase = createSupabaseServerClient()
     const { token } = params
 
     if (!token) {
       return NextResponse.json({ error: '토큰이 필요합니다.' }, { status: 400 })
     }
     
-    // 먼저 gift_token 컬럼으로 조회 시도
-    let { data: orders, error: orderError } = await supabase
+    // gift_token으로 주문 조회 (RLS 우회를 위해 admin client 사용)
+    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+    let { data: orders, error: orderError } = await supabaseAdmin
       .from('orders')
       .select(`
         id,
@@ -29,6 +28,7 @@ export async function GET(
         gift_message,
         gift_card_design,
         gift_expires_at,
+        gift_status,
         shipping_address,
         shipping_name,
         shipping_phone,
@@ -55,12 +55,29 @@ export async function GET(
       return NextResponse.json({ error: '유효하지 않은 선물 링크입니다.' }, { status: 404 })
     }
 
-    // 이미 주소가 입력된 경우 (선물 수령 완료)
-    if (orders.shipping_address && orders.shipping_address !== '선물 수령 대기') {
+    // 보낸 사람 정보 조회
+    let senderInfo = null
+    if (orders.user_id) {
+      const { data: userData, error: userError } = await supabaseAdmin
+        .from('users')
+        .select('name, email')
+        .eq('id', orders.user_id)
+        .maybeSingle()
+      
+      if (!userError && userData) {
+        senderInfo = userData
+      }
+    }
+
+    // 이미 수령된 선물인 경우 (gift_status === 'used')
+    if (orders.gift_status === 'used') {
       return NextResponse.json({ 
-        error: '이미 수령된 선물입니다.',
-        order: orders 
-      }, { status: 400 })
+        order: {
+          ...orders,
+          users: senderInfo
+        },
+        alreadyReceived: true
+      })
     }
 
     // 만료일 체크
@@ -69,32 +86,24 @@ export async function GET(
       expiresAt = new Date(orders.gift_expires_at)
     }
 
-    // 만료일이 있고 만료된 경우
-    if (expiresAt && expiresAt < new Date()) {
-      // 만료된 주문은 자동으로 환불 처리
-      const { supabaseAdmin } = await import('@/lib/supabase-admin')
-      
-      // 주문 상태를 취소로 변경
-      await supabaseAdmin
-        .from('orders')
-        .update({ 
-          status: 'cancelled',
-          shipping_address: '만료로 인한 자동 취소'
-        })
-        .eq('id', orders.id)
-
-      // 환불 처리 (포인트 사용한 경우 포인트 복구, 쿠폰 복구 등)
-      // TODO: 실제 환불 로직 구현 (결제 시스템 연동 필요)
-
+    // 만료된 선물인 경우 (gift_status === 'expired' 또는 만료일 지남)
+    if (orders.gift_status === 'expired' || (expiresAt && expiresAt < new Date())) {
       return NextResponse.json({ 
-        error: '선물 링크가 만료되었습니다. (7일 경과)',
+        error: '선물 링크가 만료되었습니다. (5일 경과)',
         expired: true,
-        expires_at: expiresAt.toISOString()
-      }, { status: 410 }) // 410 Gone: 리소스가 영구적으로 사라짐
+        expires_at: expiresAt?.toISOString() || orders.gift_expires_at,
+        order: {
+          ...orders,
+          users: senderInfo
+        }
+      }, { status: 410 })
     }
 
     return NextResponse.json({ 
-      order: orders,
+      order: {
+        ...orders,
+        users: senderInfo
+      },
       expires_at: expiresAt?.toISOString() || null
     })
   } catch (error: any) {
@@ -110,7 +119,6 @@ export async function POST(
   { params }: { params: { token: string } }
 ) {
   try {
-    const supabase = createSupabaseServerClient()
     const { token } = params
     const body = await request.json()
 
@@ -131,10 +139,11 @@ export async function POST(
       return NextResponse.json({ error: '필수 정보를 모두 입력해주세요.' }, { status: 400 })
     }
 
-    // 토큰으로 주문 조회
-    const { data: order, error: tokenError } = await supabase
+    // 토큰으로 주문 조회 (RLS 우회를 위해 admin client 사용)
+    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+    const { data: order, error: tokenError } = await supabaseAdmin
       .from('orders')
-      .select('id, shipping_address, status, gift_token, gift_expires_at, user_id, total_amount, created_at, is_gift')
+      .select('id, shipping_address, status, gift_token, gift_expires_at, gift_status, user_id, total_amount, created_at, is_gift')
       .eq('gift_token', token)
       .maybeSingle()
 
@@ -142,8 +151,8 @@ export async function POST(
       return NextResponse.json({ error: '유효하지 않은 선물 링크입니다.' }, { status: 404 })
     }
 
-    // 이미 주소가 입력된 경우
-    if (order.shipping_address && order.shipping_address !== '선물 수령 대기') {
+    // 이미 수령된 선물인 경우 (gift_status === 'used')
+    if (order.gift_status === 'used') {
       return NextResponse.json({ error: '이미 수령된 선물입니다.' }, { status: 400 })
     }
 
@@ -153,34 +162,17 @@ export async function POST(
       expiresAt = new Date(order.gift_expires_at)
     }
 
-    // 만료일이 있고 만료된 경우
-    if (expiresAt && expiresAt < new Date()) {
-      // 만료된 주문은 자동으로 환불 처리
-      const { supabaseAdmin } = await import('@/lib/supabase-admin')
-      
-      // 주문 상태를 취소로 변경
-      await supabaseAdmin
-        .from('orders')
-        .update({ 
-          status: 'cancelled',
-          shipping_address: '만료로 인한 자동 취소'
-        })
-        .eq('id', order.id)
-
-      // 환불 처리 (포인트 사용한 경우 포인트 복구, 쿠폰 복구 등)
-      // TODO: 실제 환불 로직 구현 (결제 시스템 연동 필요)
-
+    // 만료된 선물인 경우 (gift_status === 'expired' 또는 만료일 지남)
+    if (order.gift_status === 'expired' || (expiresAt && expiresAt < new Date())) {
       return NextResponse.json({ 
-        error: '선물 링크가 만료되었습니다. (7일 경과)',
+        error: '선물 링크가 만료되었습니다. (5일 경과)',
         expired: true,
-        expires_at: expiresAt.toISOString()
+        expires_at: expiresAt?.toISOString() || order.gift_expires_at
       }, { status: 410 })
     }
 
     // 주문 정보 업데이트 (RLS 우회를 위해 admin client 사용)
     const shippingAddress = `${address}${address_detail ? ' ' + address_detail : ''}`
-    
-    const { supabaseAdmin } = await import('@/lib/supabase-admin')
     const { data: updatedOrder, error: updateError } = await supabaseAdmin
       .from('orders')
       .update({
@@ -188,7 +180,8 @@ export async function POST(
         shipping_phone: recipient_phone,
         shipping_address: shippingAddress,
         delivery_note: delivery_note || null,
-        status: 'paid' // 주소 입력 후 결제 완료 상태로 변경
+        status: 'paid',
+        gift_status: 'used'
       })
       .eq('id', order.id)
       .select()

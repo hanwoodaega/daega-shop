@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth-context'
 import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart-db'
 import { formatPrice } from '@/lib/utils'
-import { isValidImageUrl, isOutOfStock, calculateDiscountPrice, isFlashSaleActive } from '@/lib/product-utils'
+import { isValidImageUrl, isOutOfStock, calculateDiscountPrice } from '@/lib/product-utils'
 import StarIcons from '@/components/review/StarIcons'
 
 interface ProductCardProps {
@@ -35,32 +35,46 @@ function ProductCard({ product }: ProductCardProps) {
     hasValidImage && !isPlaceholderHost,
     [hasValidImage, isPlaceholderHost]
   )
-  const outOfStock = useMemo(() => isOutOfStock(product.stock), [product.stock])
-  const discountPrice = useMemo(() => 
-    calculateDiscountPrice(product.price, product.discount_percent),
-    [product.price, product.discount_percent]
-  )
+  // 프로모션 할인가 계산
+  const discountPrice = useMemo(() => {
+    // percent 타입 프로모션이 있으면 프로모션 할인율 사용
+    if (product.promotion?.type === 'percent' && product.promotion.discount_percent) {
+      return calculateDiscountPrice(product.price, product.promotion.discount_percent)
+    }
+    return product.price
+  }, [product.price, product.promotion])
+
+  // 할인율 계산
+  const discountPercent = useMemo(() => {
+    if (product.promotion?.type === 'percent' && product.promotion.discount_percent) {
+      return product.promotion.discount_percent
+    }
+    return 0
+  }, [product.promotion])
+
+  // 프로모션 배지 텍스트
+  const promotionBadge = useMemo(() => {
+    if (product.promotion?.type === 'bogo' && product.promotion.buy_qty) {
+      return `${product.promotion.buy_qty}+1`
+    }
+    if (product.promotion?.type === 'bogo' && product.promotion.buy_qty) {
+      return `${product.promotion.buy_qty}+1`
+    }
+    return null
+  }, [product.promotion])
 
   const handleAddToCart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     
-    if (outOfStock) {
-      toast.error('품절된 상품입니다', {
-        icon: '😢',
-      })
-      return
-    }
-
     const cartItem = {
       productId: product.id,
       name: product.name,
       price: product.price,
       quantity: 1,
       imageUrl: product.image_url,
-      discount_percent: product.discount_percent ?? undefined,
+      discount_percent: discountPercent > 0 ? discountPercent : undefined,
       brand: product.brand ?? undefined,
-      stock: product.stock,
     }
 
     // DB 연동 장바구니 추가
@@ -70,7 +84,7 @@ function ProductCard({ product }: ProductCardProps) {
       icon: '🛒',
     })
     
-    if (product.promotion_type) {
+    if (product.promotion?.type === 'bogo') {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
       timeoutRef.current = window.setTimeout(() => {
         toast('상품 상세페이지에서 프로모션을 확인하세요', {
@@ -84,12 +98,10 @@ function ProductCard({ product }: ProductCardProps) {
     product.name, 
     product.price, 
     product.image_url, 
-    product.discount_percent, 
     product.brand, 
-    product.stock,
-    product.promotion_type,
-    userId, 
-    outOfStock
+    product.promotion,
+    discountPercent,
+    userId
   ])
 
   useEffect(() => {
@@ -130,10 +142,10 @@ function ProductCard({ product }: ProductCardProps) {
       <div className="bg-white transition">
         <div className="relative aspect-square bg-gray-200 overflow-hidden rounded-md">
           {/* 프로모션 배지 */}
-          {product.promotion_type && (
+          {promotionBadge && (
             <div className="absolute top-0 left-0 z-10">
               <span className="bg-red-600 text-white px-2 py-1 text-xs font-bold shadow-lg">
-                {product.promotion_type}
+                {promotionBadge}
               </span>
             </div>
           )}
@@ -149,11 +161,6 @@ function ProductCard({ product }: ProductCardProps) {
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-sm bg-gray-200">
               이미지 준비중
-            </div>
-          )}
-          {product.stock <= 0 && (
-            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-              <span className="text-white text-xl font-bold">품절</span>
             </div>
           )}
           {/* 장바구니 버튼 */}
@@ -191,13 +198,13 @@ function ProductCard({ product }: ProductCardProps) {
           <h3 className="text-sm font-medium mb-0 line-clamp-1 text-primary-900 leading-tight tracking-tight">{product.name}</h3>
           
           {/* 가격 영역을 2줄로 고정하여 카드 높이를 통일 */}
-          {product.discount_percent && product.discount_percent > 0 ? (
+          {discountPercent > 0 ? (
             <>
               <div className="text-xs text-gray-500 line-through mt-0 leading-tight">
                 {formatPrice(product.price)}원
               </div>
               <div className="flex items-baseline gap-2 mt-0 leading-tight">
-                <span className="text-base md:text-lg font-bold text-red-600">{product.discount_percent}%</span>
+                <span className="text-base md:text-lg font-bold text-red-600">{discountPercent}%</span>
                 <span className="text-base font-extrabold text-primary-900">
                   {formatPrice(discountPrice)}<span className="text-xs text-gray-600">원</span>
                 </span>
@@ -215,8 +222,8 @@ function ProductCard({ product }: ProductCardProps) {
             </>
           )}
           
-          {/* 프로모션 상품 버튼 */}
-          {product.promotion_type && (
+          {/* 프로모션 상품 버튼 (BOGO 타입만) */}
+          {product.promotion?.type === 'bogo' && promotionBadge && (
             <button
               onClick={(e) => {
                 e.preventDefault()
@@ -225,7 +232,7 @@ function ProductCard({ product }: ProductCardProps) {
               }}
               className="mt-2 w-full bg-white border border-gray-300 text-gray-900 py-2 px-3 text-xs font-medium rounded hover:bg-gray-50 transition flex items-center justify-between"
             >
-              <span>{product.promotion_type} 상품 골라담기</span>
+              <span>{promotionBadge} 상품 골라담기</span>
               <span className="text-gray-600">❯</span>
             </button>
           )}
@@ -254,9 +261,8 @@ export default memo(ProductCard, (prevProps, nextProps) => {
   return (
     prevProps.product.id === nextProps.product.id &&
     prevProps.product.price === nextProps.product.price &&
-    prevProps.product.stock === nextProps.product.stock &&
-    prevProps.product.discount_percent === nextProps.product.discount_percent &&
-    prevProps.product.promotion_type === nextProps.product.promotion_type
+    prevProps.product.promotion?.id === nextProps.product.promotion?.id &&
+    prevProps.product.promotion?.discount_percent === nextProps.product.promotion?.discount_percent
   )
 })
 

@@ -1,34 +1,32 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
-import { MAIN_MENU_LINKS } from '@/lib/constants'
+import { usePathname } from 'next/navigation'
+
+// 하드코딩된 메인 메뉴
+const MAIN_MENUS = [
+  { name: '홈', href: '/' },
+  { name: '베스트', href: '/collections/best' },
+  { name: '특가', href: '/collections/sale' },
+  { name: '한우대가 NO.9', href: '/hanwoo-daega-no9' },
+  { name: '리뷰이벤트', href: '/review-event' },
+]
 
 export default function MainMenu() {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const mainMenus = MAIN_MENU_LINKS
 
   return (
     <div className="bg-white border-b border-gray-200">
       <div className="container mx-auto px-4">
         <div className="flex items-center space-x-6 sm:space-x-8 md:space-x-16 pt-2 pb-0.5 overflow-x-auto scrollbar-hide pl-2 pr-2">
-          {mainMenus.map((menu) => {
+          {MAIN_MENUS.map((menu) => {
             // 홈 페이지 체크
             let isActive = pathname === menu.href
             
-            // filter 파라미터가 있는 페이지 체크 (베스트, 특가, 리뷰이벤트)
-            if (pathname === '/products' && menu.href.includes('filter=')) {
-              const menuFilter = menu.href.split('filter=')[1]
-              const currentFilter = searchParams.get('filter')
-              isActive = menuFilter === currentFilter
-            }
-            
-            // category 파라미터가 있는 페이지 체크 (한우대가 NO.9)
-            if (pathname === '/products' && menu.href.includes('category=')) {
-              const menuCategory = menu.href.split('category=')[1]
-              const currentCategory = searchParams.get('category')
-              isActive = menuCategory === currentCategory
+            // 컬렉션 페이지 체크 (베스트, 특가)
+            if (menu.href.startsWith('/collections/')) {
+              const collectionType = menu.href.replace('/collections/', '')
+              isActive = pathname === `/collections/${collectionType}`
             }
             
             const isHanwooMenu = menu.name === '한우대가 NO.9'

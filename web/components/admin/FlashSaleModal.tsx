@@ -5,14 +5,13 @@ import { useState, useEffect } from 'react'
 interface FlashSaleModalProps {
   product: any | null
   onClose: () => void
-  onSave: (data: { flash_sale_end_time: string | null, flash_sale_price: number | null, flash_sale_stock: number | null }) => Promise<void>
+  onSave: (data: { flash_sale_end_time: string | null, flash_sale_price: number | null }) => Promise<void>
 }
 
 export default function FlashSaleModal({ product, onClose, onSave }: FlashSaleModalProps) {
   const [form, setForm] = useState({
     flash_sale_end_time: '',
     flash_sale_price: '',
-    flash_sale_stock: '',
   })
   const [saving, setSaving] = useState(false)
 
@@ -23,7 +22,6 @@ export default function FlashSaleModal({ product, onClose, onSave }: FlashSaleMo
           ? new Date(product.flash_sale_end_time).toISOString().slice(0, 16)
           : '',
         flash_sale_price: product.flash_sale_price ?? '',
-        flash_sale_stock: product.flash_sale_stock ?? '',
       })
     }
   }, [product])
@@ -35,7 +33,6 @@ export default function FlashSaleModal({ product, onClose, onSave }: FlashSaleMo
       await onSave({
         flash_sale_end_time: form.flash_sale_end_time ? new Date(form.flash_sale_end_time).toISOString() : null,
         flash_sale_price: form.flash_sale_price ? Number(form.flash_sale_price) : null,
-        flash_sale_stock: form.flash_sale_stock ? Number(form.flash_sale_stock) : null,
       })
       onClose()
     } finally {
@@ -49,7 +46,6 @@ export default function FlashSaleModal({ product, onClose, onSave }: FlashSaleMo
       await onSave({
         flash_sale_end_time: null,
         flash_sale_price: null,
-        flash_sale_stock: null,
       })
       onClose()
     } finally {
@@ -75,7 +71,7 @@ export default function FlashSaleModal({ product, onClose, onSave }: FlashSaleMo
               value={form.flash_sale_end_time}
               onChange={(e) => setForm({ ...form, flash_sale_end_time: e.target.value })}
               className="w-full border rounded px-3 py-2 text-sm"
-              required={!!form.flash_sale_price || !!form.flash_sale_stock}
+              required={!!form.flash_sale_price}
             />
             <p className="text-xs text-gray-500 mt-1">
               타임딜 종료 시간을 설정하면 타임딜이 활성화됩니다.
@@ -96,20 +92,6 @@ export default function FlashSaleModal({ product, onClose, onSave }: FlashSaleMo
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              타임딜 한정 수량
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={form.flash_sale_stock}
-              onChange={(e) => setForm({ ...form, flash_sale_stock: e.target.value })}
-              className="w-full border rounded px-3 py-2 text-sm"
-              placeholder="한정 수량"
-            />
-          </div>
-
           <div className="flex gap-2 pt-4">
             <button
               type="button"
@@ -118,7 +100,7 @@ export default function FlashSaleModal({ product, onClose, onSave }: FlashSaleMo
             >
               취소
             </button>
-            {(product.flash_sale_end_time || product.flash_sale_price || product.flash_sale_stock) && (
+            {(product.flash_sale_end_time || product.flash_sale_price) && (
               <button
                 type="button"
                 onClick={handleClear}

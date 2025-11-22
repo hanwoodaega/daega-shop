@@ -17,26 +17,53 @@ export default function ProductInfoPage() {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        // slug 또는 UUID로 조회 (먼저 slug로 시도, 없으면 UUID로)
-        let query = supabase
-          .from('products')
-          .select('*')
-          .eq('slug', slugOrId)
-          .single()
-
-        let { data, error } = await query
-
-        // slug로 찾지 못했으면 UUID로 시도
-        if (error || !data) {
+        // slug 또는 UUID로 조회
+        const selectFields = 'id,slug,brand,name,price,image_url'
+        
+        // UUID 형식인지 확인하는 함수
+        const isUUID = (str: string): boolean => {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+          return uuidRegex.test(str)
+        }
+        
+        let query
+        let { data, error } = { data: null, error: null }
+        
+        // UUID인 경우 바로 id로 조회, 아니면 slug로 먼저 시도
+        if (isUUID(slugOrId)) {
           query = supabase
             .from('products')
-            .select('*')
+            .select(selectFields)
             .eq('id', slugOrId)
             .single()
           
           const result = await query
           data = result.data
           error = result.error
+        } else {
+          // slug로 먼저 시도
+          query = supabase
+            .from('products')
+            .select(selectFields)
+            .eq('slug', slugOrId)
+            .single()
+
+          const result = await query
+          data = result.data
+          error = result.error
+
+          // slug로 찾지 못했으면 UUID로 시도
+          if (error || !data) {
+            query = supabase
+              .from('products')
+              .select(selectFields)
+              .eq('id', slugOrId)
+              .single()
+            
+            const result = await query
+            data = result.data
+            error = result.error
+          }
         }
         
         if (error) throw error

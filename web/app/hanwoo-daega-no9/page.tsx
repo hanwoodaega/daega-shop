@@ -1,14 +1,22 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
+import ProductCard from '@/components/ProductCard'
+import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
+import { Product } from '@/lib/supabase'
 
 export default function HanwooDaegaNo9Page() {
   const [currentSlide, setCurrentSlide] = useState(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const totalSlides = 5
+  
+  // 컬렉션 상품 상태
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     // 초기 위치를 첫 번째 실제 슬라이드로 설정
@@ -49,6 +57,25 @@ export default function HanwooDaegaNo9Page() {
 
     return () => clearInterval(interval)
   }, [totalSlides])
+
+  // 한우대가 NO.9 컬렉션 상품 조회
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/collections/no9?limit=100&page=1')
+        if (response.ok) {
+          const data = await response.json()
+          setProducts(data.products || [])
+        }
+      } catch (error) {
+        console.error('상품 조회 실패:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchProducts()
+  }, [])
 
   const handleScroll = () => {
     if (scrollContainerRef.current) {
@@ -369,6 +396,30 @@ export default function HanwooDaegaNo9Page() {
           </div>
         </div>
       </section>
+      
+      {/* 한우대가 NO.9 상품 섹션 */}
+      {products.length > 0 && (
+        <section className="bg-white py-16 md:py-24">
+          <div className="container mx-auto px-4 md:px-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 md:mb-12 text-black">
+              한우대가 NO.9 상품
+            </h2>
+            {loading ? (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <ProductCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                {products.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
       
       <Footer />
       <BottomNavbar />

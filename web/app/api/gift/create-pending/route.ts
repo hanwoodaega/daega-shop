@@ -37,6 +37,10 @@ export async function POST(request: NextRequest) {
 
     // 선물 토큰 생성
     const giftToken = crypto.randomBytes(32).toString('hex')
+    
+    // 만료일 설정 (5일 후)
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 5)
 
     // 주문 생성 (결제 전 상태)
     const orderData: {
@@ -51,10 +55,12 @@ export async function POST(request: NextRequest) {
       gift_token: string
       gift_message: string | null
       gift_card_design: string | null
+      gift_expires_at: string
+      gift_status: string
     } = {
       user_id: user.id,
       total_amount: finalAmount,
-      status: 'pending', // 결제 대기 상태
+      status: 'pending',
       delivery_type: 'regular',
       shipping_address: '선물 수령 대기',
       shipping_name: '선물 수령 대기',
@@ -63,6 +69,8 @@ export async function POST(request: NextRequest) {
       gift_token: giftToken,
       gift_message: gift_message,
       gift_card_design: gift_card_design,
+      gift_expires_at: expiresAt.toISOString(),
+      gift_status: 'pending',
     }
 
     const { data: order, error: orderError } = await supabase

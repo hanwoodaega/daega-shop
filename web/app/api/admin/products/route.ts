@@ -13,22 +13,19 @@ export async function GET(request: Request) {
   const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit') || '20')))
   const from = (page - 1) * limit
   const to = from + limit - 1
+  const selectFields = 'id,slug,brand,name,price,image_url,category,average_rating,review_count,created_at,updated_at'
+  
   let query = supabaseAdmin
     .from('products')
-    .select('*', { count: 'exact' })
+    .select(selectFields, { count: 'exact' })
     .order('created_at', { ascending: false })
   if (category && category !== '전체') {
     query = query.eq('category', category)
   }
-  if (tag && tag !== '전체') {
-    if (tag === 'new') query = query.eq('is_new', true)
-    else if (tag === 'best') query = query.eq('is_best', true)
-    else if (tag === 'sale') query = query.eq('is_sale', true)
-    else if (tag === 'budget') query = query.eq('is_budget', true)
-  }
+  // tag 필터는 컬렉션 시스템으로 대체됨
   if (q) {
     const like = `%${q}%`
-    query = query.or(`name.ilike.${like},description.ilike.${like}`)
+    query = query.or(`name.ilike.${like},brand.ilike.${like}`)
   }
   const { data, error, count } = await query.range(from, to)
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
@@ -39,7 +36,7 @@ export async function POST(request: Request) {
   try { assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   const body = await request.json().catch(() => ({}))
 
-  const required = ['name', 'price', 'category', 'stock', 'unit', 'origin']
+  const required = ['name', 'price', 'category', 'unit', 'origin']
   for (const key of required) {
     if (body[key] === undefined || body[key] === null || body[key] === '') {
       return NextResponse.json({ error: `Missing field: ${key}` }, { status: 400 })
@@ -91,7 +88,6 @@ export async function POST(request: Request) {
     price: Number(body.price),
     image_url: String(body.image_url || ''),
     category: String(body.category),
-    stock: Number(body.stock),
     discount_percent: body.discount_percent !== undefined && body.discount_percent !== null && body.discount_percent !== ''
       ? Math.max(0, Math.min(100, Number(body.discount_percent)))
       : null,

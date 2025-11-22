@@ -1,17 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Product } from '@/lib/supabase'
 import { getFlashSaleRemainingSeconds } from '@/lib/product-utils'
 
 interface FlashSaleCountdownProps {
-  product: Product
+  flashSaleSettings?: { end_time?: string | null } | null
   className?: string
 }
 
-export default function FlashSaleCountdown({ product, className = '' }: FlashSaleCountdownProps) {
+export default function FlashSaleCountdown({ flashSaleSettings, className = '' }: FlashSaleCountdownProps) {
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(
-    getFlashSaleRemainingSeconds(product)
+    getFlashSaleRemainingSeconds(flashSaleSettings)
   )
 
   useEffect(() => {
@@ -20,7 +19,7 @@ export default function FlashSaleCountdown({ product, className = '' }: FlashSal
     }
 
     const interval = setInterval(() => {
-      const newRemaining = getFlashSaleRemainingSeconds(product)
+      const newRemaining = getFlashSaleRemainingSeconds(flashSaleSettings)
       setRemainingSeconds(newRemaining)
       
       if (newRemaining === null || newRemaining <= 0) {
@@ -29,7 +28,7 @@ export default function FlashSaleCountdown({ product, className = '' }: FlashSal
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [product, remainingSeconds])
+  }, [flashSaleSettings, remainingSeconds])
 
   if (remainingSeconds === null || remainingSeconds <= 0) {
     return null
@@ -49,7 +48,7 @@ export default function FlashSaleCountdown({ product, className = '' }: FlashSal
   return (
     <div className="flex items-center gap-2">
       {days > 0 && (
-        <span className={`${textSizeClass} font-bold text-red-600`}>
+        <span className={`${textSizeClass} font-bold text-red-600 mr-2`}>
           D-{days}
         </span>
       )}

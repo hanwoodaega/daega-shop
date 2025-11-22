@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 type AdminCard = {
   title: string
@@ -19,16 +20,10 @@ const managementCards: AdminCard[] = [
     badge: 'NEW',
   },
   {
-    title: '프로모션 (1+1, 2+1)',
-    description: '묶음/증정 프로모션을 생성하고 실시간으로 관리하세요.',
+    title: '프로모션 관리',
+    description: '할인율 할인, 1+1, 2+1, 3+1 프로모션을 생성하고 관리하세요.',
     href: '/admin/promotions',
     accent: 'bg-fuchsia-100 text-fuchsia-700',
-  },
-  {
-    title: '할인 관리',
-    description: '상시 할인, 타임딜, 쿠폰 정책을 구성하고 성과를 확인해요.',
-    href: '/admin/discounts',
-    accent: 'bg-amber-100 text-amber-700',
   },
   {
     title: '타임딜 관리',
@@ -54,6 +49,12 @@ const managementCards: AdminCard[] = [
     href: '/admin/gift-management',
     accent: 'bg-pink-100 text-pink-700',
   },
+  {
+    title: '컬렉션 관리',
+    description: '베스트, 특가, 한우대가 NO.9 등 컬렉션을 관리하세요.',
+    href: '/admin/collections',
+    accent: 'bg-teal-100 text-teal-700',
+  },
 ]
 
 const supportCards: AdminCard[] = [
@@ -77,14 +78,80 @@ const supportCards: AdminCard[] = [
   },
 ]
 
-const insightItems = [
-  { label: '오늘 신규 주문', value: '42건', trend: '+18% vs. 어제' },
-  { label: '대기 중 CS 티켓', value: '3건', trend: '빠른 응답 필요' },
-  { label: '활성 프로모션', value: '6건', trend: '상품 관리에서 확인' },
-]
+// 주문 통계를 가져오는 함수 (실제 데이터는 주문 관리 페이지에서 확인)
+const getTodayOrdersUrl = () => {
+  const today = new Date().toISOString().split('T')[0]
+  return `/admin/orders?date=${today}`
+}
+
+const getRecent14DaysOrdersUrl = () => {
+  const today = new Date()
+  const fourteenDaysAgo = new Date(today)
+  fourteenDaysAgo.setDate(today.getDate() - 14)
+  const startDate = fourteenDaysAgo.toISOString().split('T')[0]
+  const endDate = today.toISOString().split('T')[0]
+  return `/admin/orders?start_date=${startDate}&end_date=${endDate}`
+}
 
 export default function AdminPage() {
   const router = useRouter()
+  const [todayOrdersCount, setTodayOrdersCount] = useState<number | null>(null)
+  const [recent14DaysOrdersCount, setRecent14DaysOrdersCount] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+  
+  useEffect(() => {
+    fetchOrderCounts()
+  }, [])
+
+  const fetchOrderCounts = async () => {
+    try {
+      // 오늘 주문 개수
+      const todayStr = new Date().toISOString().split('T')[0]
+      const todayResponse = await fetch(`/api/admin/orders?date=${todayStr}`)
+      
+      if (todayResponse.ok) {
+        const todayData = await todayResponse.json()
+        // 응답이 배열인지 확인
+        if (Array.isArray(todayData)) {
+          setTodayOrdersCount(todayData.length)
+        } else {
+          console.error('오늘 주문 데이터 형식 오류:', todayData)
+          setTodayOrdersCount(0)
+        }
+      } else {
+        console.error('오늘 주문 조회 실패:', todayResponse.status, todayResponse.statusText)
+        setTodayOrdersCount(0)
+      }
+
+      // 최근 14일 주문 개수
+      const today = new Date()
+      const fourteenDaysAgo = new Date(today)
+      fourteenDaysAgo.setDate(today.getDate() - 14)
+      const startDate = fourteenDaysAgo.toISOString().split('T')[0]
+      const endDate = today.toISOString().split('T')[0]
+      const recentResponse = await fetch(`/api/admin/orders?start_date=${startDate}&end_date=${endDate}`)
+      
+      if (recentResponse.ok) {
+        const recentData = await recentResponse.json()
+        // 응답이 배열인지 확인
+        if (Array.isArray(recentData)) {
+          setRecent14DaysOrdersCount(recentData.length)
+        } else {
+          console.error('최근 14일 주문 데이터 형식 오류:', recentData)
+          setRecent14DaysOrdersCount(0)
+        }
+      } else {
+        console.error('최근 14일 주문 조회 실패:', recentResponse.status, recentResponse.statusText)
+        setRecent14DaysOrdersCount(0)
+      }
+    } catch (error) {
+      console.error('주문 개수 조회 실패:', error)
+      setTodayOrdersCount(0)
+      setRecent14DaysOrdersCount(0)
+    } finally {
+      setLoading(false)
+    }
+  }
   
   const handleNavigate = (href: string) => {
     router.push(href)
@@ -115,17 +182,27 @@ export default function AdminPage() {
           </div>
         </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {insightItems.map((item) => (
-              <div
-                key={item.label}
-                className="bg-neutral-900 text-white rounded-2xl p-5 space-y-2 shadow-sm"
-              >
-                <p className="text-sm text-neutral-300">{item.label}</p>
-                <p className="text-2xl font-semibold">{item.value}</p>
-                <p className="text-xs text-neutral-400">{item.trend}</p>
-          </div>
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              onClick={() => handleNavigate(getTodayOrdersUrl())}
+              className="bg-neutral-900 text-white rounded-2xl p-5 space-y-2 shadow-sm hover:bg-neutral-800 transition text-left"
+            >
+              <p className="text-sm text-neutral-300">오늘 신규 주문</p>
+              <p className="text-2xl font-semibold">
+                {loading ? '...' : todayOrdersCount !== null ? `${todayOrdersCount}건` : '-'}
+              </p>
+              <p className="text-xs text-neutral-400">오늘 주문 내역 보기 →</p>
+            </button>
+            <button
+              onClick={() => handleNavigate(getRecent14DaysOrdersUrl())}
+              className="bg-neutral-900 text-white rounded-2xl p-5 space-y-2 shadow-sm hover:bg-neutral-800 transition text-left"
+            >
+              <p className="text-sm text-neutral-300">최근 14일 주문</p>
+              <p className="text-2xl font-semibold">
+                {loading ? '...' : recent14DaysOrdersCount !== null ? `${recent14DaysOrdersCount}건` : '-'}
+              </p>
+              <p className="text-xs text-neutral-400">최근 14일 주문 내역 보기 →</p>
+            </button>
           </div>
           </div>
       </header>

@@ -17,8 +17,7 @@ export function calculateDiscountPrice(price: number, discountPercent?: number |
  */
 export function getProductTags(product: Product): string[] {
   const tags: string[] = []
-  if (product.is_best) tags.push('베스트')
-  if (product.is_sale) tags.push('전단행사')
+  // is_best, is_sale은 컬렉션 시스템으로 대체됨
   return tags
 }
 
@@ -44,14 +43,20 @@ export function isOutOfStock(stock: number): boolean {
 }
 
 /**
- * 타임딜 진행 중인지 확인
+ * 타임딜 진행 중인지 확인 (flash_sale_settings 기반)
+ * is_flash_sale 컬럼이 없어도 flash_sale_settings의 시간만으로 판단
  */
-export function isFlashSaleActive(product: Product): boolean {
-  if (!product.flash_sale_end_time || !product.flash_sale_price) {
+export function isFlashSaleActive(
+  product: Product, 
+  flashSaleSettings?: { start_time?: string | null; end_time?: string | null } | null
+): boolean {
+  // flash_sale_settings가 없으면 비활성화
+  if (!flashSaleSettings || !flashSaleSettings.end_time) {
     return false
   }
+
   const now = new Date().getTime()
-  const endTime = new Date(product.flash_sale_end_time).getTime()
+  const endTime = new Date(flashSaleSettings.end_time).getTime()
   
   // 종료 시간이 지났으면 비활성화
   if (now >= endTime) {
@@ -59,8 +64,8 @@ export function isFlashSaleActive(product: Product): boolean {
   }
   
   // 시작 시간이 설정되어 있으면 시작 시간 체크
-  if (product.flash_sale_start_time) {
-    const startTime = new Date(product.flash_sale_start_time).getTime()
+  if (flashSaleSettings.start_time) {
+    const startTime = new Date(flashSaleSettings.start_time).getTime()
     return now >= startTime
   }
   
@@ -69,24 +74,31 @@ export function isFlashSaleActive(product: Product): boolean {
 }
 
 /**
- * 타임딜 남은 시간 계산 (초 단위)
+ * 타임딜 남은 시간 계산 (초 단위, flash_sale_settings 기반)
  */
-export function getFlashSaleRemainingSeconds(product: Product): number | null {
-  if (!product.flash_sale_end_time) {
+export function getFlashSaleRemainingSeconds(
+  flashSaleSettings?: { end_time?: string | null } | null
+): number | null {
+  if (!flashSaleSettings || !flashSaleSettings.end_time) {
     return null
   }
-  const endTime = new Date(product.flash_sale_end_time).getTime()
+  const endTime = new Date(flashSaleSettings.end_time).getTime()
   const now = new Date().getTime()
   const remaining = Math.max(0, Math.floor((endTime - now) / 1000))
   return remaining > 0 ? remaining : null
 }
 
 /**
- * 타임딜 가격 가져오기 (활성화된 경우)
+ * 타임딜 할인가 계산 (활성화된 경우, 정가에서 할인율로 계산)
  */
-export function getFlashSalePrice(product: Product): number | null {
-  if (isFlashSaleActive(product) && product.flash_sale_price) {
-    return product.flash_sale_price
+export function getFlashSalePrice(
+  product: Product,
+  flashSaleSettings?: { start_time?: string | null; end_time?: string | null } | null,
+  flashSalePrice?: number | null
+): number | null {
+  if (isFlashSaleActive(product, flashSaleSettings)) {
+    // 타임딜 가격은 flash_sale 테이블의 price 사용
+    return flashSalePrice ?? null
   }
   return null
 }

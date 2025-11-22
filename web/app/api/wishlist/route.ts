@@ -27,7 +27,6 @@ export async function GET() {
           image_url,
           brand,
           discount_percent,
-          stock
         )
       `)
       .eq('user_id', user.id)
@@ -39,7 +38,7 @@ export async function GET() {
     }
 
     // product_id만 추출한 배열 반환 (기존 localStorage 형식과 호환)
-    const productIds = data?.map(item => item.product_id) || []
+    const productIds = (data || []).map((item: any) => item.product_id)
 
     return NextResponse.json({ 
       success: true, 

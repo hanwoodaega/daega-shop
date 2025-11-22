@@ -23,14 +23,15 @@ export interface OrderWithItems {
   order_number?: string | null
   user_id: string
   total_amount: number
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled'
+  status: OrderStatus
   delivery_type: 'pickup' | 'quick' | 'regular'
   delivery_time?: string | null
   shipping_address: string
   shipping_name: string
   shipping_phone: string
   delivery_note?: string | null
-  refund_status?: 'pending' | 'processing' | 'completed' | null
+  tracking_number?: string | null  // 송장번호
+  refund_status?: RefundStatus | null
   refund_amount?: number | null
   refund_requested_at?: string | null
   refund_completed_at?: string | null
@@ -72,11 +73,24 @@ export interface Address {
 
 // ==================== Status & Delivery ====================
 
-export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled'
+export type OrderStatus = 
+  | 'pending' 
+  | 'ORDER_RECEIVED'      // 주문완료 (고객이 결제하면 자동 설정)
+  | 'PREPARING'           // 상품준비중 (관리자가 수동으로 변경)
+  | 'IN_TRANSIT'          // 배송중 (관리자가 송장번호 입력 시 자동 변경)
+  | 'DELIVERED'           // 배송완료 (관리자가 수동으로 변경)
+  | 'cancelled'
 export type DeliveryType = 'pickup' | 'quick' | 'regular'
 export type RefundStatus = 'pending' | 'processing' | 'completed'
 
-export const VALID_ORDER_STATUSES: OrderStatus[] = ['pending', 'paid', 'shipped', 'delivered', 'cancelled']
+export const VALID_ORDER_STATUSES: OrderStatus[] = [
+  'pending', 
+  'ORDER_RECEIVED',      // 주문완료
+  'PREPARING',           // 상품준비중
+  'IN_TRANSIT',          // 배송중
+  'DELIVERED',           // 배송완료
+  'cancelled'
+]
 export const VALID_DELIVERY_TYPES: DeliveryType[] = ['pickup', 'quick', 'regular']
 export const VALID_REFUND_STATUSES: RefundStatus[] = ['pending', 'processing', 'completed']
 

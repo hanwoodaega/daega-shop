@@ -15,6 +15,16 @@ export const supabase = isSupabaseConfigured
  * These types represent the database schema structure
  */
 
+export interface Promotion {
+  id: string
+  type: 'bogo' | 'percent'
+  buy_qty?: number | null
+  discount_percent?: number | null
+  is_active: boolean
+  start_at?: string | null
+  end_at?: string | null
+}
+
 export interface Product {
   id: string
   slug?: string | null
@@ -23,24 +33,9 @@ export interface Product {
   price: number
   image_url: string
   category: string
-  stock: number
-  discount_percent?: number | null
-  is_best?: boolean
-  is_sale?: boolean
-  promotion_type?: '1+1' | '2+1' | '3+1' | null
-  promotion_products?: string[] | null  // 증정 가능한 상품 ID 배열
   average_rating?: number | null  // 평균 별점
   review_count?: number | null  // 리뷰 개수
-  flash_sale_start_time?: string | null  // 타임딜 시작 시간 (선택)
-  flash_sale_end_time?: string | null    // 타임딜 종료 시간
-  flash_sale_price?: number | null       // 타임딜 가격
-  flash_sale_stock?: number | null       // 타임딜 한정 수량
-  gift_target?: string[] | null           // 선물 대상 (아이, 부모님, 연인, 친구)
-  gift_display_order?: number | null      // 선물관 표시 순서
-  gift_budget_targets?: string[] | null    // 예산 카테고리 (under-50k, over-50k, over-100k, over-200k)
-  gift_budget_order?: number | null        // 예산별 표시 순서
-  gift_featured?: boolean | null           // 실시간 인기 선물세트 여부
-  gift_featured_order?: number | null     // 실시간 인기 선물세트 우선순위
+  promotion?: Promotion | null  // 활성 프로모션 정보
   created_at: string
   updated_at: string
 }
@@ -66,13 +61,14 @@ export interface Order {
   order_number?: string | null  // 고객용 주문번호 (YYYYMMDD-####)
   user_id: string
   total_amount: number
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled'
+  status: 'pending' | 'ORDER_RECEIVED' | 'PREPARING' | 'IN_TRANSIT' | 'DELIVERED' | 'cancelled'
   delivery_type: 'pickup' | 'quick' | 'regular'
   delivery_time?: string | null
   shipping_address: string
   shipping_name: string
   shipping_phone: string
   delivery_note?: string | null
+  tracking_number?: string | null  // 송장번호
   refund_status?: 'pending' | 'processing' | 'completed' | null
   refund_amount?: number | null
   refund_requested_at?: string | null
@@ -132,8 +128,8 @@ export interface Coupon {
   min_purchase_amount?: number | null  // 최소 구매 금액
   max_discount_amount?: number | null  // 최대 할인 금액 (percentage일 때만)
   validity_days: number  // 유효 기간 (일수) - 발급일부터 해당 일수만큼 유효
-  valid_from: string  // 호환성을 위해 유지 (사용 안 함)
-  valid_until: string  // 호환성을 위해 유지 (사용 안 함)
+  valid_from?: string | null  // 레거시 컬럼 (사용 안 함, validity_days로 대체됨)
+  valid_until?: string | null  // 레거시 컬럼 (사용 안 함, validity_days로 대체됨)
   is_active: boolean
   usage_limit?: number | null  // 전체 사용 가능 횟수 (null이면 무제한)
   usage_count: number  // 현재 사용 횟수

@@ -349,7 +349,7 @@ function CartPageContent() {
                     setSelectedAddressId(defaultAddress.id)
                     setShowAddressModal(true)
                   }}
-                  className="ml-4 px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition whitespace-nowrap"
+                  className="ml-4 px-3 py-1.5 text-xs font-medium text-blue-900 border border-blue-900 rounded-md hover:bg-blue-50 transition whitespace-nowrap"
                 >
                   배송지 변경
                 </button>
@@ -359,7 +359,7 @@ function CartPageContent() {
                 <p className="text-sm text-gray-600">등록된 배송지가 없습니다</p>
                 <button
                   onClick={() => router.push('/profile/addresses')}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-primary-800 rounded-md hover:bg-primary-900 transition"
+                  className="px-3 py-1.5 text-xs font-medium text-blue-900 bg-white border border-blue-900 rounded-md hover:bg-blue-50 transition"
                 >
                   배송지 등록
                 </button>
@@ -531,14 +531,14 @@ function CartPageContent() {
                     <div key={item.id} className={`${itemIndex === 0 ? 'pt-1' : 'pt-3'} pb-3 ${itemIndex < groupItems.length - 1 ? 'border-dashed-long' : ''}`}>
                       <div className="flex items-start space-x-3">
                         {/* 상품 이미지 */}
-                        <Link href={`/products/${item.productId}`} className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 text-xs hover:opacity-80 transition">
+                        <Link href={`/products/${item.slug || item.productId}`} className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 text-xs hover:opacity-80 transition">
                           이미지 준비중
                         </Link>
 
                         {/* 상품 정보 */}
                         <div className="flex-1">
                           <div className="flex items-start justify-between">
-                            <Link href={`/products/${item.productId}`} className="flex-1 pr-2 hover:opacity-80 transition">
+                            <Link href={`/products/${item.slug || item.productId}`} className="flex-1 pr-2 hover:opacity-80 transition">
                               {item.brand && (
                                 <div className="text-sm font-bold text-gray-900 mb-0.5">{item.brand}</div>
                               )}
@@ -627,7 +627,7 @@ function CartPageContent() {
                           style={{ accentColor: '#1e3a8a' }}
                         />
                       </div>
-                      <Link href={`/products/${item.productId}`} className="absolute inset-0 flex items-center justify-center hover:opacity-80 transition">
+                      <Link href={`/products/${item.slug || item.productId}`} className="absolute inset-0 flex items-center justify-center hover:opacity-80 transition">
                         <span className="text-gray-500 text-xs">이미지 준비중</span>
                       </Link>
                     </div>
@@ -635,7 +635,7 @@ function CartPageContent() {
                     {/* 상품 정보 */}
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
-                        <Link href={`/products/${item.productId}`} className="flex-1 pr-2 hover:opacity-80 transition">
+                        <Link href={`/products/${item.slug || item.productId}`} className="flex-1 pr-2 hover:opacity-80 transition">
                           {item.brand && (
                             <div className="text-sm font-bold text-gray-900 mb-0.5 line-clamp-1">{item.brand}</div>
                           )}
@@ -845,7 +845,7 @@ function CartPageContent() {
                       setShowAddressModal(false)
                       router.push('/profile/addresses')
                     }}
-                    className="px-4 py-2 bg-primary-800 text-white rounded-lg hover:bg-primary-900"
+                    className="px-4 py-2 bg-white text-blue-900 border border-blue-900 rounded-lg hover:bg-blue-50"
                   >
                     배송지 등록하기
                   </button>
@@ -893,7 +893,7 @@ function CartPageContent() {
                   setSelectedAddressId(null)
                   router.push('/profile/addresses')
                 }}
-                className="flex-1 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100"
+                className="flex-1 py-2.5 text-sm font-medium text-blue-900 border border-blue-900 rounded-lg hover:bg-blue-50"
               >
                 배송지 관리
               </button>

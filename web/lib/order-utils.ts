@@ -6,11 +6,13 @@ export function getStatusText(status: string, deliveryType?: string): string {
     switch (status) {
       case 'pending':
         return '결제 대기'
-      case 'paid':
-        return '결제 완료'
-      case 'shipped':
+      case 'ORDER_RECEIVED':
+        return '주문완료'
+      case 'PREPARING':
         return '준비 중'
-      case 'delivered':
+      case 'IN_TRANSIT':
+        return '준비 중'
+      case 'DELIVERED':
         return '완료'
       case 'cancelled':
         return '주문 취소'
@@ -23,14 +25,23 @@ export function getStatusText(status: string, deliveryType?: string): string {
   switch (status) {
     case 'pending':
       return '결제 대기'
-    case 'paid':
-      return '결제 완료'
-    case 'shipped':
-      return '배송 중'
-    case 'delivered':
-      return '배송 완료'
+    case 'ORDER_RECEIVED':
+      return '주문완료'
+    case 'PREPARING':
+      return '상품준비중'
+    case 'IN_TRANSIT':
+      return '배송중'
+    case 'DELIVERED':
+      return '배송완료'
     case 'cancelled':
       return '주문 취소'
+    // 하위 호환성을 위한 기존 상태
+    case 'paid':
+      return '주문완료'
+    case 'shipped':
+      return '배송중'
+    case 'delivered':
+      return '배송완료'
     default:
       return status
   }
@@ -83,14 +94,23 @@ export function getStatusTextColor(status: string): string {
   switch (status) {
     case 'pending':
       return 'text-yellow-600'
-    case 'paid':
+    case 'ORDER_RECEIVED':
       return 'text-blue-600'
-    case 'shipped':
+    case 'PREPARING':
       return 'text-purple-600'
-    case 'delivered':
+    case 'IN_TRANSIT':
+      return 'text-cyan-600'
+    case 'DELIVERED':
       return 'text-green-600'
     case 'cancelled':
       return 'text-red-600'
+    // 하위 호환성
+    case 'paid':
+      return 'text-blue-600'
+    case 'shipped':
+      return 'text-cyan-600'
+    case 'delivered':
+      return 'text-green-600'
     default:
       return 'text-gray-600'
   }
@@ -103,14 +123,23 @@ export function getStatusColor(status: string): string {
   switch (status) {
     case 'pending':
       return 'bg-yellow-100 text-yellow-800'
-    case 'paid':
+    case 'ORDER_RECEIVED':
       return 'bg-blue-100 text-blue-800'
-    case 'shipped':
+    case 'PREPARING':
       return 'bg-purple-100 text-purple-800'
-    case 'delivered':
+    case 'IN_TRANSIT':
+      return 'bg-cyan-100 text-cyan-800'
+    case 'DELIVERED':
       return 'bg-green-100 text-green-800'
     case 'cancelled':
       return 'bg-red-100 text-red-800'
+    // 하위 호환성
+    case 'paid':
+      return 'bg-blue-100 text-blue-800'
+    case 'shipped':
+      return 'bg-cyan-100 text-cyan-800'
+    case 'delivered':
+      return 'bg-green-100 text-green-800'
     default:
       return 'bg-gray-100 text-gray-800'
   }

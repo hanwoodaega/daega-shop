@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
     const sort = searchParams.get('sort') || 'default'
     const category = searchParams.get('category')
-    const filter = searchParams.get('filter') // new, best, sale, budget
+    const filter = searchParams.get('filter') // best, sale, flash-sale
     const searchQuery = searchParams.get('search')
     
     const from = (page - 1) * limit
@@ -20,34 +20,70 @@ export async function GET(request: NextRequest) {
 
     const supabase = createSupabaseServerClient()
 
-    // 상품 조회 쿼리 구성
+    // 상품 조회 쿼리 구성 (프로모션 정보 포함)
+    const selectFields = `
+      id,
+      slug,
+      brand,
+      name,
+      price,
+      image_url,
+      category,
+      average_rating,
+      review_count,
+      created_at,
+      updated_at,
+      promotion_products (
+        promotion_id,
+        promotions (
+          id,
+          type,
+          buy_qty,
+          discount_percent,
+          is_active,
+          start_at,
+          end_at
+        )
+      )
+    `
+    
     let query = supabase
       .from('products')
-      .select('*', { count: 'exact' })
+      .select(selectFields, { count: 'exact' })
       .range(from, to)
 
     // 검색어 필터
     if (searchQuery) {
       query = query.or(
-        `name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,origin.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%`
+        `name.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%`
       )
     } else if (filter) {
       // 필터 적용
-      if (filter === 'new') {
-        query = query.eq('is_new', true)
-      } else if (filter === 'best') {
-        query = query.eq('is_best', true)
-      } else if (filter === 'sale') {
-        query = query.eq('is_sale', true)
-      } else if (filter === 'budget') {
-        query = query.eq('is_budget', true)
-      } else if (filter === 'flash-sale') {
-        // 타임딜 상품 필터: 종료 시간이 아직 지나지 않았고 재고가 있는 상품
-        const now = new Date().toISOString()
-        query = query
-          .not('flash_sale_end_time', 'is', null)
-          .gte('flash_sale_end_time', now)
-          .gt('flash_sale_stock', 0)
+      if (filter === 'flash-sale') {
+        // 타임딜 상품 필터: collections 테이블의 'timedeal' 컬렉션에서 상품 ID 조회
+        const { data: timedealCollection } = await supabase
+          .from('collections')
+          .select('id')
+          .eq('type', 'timedeal')
+          .maybeSingle()
+        
+        if (timedealCollection) {
+          const { data: collectionProducts } = await supabase
+            .from('collection_products')
+            .select('product_id')
+            .eq('collection_id', timedealCollection.id)
+          
+          const timedealProductIds = collectionProducts?.map((cp: any) => cp.product_id) || []
+          if (timedealProductIds.length > 0) {
+            query = query.in('id', timedealProductIds)
+          } else {
+            // 타임딜 상품이 없으면 빈 결과 반환
+            query = query.eq('id', '00000000-0000-0000-0000-000000000000') // 존재하지 않는 ID로 필터링
+          }
+        } else {
+          // 타임딜 컬렉션이 없으면 빈 결과 반환
+          query = query.eq('id', '00000000-0000-0000-0000-000000000000') // 존재하지 않는 ID로 필터링
+        }
       }
     } else if (category && category !== '전체') {
       // 카테고리 필터
@@ -56,8 +92,8 @@ export async function GET(request: NextRequest) {
 
     // 정렬 적용
     if (filter === 'flash-sale') {
-      // 타임딜은 종료 시간 순으로 정렬
-      query = query.order('flash_sale_end_time', { ascending: true })
+      // 타임딜은 가격 순으로 정렬
+      query = query.order('price', { ascending: true })
     } else if (sort === 'price_asc') {
       query = query.order('price', { ascending: true })
     } else if (sort === 'price_desc') {
@@ -82,85 +118,33 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // 모든 상품 ID 수집
-    const productIds = products.map((p: any) => p.id)
-
-    // 리뷰 통계를 한 번에 조회 (승인된 리뷰 기준)
-    // 리뷰 조회가 느려도 상품 목록은 반환되도록 처리
-    let reviewStats: Record<string, { count: number; average: number }> = {}
-    
-    // 리뷰 통계 조회 (에러가 나도 상품 목록은 반환)
-    try {
-      // 승인된 리뷰만 조회 시도 (최대 5000개로 제한하여 성능 개선)
-      const reviewsRes = await supabase
-        .from('reviews')
-        .select('product_id, rating, status')
-        .in('product_id', productIds)
-        .eq('status', 'approved')
-        .limit(5000) // 최대 리뷰 수 제한으로 성능 개선
-
-      if (reviewsRes.data) {
-        // 상품별로 그룹화하여 통계 계산
-        const statsMap = new Map<string, { sum: number; count: number }>()
-        
-        reviewsRes.data.forEach((review: any) => {
-          const productId = review.product_id
-          const current = statsMap.get(productId) || { sum: 0, count: 0 }
-          statsMap.set(productId, {
-            sum: current.sum + (review.rating || 0),
-            count: current.count + 1,
-          })
-        })
-
-        // 평균 계산
-        statsMap.forEach((value, productId) => {
-          reviewStats[productId] = {
-            count: value.count,
-            average: value.count > 0 ? Number((value.sum / value.count).toFixed(2)) : 0,
-          }
-        })
-      }
-    } catch (reviewError: any) {
-      // status 컬럼이 없거나 오류 시 폴백: 전체 리뷰로 계산
-      try {
-        const reviewsRes = await supabase
-          .from('reviews')
-          .select('product_id, rating')
-          .in('product_id', productIds)
-          .limit(5000) // 최대 리뷰 수 제한으로 성능 개선
-
-        if (reviewsRes.data) {
-          const statsMap = new Map<string, { sum: number; count: number }>()
-          
-          reviewsRes.data.forEach((review: any) => {
-            const productId = review.product_id
-            const current = statsMap.get(productId) || { sum: 0, count: 0 }
-            statsMap.set(productId, {
-              sum: current.sum + (review.rating || 0),
-              count: current.count + 1,
-            })
-          })
-
-          statsMap.forEach((value, productId) => {
-            reviewStats[productId] = {
-              count: value.count,
-              average: value.count > 0 ? Number((value.sum / value.count).toFixed(2)) : 0,
-            }
-          })
-        }
-      } catch (fallbackError) {
-        // 리뷰 통계 조회 실패해도 상품 목록은 반환
-        console.error('리뷰 통계 조회 실패 (무시됨):', fallbackError)
-      }
-    }
-
-    // 상품에 리뷰 통계 추가
+    // 프로모션 정보 처리 및 상품 데이터 정리
     const enrichedProducts = products.map((product: any) => {
-      const stats = reviewStats[product.id] || { count: 0, average: 0 }
+      // 활성화된 프로모션 찾기
+      let activePromotion = null
+      if (product.promotion_products && product.promotion_products.length > 0) {
+        const now = new Date()
+        for (const pp of product.promotion_products) {
+          const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
+          if (promo && promo.is_active) {
+            // 날짜 체크
+            const startAt = promo.start_at ? new Date(promo.start_at) : null
+            const endAt = promo.end_at ? new Date(promo.end_at) : null
+            const isInDateRange = (!startAt || now >= startAt) && (!endAt || now <= endAt)
+            
+            if (isInDateRange) {
+              activePromotion = promo
+              break
+            }
+          }
+        }
+      }
+
       return {
         ...product,
-        average_rating: stats.average || product.average_rating || 0,
-        review_count: stats.count || product.review_count || 0,
+        average_rating: product.average_rating || 0,
+        review_count: product.review_count || 0,
+        promotion: activePromotion,
       }
     })
 

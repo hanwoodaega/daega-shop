@@ -45,11 +45,13 @@ export default function RecentlyViewedSection() {
 
         let allProducts: Product[] = []
 
+        const selectFields = 'id,slug,brand,name,price,image_url'
+
         // UUID로 조회
         if (uuids.length > 0) {
           const { data: uuidData, error: uuidError } = await supabase
             .from('products')
-            .select('*')
+            .select(selectFields)
             .in('id', uuids)
           
           if (uuidError) throw uuidError
@@ -60,7 +62,7 @@ export default function RecentlyViewedSection() {
         if (slugs.length > 0) {
           const { data: slugData, error: slugError } = await supabase
             .from('products')
-            .select('*')
+            .select(selectFields)
             .in('slug', slugs)
           
           if (slugError) throw slugError
@@ -148,7 +150,7 @@ export default function RecentlyViewedSection() {
             return (
               <Link
                 key={product.id}
-                href={`/products/${product.id}`}
+                href={`/products/${product.slug || product.id}`}
                 className="flex-shrink-0 w-[180px] bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition"
               >
                 <div className="relative aspect-square bg-gray-200">
@@ -167,30 +169,19 @@ export default function RecentlyViewedSection() {
                     </div>
                   )}
 
-                  {product.stock <= 0 && (
-                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                      <span className="text-white text-xl font-bold">품절</span>
-                    </div>
-                  )}
-                  
                   {/* 장바구니 버튼 */}
                   <button
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
-                      if (product.stock <= 0) {
-                        toast.error('품절된 상품입니다', { icon: '😢' })
-                        return
-                      }
                       const cartItem = {
                         productId: product.id,
                         name: product.name,
                         price: product.price,
                         quantity: 1,
                         imageUrl: product.image_url,
-                        discount_percent: product.discount_percent ?? undefined,
+                        discount_percent: product.promotion?.discount_percent ?? undefined,
                         brand: product.brand ?? undefined,
-                        stock: product.stock,
                       }
                       addCartItemWithDB(user?.id || null, cartItem)
                       toast.success('장바구니에 추가되었습니다!', { icon: '🛒' })
@@ -215,15 +206,15 @@ export default function RecentlyViewedSection() {
                   </h3>
 
                   {/* 가격 영역을 2줄로 고정하여 카드 높이를 통일 */}
-                  {product.discount_percent && product.discount_percent > 0 ? (
+                  {product.promotion?.type === 'percent' && product.promotion.discount_percent && product.promotion.discount_percent > 0 ? (
                     <>
                       <div className="text-xs text-gray-500 line-through mt-0 leading-tight">
                         {formatPrice(product.price)}원
                       </div>
                       <div className="flex items-baseline gap-2 mt-0 leading-tight">
-                        <span className="text-base md:text-lg font-bold text-red-600">{product.discount_percent}%</span>
+                        <span className="text-base md:text-lg font-bold text-red-600">{product.promotion.discount_percent}%</span>
                         <span className="text-base font-extrabold text-primary-900">
-                          {formatPrice(product.price * (1 - product.discount_percent / 100))}<span className="text-xs text-gray-600">원</span>
+                          {formatPrice(product.price * (1 - product.promotion.discount_percent / 100))}<span className="text-xs text-gray-600">원</span>
                         </span>
                       </div>
                     </>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { formatPrice } from '@/lib/utils'
 import { formatPhoneNumber } from '@/lib/format-phone'
-import { getStatusText, getDeliveryTypeText, getStatusColor, getStatusTextColor } from '@/lib/order-utils'
+import { getStatusText, getDeliveryTypeText, getStatusColor, getStatusTextColor, getRefundStatusText } from '@/lib/order-utils'
 import { SHIPPING } from '@/lib/constants'
 
 interface OrderItem {
@@ -44,6 +44,13 @@ interface Order {
   couponDiscount?: number
   usedPoints?: number
   shipping?: number
+  refund_status?: 'pending' | 'processing' | 'completed' | null
+  refund_amount?: number | null
+  refund_requested_at?: string | null
+  refund_completed_at?: string | null
+  tracking_number?: string | null
+  is_gift?: boolean
+  payment_method?: string | null
 }
 
 export default function AdminOrdersPage() {
@@ -52,13 +59,34 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true)
   const [selectedDeliveryType, setSelectedDeliveryType] = useState<string>('all')
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [selectedStartDate, setSelectedStartDate] = useState<string | null>(null)
+  const [selectedEndDate, setSelectedEndDate] = useState<string | null>(null)
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
   const [processingAutoConfirm, setProcessingAutoConfirm] = useState(false)
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, { number: string }>>({})
+
+  // URL 파라미터에서 날짜 범위 읽기
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const startDate = params.get('start_date')
+    const endDate = params.get('end_date')
+    const date = params.get('date')
+    
+    if (startDate && endDate) {
+      setSelectedStartDate(startDate)
+      setSelectedEndDate(endDate)
+      setSelectedDate('') // 단일 날짜 필터 비활성화
+    } else if (date) {
+      setSelectedDate(date)
+      setSelectedStartDate(null)
+      setSelectedEndDate(null)
+    }
+  }, [])
 
   useEffect(() => {
     fetchOrders()
-  }, [selectedDeliveryType, selectedDate, selectedStatus])
+  }, [selectedDeliveryType, selectedDate, selectedStartDate, selectedEndDate, selectedStatus])
 
   const fetchOrders = async () => {
     setLoading(true)
@@ -68,7 +96,10 @@ export default function AdminOrdersPage() {
       if (selectedDeliveryType !== 'all') {
         params.append('delivery_type', selectedDeliveryType)
       }
-      if (selectedDate) {
+      if (selectedStartDate && selectedEndDate) {
+        params.append('start_date', selectedStartDate)
+        params.append('end_date', selectedEndDate)
+      } else if (selectedDate) {
         params.append('date', selectedDate)
       }
       if (selectedStatus !== 'all') {
@@ -108,7 +139,7 @@ export default function AdminOrdersPage() {
     }
   }
 
-  const handleStatusChange = async (orderId: string, newStatus: string) => {
+  const handleStatusChange = async (orderId: string, newStatus: string, trackingNumber?: string) => {
     if (!confirm(`주문 상태를 "${getStatusText(newStatus)}"(으)로 변경하시겠습니까?`)) {
       return
     }
@@ -120,7 +151,11 @@ export default function AdminOrdersPage() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ orderId, status: newStatus })
+        body: JSON.stringify({ 
+          orderId, 
+          status: newStatus,
+          trackingNumber: trackingNumber || trackingInputs[orderId]?.number,
+        })
       })
 
       if (response.status === 401) {
@@ -143,6 +178,61 @@ export default function AdminOrdersPage() {
     } finally {
       setUpdatingOrderId(null)
     }
+  }
+
+  const handleRefundComplete = async (orderId: string) => {
+    if (!confirm('환불을 완료 처리하시겠습니까?\n\n환불 완료일이 기록됩니다.')) {
+      return
+    }
+
+    setUpdatingOrderId(orderId)
+    try {
+      const response = await fetch('/api/admin/orders', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          orderId, 
+          refundStatus: 'completed',
+          refundCompletedAt: new Date().toISOString()
+        })
+      })
+
+      if (response.status === 401) {
+        router.push('/admin/login?next=/admin/orders')
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error('환불 완료 처리 실패')
+      }
+
+      // 주문 목록 새로고침
+      await fetchOrders()
+      toast.success('환불이 완료 처리되었습니다.', {
+        icon: '✅',
+      })
+    } catch (error) {
+      console.error('환불 완료 처리 실패:', error)
+      toast.error('환불 완료 처리에 실패했습니다.')
+    } finally {
+      setUpdatingOrderId(null)
+    }
+  }
+
+  const handleTrackDelivery = (order: Order) => {
+    if (!order.tracking_number) {
+      toast.error('송장번호가 없습니다.')
+      return
+    }
+
+    // 롯데택배 배송조회 링크
+    const trackingNumber = order.tracking_number
+    const trackingUrl = `https://www.lotteglogis.com/home/reservation/tracking/index?InvNo=${trackingNumber}`
+
+    // 새 창에서 배송조회 링크 열기
+    window.open(trackingUrl, '_blank')
   }
 
   const handleAutoConfirm = async () => {
@@ -185,14 +275,26 @@ export default function AdminOrdersPage() {
   }
 
   const getAvailableStatuses = (currentStatus: string, deliveryType: string) => {
-    // 배송 유형과 무관하게 관리자는 결제완료/배송중에서 변경 가능
-    if (currentStatus === 'paid') {
-      return ['shipped', 'cancelled']
+    // 단순화된 배송 상태 시스템
+    switch (currentStatus) {
+      case 'pending':
+        return ['ORDER_RECEIVED', 'cancelled']
+      case 'ORDER_RECEIVED':
+        return ['PREPARING', 'cancelled']
+      case 'PREPARING':
+        return ['IN_TRANSIT', 'cancelled']
+      case 'IN_TRANSIT':
+        return ['DELIVERED', 'cancelled']
+      case 'DELIVERED':
+        return [] // 배송 완료 후에는 변경 불가
+      // 하위 호환성: 기존 상태
+      case 'paid':
+        return ['PREPARING', 'cancelled']
+      case 'shipped':
+        return ['DELIVERED', 'cancelled']
+      default:
+        return []
     }
-    if (currentStatus === 'shipped') {
-      return ['delivered']
-    }
-    return []
   }
 
   const filteredOrdersByDeliveryType = selectedDeliveryType === 'all' 
@@ -287,9 +389,10 @@ export default function AdminOrdersPage() {
               >
                 <option value="all">전체</option>
                 <option value="pending">결제 대기</option>
-                <option value="paid">결제 완료</option>
-                <option value="shipped">배송 중 / 준비 중</option>
-                <option value="delivered">배송 완료 / 완료</option>
+                <option value="ORDER_RECEIVED">주문완료</option>
+                <option value="PREPARING">상품준비중</option>
+                <option value="IN_TRANSIT">배송중</option>
+                <option value="DELIVERED">배송완료</option>
                 <option value="cancelled">주문 취소</option>
               </select>
             </div>
@@ -358,9 +461,20 @@ export default function AdminOrdersPage() {
                       ) : (
                         <p className="text-xs text-gray-500">ID: {order.id.slice(0, 8)}...</p>
                       )}
-                      <span className={`text-base font-bold ${getStatusTextColor(order.status)}`}>
-                        {getStatusText(order.status, order.delivery_type)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-base font-bold ${getStatusTextColor(order.status)}`}>
+                          {getStatusText(order.status, order.delivery_type)}
+                        </span>
+                        {order.status === 'cancelled' && order.refund_status && (
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            order.refund_status === 'completed' ? 'bg-green-100 text-green-700' :
+                            order.refund_status === 'processing' ? 'bg-blue-100 text-blue-700' :
+                            'bg-yellow-100 text-yellow-700'
+                          }`}>
+                            {getRefundStatusText(order.refund_status)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="px-2 py-1 bg-gray-200 text-gray-700 text-xs font-medium rounded">
@@ -438,6 +552,23 @@ export default function AdminOrdersPage() {
                     <div className="mb-4 pb-4 border-b">
                       <h3 className="text-sm font-semibold text-gray-900 mb-2">배송 정보</h3>
                       <div className="space-y-1 text-sm">
+                        {/* 선물 주문인 경우 구매자 정보도 표시 */}
+                        {order.is_gift && order.user && (
+                          <>
+                            <div className="mb-2 p-2 bg-yellow-50 rounded">
+                              <p className="text-xs font-semibold text-yellow-800 mb-1">구매자 정보 (선물 보낸 분)</p>
+                              <p className="text-gray-700">
+                                <span className="font-medium">이름:</span> {order.user.name}
+                              </p>
+                              <p className="text-gray-700">
+                                <span className="font-medium">전화번호:</span> {formatPhoneNumber(order.user.phone)}
+                              </p>
+                            </div>
+                            <div className="mb-2 p-2 bg-blue-50 rounded">
+                              <p className="text-xs font-semibold text-blue-800 mb-1">수령인 정보 (선물 받은 분)</p>
+                            </div>
+                          </>
+                        )}
                         <p className="text-gray-700">
                           <span className="font-medium">수령인:</span> {order.shipping_name}
                         </p>
@@ -452,12 +583,32 @@ export default function AdminOrdersPage() {
                             <span className="font-medium">요청사항:</span> {order.delivery_note}
                           </p>
                         )}
+                        {/* 배송중일 때 배송조회 버튼 */}
+                        {(order.status === 'IN_TRANSIT' || order.status === 'shipped') && order.tracking_number && (
+                          <div className="mt-3">
+                            <button
+                              onClick={() => handleTrackDelivery(order)}
+                              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+                            >
+                              배송조회 →
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* 결제 상세 금액 */}
                     <div className="mb-4 pb-4 border-b">
                       <h3 className="text-sm font-semibold text-gray-900 mb-3">결제 상세</h3>
+                      {/* 결제방식 표시 */}
+                      <div className="mb-3 pb-3 border-b">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">결제방식</span>
+                          <span className="font-medium text-gray-900">
+                            {order.payment_method || '카드결제'}
+                          </span>
+                        </div>
+                      </div>
                       <div className="space-y-2 text-sm">
                         {/* 상품 금액 (원가 기준) */}
                         {order.order_items && order.order_items.length > 0 && (() => {
@@ -520,6 +671,118 @@ export default function AdminOrdersPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* 환불 정보 (취소된 주문인 경우) */}
+                    {order.status === 'cancelled' && order.refund_status && (
+                      <div className="mb-4 pb-4 border-b">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-2">환불 정보</h3>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">환불 상태:</span>
+                            <span className={`font-medium ${
+                              order.refund_status === 'completed' ? 'text-green-600' :
+                              'text-yellow-600'
+                            }`}>
+                              {getRefundStatusText(order.refund_status)}
+                            </span>
+                          </div>
+                          {order.refund_amount && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">환불 금액:</span>
+                              <span className="font-medium text-red-600">
+                                {formatPrice(order.refund_amount)}원
+                              </span>
+                            </div>
+                          )}
+                          {order.refund_requested_at && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">환불 요청일:</span>
+                              <span className="text-gray-700">
+                                {new Date(order.refund_requested_at).toLocaleDateString('ko-KR', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                          )}
+                          {order.refund_completed_at && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">환불 완료일:</span>
+                              <span className="text-gray-700">
+                                {new Date(order.refund_completed_at).toLocaleDateString('ko-KR', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                          )}
+                          {/* 환불 완료 버튼 */}
+                          {order.refund_status === 'pending' && (
+                            <button
+                              onClick={() => handleRefundComplete(order.id)}
+                              disabled={updatingOrderId === order.id}
+                              className="w-full mt-2 py-2 px-4 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
+                            >
+                              {updatingOrderId === order.id ? '처리 중...' : '환불 완료'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 송장번호 정보 */}
+                    {order.tracking_number && (
+                      <div className="mb-4 pb-4 border-b">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-2">송장 정보</h3>
+                        <div className="space-y-1 text-sm">
+                          <p className="text-gray-700">
+                            <span className="font-medium">송장번호:</span> {order.tracking_number}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 송장번호 입력 (상품 준비중 상태일 때만) */}
+                    {(order.status === 'PREPARING' || order.status === 'ORDER_RECEIVED' || order.status === 'paid') && !order.tracking_number && (
+                      <div className="mb-4 pb-4 border-b space-y-2">
+                        <p className="text-sm font-medium text-gray-700">송장번호 입력</p>
+                        <div className="space-y-2">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">송장번호 (롯데택배)</label>
+                            <input
+                              type="text"
+                              value={trackingInputs[order.id]?.number || ''}
+                              onChange={(e) => setTrackingInputs(prev => ({
+                                ...prev,
+                                [order.id]: { ...prev[order.id], number: e.target.value }
+                              }))}
+                              placeholder="송장번호를 입력하세요"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-800"
+                            />
+                          </div>
+                          <button
+                            onClick={() => {
+                              const tracking = trackingInputs[order.id]
+                              if (!tracking?.number) {
+                                toast.error('송장번호를 입력해주세요.')
+                                return
+                              }
+                              handleStatusChange(order.id, 'IN_TRANSIT', tracking.number)
+                            }}
+                            disabled={updatingOrderId === order.id}
+                            className="w-full py-2 px-4 bg-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-700 transition disabled:opacity-50"
+                          >
+                            {updatingOrderId === order.id ? '처리 중...' : '송장번호 입력 및 배송중으로 변경'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* 상태 변경 버튼 */}
                     {availableStatuses.length > 0 && (

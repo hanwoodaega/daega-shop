@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation'
 import ProductEditModal from '@/components/admin/ProductEditModal'
 import { ADMIN_CATEGORIES } from '@/lib/constants'
 
-const DEFAULT_STOCK = 999
-
 const INITIAL_FORM_STATE = {
   brand: '',
   name: '',
@@ -83,7 +81,6 @@ export default function AdminProductManagementPage() {
         price: Number(form.price),
         image_url: imageUrl,
         category: form.category,
-        stock: DEFAULT_STOCK,
       }
       const res = await fetch('/api/admin/products', {
         method: 'POST',
@@ -146,25 +143,6 @@ export default function AdminProductManagementPage() {
     }
   }
 
-  const toggleSoldOut = async (id: string, currentStock: number) => {
-    const newStock = currentStock <= 0 ? 999 : 0
-    const action = currentStock <= 0 ? '판매 재개' : '품절 처리'
-    const ok = confirm(`${action}하시겠습니까?`)
-    if (!ok) return
-    
-    const res = await fetch(`/api/admin/products/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stock: newStock }),
-    })
-    
-    if (res.ok) {
-      setListState(prev => ({ 
-        ...prev, 
-        items: prev.items.map((i) => (i.id === id ? { ...i, stock: newStock } : i)) 
-      }))
-    }
-  }
 
   const [editing, setEditing] = useState<any | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
@@ -185,10 +163,7 @@ export default function AdminProductManagementPage() {
           name: editing.name,
           slug: editing.slug?.trim() || null,
           price: Number(editing.price),
-          stock: Number(editing.stock),
           category: editing.category,
-          is_best: editing.is_best || false,
-          is_sale: editing.is_sale || false,
         }),
       })
       if (res.ok) {
@@ -317,17 +292,13 @@ export default function AdminProductManagementPage() {
                   </thead>
                   <tbody>
                     {items.map((it) => {
-                      const isSoldOut = it.stock <= 0
-                      const tags = []
-                      if (it.is_best) tags.push('베스트')
-                      if (it.is_sale) tags.push('전단행사')
+                      const tags: string[] = []
                       
                       return (
                         <tr key={it.id} className="border-t border-neutral-100">
                           <td className="p-3">
-                            <div className={`font-medium ${isSoldOut ? 'text-red-600' : 'text-neutral-900'}`}>
+                            <div className="font-medium text-neutral-900">
                               {it.name}
-                              {isSoldOut && <span className="ml-2 text-xs font-semibold text-red-500">(품절)</span>}
                             </div>
                             <p className="text-xs text-neutral-500">{it.brand || '브랜드미지정'}</p>
                           </td>
@@ -350,12 +321,6 @@ export default function AdminProductManagementPage() {
                           </td>
                           <td className="p-3 text-right">{Number(it.price).toLocaleString('ko-KR')}원</td>
                           <td className="p-3 text-center space-x-2">
-                            <button 
-                              onClick={() => toggleSoldOut(it.id, it.stock)} 
-                              className="text-xs text-primary-800 hover:underline"
-                            >
-                              {isSoldOut ? '판매재개' : '품절처리'}
-                            </button>
                             <button 
                               onClick={() => startEdit(it)} 
                               className="text-xs text-neutral-500 hover:underline"

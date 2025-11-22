@@ -37,9 +37,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '쿠폰을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    // 유효기간 체크
-    const now = new Date().toISOString()
-    if (!coupon.is_active || coupon.valid_from > now || coupon.valid_until < now) {
+    // 활성화 여부 체크 (validity_days는 지급 시점에 체크하지 않음 - 발급일부터 validity_days만큼 유효)
+    if (!coupon.is_active) {
       return NextResponse.json({ error: '유효하지 않은 쿠폰입니다.' }, { status: 400 })
     }
 

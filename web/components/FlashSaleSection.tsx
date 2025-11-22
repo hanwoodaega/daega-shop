@@ -17,6 +17,7 @@ export default function FlashSaleSection() {
   const [flashSaleProducts, setFlashSaleProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [flashSaleTitle, setFlashSaleTitle] = useState('오늘만 특가!')
+  const [flashSaleSettings, setFlashSaleSettings] = useState<{ start_time?: string | null; end_time?: string | null } | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const isFetchingTitleRef = useRef(false) // 중복 호출 방지
   const openPromotionModal = usePromotionModalStore((state) => state.openModal)
@@ -30,23 +31,53 @@ export default function FlashSaleSection() {
       }
 
       try {
-        const now = new Date().toISOString()
+        // 타임딜 컬렉션 조회
+        const response = await fetch('/api/collections/timedeal?limit=10')
         
-        // 타임딜 종료 시간이 아직 지나지 않은 상품 조회
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .not('flash_sale_end_time', 'is', null)
-          .gte('flash_sale_end_time', now)
-          .gt('flash_sale_stock', 0)
-          .order('flash_sale_end_time', { ascending: true })
-          .limit(10)
+        if (!response.ok) {
+          setFlashSaleProducts([])
+          setLoading(false)
+          return
+        }
 
-        if (error) throw error
+        const data = await response.json()
+        
+        // 타임딜 컬렉션이 없거나 상품이 없으면 빈 배열 반환
+        if (!data.collection || !data.products || data.products.length === 0) {
+          setFlashSaleProducts([])
+          setLoading(false)
+          return
+        }
+        
+        // 종료 시간이 지났는지 확인
+        if (data.collection.end_at) {
+          const now = new Date()
+          const endTime = new Date(data.collection.end_at)
+          if (endTime <= now) {
+            setFlashSaleProducts([])
+            setLoading(false)
+            return
+          }
+        }
 
-        // 활성화된 타임딜만 필터링 (시작 시간 체크 포함)
-        const activeProducts = (data || []).filter((product: Product) => isFlashSaleActive(product))
-        setFlashSaleProducts(activeProducts)
+        // 제목 설정
+        if (data.title) {
+          setFlashSaleTitle(data.title)
+        }
+
+        // 종료 시간 설정
+        if (data.collection?.end_at) {
+          setFlashSaleSettings({
+            start_time: data.collection.start_at || null,
+            end_time: data.collection.end_at
+          })
+        }
+
+        // 상품 데이터 변환
+        const activeProducts = (data.products || []).map((product: any) => ({
+          ...product
+        } as Product))
+        setFlashSaleProducts(activeProducts as any)
       } catch (error) {
         console.error('타임딜 상품 조회 실패:', error)
       } finally {
@@ -54,28 +85,7 @@ export default function FlashSaleSection() {
       }
     }
 
-    const fetchFlashSaleTitle = async () => {
-      // 중복 호출 방지
-      if (isFetchingTitleRef.current) return
-      
-      isFetchingTitleRef.current = true
-      try {
-        const res = await fetch('/api/admin/flash-sale-settings')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.title) {
-            setFlashSaleTitle(data.title)
-          }
-        }
-      } catch (error) {
-        console.error('타임딜 제목 조회 실패:', error)
-      } finally {
-        isFetchingTitleRef.current = false
-      }
-    }
-
     fetchFlashSaleProducts()
-    fetchFlashSaleTitle()
     
     // 1분마다 갱신 (타임딜 종료 확인)
     const interval = setInterval(fetchFlashSaleProducts, 60000)
@@ -109,24 +119,24 @@ export default function FlashSaleSection() {
   }
 
   return (
-      <section className="pt-8 pb-8 overflow-x-hidden" style={{ backgroundColor: '#F5F0E8' }}>
+      <section className="pt-8 overflow-x-hidden" style={{ backgroundColor: '#E0F2F1' }}>
         <div className="container mx-auto px-2">
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-3 ml-4">
               <h2 className="text-2xl font-bold text-primary-900">{flashSaleTitle}</h2>
             </div>
-            {flashSaleProducts.length > 0 && flashSaleProducts[0].flash_sale_end_time && (
+            {flashSaleSettings?.end_time && (
               <div className="flex items-center ml-4">
-                <FlashSaleCountdown product={flashSaleProducts[0]} className="text-2xl" />
+                <FlashSaleCountdown flashSaleSettings={flashSaleSettings} className="text-2xl" />
               </div>
             )}
           </div>
         </div>
 
-        <div className="bg-white pt-5 pb-2 -mx-2 px-3">
+        <div className="bg-white pt-5 pb-0 -mx-2 px-3 relative z-10">
           <div
             ref={scrollContainerRef}
-            className="flex gap-4 overflow-x-auto pb-2 px-3"
+            className="flex gap-4 overflow-x-auto pb-2 px-3 bg-white"
             style={{ 
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
@@ -134,18 +144,42 @@ export default function FlashSaleSection() {
             }}
           >
           {flashSaleProducts.map((product) => {
-            const flashSalePrice = getFlashSalePrice(product)
             const hasValidImage = isValidImageUrl(product.image_url)
             const shouldRenderImage = hasValidImage && !product.image_url.includes('via.placeholder.com')
-            const isLowStock = product.flash_sale_stock && product.flash_sale_stock <= 5
+
+            // 프로모션 할인율 (percent 타입)
+            const promotionDiscountPercent = product.promotion?.type === 'percent' && product.promotion.discount_percent
+              ? product.promotion.discount_percent
+              : 0
+
+            // 최종 할인율 (프로모션만)
+            const finalDiscountPercent = promotionDiscountPercent
+
+            // 최종 할인가 (프로모션 할인가 또는 원가)
+            const finalPrice = promotionDiscountPercent > 0
+              ? Math.round(product.price * (1 - promotionDiscountPercent / 100))
+              : product.price
+
+            // 프로모션 배지 텍스트
+            const promotionBadge = product.promotion?.type === 'bogo' && product.promotion.buy_qty
+              ? `${product.promotion.buy_qty}+1`
+              : null
 
             return (
-              <div key={product.id} className="flex-shrink-0 w-[180px] flex flex-col">
+              <div key={product.id} className="flex-shrink-0 w-[180px] flex flex-col bg-white rounded-lg overflow-hidden">
                 <Link
-                  href={`/products/${product.id}`}
-                  className="bg-white rounded-lg overflow-hidden transition shadow-sm flex flex-col flex-1"
+                  href={`/products/${product.slug || product.id}`}
+                  className="bg-white rounded-lg overflow-hidden transition shadow-sm flex flex-col flex-1 relative z-10"
                 >
                   <div className="relative aspect-square bg-gray-200">
+                    {/* 프로모션 배지 */}
+                    {promotionBadge && (
+                      <div className="absolute top-0 left-0 z-10">
+                        <span className="bg-red-600 text-white px-2 py-1 text-xs font-bold shadow-lg">
+                          {promotionBadge}
+                        </span>
+                      </div>
+                    )}
 
                     {shouldRenderImage ? (
                       <Image
@@ -162,30 +196,19 @@ export default function FlashSaleSection() {
                       </div>
                     )}
 
-                    {product.stock <= 0 && (
-                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                        <span className="text-white text-xl font-bold">품절</span>
-                      </div>
-                    )}
-                    
                     {/* 장바구니 버튼 */}
                     <button
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
-                        if (product.stock <= 0) {
-                          toast.error('품절된 상품입니다', { icon: '😢' })
-                          return
-                        }
                         const cartItem = {
                           productId: product.id,
                           name: product.name,
                           price: product.price,
                           quantity: 1,
                           imageUrl: product.image_url,
-                          discount_percent: product.discount_percent ?? undefined,
+                          discount_percent: finalDiscountPercent > 0 ? finalDiscountPercent : undefined,
                           brand: product.brand ?? undefined,
-                          stock: product.stock,
                         }
                         addCartItemWithDB(user?.id || null, cartItem)
                         toast.success('장바구니에 추가되었습니다!', { icon: '🛒' })
@@ -199,7 +222,7 @@ export default function FlashSaleSection() {
                     </button>
                   </div>
 
-                  <div className="px-2 pt-1 pb-3">
+                  <div className="px-2 pt-1 pb-3 bg-white">
                     {product.brand && (
                       <div className="text-sm font-bold text-primary-900 line-clamp-1 leading-tight tracking-tight mb-0 mt-1">
                         {product.brand}
@@ -209,51 +232,43 @@ export default function FlashSaleSection() {
                       {product.name}
                     </h3>
 
-                    {/* 가격 영역을 2줄로 고정하여 카드 높이를 통일 */}
-                    {product.discount_percent && product.discount_percent > 0 ? (
+                    {/* 가격 영역: 원가, 할인율, 할인가 표시 */}
+                    {finalDiscountPercent > 0 ? (
                       <>
                         <div className="text-xs text-gray-500 line-through mt-1 leading-tight">
                           {formatPrice(product.price)}원
                         </div>
                         <div className="flex items-baseline gap-2 mt-0 leading-tight">
-                          <span className="text-base md:text-lg font-bold text-red-600">{product.discount_percent}%</span>
+                          <span className="text-base md:text-lg font-bold text-red-600">{finalDiscountPercent}%</span>
                           <span className="text-base font-extrabold text-primary-900">
-                            {flashSalePrice ? formatPrice(flashSalePrice) : formatPrice(product.price * (1 - product.discount_percent / 100))}<span className="text-xs text-gray-600">원</span>
+                            {formatPrice(finalPrice)}<span className="text-xs text-gray-600">원</span>
                           </span>
                         </div>
                       </>
                     ) : (
                       <>
-                        {/* 할인 미적용 시에도 1줄을 비워 동일 높이 확보 (줄간격 최소화) */}
+                        {/* 할인 미적용 시에도 1줄을 비워 동일 높이 확보 */}
                         <div className="invisible h-1 leading-none">.</div>
                         <div className="flex items-baseline mt-0 leading-tight">
                           <span className="text-base font-bold text-primary-900">
-                            {flashSalePrice ? formatPrice(flashSalePrice) : formatPrice(product.price)}<span className="text-xs text-gray-600">원</span>
+                            {formatPrice(product.price)}<span className="text-xs text-gray-600">원</span>
                           </span>
                         </div>
                       </>
                     )}
 
-                    {/* 재고 표시 */}
-                    {product.flash_sale_stock && product.flash_sale_stock > 0 && (
-                      <div className="mt-1 text-xs text-gray-600">
-                        남은 수량: <span className="font-bold text-red-600">{product.flash_sale_stock}개</span>
-                        {isLowStock && <span className="ml-2 text-orange-600 font-semibold">품절임박</span>}
-                      </div>
-                    )}
-
-                    {/* 타임딜 + 프로모션일 때: 1+1 골라담기 박스 */}
-                    {product.promotion_type && (
+                    {/* 프로모션 상품 버튼 (BOGO 타입만) */}
+                    {product.promotion?.type === 'bogo' && promotionBadge && (
                       <button
                         onClick={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
                           openPromotionModal(product.id)
                         }}
-                        className="mt-2 w-full bg-white border border-red-600 text-red-600 py-2 px-3 text-xs font-medium rounded hover:bg-red-50 transition flex items-center justify-between"
+                        className="mt-2 w-full bg-white border border-gray-300 text-gray-900 py-2 px-3 text-xs font-medium rounded hover:bg-gray-50 transition flex items-center justify-between"
                       >
-                        <span>{product.promotion_type} 상품 골라담기</span>
-                        <span className="text-red-600">❯</span>
+                        <span>{promotionBadge} 상품 골라담기</span>
+                        <span className="text-gray-600">❯</span>
                       </button>
                     )}
                   </div>
@@ -264,8 +279,8 @@ export default function FlashSaleSection() {
           </div>
           
           {/* 전체보기 버튼 */}
-          <div className="mt-5 px-4 pb-4">
-            <Link href="/products?filter=flash-sale" className="block">
+          <div className="mt-0 px-4 pb-4 bg-white">
+            <Link href="/collections/timedeal" className="block">
               <button className="w-full px-6 py-2.5 bg-white border border-gray-300 rounded-lg font-semibold text-gray-900 hover:bg-gray-50 transition flex items-center justify-center gap-2">
                 <span>전체보기</span>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,6 +290,7 @@ export default function FlashSaleSection() {
             </Link>
           </div>
         </div>
+        <div className="bg-white h-8 -mt-4"></div>
     </section>
   )
 }

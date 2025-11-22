@@ -5,6 +5,7 @@ import { supabase } from './supabase'
 export interface CartItem {
   id?: string  // 장바구니 아이템 고유 ID
   productId: string
+  slug?: string | null  // 상품 slug (URL 생성용)
   name: string
   price: number
   quantity: number
@@ -67,7 +68,6 @@ export const useCartStore = create<CartStore>()(
                       quantity: i.quantity + item.quantity, 
                       discount_percent: item.discount_percent ?? i.discount_percent, 
                       brand: item.brand ?? i.brand,
-                      stock: item.stock ?? i.stock, // stock 정보 업데이트
                       selected: item.selected ?? i.selected ?? true
                     }
                   : { ...i, selected: i.selected ?? true }

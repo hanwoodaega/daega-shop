@@ -304,7 +304,7 @@ export default function AddressesPage() {
           </div>
           <button
             onClick={handleOpenAddModal}
-            className="bg-primary-800 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-900 transition"
+            className="bg-white text-blue-900 border border-blue-900 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-50 transition"
           >
             + 배송지 추가
           </button>
@@ -317,7 +317,7 @@ export default function AddressesPage() {
             <p className="text-xl text-gray-600 mb-6">등록된 배송지가 없습니다.</p>
             <button
               onClick={handleOpenAddModal}
-              className="bg-primary-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-900 transition"
+              className="bg-white text-blue-900 border border-blue-900 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
             >
               배송지 추가하기
             </button>
@@ -368,7 +368,7 @@ export default function AddressesPage() {
                 {!address.is_default && (
                   <button
                     onClick={() => handleSetDefault(address.id)}
-                    className="mt-3 w-full border border-gray-300 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-50 transition"
+                    className="mt-3 w-full border border-blue-900 text-blue-900 py-2 rounded-lg text-sm hover:bg-blue-50 transition"
                   >
                     기본 배송지로 설정
                   </button>
@@ -449,7 +449,7 @@ export default function AddressesPage() {
                   <button
                     type="button"
                     onClick={handleSearchAddress}
-                    className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition whitespace-nowrap"
+                    className="px-4 py-2 bg-white text-blue-900 border border-blue-900 rounded-lg hover:bg-blue-50 transition whitespace-nowrap"
                   >
                     주소찾기
                   </button>
@@ -521,7 +521,7 @@ export default function AddressesPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-primary-800 text-white py-2 rounded-lg hover:bg-primary-900 transition disabled:bg-gray-400"
+                  className="flex-1 bg-white text-blue-900 border border-blue-900 py-2 rounded-lg hover:bg-blue-50 transition disabled:bg-gray-400 disabled:text-gray-500 disabled:border-gray-400"
                 >
                   {saving ? '저장 중...' : '저장'}
                 </button>
