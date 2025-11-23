@@ -58,25 +58,111 @@ export default function FlashSaleCountdown({ flashSaleSettings, className = '' }
   return (
     <div className="flex items-center gap-2">
       {days > 0 && (
-        <span className={`${textSizeClass} font-bold text-red-600 mr-2`}>
+        <span 
+          className="mr-2" 
+          style={{ 
+            color: '#ECD9A3',
+            fontFamily: 'Pretendard, sans-serif',
+            fontWeight: 700,
+            fontSize: '24px',
+            opacity: 0.85
+          }}
+        >
           D-{days}
         </span>
       )}
       <div className="flex items-center gap-2">
-        <div className="bg-white px-3 py-2 rounded-md shadow-sm">
-          <span className={`${textSizeClass} font-bold text-red-600`}>
+        <div 
+          className="rounded-[4px] flex items-center justify-center" 
+          style={{ 
+            backgroundColor: '#ECD9A3',
+            border: '1px solid #D7C27A',
+            padding: '4px 16px',
+            width: '60px',
+            boxSizing: 'border-box',
+            fontWeight: 800,
+            boxShadow: '0 3px 6px rgba(0,0,0,0.15)'
+          }}
+        >
+          <span 
+            style={{ 
+              color: '#0F0F0F',
+              fontFamily: 'SUIT Variable, Pretendard, sans-serif',
+              fontWeight: 900,
+              fontSize: '26px',
+              letterSpacing: '-1px'
+            }}
+          >
             {formatTime(hours)}
           </span>
         </div>
-        <span className={`${textSizeClass} font-bold text-red-600`}>:</span>
-        <div className="bg-white px-3 py-2 rounded-md shadow-sm">
-          <span className={`${textSizeClass} font-bold text-red-600`}>
+        <span 
+          style={{ 
+            color: '#0F0F0F',
+            fontFamily: 'SUIT Variable, Pretendard, sans-serif',
+            fontWeight: 900,
+            fontSize: '26px',
+            letterSpacing: '-1px'
+          }}
+        >
+          :
+        </span>
+        <div 
+          className="rounded-[4px] flex items-center justify-center" 
+          style={{ 
+            backgroundColor: '#ECD9A3',
+            border: '1px solid #D7C27A',
+            padding: '4px 16px',
+            width: '60px',
+            boxSizing: 'border-box',
+            fontWeight: 800,
+            boxShadow: '0 3px 6px rgba(0,0,0,0.15)'
+          }}
+        >
+          <span 
+            style={{ 
+              color: '#0F0F0F',
+              fontFamily: 'SUIT Variable, Pretendard, sans-serif',
+              fontWeight: 900,
+              fontSize: '26px',
+              letterSpacing: '-1px'
+            }}
+          >
             {formatTime(minutes)}
           </span>
         </div>
-        <span className={`${textSizeClass} font-bold text-red-600`}>:</span>
-        <div className="bg-white px-3 py-2 rounded-md shadow-sm">
-          <span className={`${textSizeClass} font-bold text-red-600`}>
+        <span 
+          style={{ 
+            color: '#0F0F0F',
+            fontFamily: 'SUIT Variable, Pretendard, sans-serif',
+            fontWeight: 900,
+            fontSize: '26px',
+            letterSpacing: '-1px'
+          }}
+        >
+          :
+        </span>
+        <div 
+          className="rounded-[4px] flex items-center justify-center" 
+          style={{ 
+            backgroundColor: '#ECD9A3',
+            border: '1px solid #D7C27A',
+            padding: '4px 16px',
+            width: '60px',
+            boxSizing: 'border-box',
+            fontWeight: 800,
+            boxShadow: '0 3px 6px rgba(0,0,0,0.15)'
+          }}
+        >
+          <span 
+            style={{ 
+              color: '#0F0F0F',
+              fontFamily: 'SUIT Variable, Pretendard, sans-serif',
+              fontWeight: 900,
+              fontSize: '26px',
+              letterSpacing: '-1px'
+            }}
+          >
             {formatTime(seconds)}
           </span>
         </div>

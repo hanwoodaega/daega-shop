@@ -99,7 +99,17 @@ export default function FlashSaleSection() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-bold text-primary-900">{flashSaleTitle}</h2>
+              <h2 
+                className="font-extrabold md:text-[30px] text-[24px]" 
+                style={{ 
+                  color: '#FFF7E6',
+                  fontFamily: 'Pretendard, sans-serif',
+                  fontWeight: 800,
+                  letterSpacing: '-0.5px'
+                }}
+              >
+                {flashSaleTitle}
+              </h2>
             </div>
           </div>
           <div className="flex gap-4 overflow-hidden">
@@ -119,11 +129,21 @@ export default function FlashSaleSection() {
   }
 
   return (
-      <section className="pt-8 overflow-x-hidden" style={{ backgroundColor: '#E0F2F1' }}>
+      <section className="pt-8 overflow-x-hidden" style={{ backgroundColor: '#7A001B' }}>
         <div className="container mx-auto px-2">
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-3 ml-4">
-              <h2 className="text-2xl font-bold text-primary-900">{flashSaleTitle}</h2>
+              <h2 
+                className="font-extrabold md:text-[30px] text-[24px]" 
+                style={{ 
+                  color: '#FFF7E6',
+                  fontFamily: 'Pretendard, sans-serif',
+                  fontWeight: 800,
+                  letterSpacing: '-0.5px'
+                }}
+              >
+                {flashSaleTitle}
+              </h2>
             </div>
             {flashSaleSettings?.end_time && (
               <div className="flex items-center ml-4">
@@ -133,7 +153,7 @@ export default function FlashSaleSection() {
           </div>
         </div>
 
-        <div className="bg-white pt-5 pb-0 -mx-2 px-3 relative z-10">
+        <div className="bg-white pt-8 pb-4 -mx-2 px-3 relative z-10">
           <div
             ref={scrollContainerRef}
             className="flex gap-4 overflow-x-auto pb-2 px-3 bg-white"
@@ -224,11 +244,11 @@ export default function FlashSaleSection() {
 
                   <div className="px-2 pt-1 pb-3 bg-white">
                     {product.brand && (
-                      <div className="text-sm font-bold text-primary-900 line-clamp-1 leading-tight tracking-tight mb-0 mt-1">
+                      <div className="text-sm font-bold line-clamp-1 leading-tight tracking-tight mb-0 mt-1" style={{ color: '#222222' }}>
                         {product.brand}
                       </div>
                     )}
-                    <h3 className="text-sm font-medium mb-0 line-clamp-1 text-primary-900 leading-tight tracking-tight mt-1">
+                    <h3 className="text-sm font-medium mb-0 line-clamp-1 leading-tight tracking-tight mt-1" style={{ color: '#222222' }}>
                       {product.name}
                     </h3>
 
@@ -240,8 +260,8 @@ export default function FlashSaleSection() {
                         </div>
                         <div className="flex items-baseline gap-2 mt-0 leading-tight">
                           <span className="text-base md:text-lg font-bold text-red-600">{finalDiscountPercent}%</span>
-                          <span className="text-base font-extrabold text-primary-900">
-                            {formatPrice(finalPrice)}<span className="text-xs text-gray-600">원</span>
+                          <span className="text-base font-extrabold" style={{ color: '#222222' }}>
+                            {formatPrice(finalPrice)}<span className="text-xs" style={{ color: '#222222' }}>원</span>
                           </span>
                         </div>
                       </>
@@ -250,8 +270,8 @@ export default function FlashSaleSection() {
                         {/* 할인 미적용 시에도 1줄을 비워 동일 높이 확보 */}
                         <div className="invisible h-1 leading-none">.</div>
                         <div className="flex items-baseline mt-0 leading-tight">
-                          <span className="text-base font-bold text-primary-900">
-                            {formatPrice(product.price)}<span className="text-xs text-gray-600">원</span>
+                          <span className="text-base font-bold" style={{ color: '#222222' }}>
+                            {formatPrice(product.price)}<span className="text-xs" style={{ color: '#222222' }}>원</span>
                           </span>
                         </div>
                       </>
@@ -265,7 +285,8 @@ export default function FlashSaleSection() {
                           e.stopPropagation()
                           openPromotionModal(product.id)
                         }}
-                        className="mt-2 w-full bg-white border border-gray-300 text-gray-900 py-2 px-3 text-xs font-medium rounded hover:bg-gray-50 transition flex items-center justify-between"
+                        className="mt-2 w-full bg-white border border-gray-300 py-2 px-3 text-xs font-medium rounded hover:bg-gray-50 transition flex items-center justify-between"
+                        style={{ color: '#222222' }}
                       >
                         <span>{promotionBadge} 상품 골라담기</span>
                         <span className="text-gray-600">❯</span>
@@ -281,7 +302,7 @@ export default function FlashSaleSection() {
           {/* 전체보기 버튼 */}
           <div className="mt-0 px-4 pb-4 bg-white">
             <Link href="/collections/timedeal" className="block">
-              <button className="w-full px-6 py-2.5 bg-white border border-gray-300 rounded-lg font-semibold text-gray-900 hover:bg-gray-50 transition flex items-center justify-center gap-2">
+              <button className="w-full px-2 py-2.5 rounded-lg font-semibold hover:opacity-90 transition flex items-center justify-center gap-2" style={{ backgroundColor: '#FFFFFF', color: '#000000', border: '1px solid #CCCCCC' }}>
                 <span>전체보기</span>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
