@@ -27,12 +27,12 @@ export default function Footer() {
   
   return (
     <footer className="mt-10">
-      {/* 고객센터 - 회색 배경 */}
-      <div className="bg-gray-700 text-white">
+      {/* 고객센터 - 진한 네이비 배경 */}
+      <div className="bg-blue-950 text-white">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col space-y-4">
             <div className="flex items-center justify-between">
-              <h4 className="font-semibold text-sm">📞 (주)대가 고객센터</h4>
+              <h4 className="font-semibold text-sm">(주)대가 고객센터</h4>
               <div className="flex">
                 {CUSTOMER_SERVICE_BUTTONS.map((button, index) => (
                   <a 
@@ -55,8 +55,8 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* 회사 정보 및 약관 - 아주 연한 회색 배경 */}
-      <div className="bg-gray-200">
+      {/* 회사 정보 및 약관 - 연한 회색 배경 */}
+      <div className="bg-gray-100">
         <div className="container mx-auto px-4 py-8 pb-16">
           <div className="mb-6">
             <ul className="space-y-1 text-xs text-gray-600">
