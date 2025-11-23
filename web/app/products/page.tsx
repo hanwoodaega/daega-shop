@@ -159,7 +159,7 @@ function ProductsContent() {
   }, [searchQuery, filter, selectedCategory])
 
   // 카테고리가 선택되었는지 확인
-  const hasCategory = Boolean(selectedCategory && selectedCategory !== '전체' && !searchQuery && !filter)
+  const hasCategory = Boolean(selectedCategory && !searchQuery && !filter)
 
   const handleCategoryNav = useCallback((cat: string) => {
     if (cat === '전체') {
