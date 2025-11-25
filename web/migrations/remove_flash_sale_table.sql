@@ -9,3 +9,5 @@ DROP TABLE IF EXISTS flash_sale CASCADE;
 -- collection_products 테이블을 통해 관리됩니다.
 -- 각 상품의 기존 가격과 프로모션 정보는 products, promotions 테이블에서 관리됩니다.
 
+
+

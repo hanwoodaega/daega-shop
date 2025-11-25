@@ -2,6 +2,31 @@
  * 공통 유틸리티 함수
  */
 
+const MOBILE_USER_AGENT_REGEX = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
+const KAKAOTALK_USER_AGENT_REGEX = /KAKAOTALK/i
+
+const getUserAgent = (): string => {
+  if (typeof navigator === 'undefined') {
+    return ''
+  }
+  return navigator.userAgent || ''
+}
+
+export function isMobileUserAgent(): boolean {
+  return MOBILE_USER_AGENT_REGEX.test(getUserAgent())
+}
+
+export function hasKakaoTalkApp(): boolean {
+  return KAKAOTALK_USER_AGENT_REGEX.test(getUserAgent())
+}
+
+export function canUseKakaoDeepLink(): boolean {
+  if (typeof navigator === 'undefined') {
+    return false
+  }
+  return isMobileUserAgent() && hasKakaoTalkApp()
+}
+
 /**
  * 숫자를 한국어 형식의 가격 문자열로 변환
  * @param price 가격

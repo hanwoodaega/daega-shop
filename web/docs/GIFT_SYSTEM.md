@@ -237,3 +237,5 @@ if (order.gift_status === 'expired' || isExpired) {
 - 선물 수령 시 `gift_status`를 'used'로 변경
 - 만료 시 자동 취소 및 환불 처리
 
+
+

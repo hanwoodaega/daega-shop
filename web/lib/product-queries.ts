@@ -99,3 +99,5 @@ export function extractPromotion(product: any): any | null {
   return pp?.promotions || null
 }
 
+
+

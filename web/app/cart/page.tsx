@@ -11,7 +11,7 @@ import FreeShippingProgress from '@/components/FreeShippingProgress'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import { useCartStore, useWishlistStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, canUseKakaoDeepLink } from '@/lib/utils'
 import { supabase, Product } from '@/lib/supabase'
 import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { removeCartItemWithDB, updateCartQuantityWithDB, addCartItemWithDB, loadCartFromDB, clearCartWithDB } from '@/lib/cart-db'
@@ -45,10 +45,30 @@ function CartPageContent() {
   const [pickupTime, setPickupTime] = useState('')
   const [quickDeliveryArea, setQuickDeliveryArea] = useState('')
   const [quickDeliveryTime, setQuickDeliveryTime] = useState('')
+  const [isKakaoGiftAvailable, setIsKakaoGiftAvailable] = useState(() => canUseKakaoDeepLink())
 
   // hydration 에러 방지
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return
+    }
+
+    const updateAvailability = () => {
+      setIsKakaoGiftAvailable(canUseKakaoDeepLink())
+    }
+    updateAvailability()
+
+    window.addEventListener('focus', updateAvailability)
+    document.addEventListener('visibilitychange', updateAvailability)
+
+    return () => {
+      window.removeEventListener('focus', updateAvailability)
+      document.removeEventListener('visibilitychange', updateAvailability)
+    }
   }, [])
 
   // 로그인 사용자 - DB에서 장바구니 로드 및 실시간 가격 갱신
@@ -207,6 +227,18 @@ function CartPageContent() {
     return { groups, standalone }
   }, [items])
 
+  const ensureKakaoGiftAvailability = useCallback(() => {
+    const available = canUseKakaoDeepLink()
+    setIsKakaoGiftAvailable(available)
+
+    if (!available) {
+      toast.error('카카오톡 앱이 설치된 모바일 환경에서만 선물하기를 이용할 수 있어요.', {
+        icon: '📱',
+      })
+    }
+    return available
+  }, [])
+
   const handleCheckout = useCallback(() => {
     const selectedItems = getSelectedItems()
     if (selectedItems.length === 0) {
@@ -240,6 +272,10 @@ function CartPageContent() {
   }, [getSelectedItems, user, router, deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime])
 
   const handleGiftCheckout = useCallback(() => {
+    if (!ensureKakaoGiftAvailability()) {
+      return
+    }
+
     const selectedItems = getSelectedItems()
     if (selectedItems.length === 0) {
       toast.error('주문할 상품을 선택해주세요.', {
@@ -276,7 +312,7 @@ function CartPageContent() {
     sessionStorage.setItem('quickDeliveryArea', quickDeliveryArea)
     sessionStorage.setItem('quickDeliveryTime', quickDeliveryTime)
     router.push('/checkout?mode=gift')
-  }, [getSelectedItems, user, router, deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime])
+  }, [ensureKakaoGiftAvailability, getSelectedItems, user, router, deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -790,9 +826,18 @@ function CartPageContent() {
         <div className="px-0 pb-0 flex gap-0">
           {deliveryMethod === 'regular' && (
             <button
+              type="button"
               onClick={handleGiftCheckout}
-              className="bg-gray-900 text-white py-3 text-base font-medium hover:bg-gray-800 flex items-center justify-center gap-1"
+              disabled={!isKakaoGiftAvailable}
+              className={`bg-gray-900 text-white py-3 text-base font-medium flex items-center justify-center gap-1 ${
+                isKakaoGiftAvailable ? 'hover:bg-gray-800' : 'opacity-50 cursor-not-allowed'
+              }`}
               style={{ width: '35%' }}
+              title={
+                isKakaoGiftAvailable
+                  ? undefined
+                  : '카카오톡 앱이 설치된 모바일 환경에서만 선물하기를 이용할 수 있어요.'
+              }
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />

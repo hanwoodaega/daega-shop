@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -175,8 +176,14 @@ export default function HanwooDaegaNo9Page() {
         <div className="space-y-2">
           {/* 항목 1 */}
           <div className="flex flex-row">
-            <div className="w-1/2 aspect-square bg-gray-700 flex items-center justify-center">
-              <span className="text-gray-400 text-sm">이미지 준비중</span>
+            <div className="w-1/2 aspect-square relative">
+              <Image
+                src="/images/hanwoo-packaging/premium-hanwoo.jpg"
+                alt="1++(9) 한우 엄선 이미지"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 50vw, 50vw"
+              />
             </div>
             <div className="w-1/2 p-4 md:p-12 text-center" style={{ backgroundColor: '#F5F0E8' }}>
               <div className="text-2xl md:text-5xl font-light mb-2 md:mb-4 text-black text-center">1</div>
@@ -209,8 +216,15 @@ export default function HanwooDaegaNo9Page() {
           
           {/* 항목 3 */}
           <div className="flex flex-row">
-            <div className="w-1/2 aspect-square bg-gray-700 flex items-center justify-center">
-              <span className="text-gray-400 text-sm">이미지 준비중</span>
+            <div className="w-1/2 aspect-square relative">
+              <Image
+                src="/images/hanwoo-packaging/hanwoo-premium-packaging.jpg"
+                alt="한우대가 NO.9 고급 포장 이미지"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 50vw, 50vw"
+                priority
+              />
             </div>
             <div className="w-1/2 p-4 md:p-12 text-center" style={{ backgroundColor: '#F5F0E8' }}>
               <div className="text-2xl md:text-5xl font-light mb-2 md:mb-4 text-black text-center">3</div>

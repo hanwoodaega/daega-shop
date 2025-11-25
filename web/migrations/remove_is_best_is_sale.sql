@@ -4,3 +4,5 @@
 ALTER TABLE products DROP COLUMN IF EXISTS is_best;
 ALTER TABLE products DROP COLUMN IF EXISTS is_sale;
 
+
+

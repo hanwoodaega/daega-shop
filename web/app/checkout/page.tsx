@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 import Footer from '@/components/Footer'
 import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, canUseKakaoDeepLink } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useDaumPostcodeScript, openDaumPostcode, AddressSearchResult } from '@/lib/hooks/useDaumPostcode'
 import { showError, showSuccess, showInfo } from '@/lib/error-handler'
@@ -26,6 +26,15 @@ function CheckoutPageContent() {
   
   // 선물 모드 확인
   const isGiftMode = searchParams?.get('mode') === 'gift'
+  useEffect(() => {
+    if (!isGiftMode) return
+    if (canUseKakaoDeepLink()) return
+
+    toast.error('카카오톡 앱이 설치된 모바일 환경에서만 선물하기를 이용할 수 있어요.', {
+      icon: '📱',
+    })
+    router.replace('/cart')
+  }, [isGiftMode, router])
   
   // ✅ Selector 패턴 - 필요한 것만 구독
   const cartItems = useCartStore((state) => state.items)

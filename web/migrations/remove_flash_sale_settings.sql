@@ -6,3 +6,5 @@ DROP TABLE IF EXISTS flash_sale_settings CASCADE;
 
 -- flash_sale 테이블은 유지 (각 상품의 타임딜 가격 저장용)
 
+
+
