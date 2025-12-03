@@ -108,7 +108,7 @@ export default function ProductInfoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* 헤더 */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-4 py-3 flex items-center">
@@ -127,27 +127,14 @@ export default function ProductInfoPage() {
 
       {/* 내용 */}
       <main className="container mx-auto px-4 py-6">
-        {/* 상품 정보 카드 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div>
-            {product.brand && (
-              <div className="text-sm text-gray-500 mb-1">{product.brand}</div>
-            )}
-            <h2 className="text-lg font-semibold text-gray-900">{product.name}</h2>
-          </div>
-        </div>
-
         {/* 상품고시정보 */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">상품고시정보</h2>
-          {ProductInfoComponent ? (
-            <ProductInfoComponent productId={product.id} productName={product.name} />
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-gray-500">등록된 상품고시정보가 없습니다.</p>
-            </div>
-          )}
-        </div>
+        {ProductInfoComponent ? (
+          <ProductInfoComponent productId={product.id} productName={product.name} />
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-500">등록된 상품고시정보가 없습니다.</p>
+          </div>
+        )}
       </main>
     </div>
   )

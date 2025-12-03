@@ -156,6 +156,11 @@ export default function SaleSection() {
               ? Math.round(product.price * (1 - promotionDiscountPercent / 100))
               : product.price
 
+            // 100g당 할인가 계산 (weight_gram 기반)
+            const finalPricePer100g = product.weight_gram && product.weight_gram > 0
+              ? Math.round((finalPrice / product.weight_gram) * 100)
+              : null
+
             // 프로모션 배지 텍스트
             const promotionBadge = product.promotion?.type === 'bogo' && product.promotion.buy_qty
               ? `${product.promotion.buy_qty}+1`
@@ -224,7 +229,7 @@ export default function SaleSection() {
                         {product.brand}
                       </div>
                     )}
-                    <h3 className="text-sm font-medium mb-0 line-clamp-1 leading-tight tracking-tight mt-1" style={{ color: '#222222' }}>
+                    <h3 className="text-[15px] font-medium mb-0 line-clamp-1 leading-tight tracking-tight mt-1" style={{ color: '#222222' }}>
                       {product.name}
                     </h3>
 
@@ -251,6 +256,13 @@ export default function SaleSection() {
                           </span>
                         </div>
                       </>
+                    )}
+
+                    {/* 100g당 가격 표시 */}
+                    {finalPricePer100g && (
+                      <p className="text-sm font-medium mt-0.5 mb-0 leading-tight tracking-tighter" style={{ color: '#6B7280' }}>
+                        (100g당 {formatPrice(finalPricePer100g)}원)
+                      </p>
                     )}
 
                     {/* 프로모션 상품 버튼 (BOGO 타입만) */}

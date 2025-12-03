@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('products')
       .select(selectFields, { count: 'exact' })
+      .neq('status', 'deleted') // deleted 상태 제외
       .range(from, to)
 
     // 검색어 필터

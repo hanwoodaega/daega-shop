@@ -16,6 +16,7 @@ export type ProductInfoComponent = ComponentType<{ productId: string; productNam
  */
 const productInfoMap: Record<string, () => Promise<{ default: ProductInfoComponent }>> = {
   'harim-breast-blackpepper': () => import('./ProductInfo-harim-breast-blackpepper'),
+  'dodram-porkbelly': () => import('./ProductInfo-dodram-porkbelly'),
   // 예시:
   // 'hanwoo-daega-no9-premium': () => import('./ProductInfo-hanwoo-daega-no9-premium'),
 }
@@ -53,5 +54,6 @@ export async function getProductInfo(
 export function hasProductInfo(productSlugOrName: string): boolean {
   return productSlugOrName in productInfoMap
 }
+
 
 

@@ -1481,7 +1481,7 @@ function CheckoutPageContent() {
                       <button
                         type="button"
                         onClick={handleSearchAddress}
-                        className="px-3 py-2 md:px-4 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition whitespace-nowrap flex-shrink-0 text-sm md:text-base"
+                        className="px-3 py-2 md:px-4 bg-red-600 text-white rounded-lg hover:bg-red-600 transition whitespace-nowrap flex-shrink-0 text-sm md:text-base"
                       >
                         주소찾기
                       </button>
@@ -1542,7 +1542,7 @@ function CheckoutPageContent() {
                           onChange={(e) => setFlags(prev => ({ ...prev, saveAsDefaultAddress: e.target.checked }))}
                           className="w-4 h-4 mt-0.5 text-primary-800 border-gray-300 rounded focus:ring-primary-500"
                         />
-                        <label htmlFor="save_as_default_quick" className="ml-2 text-sm text-blue-900">
+                        <label htmlFor="save_as_default_quick" className="ml-2 text-sm text-red-600">
                           <span className="font-semibold">이 주소를 기본 배송지로 저장</span>
                           <p className="text-xs text-blue-700 mt-1">
                             다음 주문부터 자동으로 입력됩니다.
@@ -1623,7 +1623,7 @@ function CheckoutPageContent() {
                         <button
                           type="button"
                           onClick={handleSearchAddress}
-                          className="px-3 py-2 md:px-4 bg-white text-blue-900 border border-blue-900 rounded-lg hover:bg-blue-50 transition whitespace-nowrap flex-shrink-0 text-sm md:text-base"
+                          className="px-3 py-2 md:px-4 bg-white text-red-600 border border-red-600 rounded-lg hover:bg-blue-50 transition whitespace-nowrap flex-shrink-0 text-sm md:text-base"
                         >
                           주소찾기
                         </button>
@@ -1683,7 +1683,7 @@ function CheckoutPageContent() {
                           onChange={(e) => setFlags(prev => ({ ...prev, saveAsDefaultAddress: e.target.checked }))}
                           className="w-4 h-4 mt-0.5 text-primary-800 border-gray-300 rounded focus:ring-primary-500"
                         />
-                        <label htmlFor="save_as_default" className="ml-2 text-sm text-blue-900">
+                        <label htmlFor="save_as_default" className="ml-2 text-sm text-red-600">
                           <span className="font-semibold">이 주소를 기본 배송지로 저장</span>
                           <p className="text-xs text-blue-700 mt-1">
                             다음 주문부터 자동으로 입력됩니다.
@@ -2231,8 +2231,10 @@ function CheckoutPageContent() {
 
         {/* 하단 고정 버튼 */}
         {mounted && (
-          <div className="fixed bottom-0 left-0 right-0 z-40 bg-white shadow-lg" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
-            <div className={isGiftMode ? 'px-4 py-3' : 'px-0 pb-0'}>
+          <div className="fixed bottom-0 left-0 right-0 z-40" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
+            <div className="w-full flex justify-center">
+              <div className="w-full max-w-[480px] bg-white shadow-lg">
+                <div className={isGiftMode ? 'px-4 py-3' : 'px-0 pb-0'}>
               {isGiftMode && currentStep < totalGiftSteps ? (
                 <button
                   type="button"
@@ -2241,7 +2243,7 @@ function CheckoutPageContent() {
                     e.stopPropagation()
                     handleNextStep(e)
                   }}
-                  className="w-full text-lg font-bold bg-blue-800 text-white hover:bg-blue-900 py-3 flex items-center justify-center transition"
+                  className="w-full text-lg font-bold bg-red-600 text-white hover:bg-red-600 py-3 flex items-center justify-center transition"
                 >
                   다음
                 </button>
@@ -2252,10 +2254,10 @@ function CheckoutPageContent() {
                 disabled={isProcessing}
                 className={`w-full text-lg font-bold transition disabled:bg-gray-400 disabled:text-gray-500 flex items-center justify-center gap-2 ${
                     isGiftMode && currentStep === totalGiftSteps
-                      ? 'bg-blue-800 text-white hover:bg-blue-900 py-3'
+                      ? 'bg-red-600 text-white hover:bg-red-600 py-3'
                       : isGiftMode 
                     ? 'bg-[#FEE500] text-[#000000] hover:bg-[#FDD835] shadow-md rounded-xl py-2.5' 
-                    : 'bg-blue-900 text-white hover:bg-blue-950 py-3'
+                    : 'bg-red-600 text-white hover:bg-blue-950 py-3'
                 }`}
               >
                 {isProcessing ? (
@@ -2310,6 +2312,8 @@ function CheckoutPageContent() {
                 )}
               </button>
               )}
+                </div>
+              </div>
             </div>
           </div>
         )}

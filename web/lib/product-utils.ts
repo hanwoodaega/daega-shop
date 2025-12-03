@@ -27,10 +27,24 @@ export function isValidImageUrl(imageUrl: string): boolean {
 }
 
 /**
- * 품절 여부 확인
+ * 품절 여부 확인 (status 기반)
  */
-export function isOutOfStock(stock: number): boolean {
-  return stock <= 0
+export function isSoldOut(status?: string | null): boolean {
+  return status === 'soldout'
+}
+
+/**
+ * 삭제된 상품 여부 확인
+ */
+export function isDeleted(status?: string | null): boolean {
+  return status === 'deleted'
+}
+
+/**
+ * 판매 가능한 상품 여부 확인
+ */
+export function isActive(status?: string | null): boolean {
+  return status === 'active'
 }
 
 

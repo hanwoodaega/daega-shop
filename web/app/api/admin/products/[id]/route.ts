@@ -10,29 +10,8 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
   const { id } = await context.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   
-  // 1. 프로모션 중인 상품인지 확인 (promotion_products 테이블에서 확인)
-  const { data: promotionProducts, error: fetchError } = await supabaseAdmin
-    .from('promotion_products')
-    .select('id')
-    .eq('product_id', id)
-    .limit(1)
-  
-  if (fetchError) {
-    return NextResponse.json({ error: fetchError.message }, { status: 400 })
-  }
-  
-  // 2. 프로모션 중이면 삭제 불가
-  if (promotionProducts && promotionProducts.length > 0) {
-    return NextResponse.json({ 
-      error: '프로모션 중인 상품은 삭제할 수 없습니다. 먼저 프로모션을 해제해주세요.' 
-    }, { status: 400 })
-  }
-  
-  // 3. 상품 삭제
-  const { error } = await supabaseAdmin.from('products').delete().eq('id', id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  
-  // 4. 장바구니에서도 해당 상품 제거 (프로모션 그룹이 아닌 일반 상품만)
+  // 1. 관련 테이블에서 하드 삭제 (deleted 상태인 상품은 관련 데이터를 모두 제거)
+  // 1-1. 장바구니에서 해당 상품 제거 (프로모션 그룹이 아닌 일반 상품만)
   const { error: cartError } = await supabaseAdmin
     .from('carts')
     .delete()
@@ -43,6 +22,55 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     console.error('장바구니 제거 실패:', cartError)
   }
   
+  // 1-2. 찜 목록에서 해당 상품 제거
+  const { error: wishlistError } = await supabaseAdmin
+    .from('wishlists')
+    .delete()
+    .eq('product_id', id)
+  
+  if (wishlistError) {
+    console.error('찜 목록 제거 실패:', wishlistError)
+  }
+  
+  // 1-3. 컬렉션에서 해당 상품 제거
+  const { error: collectionError } = await supabaseAdmin
+    .from('collection_products')
+    .delete()
+    .eq('product_id', id)
+  
+  if (collectionError) {
+    console.error('컬렉션 제거 실패:', collectionError)
+  }
+  
+  // 1-4. 선물 카테고리에서 해당 상품 제거
+  const { error: giftCategoryError } = await supabaseAdmin
+    .from('gift_category_products')
+    .delete()
+    .eq('product_id', id)
+  
+  if (giftCategoryError) {
+    console.error('선물 카테고리 제거 실패:', giftCategoryError)
+  }
+  
+  // 1-5. 프로모션 상품에서 해당 상품 제거
+  const { error: promotionError } = await supabaseAdmin
+    .from('promotion_products')
+    .delete()
+    .eq('product_id', id)
+  
+  if (promotionError) {
+    console.error('프로모션 상품 제거 실패:', promotionError)
+  }
+  
+  // 2. 상품 상태를 'deleted'로 변경 (soft delete)
+  // order_items는 주문 내역이므로 유지됨
+  const { error } = await supabaseAdmin
+    .from('products')
+    .update({ status: 'deleted' })
+    .eq('id', id)
+  
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  
   return NextResponse.json({ ok: true })
 }
 
@@ -52,7 +80,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   
   const body = await request.json().catch(() => ({}))
-  const allowed = ['brand','name','slug','price','image_url','category'] as const
+  const allowed = ['brand','name','slug','price','image_url','category','weight_gram','status'] as const
   const updates: Record<string, any> = {}
   
   for (const key of allowed) {

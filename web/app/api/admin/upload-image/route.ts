@@ -1,19 +1,25 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { assertAdmin } from '@/lib/admin-auth'
 
 export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
   try {
-    const contentType = request.headers.get('content-type') || ''
-    if (!contentType.includes('multipart/form-data')) {
-      return NextResponse.json({ error: 'Content-Type must be multipart/form-data' }, { status: 400 })
-    }
+    assertAdmin()
+  } catch (e: any) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
+  try {
     const form = await request.formData()
     const file = form.get('file') as File | null
     if (!file) {
       return NextResponse.json({ error: 'Missing file' }, { status: 400 })
+    }
+
+    if (file.size === 0) {
+      return NextResponse.json({ error: 'File is empty' }, { status: 400 })
     }
 
     const bucket = 'product-images'
@@ -29,12 +35,21 @@ export async function POST(request: Request) {
       })
 
     if (uploadError) {
-      return NextResponse.json({ error: uploadError.message }, { status: 400 })
+      console.error('Supabase storage upload error:', uploadError)
+      // 버킷이 없는 경우 더 명확한 에러 메시지 제공
+      const errorMessage = uploadError.message || String(uploadError)
+      if (errorMessage.includes('Bucket not found') || errorMessage.includes('404')) {
+        return NextResponse.json({ 
+          error: 'product-images 버킷이 존재하지 않습니다. Supabase Storage에서 버킷을 생성해주세요.' 
+        }, { status: 400 })
+      }
+      return NextResponse.json({ error: errorMessage || '이미지 업로드 실패' }, { status: 400 })
     }
 
     const { data: publicUrlData } = supabaseAdmin.storage.from(bucket).getPublicUrl(filePath)
     return NextResponse.json({ url: publicUrlData.publicUrl })
   } catch (e: any) {
+    console.error('Image upload error:', e)
     return NextResponse.json({ error: e?.message || 'Upload failed' }, { status: 500 })
   }
 }

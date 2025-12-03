@@ -1,5 +1,7 @@
 'use client'
 
+import { useRef, useState } from 'react'
+
 interface ProductEditModalProps {
   editing: any
   setEditing: (value: any) => void
@@ -8,10 +10,38 @@ interface ProductEditModalProps {
   allProducts: any[]
 }
 
-const CATEGORIES = ['한우', '돼지고기', '수입육', '닭', '가공육', '조리육', '야채']
+const CATEGORIES = ['한우', '한돈', '수입육', '닭·오리', '가공육', '양념육', '과일·야채']
 
 export default function ProductEditModal({ editing, setEditing, saveEdit, savingEdit, allProducts }: ProductEditModalProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  
   if (!editing) return null
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingImage(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: fd })
+      const data = await res.json()
+      
+      if (!res.ok) {
+        alert(data.error || '이미지 업로드 실패')
+        return
+      }
+      
+      setEditing({ ...editing, image_url: data.url })
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error)
+      alert('이미지 업로드에 실패했습니다.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
 
   return (
     <>
@@ -65,6 +95,42 @@ export default function ProductEditModal({ editing, setEditing, saveEdit, saving
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">무게 (그램, 선택사항)</label>
+            <input 
+              type="number" 
+              min="0"
+              className="w-full border rounded px-3 py-2" 
+              value={editing.weight_gram || ''} 
+              onChange={(e)=>setEditing({ ...editing, weight_gram: e.target.value })} 
+              placeholder="예: 300, 700"
+            />
+            <p className="text-xs text-gray-500 mt-1">상품 무게를 그램 단위로 입력하세요</p>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">이미지 URL</label>
+            <input 
+              className="w-full border rounded px-3 py-2" 
+              value={editing.image_url || ''} 
+              onChange={(e)=>setEditing({ ...editing, image_url: e.target.value })} 
+              placeholder="이미지 URL 또는 아래에서 업로드"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">이미지 업로드</label>
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              accept="image/*" 
+              onChange={handleImageUpload}
+              className="w-full text-sm"
+              disabled={uploadingImage}
+            />
+            {uploadingImage && (
+              <p className="text-xs text-gray-500 mt-1">업로드 중...</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">파일을 선택하면 URL 대신 업로드가 사용됩니다.</p>
           </div>
         </div>
         <div className="flex justify-end space-x-2 mt-4">

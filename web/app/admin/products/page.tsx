@@ -12,6 +12,7 @@ const INITIAL_FORM_STATE = {
   price: '',
   image_url: '',
   category: ADMIN_CATEGORIES[0],
+  weight_gram: '',
 }
 
 export default function AdminProductManagementPage() {
@@ -29,7 +30,6 @@ export default function AdminProductManagementPage() {
   const [listState, setListState] = useState({
     items: [] as any[],
     filterCategory: '전체',
-    filterTag: '전체',
     search: '',
     page: 1,
     total: 0,
@@ -45,12 +45,12 @@ export default function AdminProductManagementPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const { message, error, loading, loadingList } = uiState
-  const { items, filterCategory, filterTag, search, page, total } = listState
+  const { items, filterCategory, search, page, total } = listState
 
   useEffect(() => {
     fetchList()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, filterCategory, filterTag])
+  }, [page, filterCategory])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -81,6 +81,7 @@ export default function AdminProductManagementPage() {
         price: Number(form.price),
         image_url: imageUrl,
         category: form.category,
+        weight_gram: form.weight_gram ? Number(form.weight_gram) : null,
       }
       const res = await fetch('/api/admin/products', {
         method: 'POST',
@@ -89,6 +90,7 @@ export default function AdminProductManagementPage() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
+        console.error('Product registration error:', data)
         setUiState(prev => ({ ...prev, error: data.error || '등록에 실패했습니다.', loading: false }))
         return
       }
@@ -108,7 +110,6 @@ export default function AdminProductManagementPage() {
     try {
       const params = new URLSearchParams()
       if (filterCategory && filterCategory !== '전체') params.set('category', filterCategory)
-      if (filterTag && filterTag !== '전체') params.set('tag', filterTag)
       if (search.trim()) params.set('q', search.trim())
       params.set('page', String(page))
       params.set('limit', String(limit))
@@ -146,15 +147,44 @@ export default function AdminProductManagementPage() {
 
   const [editing, setEditing] = useState<any | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [togglingSoldOut, setTogglingSoldOut] = useState<string | null>(null)
 
   const startEdit = (it: any) => {
     setEditing({ ...it })
+  }
+
+  const toggleSoldOut = async (productId: string, currentStatus: string) => {
+    setTogglingSoldOut(productId)
+    try {
+      const newStatus = currentStatus === 'soldout' ? 'active' : 'soldout'
+      const res = await fetch(`/api/admin/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      })
+      if (res.ok) {
+        await fetchList()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error || '품절 상태 변경에 실패했습니다.')
+      }
+    } catch (error) {
+      console.error('품절 상태 변경 실패:', error)
+      alert('품절 상태 변경에 실패했습니다.')
+    } finally {
+      setTogglingSoldOut(null)
+    }
   }
 
   const saveEdit = async () => {
     if (!editing) return
     setSavingEdit(true)
     try {
+      // 이미지 업로드 처리 (ProductEditModal에서 이미 업로드된 경우 image_url이 설정됨)
+      let imageUrl = editing.image_url?.trim() || ''
+      
       const res = await fetch(`/api/admin/products/${editing.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -163,7 +193,9 @@ export default function AdminProductManagementPage() {
           name: editing.name,
           slug: editing.slug?.trim() || null,
           price: Number(editing.price),
+          image_url: imageUrl,
           category: editing.category,
+          weight_gram: editing.weight_gram ? Number(editing.weight_gram) : null,
         }),
       })
       if (res.ok) {
@@ -263,13 +295,6 @@ export default function AdminProductManagementPage() {
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
-              <select className="border rounded-lg px-3 py-2 text-sm" value={filterTag} onChange={(e)=>{ setListState(prev => ({ ...prev, filterTag: e.target.value, page: 1 })); }}>
-                <option value="전체">전체 태그</option>
-                <option value="new">신상품</option>
-                <option value="best">베스트</option>
-                <option value="sale">전단행사</option>
-                <option value="budget">알뜰상품</option>
-              </select>
             </div>
           </div>
 
@@ -285,15 +310,12 @@ export default function AdminProductManagementPage() {
                     <tr>
                       <th className="p-3 text-left">상품명</th>
                       <th className="p-3 text-left">카테고리</th>
-                      <th className="p-3 text-left">태그</th>
                       <th className="p-3 text-right">가격</th>
                       <th className="p-3 text-center">작업</th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.map((it) => {
-                      const tags: string[] = []
-                      
                       return (
                         <tr key={it.id} className="border-t border-neutral-100">
                           <td className="p-3">
@@ -303,22 +325,6 @@ export default function AdminProductManagementPage() {
                             <p className="text-xs text-neutral-500">{it.brand || '브랜드미지정'}</p>
                           </td>
                           <td className="p-3 text-neutral-600">{it.category}</td>
-                          <td className="p-3">
-                            {tags.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {tags.map((tag, idx) => (
-                                  <span 
-                                    key={idx} 
-                                    className="px-2 py-0.5 text-xs rounded-full bg-primary-50 text-primary-700"
-                                  >
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-neutral-400 text-xs">-</span>
-                            )}
-                          </td>
                           <td className="p-3 text-right">{Number(it.price).toLocaleString('ko-KR')}원</td>
                           <td className="p-3 text-center space-x-2">
                             <button 
@@ -326,6 +332,22 @@ export default function AdminProductManagementPage() {
                               className="text-xs text-neutral-500 hover:underline"
                             >
                               수정
+                            </button>
+                            <button 
+                              onClick={() => toggleSoldOut(it.id, it.status || 'active')} 
+                              disabled={togglingSoldOut === it.id || it.status === 'deleted'}
+                              className={`text-xs hover:underline ${
+                                it.status === 'soldout'
+                                  ? 'text-orange-600' 
+                                  : 'text-gray-600'
+                              } ${it.status === 'deleted' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                              {togglingSoldOut === it.id 
+                                ? '처리중...' 
+                                : it.status === 'soldout'
+                                  ? '판매재개' 
+                                  : '품절처리'
+                              }
                             </button>
                             <button 
                               onClick={() => removeItem(it.id)} 
@@ -424,6 +446,19 @@ export default function AdminProductManagementPage() {
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-neutral-600">무게 (그램, 선택사항)</label>
+                  <input 
+                    name="weight_gram" 
+                    type="number" 
+                    min="0"
+                    value={form.weight_gram} 
+                    onChange={handleChange} 
+                    className="w-full border rounded-lg px-3 py-2 text-sm" 
+                    placeholder="예: 300, 700"
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">상품 무게를 그램 단위로 입력하세요 (예: 300g, 700g)</p>
                 </div>
                 <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/80 px-3 py-4 text-sm text-neutral-600">
                   <p className="font-semibold text-neutral-700 mb-1">재고 입력 없이 운영합니다.</p>

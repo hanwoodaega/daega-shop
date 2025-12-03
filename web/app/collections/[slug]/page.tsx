@@ -125,7 +125,7 @@ function CollectionContent({ slug }: { slug: string }) {
         <main className="flex-1 container mx-auto px-4 py-20 text-center">
           <p className="text-xl text-gray-600 mb-4">컬렉션을 찾을 수 없습니다</p>
           <Link href="/">
-            <button className="px-6 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800">
+            <button className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-600">
               홈으로 가기
             </button>
           </Link>
@@ -147,7 +147,7 @@ function CollectionContent({ slug }: { slug: string }) {
             collection.type === 'best' 
               ? 'bg-gradient-to-r from-yellow-600 to-orange-600' 
               : collection.type === 'sale'
-              ? 'bg-gradient-to-r from-red-600 to-red-700'
+              ? 'bg-gradient-to-r from-red-600 to-red-600'
               : 'bg-gradient-to-r from-blue-600 to-blue-700'
           } text-white py-16`}>
             <div className="container mx-auto px-4 text-center">
@@ -211,7 +211,7 @@ function CollectionContent({ slug }: { slug: string }) {
                 등록된 상품이 없습니다
               </p>
               <Link href="/products">
-                <button className="mt-4 px-6 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition">
+                <button className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-600 transition">
                   전체 상품 보기
                 </button>
               </Link>
@@ -231,12 +231,6 @@ function CollectionContent({ slug }: { slug: string }) {
                 </div>
               )}
               
-              {/* 모든 상품 로드 완료 */}
-              {!hasMore && displayedProducts.length > 0 && (
-                <div className="text-center py-8">
-                  <p className="text-sm text-gray-500">모든 상품을 확인하셨습니다 ✨</p>
-                </div>
-              )}
             </>
           )}
         </div>

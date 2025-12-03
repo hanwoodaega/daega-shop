@@ -449,7 +449,7 @@ export default function PromotionsPage() {
                     </button>
                     <button
                       onClick={() => handleDelete(promotion.id)}
-                      className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                      className="px-3 py-1 text-sm bg-red-100 text-red-600 rounded hover:bg-red-200"
                     >
                       삭제
                     </button>
@@ -594,7 +594,7 @@ export default function PromotionsPage() {
                             {product.name}
                             <button
                               onClick={() => toggleProduct(productId)}
-                              className="text-blue-900 hover:text-blue-950"
+                              className="text-red-600 hover:text-blue-950"
                             >
                               ×
                             </button>

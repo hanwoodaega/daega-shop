@@ -403,7 +403,7 @@ export default function CouponsPage() {
                     </button>
                     <button
                       onClick={() => toggleActive(coupon)}
-                      className="text-blue-600 hover:text-blue-900"
+                      className="text-blue-600 hover:text-red-600"
                     >
                       {coupon.is_active ? '비활성화' : '활성화'}
                     </button>
@@ -434,7 +434,7 @@ export default function CouponsPage() {
                             </button>
                             <button
                               onClick={() => handleIssueToAll(coupon.id)}
-                              className="text-blue-600 hover:text-blue-900"
+                              className="text-blue-600 hover:text-red-600"
                             >
                               전체 지급
                             </button>
@@ -735,7 +735,7 @@ export default function CouponsPage() {
                   </div>
                 </div>
 
-                <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-800">
+                <div className="bg-blue-50 p-3 rounded-lg text-sm text-red-600">
                   <p className="font-semibold mb-1">💡 조건 안내:</p>
                   <ul className="list-disc list-inside space-y-1">
                     <li>전화번호: 특정 개인에게 지급하려면 전화번호만 입력하세요 (다른 조건과 함께 사용 가능)</li>

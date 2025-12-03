@@ -16,7 +16,7 @@ export interface CartItem {
   promotion_type?: '1+1' | '2+1' | '3+1'
   free_product_id?: string  // 선택한 증정품 ID
   promotion_group_id?: string  // 프로모션 그룹 ID (같은 그룹끼리 묶음)
-  stock?: number  // 품절 여부 확인용
+  status?: string | null  // 상품 상태 (active, soldout, deleted)
 }
 
 interface CartStore {
@@ -135,7 +135,7 @@ export const useCartStore = create<CartStore>()(
         })),
       clearCart: () => set({ items: [] }),
       getTotalPrice: () => {
-        const items = get().items.filter((item) => item.selected !== false)
+        const items = get().items.filter((item) => item.selected !== false && item.status !== 'soldout' && item.status !== 'deleted')
         return items.reduce((total, item) => {
           const unitPrice = item.discount_percent && item.discount_percent > 0
             ? Math.round(item.price * (100 - item.discount_percent) / 100)
@@ -144,7 +144,7 @@ export const useCartStore = create<CartStore>()(
         }, 0)
       },
       getSelectedItems: () => {
-        return get().items.filter((item) => item.selected !== false)
+        return get().items.filter((item) => item.selected !== false && item.status !== 'soldout' && item.status !== 'deleted')
       },
       getTotalItems: () => {
         const items = get().items

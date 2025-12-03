@@ -15,7 +15,7 @@ import { formatPrice, canUseKakaoDeepLink } from '@/lib/utils'
 import { supabase, Product } from '@/lib/supabase'
 import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { removeCartItemWithDB, updateCartQuantityWithDB, addCartItemWithDB, loadCartFromDB, clearCartWithDB } from '@/lib/cart-db'
-import { calculateDiscountPrice } from '@/lib/product-utils'
+import { calculateDiscountPrice, isSoldOut } from '@/lib/product-utils'
 import { useDefaultAddress, useAddresses } from '@/lib/hooks/useAddress'
 import { PICKUP_TIME_SLOTS, QUICK_DELIVERY_AREAS, QUICK_DELIVERY_TIME_SLOTS, GIFT_MIN_AMOUNT } from '@/lib/constants'
 import { calculateOrderTotal } from '@/lib/order-calc'
@@ -208,12 +208,19 @@ function CartPageContent() {
   // 프로모션 삭제 감지는 이제 필요 없음 (DB에서 로드하므로)
   // DB에서 이미 삭제되었고, 장바구니 로드 시 자동으로 반영됨
 
-  // 프로모션 그룹별로 상품 묶기
+  // 프로모션 그룹별로 상품 묶기 (품절 상품은 제외)
   const groupedItems = useMemo(() => {
     const groups: { [key: string]: typeof items } = {}
     const standalone: typeof items = []
+    const soldOutItems: typeof items = []
     
     items.forEach(item => {
+      // 품절 상품은 별도로 분리
+      if (isSoldOut(item.status)) {
+        soldOutItems.push(item)
+        return
+      }
+      
       if (item.promotion_group_id) {
         if (!groups[item.promotion_group_id]) {
           groups[item.promotion_group_id] = []
@@ -224,7 +231,7 @@ function CartPageContent() {
       }
     })
     
-    return { groups, standalone }
+    return { groups, standalone, soldOutItems }
   }, [items])
 
   const ensureKakaoGiftAvailability = useCallback(() => {
@@ -342,7 +349,7 @@ function CartPageContent() {
             <button
               onClick={() => router.push('/wishlist')}
               aria-label="찜 목록"
-              className="p-2 text-blue-900 hover:text-blue-800"
+              className="p-2 text-red-600 hover:text-red-600"
             >
               <svg className="w-7 h-7 md:w-8 md:h-8" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
@@ -353,8 +360,8 @@ function CartPageContent() {
               aria-label="홈으로"
               className="p-2 text-gray-700 hover:text-gray-900"
             >
-              <svg className="w-8 h-8 md:w-9 md:h-9" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z" />
+              <svg className="w-8 h-8 md:w-9 md:h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
             </button>
           </div>
@@ -385,7 +392,7 @@ function CartPageContent() {
                     setSelectedAddressId(defaultAddress.id)
                     setShowAddressModal(true)
                   }}
-                  className="ml-4 px-3 py-1.5 text-xs font-medium text-blue-900 border border-blue-900 rounded-md hover:bg-blue-50 transition whitespace-nowrap"
+                  className="ml-4 px-3 py-1.5 text-xs font-medium text-red-600 border border-red-600 rounded-md hover:bg-blue-50 transition whitespace-nowrap"
                 >
                   배송지 변경
                 </button>
@@ -395,7 +402,7 @@ function CartPageContent() {
                 <p className="text-sm text-gray-600">등록된 배송지가 없습니다</p>
                 <button
                   onClick={() => router.push('/profile/addresses')}
-                  className="px-3 py-1.5 text-xs font-medium text-blue-900 bg-white border border-blue-900 rounded-md hover:bg-blue-50 transition"
+                  className="px-3 py-1.5 text-xs font-medium text-red-600 bg-white border border-red-600 rounded-md hover:bg-blue-50 transition"
                 >
                   배송지 등록
                 </button>
@@ -409,7 +416,7 @@ function CartPageContent() {
             <p className="text-xl text-gray-600 mb-6">장바구니가 비어있습니다.</p>
             <button
               onClick={() => router.push('/products')}
-              className="bg-white text-blue-900 border border-blue-900 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
+              className="bg-white text-red-600 border border-red-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
             >
               쇼핑 계속하기
             </button>
@@ -425,7 +432,7 @@ function CartPageContent() {
                     onClick={() => setDeliveryMethod('regular')}
                     className={`py-2.5 px-3 rounded-lg text-sm font-medium transition ${
                       deliveryMethod === 'regular'
-                        ? 'bg-blue-900 text-white'
+                        ? 'bg-red-600 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -435,7 +442,7 @@ function CartPageContent() {
                     onClick={() => setDeliveryMethod('quick')}
                     className={`py-2.5 px-3 rounded-lg text-sm font-medium transition ${
                       deliveryMethod === 'quick'
-                        ? 'bg-blue-900 text-white'
+                        ? 'bg-red-600 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -445,7 +452,7 @@ function CartPageContent() {
                     onClick={() => setDeliveryMethod('pickup')}
                     className={`py-2.5 px-3 rounded-lg text-sm font-medium transition ${
                       deliveryMethod === 'pickup'
-                        ? 'bg-blue-900 text-white'
+                        ? 'bg-red-600 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -459,7 +466,7 @@ function CartPageContent() {
                     <select
                       value={quickDeliveryArea}
                       onChange={(e) => setQuickDeliveryArea(e.target.value)}
-                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
                     >
                       <option value="">지역 선택</option>
                       {QUICK_DELIVERY_AREAS.map(area => (
@@ -469,7 +476,7 @@ function CartPageContent() {
                     <select
                       value={quickDeliveryTime}
                       onChange={(e) => setQuickDeliveryTime(e.target.value)}
-                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
                     >
                       <option value="">시간대 선택</option>
                       {QUICK_DELIVERY_TIME_SLOTS.map(time => (
@@ -485,7 +492,7 @@ function CartPageContent() {
                     <select
                       value={pickupTime}
                       onChange={(e) => setPickupTime(e.target.value)}
-                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm md:text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent"
                     >
                       <option value="">시간 선택</option>
                       {PICKUP_TIME_SLOTS.map(time => (
@@ -504,7 +511,7 @@ function CartPageContent() {
                       type="checkbox"
                       checked={allSelected}
                       onChange={(e) => toggleSelectAll(e.target.checked)}
-                      className="w-5 h-5 border-gray-300 focus:ring-blue-900 accent-blue-900"
+                      className="w-5 h-5 border-gray-300 focus:ring-red-600 accent-red-600"
                       style={{ accentColor: '#1e3a8a' }}
                     />
                     <span className="ml-3 text-sm font-medium text-gray-900">전체선택</span>
@@ -543,7 +550,7 @@ function CartPageContent() {
                           type="checkbox"
                           checked={groupSelected}
                           onChange={() => toggleSelectGroup(groupId)}
-                          className="w-5 h-5 border-gray-300 focus:ring-blue-900 accent-blue-900"
+                          className="w-5 h-5 border-gray-300 focus:ring-red-600 accent-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                           style={{ accentColor: '#1e3a8a' }}
                         />
                         <span className="text-base font-medium text-gray-900">
@@ -641,31 +648,41 @@ function CartPageContent() {
               })}
 
               {/* 일반 상품 표시 */}
-              {groupedItems.standalone.map((item, index) => (
-                <div key={item.id} className={`py-6 ${index < groupedItems.standalone.length - 1 || Object.keys(groupedItems.groups).length > 0 ? 'border-b border-gray-300' : ''}`}>
+              {groupedItems.standalone.map((item, index) => {
+                const itemSoldOut = isSoldOut(item.status)
+                return (
+                  <div key={item.id} className={`py-6 ${index < groupedItems.standalone.length - 1 || Object.keys(groupedItems.groups).length > 0 ? 'border-b border-gray-300' : ''}`}>
                   <div className="flex items-start space-x-3">
                     {/* 상품 이미지 (각진 모서리, 크기 약간 축소) */}
                     <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center">
-                      {/* 체크박스 - 이미지 왼쪽 상단 */}
-                      <div 
-                        className="absolute top-0 left-0 z-10"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={item.selected !== false}
-                          onChange={(e) => {
-                            e.stopPropagation()
-                            toggleSelect(item.id!)
-                          }}
+                      {/* 체크박스 - 이미지 왼쪽 상단 (품절 상품은 제거) */}
+                      {!itemSoldOut && (
+                        <div 
+                          className="absolute top-0 left-0 z-10"
                           onClick={(e) => e.stopPropagation()}
-                          className="w-5 h-5 border-gray-300 focus:ring-blue-900 bg-white accent-blue-900 cursor-pointer"
-                          style={{ accentColor: '#1e3a8a' }}
-                        />
-                      </div>
+                        >
+                          <input
+                            type="checkbox"
+                            checked={item.selected !== false}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              toggleSelect(item.id!)
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-5 h-5 border-gray-300 focus:ring-red-600 bg-white accent-red-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{ accentColor: '#1e3a8a' }}
+                          />
+                        </div>
+                      )}
                       <Link href={`/products/${item.slug || item.productId}`} className="absolute inset-0 flex items-center justify-center hover:opacity-80 transition">
                         <span className="text-gray-500 text-xs">이미지 준비중</span>
                       </Link>
+                      {/* 품절 오버레이 */}
+                      {itemSoldOut && (
+                        <div className="absolute inset-0 bg-gray-900 bg-opacity-40 flex items-center justify-center z-20">
+                          <span className="text-white text-xl font-bold">품절</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* 상품 정보 */}
@@ -715,30 +732,76 @@ function CartPageContent() {
                             </>
                           )}
                         </div>
-                        <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-white">
-                          <button
+                        <div className="flex flex-col items-end">
+                          <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-white">
+                            <button
                             onClick={() => updateCartQuantityWithDB(user?.id || null, item.id!, Math.max(1, item.quantity - 1))}
-                            className="w-7 h-6 hover:bg-gray-100 flex items-center justify-center border-r border-gray-300"
-                          >
-                            <span className="text-xl leading-none -mt-0.5">-</span>
-                          </button>
-                          <span className="w-8 text-center text-sm font-medium">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() => updateCartQuantityWithDB(user?.id || null, item.id!, item.quantity + 1)}
-                            className="w-7 h-6 hover:bg-gray-100 flex items-center justify-center border-l border-gray-300"
-                          >
-                            <span className="text-xl leading-none -mt-0.5">+</span>
-                          </button>
+                              className="w-7 h-6 hover:bg-gray-100 flex items-center justify-center border-r border-gray-300"
+                            >
+                              <span className="text-xl leading-none -mt-0.5">-</span>
+                            </button>
+                            <span className="w-8 text-center text-sm font-medium">
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() => updateCartQuantityWithDB(user?.id || null, item.id!, item.quantity + 1)}
+                              className="w-7 h-6 hover:bg-gray-100 flex items-center justify-center border-l border-gray-300"
+                            >
+                              <span className="text-xl leading-none -mt-0.5">+</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                    
                   </div>
                 </div>
-              ))}
+                )
+              })}
+              
+              {/* 품절 상품 표시 (제일 밑) */}
+              {groupedItems.soldOutItems.length > 0 && (
+                <>
+                  <div className="py-4 border-t-2 border-gray-300"></div>
+                  {groupedItems.soldOutItems.map((item, index) => (
+                    <div key={item.id} className={`py-6 ${index < groupedItems.soldOutItems.length - 1 ? 'border-b border-gray-300' : ''}`}>
+                      <div className="flex items-start space-x-3">
+                        {/* 상품 이미지 (품절 오버레이) */}
+                        <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center">
+                          <Link href={`/products/${item.slug || item.productId}`} className="absolute inset-0 flex items-center justify-center hover:opacity-80 transition">
+                            <span className="text-gray-500 text-xs">이미지 준비중</span>
+                          </Link>
+                          {/* 품절 오버레이 */}
+                          <div className="absolute inset-0 bg-gray-900 bg-opacity-40 flex items-center justify-center z-20">
+                            <span className="text-white text-xl font-bold">품절</span>
+                          </div>
+                        </div>
 
+                        {/* 상품 정보 */}
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <Link href={`/products/${item.slug || item.productId}`} className="flex-1 pr-2 hover:opacity-80 transition">
+                              {item.brand && (
+                                <div className="text-sm font-bold text-gray-900 mb-0.5 line-clamp-1">{item.brand}</div>
+                              )}
+                              <h3 className="text-sm font-normal mb-1 line-clamp-2">{item.name}</h3>
+                            </Link>
+                            <button
+                              onClick={() => removeCartItemWithDB(user?.id || null, item.id!)}
+                              className="text-gray-700 hover:text-gray-900 p-1 flex-shrink-0"
+                              aria-label="삭제"
+                            >
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
               
             </div>
 
@@ -822,8 +885,9 @@ function CartPageContent() {
       </main>
 
       {/* 하단 고정 액션 바: 선물하기 / 주문하기 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white shadow-lg" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
-        <div className="px-0 pb-0 flex gap-0">
+      <div className="fixed bottom-0 left-0 right-0 z-40" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
+        <div className="w-full flex justify-center">
+          <div className="w-full max-w-[480px] bg-white shadow-lg px-0 pb-0 flex gap-0">
           {deliveryMethod === 'regular' && (
             <button
               type="button"
@@ -847,12 +911,13 @@ function CartPageContent() {
           )}
           <button
             onClick={handleCheckout}
-            className={`bg-blue-900 text-white py-3 text-base font-medium hover:bg-blue-800 ${deliveryMethod === 'regular' ? '' : 'w-full'}`}
+            className={`bg-red-600 text-white py-3 text-base font-medium hover:bg-red-600 ${deliveryMethod === 'regular' ? '' : 'w-full'}`}
             style={{ width: deliveryMethod === 'regular' ? '65%' : '100%' }}
             suppressHydrationWarning
           >
-            주문하기 ({mounted ? getSelectedItems().reduce((total, item) => total + item.quantity, 0) : 0})
+            주문하기 ({mounted ? getSelectedItems().filter(item => !isSoldOut(item.status)).reduce((total, item) => total + item.quantity, 0) : 0})
           </button>
+          </div>
         </div>
       </div>
 
@@ -890,7 +955,7 @@ function CartPageContent() {
                       setShowAddressModal(false)
                       router.push('/profile/addresses')
                     }}
-                    className="px-4 py-2 bg-white text-blue-900 border border-blue-900 rounded-lg hover:bg-blue-50"
+                    className="px-4 py-2 bg-white text-red-600 border border-red-600 rounded-lg hover:bg-blue-50"
                   >
                     배송지 등록하기
                   </button>
@@ -938,7 +1003,7 @@ function CartPageContent() {
                   setSelectedAddressId(null)
                   router.push('/profile/addresses')
                 }}
-                className="flex-1 py-2.5 text-sm font-medium text-blue-900 border border-blue-900 rounded-lg hover:bg-blue-50"
+                className="flex-1 py-2.5 text-sm font-medium text-red-600 border border-red-600 rounded-lg hover:bg-blue-50"
               >
                 배송지 관리
               </button>

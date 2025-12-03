@@ -1379,7 +1379,7 @@ export default function GiftManagementPage() {
                         <button
                           onClick={() => handleFeaturedToggle(product.id)}
                           disabled={isSaving || isReordering}
-                          className="px-4 py-2 rounded-lg text-sm font-medium transition bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-4 py-2 rounded-lg text-sm font-medium transition bg-red-100 text-red-600 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           제거
                         </button>

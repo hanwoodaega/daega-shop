@@ -107,6 +107,25 @@ function NaverCallbackContent() {
                 phone: phoneNumber || null,
                 birthday: birthday,
               })
+            
+            // 네이버 회원가입 시 기본 약관 동의 (필수 약관만 동의, 마케팅은 미동의)
+            try {
+              await fetch('/api/users/terms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  terms: {
+                    service: true,
+                    privacy: true,
+                    third_party: true,
+                    age14: true,
+                    marketing: false,
+                  },
+                }),
+              })
+            } catch (termsError) {
+              console.error('약관 동의 저장 실패:', termsError)
+            }
           }
         }
       } else {

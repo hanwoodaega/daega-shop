@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth-context'
 import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart-db'
 import { formatPrice } from '@/lib/utils'
-import { isValidImageUrl, isOutOfStock, calculateDiscountPrice } from '@/lib/product-utils'
+import { isValidImageUrl, calculateDiscountPrice, isSoldOut } from '@/lib/product-utils'
 import StarIcons from '@/components/review/StarIcons'
 
 interface ProductCardProps {
@@ -52,6 +52,17 @@ function ProductCard({ product }: ProductCardProps) {
     return 0
   }, [product.promotion])
 
+  // 100g당 가격 계산 (weight_gram 기준)
+  const pricePer100g = useMemo(() => {
+    if (product.weight_gram && product.weight_gram > 0) {
+      return (discountPrice / product.weight_gram) * 100
+    }
+    return null
+  }, [discountPrice, product.weight_gram])
+
+  // 품절 여부 확인
+  const soldOut = useMemo(() => isSoldOut(product.status), [product.status])
+
   // 프로모션 배지 텍스트
   const promotionBadge = useMemo(() => {
     if (product.promotion?.type === 'bogo' && product.promotion.buy_qty) {
@@ -66,6 +77,14 @@ function ProductCard({ product }: ProductCardProps) {
   const handleAddToCart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    
+    // 품절 상품은 장바구니에 추가 불가
+    if (soldOut) {
+      toast.error('품절된 상품입니다.', {
+        icon: '❌',
+      })
+      return
+    }
     
     const cartItem = {
       productId: product.id,
@@ -101,7 +120,8 @@ function ProductCard({ product }: ProductCardProps) {
     product.brand, 
     product.promotion,
     discountPercent,
-    userId
+    userId,
+    soldOut
   ])
 
   useEffect(() => {
@@ -142,7 +162,7 @@ function ProductCard({ product }: ProductCardProps) {
       <div className="bg-white transition">
         <div className="relative aspect-square bg-gray-200 overflow-hidden rounded-md">
           {/* 프로모션 배지 */}
-          {promotionBadge && (
+          {promotionBadge && !soldOut && (
             <div className="absolute top-0 left-0 z-10">
               <span className="bg-red-600 text-white px-2 py-1 text-xs font-bold shadow-lg">
                 {promotionBadge}
@@ -163,16 +183,24 @@ function ProductCard({ product }: ProductCardProps) {
               이미지 준비중
             </div>
           )}
+          {/* 품절 오버레이 */}
+          {soldOut && (
+            <div className="absolute inset-0 bg-gray-900 bg-opacity-40 flex items-center justify-center z-20">
+              <span className="text-white text-3xl font-bold">품절</span>
+            </div>
+          )}
           {/* 장바구니 버튼 */}
-          <button
-            onClick={handleAddToCart}
-            className="absolute bottom-2 right-2 bg-white p-2 rounded-full shadow-md hover:bg-primary-800 hover:text-white transition z-10"
-            aria-label="장바구니에 담기"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          </button>
+          {!soldOut && (
+            <button
+              onClick={handleAddToCart}
+              className="absolute bottom-2 right-2 bg-white p-2 rounded-full shadow-md hover:bg-primary-800 hover:text-white transition z-10"
+              aria-label="장바구니에 담기"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </button>
+          )}
         </div>
         <div className="pt-1 pb-3 px-0">
           {product.brand && (
@@ -184,7 +212,7 @@ function ProductCard({ product }: ProductCardProps) {
                 aria-label="찜하기"
               >
                 {isWished ? (
-                  <svg className="w-6 h-6 text-blue-900" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                   </svg>
                 ) : (
@@ -195,7 +223,14 @@ function ProductCard({ product }: ProductCardProps) {
               </button>
             </div>
           )}
-          <h3 className="text-sm font-medium mb-0 line-clamp-1 text-primary-900 leading-tight tracking-tight">{product.name}</h3>
+          <div className="flex items-center mb-0">
+            <h3 className="text-[15px] font-medium line-clamp-1 text-primary-900 leading-tight tracking-tight">{product.name}</h3>
+            {product.weight_gram && (
+              <span className="text-[15px] font-medium text-primary-900 leading-tight tracking-tight ml-1">
+                {product.weight_gram}G
+              </span>
+            )}
+          </div>
           
           {/* 가격 영역을 2줄로 고정하여 카드 높이를 통일 */}
           {discountPercent > 0 ? (
@@ -220,6 +255,13 @@ function ProductCard({ product }: ProductCardProps) {
                 </span>
               </div>
             </>
+          )}
+          
+          {/* 100g당 가격 표시 */}
+          {pricePer100g && (
+            <p className="text-sm font-medium text-gray-600 mt-0.5 mb-0 leading-tight tracking-tighter">
+              (100g당 {formatPrice(pricePer100g)}원)
+            </p>
           )}
           
           {/* 프로모션 상품 버튼 (BOGO 타입만) */}

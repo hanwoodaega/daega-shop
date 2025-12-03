@@ -24,6 +24,7 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
           price,
           image_url,
           brand,
+          status,
           promotion_products (
             promotion_id,
             promotions (
@@ -81,7 +82,8 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
         brand: product?.brand,
         promotion_type: promotionType,
         promotion_group_id: item.promotion_group_id,
-        selected: selected
+        selected: selected,
+        status: product?.status || 'active', // 상품 상태
       }
     }) || []
 

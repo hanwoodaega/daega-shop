@@ -14,6 +14,7 @@ export async function GET(
       .from('products')
       .select(selectFields)
       .eq('slug', params.id)
+      .neq('status', 'deleted') // deleted 상태 제외
       .single()
 
     let { data, error } = await query
@@ -24,6 +25,7 @@ export async function GET(
         .from('products')
         .select(selectFields)
         .eq('id', params.id)
+        .neq('status', 'deleted') // deleted 상태 제외
         .single()
       
       const result = await query

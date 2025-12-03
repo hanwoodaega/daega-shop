@@ -283,7 +283,7 @@ export default function AdminReviewsPage() {
                       <button
                         onClick={() => deleteReview(r.id)}
                         disabled={updatingId === r.id}
-                        className="px-3 py-1.5 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-60"
+                        className="px-3 py-1.5 text-xs rounded bg-red-100 text-red-600 hover:bg-red-200 disabled:opacity-60"
                       >
                         삭제
                       </button>

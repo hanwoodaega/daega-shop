@@ -4,7 +4,7 @@
 
 // ==================== Categories ====================
 
-export const CATEGORIES = ['전체', '한우', '돼지고기', '수입육', '닭', '가공육', '조리육', '야채', '선물세트'] as const
+export const CATEGORIES = ['전체', '한우', '한돈', '수입육', '닭·오리', '가공육', '양념육', '과일·야채', '선물세트'] as const
 
 // 관리자용 (전체 제외) - 동적으로 생성
 export const ADMIN_CATEGORIES = CATEGORIES.filter(cat => cat !== '전체') as readonly string[]

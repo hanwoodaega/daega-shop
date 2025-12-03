@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
@@ -21,13 +22,24 @@ export default function Home() {
       
       <main className="flex-1">
         {/* 히어로 섹션 */}
-        <section className="bg-black text-white py-32 md:py-40 lg:py-48">
-          <div className="container mx-auto px-4 text-center">
+        <section className="relative bg-black text-white overflow-hidden">
+          <div className="relative w-full">
+            <Image
+              src="/images/hero.jpg"
+              alt="히어로 이미지"
+              width={1920}
+              height={1080}
+              className="w-full h-auto object-contain"
+              priority
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              {/* 여기에 추가 콘텐츠를 넣을 수 있습니다 */}
+            </div>
           </div>
         </section>
 
-        {/* 카테고리 - 모바일만 표시 */}
-        <section className="py-3 bg-white md:hidden">
+        {/* 카테고리 */}
+        <section className="py-3 bg-white">
           <div className="container mx-auto px-4">
             <CategoryGrid selectedCategory="" />
           </div>

@@ -409,7 +409,7 @@ export default function GiftPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
               <span
-                className={`absolute top-0 right-0 bg-blue-900 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
+                className={`absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
                   cartCount > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-0 pointer-events-none'
                 }`}
                 suppressHydrationWarning
@@ -427,12 +427,12 @@ export default function GiftPage() {
         <section className="container mx-auto px-4 mb-6">
           <Link
             href="/gift/guide"
-            className="w-full px-4 py-3 bg-teal-100 rounded-lg hover:bg-teal-200 transition shadow-sm flex items-center justify-between block"
+            className="w-full px-4 py-3 bg-pink-100 rounded-lg hover:bg-pink-200 transition shadow-sm flex items-center justify-between block"
           >
             <div className="flex items-center gap-3">
               <span className="text-base font-medium text-gray-900">마음을 전하는 '선물하기' 이용 안내</span>
             </div>
-            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </Link>
@@ -487,7 +487,7 @@ export default function GiftPage() {
                 onClick={() => setSelectedTarget(selectedTarget === target ? null : target)}
                 className={`px-4 py-2.5 text-base rounded-lg font-medium transition flex-shrink-0 ${
                   selectedTarget === target
-                    ? 'bg-blue-900 text-white hover:bg-blue-800'
+                    ? 'bg-red-600 text-white hover:bg-red-600'
                     : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
                 }`}
               >
@@ -592,7 +592,7 @@ export default function GiftPage() {
                 onClick={() => setSelectedBudget(selectedBudget === budget.value ? null : budget.value)}
                 className={`px-4 py-2.5 text-base rounded-lg font-medium transition flex-shrink-0 ${
                   selectedBudget === budget.value
-                    ? 'bg-blue-900 text-white hover:bg-blue-800'
+                    ? 'bg-red-600 text-white hover:bg-red-600'
                     : 'bg-white border border-gray-300 text-gray-900 hover:bg-gray-50'
                 }`}
               >

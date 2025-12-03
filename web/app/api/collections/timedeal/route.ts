@@ -42,13 +42,13 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // 타임딜 컬렉션의 상품 조회 (프로모션 정보 포함)
+    // 타임딜 컬렉션의 상품 조회 (프로모션 정보 포함, deleted 상태 제외)
     const { data: collectionProducts, error: productsError } = await supabase
       .from('collection_products')
       .select(`
         id,
         priority,
-        products (
+        products!inner (
           id,
           slug,
           brand,
@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('collection_id', collection.id)
+      .neq('products.status', 'deleted') // deleted 상태 제외
       .order('priority', { ascending: true })
       .limit(limit)
 

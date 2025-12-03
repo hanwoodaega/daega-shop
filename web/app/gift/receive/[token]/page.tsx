@@ -230,7 +230,7 @@ export default function GiftReceivePage() {
               }`}>
                 {isExpired ? '선물 링크가 만료되었습니다' : '⚠️'}
               </p>
-              <p className={isExpired ? 'text-red-700' : 'text-yellow-700'}>
+              <p className={isExpired ? 'text-red-600' : 'text-yellow-700'}>
                 {error}
               </p>
               {isExpired && expiresAt && (

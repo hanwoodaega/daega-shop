@@ -226,7 +226,7 @@ export default function AddressesPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
                 <span
-                  className={`absolute top-0 right-0 bg-blue-900 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
+                  className={`absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
                     cartCount > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-0 pointer-events-none'
                   }`}
                   suppressHydrationWarning
@@ -285,7 +285,7 @@ export default function AddressesPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
               <span
-                className={`absolute top-0 right-0 bg-blue-900 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
+                className={`absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
                   cartCount > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-0 pointer-events-none'
                 }`}
                 suppressHydrationWarning
@@ -304,7 +304,7 @@ export default function AddressesPage() {
           </div>
           <button
             onClick={handleOpenAddModal}
-            className="bg-white text-blue-900 border border-blue-900 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-50 transition"
+            className="bg-white text-red-600 border border-red-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-50 transition"
           >
             + 배송지 추가
           </button>
@@ -317,7 +317,7 @@ export default function AddressesPage() {
             <p className="text-xl text-gray-600 mb-6">등록된 배송지가 없습니다.</p>
             <button
               onClick={handleOpenAddModal}
-              className="bg-white text-blue-900 border border-blue-900 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
+              className="bg-white text-red-600 border border-red-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
             >
               배송지 추가하기
             </button>
@@ -368,7 +368,7 @@ export default function AddressesPage() {
                 {!address.is_default && (
                   <button
                     onClick={() => handleSetDefault(address.id)}
-                    className="mt-3 w-full border border-blue-900 text-blue-900 py-2 rounded-lg text-sm hover:bg-blue-50 transition"
+                    className="mt-3 w-full border border-red-600 text-red-600 py-2 rounded-lg text-sm hover:bg-blue-50 transition"
                   >
                     기본 배송지로 설정
                   </button>
@@ -449,7 +449,7 @@ export default function AddressesPage() {
                   <button
                     type="button"
                     onClick={handleSearchAddress}
-                    className="px-4 py-2 bg-white text-blue-900 border border-blue-900 rounded-lg hover:bg-blue-50 transition whitespace-nowrap"
+                    className="px-4 py-2 bg-white text-red-600 border border-red-600 rounded-lg hover:bg-blue-50 transition whitespace-nowrap"
                   >
                     주소찾기
                   </button>
@@ -521,7 +521,7 @@ export default function AddressesPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-white text-blue-900 border border-blue-900 py-2 rounded-lg hover:bg-blue-50 transition disabled:bg-gray-400 disabled:text-gray-500 disabled:border-gray-400"
+                  className="flex-1 bg-white text-red-600 border border-red-600 py-2 rounded-lg hover:bg-blue-50 transition disabled:bg-gray-400 disabled:text-gray-500 disabled:border-gray-400"
                 >
                   {saving ? '저장 중...' : '저장'}
                 </button>

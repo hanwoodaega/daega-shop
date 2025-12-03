@@ -53,7 +53,7 @@ export default function FreeShippingProgress({
           className={`h-2 rounded-full transition-all duration-500 ease-out ${
             isCompleted 
               ? 'bg-gradient-to-r from-green-500 to-green-600' 
-              : 'bg-blue-900'
+              : 'bg-red-600'
           }`}
           style={{ width: `${percentage}%` }}
         >

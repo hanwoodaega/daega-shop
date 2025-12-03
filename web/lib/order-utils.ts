@@ -124,7 +124,7 @@ export function getStatusColor(status: string): string {
     case 'pending':
       return 'bg-yellow-100 text-yellow-800'
     case 'ORDER_RECEIVED':
-      return 'bg-blue-100 text-blue-800'
+      return 'bg-blue-100 text-red-600'
     case 'PREPARING':
       return 'bg-purple-100 text-purple-800'
     case 'IN_TRANSIT':
@@ -135,7 +135,7 @@ export function getStatusColor(status: string): string {
       return 'bg-red-100 text-red-800'
     // 하위 호환성
     case 'paid':
-      return 'bg-blue-100 text-blue-800'
+      return 'bg-blue-100 text-red-600'
     case 'shipped':
       return 'bg-cyan-100 text-cyan-800'
     case 'delivered':

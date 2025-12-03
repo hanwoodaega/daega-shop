@@ -12,12 +12,12 @@ interface CategoryGridProps {
 const CATEGORY_IMAGES: { [key: string]: string } = {
   '전체': '/images/categories/all.png',
   '한우': '/images/categories/hanwoo.png',
-  '돼지고기': '/images/categories/pork.png',
+  '한돈': '/images/categories/pork.png',
   '수입육': '/images/categories/imported.png',
-  '닭': '/images/categories/chicken.png',
+  '닭·오리': '/images/categories/chicken.png',
   '가공육': '/images/categories/processed.png',
-  '조리육': '/images/categories/cooked.png',
-  '야채': '/images/categories/vegetable.png',
+  '양념육': '/images/categories/cooked.png',
+  '과일·야채': '/images/categories/vegetable.png',
 }
 
 export default function CategoryGrid({ selectedCategory = '전체' }: CategoryGridProps) {
@@ -30,7 +30,7 @@ export default function CategoryGrid({ selectedCategory = '전체' }: CategoryGr
           className="flex flex-col items-center"
         >
           <div
-            className={`relative w-[60px] h-[60px] rounded-full bg-white overflow-hidden hover:scale-110 transition shadow-lg flex items-center justify-center ${
+            className={`relative w-[60px] h-[60px] rounded-xl bg-white overflow-hidden hover:scale-110 transition shadow-lg flex items-center justify-center ${
               selectedCategory === cat ? 'border-[3px] border-black' : ''
             }`}
           >
@@ -49,7 +49,7 @@ export default function CategoryGrid({ selectedCategory = '전체' }: CategoryGr
           </div>
           <span className={`text-sm mt-2 ${
             selectedCategory === cat 
-              ? 'font-black text-blue-900' 
+              ? 'font-black text-red-600' 
               : 'font-medium text-gray-700'
           }`}>
             {cat}

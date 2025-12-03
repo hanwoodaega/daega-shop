@@ -36,6 +36,8 @@ export interface Product {
   average_rating?: number | null  // 평균 별점
   review_count?: number | null  // 리뷰 개수
   promotion?: Promotion | null  // 활성 프로모션 정보
+  weight_gram?: number | null  // 상품 무게 (그램 단위, 선택사항)
+  status?: 'active' | 'soldout' | 'deleted' | null  // 상품 상태
   created_at: string
   updated_at: string
 }

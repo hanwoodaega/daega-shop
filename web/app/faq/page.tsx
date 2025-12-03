@@ -43,7 +43,7 @@ export default function FAQPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
               <span
-                className={`absolute top-0 right-0 bg-blue-900 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
+                className={`absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
                   cartCount > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-0 pointer-events-none'
                 }`}
                 suppressHydrationWarning
@@ -124,7 +124,7 @@ export default function FAQPage() {
               </summary>
               <div className="mt-2 px-3 py-2 text-sm text-gray-700">
                 <p className="mb-2"><strong>매장 위치:</strong></p>
-                <p className="mb-2">전라남도 순천시 해룡면 대가정육백화점</p>
+                <p className="mb-2">전라남도 순천시 해룡면 대가정육마트</p>
                 <p className="mb-2"><strong>픽업 가능 시간:</strong></p>
                 <p className="mb-2">오전 10:00 ~ 오후 8:00 (매일)</p>
                 <p className="mb-2"><strong>픽업 방법:</strong></p>
@@ -245,4 +245,5 @@ export default function FAQPage() {
     </div>
   )
 }
+
 

@@ -10,7 +10,7 @@ export default function ReviewEventPage() {
       <div className="min-h-screen" style={{ backgroundColor: '#B2F5EA' }}>
         <div className="container mx-auto px-4 py-16">
           <div className="text-center mb-10">
-            <p className="text-4xl md:text-5xl font-bold uppercase tracking-[0.3em] text-blue-900">리뷰이벤트</p>
+            <p className="text-4xl md:text-5xl font-bold uppercase tracking-[0.3em] text-blue-700">리뷰이벤트</p>
             <h1 className="text-2xl md:text-3xl font-light text-black mt-4">구매 후기를 남겨주신 고객님께 <br /> 감사 적립금을 제공합니다.</h1>
           </div>
           {/* 인스타그램 스타일 플레이스홀더 */}
@@ -48,7 +48,7 @@ export default function ReviewEventPage() {
                     <span className="font-semibold mr-1 text-xs">meat_daily_life</span>
                     오늘 저녁 고기 미쳤다… 부드럽고 육즙가득해서 집들이에도 딱!
                   </p>
-                  <p className="text-blue-600 text-[11px]">#대가정육백화점 #고기맛집</p>
+                  <p className="text-blue-600 text-[11px]">#대가정육마트 #고기맛집</p>
                 </div>
               </div>
             </div>
@@ -127,7 +127,7 @@ export default function ReviewEventPage() {
                 <div className="mt-6 md:mt-8">
                   <div className="bg-gray-50 border border-gray-200 p-3 md:p-4">
                     <p className="text-sm md:text-base text-gray-600 mb-2">1. 전체 공개로 글을 남겨주세요.</p>
-                    <p className="text-sm md:text-base text-gray-600 mb-2">2. 게시글 본문에 해시태그 #대가정육백화점을 포함해주세요.</p>
+                    <p className="text-sm md:text-base text-gray-600 mb-2">2. 게시글 본문에 해시태그 #대가정육마트을 포함해주세요.</p>
                     <p className="text-sm md:text-base text-gray-600">3. 사진 1매 이상 첨부해주세요.</p>
                   </div>
                 </div>
@@ -151,7 +151,7 @@ export default function ReviewEventPage() {
                 <div className="mt-6 md:mt-8">
                   <div className="bg-gray-50 border border-gray-200 p-3 md:p-4">
                     <p className="text-sm md:text-base text-gray-600 mb-2">1. 전체 공개로 글을 남겨주세요.</p>
-                    <p className="text-sm md:text-base text-gray-600 mb-2">2. 게시물 제목과 내용에 대가정육백화점을 포함해주세요.</p>
+                    <p className="text-sm md:text-base text-gray-600 mb-2">2. 게시물 제목과 내용에 대가정육마트을 포함해주세요.</p>
                     <p className="text-sm md:text-base text-gray-600">3. 사진 5매 이상 첨부해주세요.</p>
                   </div>
                 </div>

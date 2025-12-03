@@ -37,7 +37,7 @@ export default function MainMenu() {
                 href={menu.href}
                 className={`font-semibold text-base sm:text-lg md:text-xl transition relative group pb-1 whitespace-nowrap flex-shrink-0 ${
                   isActive 
-                    ? 'text-blue-900' 
+                    ? 'text-red-600' 
                     : isHanwooMenu
                     ? 'hover:opacity-90'
                     : 'text-gray-700 hover:text-primary-800'
@@ -47,7 +47,7 @@ export default function MainMenu() {
                 <span>{menu.name}</span>
                 <span className={`absolute bottom-0 h-0.5 transition-all ${
                   isActive 
-                    ? 'bg-blue-900 left-[-8px] right-[-8px]' 
+                    ? 'bg-red-600 left-[-8px] right-[-8px]' 
                     : 'w-0 left-0 right-0 bg-primary-800 group-hover:w-full'
                 }`}></span>
               </Link>

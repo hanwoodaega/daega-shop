@@ -28,13 +28,13 @@ export async function GET(
       return NextResponse.json({ error: '컬렉션을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    // 컬렉션에 속한 상품 조회 (프로모션 정보 포함)
+    // 컬렉션에 속한 상품 조회 (프로모션 정보 포함, deleted 상태 제외)
     let collectionProductsQuery = supabase
       .from('collection_products')
       .select(`
         id,
         priority,
-        products (
+        products!inner (
           id,
           slug,
           brand,
@@ -60,6 +60,7 @@ export async function GET(
         )
       `, { count: 'exact' })
       .eq('collection_id', collection.id)
+      .neq('products.status', 'deleted') // deleted 상태 제외
 
     // 정렬 적용
     if (sort === 'price_asc') {

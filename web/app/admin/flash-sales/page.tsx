@@ -348,7 +348,7 @@ export default function FlashSalesPage() {
                 />
                 <button
                   onClick={updateFlashSaleTitle}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-600 transition"
                 >
                   저장
                 </button>
@@ -475,7 +475,7 @@ export default function FlashSalesPage() {
 
             <button
               onClick={createGroup}
-              className="w-full py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition"
+              className="w-full py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-600 transition"
             >
               타임딜 생성
             </button>
@@ -509,7 +509,7 @@ export default function FlashSalesPage() {
                         <div className="flex items-center gap-2 mb-2">
                           <span className={`px-3 py-1 rounded-full text-sm font-bold ${
                             isActive 
-                              ? 'bg-red-100 text-red-700' 
+                              ? 'bg-red-100 text-red-600' 
                               : isWaiting
                               ? 'bg-yellow-100 text-yellow-700'
                               : 'bg-gray-100 text-gray-500'
@@ -655,8 +655,8 @@ export default function FlashSalesPage() {
 
         {/* 안내 */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="font-semibold text-blue-900 mb-2">💡 타임딜 작동 방식</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
+          <h3 className="font-semibold text-red-600 mb-2">💡 타임딜 작동 방식</h3>
+          <ul className="text-sm text-red-600 space-y-1">
             <li>• 타임딜 상품은 <strong>컬렉션 관리 페이지</strong>에서 타임딜 컬렉션에 추가해주세요</li>
             <li>• 타임딜 생성 시 컬렉션 관리 페이지의 타임딜 컬렉션에 있는 상품이 자동으로 사용됩니다</li>
             <li>• 시작 시간은 선택 사항입니다. 입력하지 않으면 즉시 시작됩니다</li>

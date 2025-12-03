@@ -13,11 +13,12 @@ export async function GET(request: Request) {
   const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit') || '20')))
   const from = (page - 1) * limit
   const to = from + limit - 1
-  const selectFields = 'id,slug,brand,name,price,image_url,category,average_rating,review_count,created_at,updated_at'
+  const selectFields = 'id,slug,brand,name,price,image_url,category,average_rating,review_count,weight_gram,status,created_at,updated_at'
   
   let query = supabaseAdmin
     .from('products')
     .select(selectFields, { count: 'exact' })
+    .neq('status', 'deleted') // deleted 상태 제외
     .order('created_at', { ascending: false })
   if (category && category !== '전체') {
     query = query.eq('category', category)
@@ -34,11 +35,21 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try { assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
-  const body = await request.json().catch(() => ({}))
+  
+  let body: any = {}
+  try {
+    body = await request.json()
+  } catch (e) {
+    console.error('JSON parse error:', e)
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
 
-  const required = ['name', 'price', 'category', 'unit', 'origin']
+  console.log('Received body:', JSON.stringify(body, null, 2))
+
+  const required = ['name', 'price', 'category']
   for (const key of required) {
     if (body[key] === undefined || body[key] === null || body[key] === '') {
+      console.error(`Missing required field: ${key}`, body)
       return NextResponse.json({ error: `Missing field: ${key}` }, { status: 400 })
     }
   }
@@ -81,25 +92,42 @@ export async function POST(request: Request) {
     slug = uniqueSlug
   }
 
-  const payload = {
+  const payload: any = {
     brand: body.brand ? String(body.brand) : null,
     name: String(body.name),
     slug: slug || null,
     price: Number(body.price),
     image_url: String(body.image_url || ''),
     category: String(body.category),
-    discount_percent: body.discount_percent !== undefined && body.discount_percent !== null && body.discount_percent !== ''
-      ? Math.max(0, Math.min(100, Number(body.discount_percent)))
-      : null,
+    status: 'active', // 기본값: active
+  }
+
+  // 선택적 필드 추가 (unit, origin, weight_gram 등 - 테이블에 컬럼이 있는 경우에만)
+  // discount_percent는 products 테이블에 컬럼이 없으므로 제외
+  if (body.unit !== undefined && body.unit !== null && body.unit !== '') {
+    payload.unit = String(body.unit)
+  }
+  if (body.origin !== undefined && body.origin !== null && body.origin !== '') {
+    payload.origin = String(body.origin)
+  }
+  if (body.weight_gram !== undefined && body.weight_gram !== null && body.weight_gram !== '') {
+    const weightGram = Number(body.weight_gram)
+    if (!isNaN(weightGram) && weightGram > 0) {
+      payload.weight_gram = weightGram
+    }
   }
 
   try {
-    const { error } = await supabaseAdmin.from('products').insert([payload])
+    console.log('Inserting payload:', JSON.stringify(payload, null, 2))
+    const { data, error } = await supabaseAdmin.from('products').insert([payload]).select()
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      console.error('Supabase insert error:', error)
+      return NextResponse.json({ error: error.message || 'Database error' }, { status: 400 })
     }
+    console.log('Insert successful:', data)
     return NextResponse.json({ ok: true })
   } catch (e: any) {
+    console.error('Unexpected error:', e)
     return NextResponse.json({ error: e?.message || 'Unknown error' }, { status: 500 })
   }
 }

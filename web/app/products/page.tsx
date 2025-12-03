@@ -186,14 +186,14 @@ function ProductsContent() {
                       key={cat}
                       onClick={() => handleCategoryNav(cat)}
                       className={`font-medium text-base sm:text-lg md:text-xl transition relative group pb-1.5 whitespace-nowrap flex-shrink-0 ${
-                        isActive ? 'text-blue-900' : 'text-gray-700 hover:text-primary-800'
+                        isActive ? 'text-red-600' : 'text-gray-700 hover:text-primary-800'
                       }`}
                     >
                       <span>{cat}</span>
                       <span
                         className={`absolute -bottom-0.5 h-0.5 transition-all ${
                           isActive
-                            ? 'bg-blue-900 left-[-8px] right-[-8px]'
+                            ? 'bg-red-600 left-[-8px] right-[-8px]'
                             : 'w-0 left-0 right-0 bg-primary-800 group-hover:w-full'
                         }`}
                       ></span>
@@ -224,7 +224,7 @@ function ProductsContent() {
 
         {/* 히어로 섹션 - 전단행사 */}
         {filter === 'sale' && (
-          <section className="bg-gradient-to-r from-red-600 to-red-700 text-white py-16">
+          <section className="bg-gradient-to-r from-red-600 to-red-600 text-white py-16">
             <div className="container mx-auto px-4 text-center">
               <h1 className="text-4xl font-bold mb-2">
                 🔥 전단행사
@@ -290,7 +290,7 @@ function ProductsContent() {
                     onClick={() => setSelectedSubCategory(subCat)}
                     className={`px-4 py-2 rounded-lg font-bold text-sm transition flex-shrink-0 ${
                       isActive
-                        ? 'bg-white border-2 border-blue-900 text-blue-900 shadow-md'
+                        ? 'bg-white border-2 border-red-600 text-red-600 shadow-md'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -357,12 +357,6 @@ function ProductsContent() {
               </div>
             )}
             
-            {/* 모든 상품 로드 완료 */}
-            {!hasMore && displayedProducts.length > 0 && (
-              <div className="text-center py-8">
-                <p className="text-sm text-gray-500">모든 상품을 확인하셨습니다 ✨</p>
-              </div>
-            )}
           </>
         )}
         </div>

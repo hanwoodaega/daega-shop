@@ -565,7 +565,7 @@ export default function AdminOrdersPage() {
                               </p>
                             </div>
                             <div className="mb-2 p-2 bg-blue-50 rounded">
-                              <p className="text-xs font-semibold text-blue-800 mb-1">수령인 정보 (선물 받은 분)</p>
+                              <p className="text-xs font-semibold text-red-600 mb-1">수령인 정보 (선물 받은 분)</p>
                             </div>
                           </>
                         )}
@@ -796,7 +796,7 @@ export default function AdminOrdersPage() {
                               disabled={updatingOrderId === order.id}
                               className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${
                                 status === 'cancelled'
-                                  ? 'bg-red-600 text-white hover:bg-red-700'
+                                  ? 'bg-red-600 text-white hover:bg-red-600'
                                   : 'bg-primary-800 text-white hover:bg-primary-900'
                               } disabled:opacity-50`}
                             >

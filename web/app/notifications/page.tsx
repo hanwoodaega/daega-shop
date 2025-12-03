@@ -238,7 +238,7 @@ export default function NotificationsPage() {
                                   {part}
                                   <button
                                     onClick={() => router.push('/orders')}
-                                    className="text-blue-600 hover:text-blue-800 underline font-medium"
+                                    className="text-blue-600 hover:text-red-600 underline font-medium"
                                   >
                                     구매확정하기
                                   </button>
@@ -257,7 +257,7 @@ export default function NotificationsPage() {
                                   {part}
                                   <button
                                     onClick={() => router.push('/profile/reviews')}
-                                    className="text-blue-600 hover:text-blue-800 underline font-medium"
+                                    className="text-blue-600 hover:text-red-600 underline font-medium"
                                   >
                                     리뷰 작성하기
                                   </button>

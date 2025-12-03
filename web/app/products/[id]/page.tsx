@@ -16,7 +16,7 @@ import { useCartStore, useDirectPurchaseStore, useWishlistStore, usePromotionMod
 import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart-db'
 import { formatPrice } from '@/lib/utils'
-import { calculateDiscountPrice } from '@/lib/product-utils'
+import { calculateDiscountPrice, isSoldOut } from '@/lib/product-utils'
 
 function ProductDetailPageContent() {
   const params = useParams()
@@ -40,6 +40,9 @@ function ProductDetailPageContent() {
   const [mounted, setMounted] = useState(false)
   const { user } = useAuth()
   
+  // 품절 여부 확인
+  const soldOut = product ? isSoldOut(product.status) : false
+  
   // ✅ Selector 패턴 - 필요한 것만 구독
   const addItem = useCartStore((state) => state.addItem)
   const cartCount = useCartStore((state) => state.getTotalItems())
@@ -56,7 +59,7 @@ function ProductDetailPageContent() {
   const fetchProduct = useCallback(async () => {
     try {
       // slug 또는 UUID로 조회
-      const selectFields = 'id,slug,brand,name,price,image_url'
+      const selectFields = 'id,slug,brand,name,price,image_url,weight_gram,status'
       
       // UUID 형식인지 확인하는 함수
       const isUUID = (str: string): boolean => {
@@ -119,6 +122,7 @@ function ProductDetailPageContent() {
   useEffect(() => {
     fetchProduct()
   }, [fetchProduct])
+
 
   // 상품 설명 컴포넌트 로드
   useEffect(() => {
@@ -194,6 +198,14 @@ function ProductDetailPageContent() {
   const handleAddToCart = useCallback(() => {
     if (!product) return
     
+    // 품절 상품은 장바구니에 추가 불가
+    if (soldOut) {
+      toast.error('품절된 상품입니다.', {
+        icon: '❌',
+      })
+      return
+    }
+    
     const cartItem = {
       productId: product.id,
       name: product.name,
@@ -209,7 +221,7 @@ function ProductDetailPageContent() {
     toast.success('장바구니에 추가되었습니다!', {
       icon: '🛒',
     })
-  }, [product, quantity, user])
+  }, [product, quantity, user, soldOut])
 
 
   const handleWishlistToggle = useCallback(async () => {
@@ -262,7 +274,7 @@ function ProductDetailPageContent() {
               </svg>
               {mounted && cartCount > 0 && (
                 <span
-                  className="absolute top-0 right-0 bg-blue-900 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                  className="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
                   aria-hidden={cartCount <= 0}
                 >
                   {cartCount > 99 ? '99+' : cartCount}
@@ -310,7 +322,7 @@ function ProductDetailPageContent() {
             </svg>
             {cartCount > 0 && (
               <span
-                className="absolute top-0 right-0 bg-blue-900 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+                className="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
                 suppressHydrationWarning
                 aria-hidden={cartCount <= 0}
               >
@@ -332,7 +344,15 @@ function ProductDetailPageContent() {
           {/* 상품 정보 */}
           <div className="px-4 py-8">
             <div className="flex items-start justify-between gap-3 mb-2">
-              <h1 className="text-lg font-normal flex-1">{product.name}</h1>
+              <div className="flex-1">
+                {product.brand && (
+                  <div className="text-base font-bold text-primary-900 mb-1">{product.brand}</div>
+                )}
+                <h1 className="text-lg font-normal">{product.name}</h1>
+                {soldOut && (
+                  <p className="text-sm text-gray-500 mt-1">해당 상품은 품절 되었습니다.</p>
+                )}
+              </div>
               
               {/* 리뷰 요약 */}
               {reviewCount > 0 && (
@@ -390,55 +410,61 @@ function ProductDetailPageContent() {
       </main>
 
 
-      {/* 하단 고정 액션 바 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
-        {/* BOGO 골라담기 버튼 (프로모션 상품일 때만 표시) */}
-        {product.promotion?.type === 'bogo' && product.promotion?.buy_qty && (
-          <div className="border-b border-gray-200">
-            <button
-              onClick={() => openPromotionModal(productId)}
-              className="w-full py-3 bg-pink-100 text-pink-700 text-base font-bold hover:bg-pink-200 transition flex items-center justify-center gap-2"
-            >
-              <span>🎁</span>
-              <span>{product.promotion.buy_qty}+1 골라담기</span>
-            </button>
+      {/* 하단 고정 액션 바 (품절 상품이 아닐 때만 표시) */}
+      {!soldOut && (
+        <div className="fixed bottom-0 left-0 right-0 z-40" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
+          <div className="w-full flex justify-center">
+            <div className="w-full max-w-[480px] bg-white border-t border-gray-200 shadow-lg">
+              {/* BOGO 골라담기 버튼 (프로모션 상품일 때만 표시) */}
+              {product.promotion?.type === 'bogo' && product.promotion?.buy_qty && (
+                <div className="border-b border-gray-200">
+                  <button
+                    onClick={() => openPromotionModal(productId)}
+                    className="w-full py-3 bg-pink-100 text-pink-700 text-base font-bold hover:bg-pink-200 transition flex items-center justify-center gap-2"
+                  >
+                    <span>🎁</span>
+                    <span>{product.promotion.buy_qty}+1 골라담기</span>
+                  </button>
+                </div>
+              )}
+              
+              {/* 찜 / 바로구매 / 장바구니 버튼 */}
+              <div className="px-0 pt-0 pb-0 flex gap-0">
+                <button
+                  onClick={handleWishlistToggle}
+                  className="flex items-center justify-center bg-white py-3 hover:bg-gray-100 transition border border-gray-200"
+                  style={{ width: '15%' }}
+                  aria-label="찜하기"
+                >
+                  {isWished ? (
+                    <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                  ) : (
+                    <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={() => { setPendingAction('buy'); setShowQty(true) }}
+                  className="bg-gray-900 text-white py-3 text-base font-semibold hover:bg-gray-800"
+                  style={{ width: '35%' }}
+                >
+                  바로구매
+                </button>
+                <button
+                  onClick={() => { setPendingAction('cart'); setShowQty(true) }}
+                  className="bg-red-600 text-white py-3 text-base font-semibold hover:bg-red-600"
+                  style={{ width: '50%' }}
+                >
+                  장바구니
+                </button>
+              </div>
+            </div>
           </div>
-        )}
-        
-        {/* 찜 / 바로구매 / 장바구니 버튼 */}
-        <div className="px-0 pt-0 pb-0 flex gap-0">
-          <button
-            onClick={handleWishlistToggle}
-            className="flex items-center justify-center bg-white py-3 hover:bg-gray-100 transition border border-gray-200"
-            style={{ width: '15%' }}
-            aria-label="찜하기"
-          >
-            {isWished ? (
-              <svg className="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              </svg>
-            ) : (
-              <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              </svg>
-            )}
-          </button>
-          <button
-            onClick={() => { setPendingAction('buy'); setShowQty(true) }}
-            className="bg-gray-900 text-white py-3 text-base font-semibold hover:bg-gray-800"
-            style={{ width: '35%' }}
-          >
-            바로구매
-          </button>
-          <button
-            onClick={() => { setPendingAction('cart'); setShowQty(true) }}
-            className="bg-blue-900 text-white py-3 text-base font-semibold hover:bg-blue-800"
-            style={{ width: '50%' }}
-          >
-            장바구니
-          </button>
         </div>
-      </div>
+      )}
 
       {/* 수량 선택 패널 */}
       {showQty && (
@@ -509,7 +535,7 @@ function ProductDetailPageContent() {
                     }
                   }
                 }}
-                className="py-2 text-sm rounded-lg bg-primary-800 text-white font-semibold hover:bg-primary-900"
+                className="py-2 text-sm rounded-lg bg-primary-800 text-white font-semibold hover:bg-primary-900 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 확인
               </button>

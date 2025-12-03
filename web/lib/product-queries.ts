@@ -15,6 +15,8 @@ export const PRODUCT_SELECT_FIELDS = `
   category,
   average_rating,
   review_count,
+  weight_gram,
+  status,
   created_at,
   updated_at,
   promotion_products (
@@ -43,7 +45,9 @@ export const SIMPLE_PRODUCT_SELECT_FIELDS = `
   image_url,
   category,
   average_rating,
-  review_count
+  review_count,
+  weight_gram,
+  status
 `
 
 /**
@@ -98,6 +102,7 @@ export function extractPromotion(product: any): any | null {
   
   return pp?.promotions || null
 }
+
 
 
 
