@@ -128,8 +128,6 @@ export default function GiftPage() {
   const fetchTargetProducts = useCallback(async (target: string) => {
     setLoadingTarget(true)
     try {
-      console.log('선물 대상 상품 조회 시작:', target)
-      
       // 대상별 카테고리 slug 매핑
       const targetSlugMap: Record<string, string> = {
         '아이': 'child',
@@ -153,7 +151,6 @@ export default function GiftPage() {
         .single()
 
       if (categoryError || !categoryData) {
-        console.log('카테고리를 찾을 수 없습니다:', targetSlug)
         setTargetProducts([])
         setLoadingTarget(false)
         return
@@ -198,8 +195,6 @@ export default function GiftPage() {
         throw productsError
       }
       
-      console.log('조회된 상품 개수:', productsData?.length || 0)
-      
       // 상품 데이터 변환 및 활성 프로모션 찾기
       const now = new Date()
       const filtered = (productsData || [])
@@ -238,7 +233,6 @@ export default function GiftPage() {
         })
       
       const result = filtered.slice(0, 20)
-      console.log('최종 결과 개수:', result.length)
       setTargetProducts(result as Product[])
     } catch (error) {
       console.error('선물 대상 상품 조회 실패:', error)
@@ -251,8 +245,6 @@ export default function GiftPage() {
   const fetchBudgetProducts = useCallback(async (budgetType: string) => {
     setLoadingBudget(true)
     try {
-      console.log('예산별 상품 조회 시작:', budgetType)
-      
       // 예산별 카테고리 slug는 이미 budgetType과 동일 (under-50k, over-50k 등)
       const budgetSlug = budgetType
 
@@ -264,7 +256,6 @@ export default function GiftPage() {
         .single()
 
       if (categoryError || !categoryData) {
-        console.log('카테고리를 찾을 수 없습니다:', budgetSlug)
         setBudgetProducts([])
         setLoadingBudget(false)
         return
@@ -309,8 +300,6 @@ export default function GiftPage() {
         throw productsError
       }
       
-      console.log('조회된 상품 개수:', productsData?.length || 0)
-      
       // 상품 데이터 변환 및 활성 프로모션 찾기
       const now = new Date()
       const filtered = (productsData || [])
@@ -349,7 +338,6 @@ export default function GiftPage() {
         })
       
       const result = filtered.slice(0, 20)
-      console.log('최종 결과 개수:', result.length)
       setBudgetProducts(result as Product[])
     } catch (error) {
       console.error('예산별 상품 조회 실패:', error)
@@ -512,61 +500,108 @@ export default function GiftPage() {
                 </div>
               ) : targetProducts.length > 0 ? (
                 <div>
-                  {targetProducts.map((product) => (
-                    <Link key={product.id} href={`/products/${product.id}`}>
-                      <div className="flex gap-4 hover:opacity-80 transition mb-4">
-                        {/* 이미지 - 왼쪽 */}
-                        <div className="relative w-28 h-28 flex-shrink-0 bg-gray-200 rounded-md overflow-hidden">
-                          {product.image_url && !product.image_url.includes('via.placeholder.com') ? (
-                            <Image
-                              src={product.image_url}
-                              alt={product.name}
-                              fill
-                              className="object-cover"
-                              sizes="112px"
-                            />
-                          ) : (
-                            <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
-                              이미지
+                  {targetProducts.map((product) => {
+                    // 타임딜 할인율 (우선순위 높음)
+                    const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
+                    
+                    // 프로모션 할인율 계산
+                    const promotionDiscountPercent = (product as any).promotion?.type === 'percent' 
+                      ? (product as any).promotion.discount_percent 
+                      : 0
+                    
+                    // 최종 할인율 (타임딜 우선, 없으면 프로모션)
+                    const discountPercent = timedealDiscountPercent > 0 
+                      ? timedealDiscountPercent 
+                      : promotionDiscountPercent || (product as any).discount_percent || 0
+                    
+                    // 최종 할인가
+                    const finalPrice = discountPercent > 0
+                      ? Math.round(product.price * (1 - discountPercent / 100))
+                      : product.price
+                    
+                    // 100g당 가격 계산
+                    const pricePer100g = product.weight_gram && product.weight_gram > 0
+                      ? (finalPrice / product.weight_gram) * 100
+                      : null
+                    
+                    // 프로모션 배지
+                    const promotionBadge = (product as any).promotion?.type === 'bogo' && (product as any).promotion.buy_qty
+                      ? `${(product as any).promotion.buy_qty}+1`
+                      : null
+                    
+                    return (
+                      <Link key={product.id} href={`/products/${product.id}`}>
+                        <div className="flex gap-4 hover:opacity-80 transition mb-4">
+                          {/* 이미지 - 왼쪽 */}
+                          <div className="relative w-28 h-28 flex-shrink-0 bg-gray-200 rounded-md overflow-hidden">
+                            {promotionBadge && (
+                              <div className="absolute top-0 left-0 z-10">
+                                <span className="bg-red-600 text-white px-2 py-1 text-xs font-bold shadow-lg">
+                                  {promotionBadge}
+                                </span>
+                              </div>
+                            )}
+                            {product.image_url && !product.image_url.includes('via.placeholder.com') ? (
+                              <Image
+                                src={product.image_url}
+                                alt={product.name}
+                                fill
+                                className="object-cover"
+                                sizes="112px"
+                              />
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+                                이미지
+                              </div>
+                            )}
+                          </div>
+                          {/* 텍스트 - 오른쪽 */}
+                          <div className="flex-1 min-w-0">
+                            {product.brand && (
+                              <div className="text-sm font-semibold text-gray-600 mb-1">{product.brand}</div>
+                            )}
+                            <div className="flex items-center mb-2">
+                              <h3 className="text-base font-medium text-gray-900 line-clamp-2">{product.name}</h3>
+                              {product.weight_gram && (
+                                <span className="text-base font-medium text-gray-900 ml-1">
+                                  {product.weight_gram}G
+                                </span>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        {/* 텍스트 - 오른쪽 */}
-                        <div className="flex-1 min-w-0">
-                          {product.brand && (
-                            <div className="text-sm font-semibold text-gray-600 mb-1">{product.brand}</div>
-                          )}
-                          <h3 className="text-base font-medium text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
-                          {(() => {
-                            // 프로모션 할인율 계산
-                            const discountPercent = (product as any).promotion?.type === 'percent' 
-                              ? (product as any).promotion.discount_percent 
-                              : (product as any).discount_percent || 0
-                            
-                            if (discountPercent > 0) {
-                              return (
+                            {discountPercent > 0 ? (
+                              <>
                                 <div className="flex items-baseline gap-2">
                                   <span className="text-base font-bold text-red-600">{discountPercent}%</span>
                                   <span className="text-lg font-bold text-gray-900">
-                                    {formatPrice(product.price * (1 - discountPercent / 100))}원
+                                    {formatPrice(finalPrice)}원
                                   </span>
                                   <span className="text-sm text-gray-500 line-through">
                                     {formatPrice(product.price)}원
                                   </span>
                                 </div>
-                              )
-                            } else {
-                              return (
+                                {pricePer100g && (
+                                  <p className="text-xs text-gray-600 mt-0.5">
+                                    (100g당 {formatPrice(pricePer100g)}원)
+                                  </p>
+                                )}
+                              </>
+                            ) : (
+                              <>
                                 <div className="text-lg font-bold text-gray-900">
                                   {formatPrice(product.price)}원
                                 </div>
-                              )
-                            }
-                          })()}
+                                {pricePer100g && (
+                                  <p className="text-xs text-gray-600 mt-0.5">
+                                    (100g당 {formatPrice(pricePer100g)}원)
+                                  </p>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
@@ -617,61 +652,108 @@ export default function GiftPage() {
                 </div>
               ) : budgetProducts.length > 0 ? (
                 <div>
-                  {budgetProducts.map((product) => (
-                    <Link key={product.id} href={`/products/${product.id}`}>
-                      <div className="flex gap-4 hover:opacity-80 transition mb-4">
-                        {/* 이미지 - 왼쪽 */}
-                        <div className="relative w-28 h-28 flex-shrink-0 bg-gray-200 rounded-md overflow-hidden">
-                          {product.image_url && !product.image_url.includes('via.placeholder.com') ? (
-                            <Image
-                              src={product.image_url}
-                              alt={product.name}
-                              fill
-                              className="object-cover"
-                              sizes="112px"
-                            />
-                          ) : (
-                            <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
-                              이미지
+                  {budgetProducts.map((product) => {
+                    // 타임딜 할인율 (우선순위 높음)
+                    const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
+                    
+                    // 프로모션 할인율 계산
+                    const promotionDiscountPercent = (product as any).promotion?.type === 'percent' 
+                      ? (product as any).promotion.discount_percent 
+                      : 0
+                    
+                    // 최종 할인율 (타임딜 우선, 없으면 프로모션)
+                    const discountPercent = timedealDiscountPercent > 0 
+                      ? timedealDiscountPercent 
+                      : promotionDiscountPercent || (product as any).discount_percent || 0
+                    
+                    // 최종 할인가
+                    const finalPrice = discountPercent > 0
+                      ? Math.round(product.price * (1 - discountPercent / 100))
+                      : product.price
+                    
+                    // 100g당 가격 계산
+                    const pricePer100g = product.weight_gram && product.weight_gram > 0
+                      ? (finalPrice / product.weight_gram) * 100
+                      : null
+                    
+                    // 프로모션 배지
+                    const promotionBadge = (product as any).promotion?.type === 'bogo' && (product as any).promotion.buy_qty
+                      ? `${(product as any).promotion.buy_qty}+1`
+                      : null
+                    
+                    return (
+                      <Link key={product.id} href={`/products/${product.id}`}>
+                        <div className="flex gap-4 hover:opacity-80 transition mb-4">
+                          {/* 이미지 - 왼쪽 */}
+                          <div className="relative w-28 h-28 flex-shrink-0 bg-gray-200 rounded-md overflow-hidden">
+                            {promotionBadge && (
+                              <div className="absolute top-0 left-0 z-10">
+                                <span className="bg-red-600 text-white px-2 py-1 text-xs font-bold shadow-lg">
+                                  {promotionBadge}
+                                </span>
+                              </div>
+                            )}
+                            {product.image_url && !product.image_url.includes('via.placeholder.com') ? (
+                              <Image
+                                src={product.image_url}
+                                alt={product.name}
+                                fill
+                                className="object-cover"
+                                sizes="112px"
+                              />
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+                                이미지
+                              </div>
+                            )}
+                          </div>
+                          {/* 텍스트 - 오른쪽 */}
+                          <div className="flex-1 min-w-0">
+                            {product.brand && (
+                              <div className="text-sm font-semibold text-gray-600 mb-1">{product.brand}</div>
+                            )}
+                            <div className="flex items-center mb-2">
+                              <h3 className="text-base font-medium text-gray-900 line-clamp-2">{product.name}</h3>
+                              {product.weight_gram && (
+                                <span className="text-base font-medium text-gray-900 ml-1">
+                                  {product.weight_gram}G
+                                </span>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        {/* 텍스트 - 오른쪽 */}
-                        <div className="flex-1 min-w-0">
-                          {product.brand && (
-                            <div className="text-sm font-semibold text-gray-600 mb-1">{product.brand}</div>
-                          )}
-                          <h3 className="text-base font-medium text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
-                          {(() => {
-                            // 프로모션 할인율 계산
-                            const discountPercent = (product as any).promotion?.type === 'percent' 
-                              ? (product as any).promotion.discount_percent 
-                              : (product as any).discount_percent || 0
-                            
-                            if (discountPercent > 0) {
-                              return (
+                            {discountPercent > 0 ? (
+                              <>
                                 <div className="flex items-baseline gap-2">
                                   <span className="text-base font-bold text-red-600">{discountPercent}%</span>
                                   <span className="text-lg font-bold text-gray-900">
-                                    {formatPrice(product.price * (1 - discountPercent / 100))}원
+                                    {formatPrice(finalPrice)}원
                                   </span>
                                   <span className="text-sm text-gray-500 line-through">
                                     {formatPrice(product.price)}원
                                   </span>
                                 </div>
-                              )
-                            } else {
-                              return (
+                                {pricePer100g && (
+                                  <p className="text-xs text-gray-600 mt-0.5">
+                                    (100g당 {formatPrice(pricePer100g)}원)
+                                  </p>
+                                )}
+                              </>
+                            ) : (
+                              <>
                                 <div className="text-lg font-bold text-gray-900">
                                   {formatPrice(product.price)}원
                                 </div>
-                              )
-                            }
-                          })()}
+                                {pricePer100g && (
+                                  <p className="text-xs text-gray-600 mt-0.5">
+                                    (100g당 {formatPrice(pricePer100g)}원)
+                                  </p>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">

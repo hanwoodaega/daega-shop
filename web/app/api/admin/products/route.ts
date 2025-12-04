@@ -44,12 +44,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  console.log('Received body:', JSON.stringify(body, null, 2))
-
   const required = ['name', 'price', 'category']
   for (const key of required) {
     if (body[key] === undefined || body[key] === null || body[key] === '') {
-      console.error(`Missing required field: ${key}`, body)
       return NextResponse.json({ error: `Missing field: ${key}` }, { status: 400 })
     }
   }
@@ -118,13 +115,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    console.log('Inserting payload:', JSON.stringify(payload, null, 2))
     const { data, error } = await supabaseAdmin.from('products').insert([payload]).select()
     if (error) {
       console.error('Supabase insert error:', error)
       return NextResponse.json({ error: error.message || 'Database error' }, { status: 400 })
     }
-    console.log('Insert successful:', data)
     return NextResponse.json({ ok: true })
   } catch (e: any) {
     console.error('Unexpected error:', e)

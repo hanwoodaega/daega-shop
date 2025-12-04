@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { extractActivePromotion } from '@/lib/product-queries'
+import { enrichProductsServer } from '@/lib/product-queries-server'
+import { getTimedealDiscountPercentMap } from '@/lib/timedeal-utils'
 
 // GET: 컬렉션별 상품 목록 조회 (공개 API)
 // params.slug는 실제로는 type (best, sale, no9)
@@ -44,6 +45,7 @@ export async function GET(
           category,
           average_rating,
           review_count,
+          weight_gram,
           created_at,
           promotion_products (
             promotion_id,
@@ -77,19 +79,20 @@ export async function GET(
       return NextResponse.json({ error: productsError.message }, { status: 400 })
     }
 
-    // 상품 데이터 정리 및 프로모션 정보 처리
-    let products = (collectionProducts || []).map((cp: any) => {
-      const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
-      if (!product) return null
+    // 상품 데이터 추출
+    const rawProducts = (collectionProducts || [])
+      .map((cp: any) => {
+        const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
+        return product
+      })
+      .filter(Boolean)
 
-      // 활성화된 프로모션 찾기
-      const activePromotion = extractActivePromotion(product)
+    // 타임딜 할인율 일괄 조회
+    const productIds = rawProducts.map((p: any) => p.id).filter(Boolean)
+    const timedealDiscountMap = await getTimedealDiscountPercentMap(productIds)
 
-      return {
-        ...product,
-        promotion: activePromotion,
-      }
-    }).filter(Boolean)
+    // 공통 유틸리티 함수로 상품 데이터 보강
+    let products = await enrichProductsServer(rawProducts, timedealDiscountMap)
 
     // 가격 정렬 (클라이언트 사이드에서 처리 - Supabase의 중첩 정렬 제한)
     if (sort === 'price_asc') {

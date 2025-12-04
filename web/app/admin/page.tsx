@@ -28,7 +28,7 @@ const managementCards: AdminCard[] = [
   {
     title: '타임딜 관리',
     description: '한정 재고, 초특가 프로모션을 빠르게 세팅하세요.',
-    href: '/admin/flash-sales',
+    href: '/admin/timedeals',
     accent: 'bg-orange-100 text-orange-700',
   },
   {

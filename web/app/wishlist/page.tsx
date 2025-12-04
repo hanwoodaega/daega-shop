@@ -9,6 +9,7 @@ import ProductCard from '@/components/ProductCard'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import { supabase, Product } from '@/lib/supabase'
 import { useWishlistStore, useCartStore } from '@/lib/store'
+import { PRODUCT_SELECT_FIELDS, enrichProducts } from '@/lib/product-queries'
 
 export default function WishlistPage() {
   const router = useRouter()
@@ -28,15 +29,16 @@ export default function WishlistPage() {
 
       setLoading(true)
       try {
-        const selectFields = 'id,slug,brand,name,price,image_url,category,average_rating,review_count,created_at,updated_at'
-        
+        // 프로모션 정보와 weight_gram 포함하여 조회
         const { data, error } = await supabase
           .from('products')
-          .select(selectFields)
+          .select(PRODUCT_SELECT_FIELDS)
           .in('id', wishlistIds)
 
         if (!error && data) {
-          setWishlistProducts(data)
+          // 공통 유틸리티 함수로 상품 데이터 보강
+          const enrichedProducts = await enrichProducts(data)
+          setWishlistProducts(enrichedProducts as Product[])
         }
       } catch (error) {
         console.error('위시리스트 상품 조회 실패:', error)

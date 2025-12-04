@@ -6,7 +6,6 @@ import Link from 'next/link'
 import BottomNavbar from '@/components/BottomNavbar'
 import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
-import { getUserPoints } from '@/lib/points'
 import { getUserCoupons } from '@/lib/coupons'
 import { useCartStore } from '@/lib/store'
 
@@ -33,7 +32,7 @@ export default function ProfilePage() {
 
   const loadUserProfile = async () => {
     try {
-      const [userData, ordersData, pointsData, couponsData] = await Promise.all([
+      const [userData, ordersData, pointsResponse, couponsData] = await Promise.all([
         // 사용자 이름
         supabase
           .from('users')
@@ -45,8 +44,8 @@ export default function ProfilePage() {
           .from('orders')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', user!.id),
-        // 포인트
-        getUserPoints(user!.id),
+        // 포인트 (API를 통해 조회)
+        fetch('/api/points').then(res => res.json()),
         // 쿠폰 개수
         getUserCoupons(user!.id, false),
       ])
@@ -55,7 +54,7 @@ export default function ProfilePage() {
       setUserName(userData.data?.name || user!.user_metadata?.name || user!.email?.split('@')[0] || '사용자')
 
       setOrderCount(ordersData.count || 0)
-      setPoints(pointsData?.total_points || 0)
+      setPoints(pointsResponse.userPoints?.total_points || 0)
       setCouponCount(couponsData.length || 0)
       // 선물함 개수 - gifts 테이블이 없으므로 0으로 설정
       setGiftCount(0)

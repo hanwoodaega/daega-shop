@@ -1,34 +1,46 @@
 'use client'
 
-import { useEffect, useState, Suspense, useCallback, useRef } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
-import { Product } from '@/lib/supabase'
+import TimeDealSection from '@/components/TimeDealSection'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
+import { Product } from '@/lib/supabase'
 import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
 
-function CollectionContent({ slug }: { slug: string }) {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const collectionSlug = slug
-  
-  const [collection, setCollection] = useState<any>(null)
+export default function SalePage() {
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [sortOrder, setSortOrder] = useState<'default' | 'price_asc' | 'price_desc'>('default')
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  const [timedealProductIds, setTimedealProductIds] = useState<Set<string>>(new Set())
   const isFetchingRef = useRef(false)
 
-  const fetchCollection = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
+  // 타임딜 상품 ID 목록 가져오기
+  useEffect(() => {
+    const fetchTimedealProductIds = async () => {
+      try {
+        const response = await fetch('/api/collections/timedeal?limit=100')
+        if (response.ok) {
+          const data = await response.json()
+          const ids = new Set<string>((data.products || []).map((p: any) => p.id as string))
+          setTimedealProductIds(ids)
+        }
+      } catch (error) {
+        console.error('타임딜 상품 ID 조회 실패:', error)
+      }
+    }
+    fetchTimedealProductIds()
+  }, [])
+
+  const fetchDiscountedProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
     if (isFetchingRef.current) return
     
     isFetchingRef.current = true
@@ -40,12 +52,13 @@ function CollectionContent({ slug }: { slug: string }) {
         page: pageNum.toString(),
         limit: DEFAULT_PAGE_SIZE.toString(),
         sort: sort,
+        filter: 'promotion', // promotion_products가 있는 상품만 조회
       })
 
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-      const response = await fetch(`/api/collections/${collectionSlug}?${params.toString()}`, { 
+      const response = await fetch(`/api/products?${params.toString()}`, { 
         cache: 'no-store',
         signal: controller.signal
       })
@@ -53,48 +66,52 @@ function CollectionContent({ slug }: { slug: string }) {
       clearTimeout(timeoutId)
 
       if (!response.ok) {
-        throw new Error('컬렉션 조회 실패')
+        throw new Error('상품 조회 실패')
       }
 
       const data = await response.json()
       
+      // 타임딜 상품은 제외
+      const discountedProducts = (data.products || []).filter((product: any) => {
+        // 타임딜 상품은 제외
+        return !timedealProductIds.has(product.id)
+      })
+      
       if (pageNum === 1) {
-        setCollection(data.collection)
-        setDisplayedProducts(data.products || [])
+        setDisplayedProducts(discountedProducts)
       } else {
         setDisplayedProducts(prev => {
           const existingIds = new Set(prev.map((p: any) => p.id))
-          const newProducts = (data.products || []).filter((p: any) => !existingIds.has(p.id))
+          const newProducts = discountedProducts.filter((p: any) => !existingIds.has(p.id))
           return [...prev, ...newProducts]
         })
       }
       
-      setHasMore(pageNum < data.totalPages)
+      // 다음 페이지가 있는지 확인
+      setHasMore(pageNum < data.totalPages && discountedProducts.length > 0)
     } catch (error: any) {
-      console.error('컬렉션 조회 실패:', error)
+      console.error('할인 상품 조회 실패:', error)
       if (error.name === 'AbortError') {
-        alert('컬렉션을 불러오는데 시간이 오래 걸립니다. 잠시 후 다시 시도해주세요.')
+        alert('상품을 불러오는데 시간이 오래 걸립니다. 잠시 후 다시 시도해주세요.')
       }
     } finally {
       isFetchingRef.current = false
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [collectionSlug])
+  }, [timedealProductIds])
 
   useEffect(() => {
-    if (collectionSlug) {
-      setPage(1)
-      setDisplayedProducts([])
-      fetchCollection(1, sortOrder)
-    }
-  }, [collectionSlug, sortOrder])
+    setPage(1)
+    setDisplayedProducts([])
+    fetchDiscountedProducts(1, sortOrder)
+  }, [sortOrder, fetchDiscountedProducts])
 
   useEffect(() => {
     if (page > 1) {
-      fetchCollection(page, sortOrder)
+      fetchDiscountedProducts(page, sortOrder)
     }
-  }, [page])
+  }, [page, sortOrder, fetchDiscountedProducts])
 
   const handleLoadMore = () => {
     if (!loadingMore && hasMore) {
@@ -119,44 +136,13 @@ function CollectionContent({ slug }: { slug: string }) {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [loadingMore, hasMore])
 
-  if (!collection && !loading) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 container mx-auto px-4 py-20 text-center">
-          <p className="text-xl text-gray-600 mb-4">컬렉션을 찾을 수 없습니다</p>
-          <Link href="/">
-            <button className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-600">
-              홈으로 가기
-            </button>
-          </Link>
-        </main>
-        <Footer />
-        <BottomNavbar />
-      </div>
-    )
-  }
-
-  const theme = collection?.color_theme || {}
-
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       
       <main className="flex-1">
-        {/* 대표 이미지 섹션 - 이미지가 있을 때만 표시 */}
-        {collection && collection.image_url && (
-          <section className="relative w-full aspect-[16/9]">
-            <Image
-              src={collection.image_url}
-              alt={collection.title || ''}
-              fill
-              className="object-cover"
-              sizes="100vw"
-              priority
-            />
-          </section>
-        )}
+        {/* 타임딜 섹션 */}
+        <TimeDealSection variant="grid" />
 
         <div className="container mx-auto px-4 py-4 pt-6">
           <div className="flex justify-between items-center mb-6">
@@ -169,11 +155,7 @@ function CollectionContent({ slug }: { slug: string }) {
                 letterSpacing: '-0.5px',
               }}
             >
-              {collection?.title || 
-               (collection?.type === 'best' ? '베스트' :
-                collection?.type === 'sale' ? '특가' :
-                collection?.type === 'no9' ? '한우대가 NO.9' :
-                collection?.type === 'timedeal' ? '타임딜' : '')}
+              특가 상품
             </h1>
             <select
               value={sortOrder}
@@ -201,7 +183,7 @@ function CollectionContent({ slug }: { slug: string }) {
             <div className="text-center py-20">
               <div className="text-6xl mb-4">🔍</div>
               <p className="text-xl text-gray-600 mb-2">
-                등록된 상품이 없습니다
+                할인 중인 상품이 없습니다
               </p>
               <Link href="/products">
                 <button className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-600 transition">
@@ -236,25 +218,3 @@ function CollectionContent({ slug }: { slug: string }) {
     </div>
   )
 }
-
-export default function CollectionPage({ params }: { params: { slug: string } }) {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 container mx-auto px-4 py-4 pt-6">
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
-            {[...Array(8)].map((_, i) => (
-              <ProductCardSkeleton key={i} />
-            ))}
-          </div>
-        </main>
-        <Footer />
-        <BottomNavbar />
-      </div>
-    }>
-      <CollectionContent slug={params.slug} />
-    </Suspense>
-  )
-}
-

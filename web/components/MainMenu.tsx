@@ -6,9 +6,9 @@ import { usePathname } from 'next/navigation'
 // 하드코딩된 메인 메뉴
 const MAIN_MENUS = [
   { name: '홈', href: '/' },
-  { name: '베스트', href: '/collections/best' },
-  { name: '특가', href: '/collections/sale' },
-  { name: '한우대가 NO.9', href: '/hanwoo-daega-no9' },
+  { name: '베스트', href: '/best' },
+  { name: '특가', href: '/sale' },
+  { name: '한우대가 NO.9', href: '/no9' },
   { name: '리뷰이벤트', href: '/review-event' },
 ]
 
@@ -22,12 +22,6 @@ export default function MainMenu() {
           {MAIN_MENUS.map((menu) => {
             // 홈 페이지 체크
             let isActive = pathname === menu.href
-            
-            // 컬렉션 페이지 체크 (베스트, 특가)
-            if (menu.href.startsWith('/collections/')) {
-              const collectionType = menu.href.replace('/collections/', '')
-              isActive = pathname === `/collections/${collectionType}`
-            }
             
             const isHanwooMenu = menu.name === '한우대가 NO.9'
             

@@ -80,7 +80,6 @@ export default function ProfileReviewsPage() {
         
         if (!response.ok) {
           if (response.status === 401) {
-            console.log('로그인이 필요합니다.')
             return
           }
           throw new Error('Failed to fetch reviewable products')
@@ -115,7 +114,6 @@ export default function ProfileReviewsPage() {
         
         if (!response.ok) {
           if (response.status === 401) {
-            console.log('로그인이 필요합니다.')
             return
           }
           throw new Error('Failed to fetch my reviews')

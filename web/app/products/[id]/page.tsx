@@ -206,12 +206,20 @@ function ProductDetailPageContent() {
       return
     }
     
+    // 타임딜 할인율 (우선순위 높음)
+    const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
+    // 프로모션 할인율
+    const promotionDiscountPercent = product.promotion?.discount_percent || 0
+    // 최종 할인율 (타임딜 우선)
+    const finalDiscountPercent = timedealDiscountPercent > 0 ? timedealDiscountPercent : promotionDiscountPercent
+
     const cartItem = {
       productId: product.id,
       name: product.name,
       price: product.price,
       quantity,
       imageUrl: product.image_url,
+      discount_percent: finalDiscountPercent > 0 ? finalDiscountPercent : undefined,
       brand: product.brand ?? undefined,
     }
 
@@ -382,27 +390,40 @@ function ProductDetailPageContent() {
             </div>
             
             <div className="py-2 mb-6">
-              {product.promotion?.discount_percent && product.promotion.discount_percent > 0 ? (
-                <>
-                  <div className="text-sm text-gray-500 line-through mb-2">
-                    {formatPrice(product.price)}원
-                  </div>
-                  <div className="flex items-baseline gap-2 mb-2">
-                    <span className="text-2xl font-bold text-red-600">{product.promotion.discount_percent}%</span>
-                    <span className="text-2xl font-extrabold text-gray-900">
-                      {formatPrice(calculateDiscountPrice(product.price, product.promotion.discount_percent))}
-                    </span>
-                    <span className="text-base text-gray-600">원</span>
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-baseline mb-2">
-                  <span className="text-2xl font-bold text-gray-900">
-                    {formatPrice(product.price)}
-                  </span>
-                  <span className="text-base text-gray-600 ml-2">원</span>
-                </div>
-              )}
+              {(() => {
+                // 타임딜 할인율 (우선순위 높음)
+                const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
+                // 프로모션 할인율
+                const promotionDiscountPercent = product.promotion?.discount_percent || 0
+                // 최종 할인율 (타임딜 우선)
+                const finalDiscountPercent = timedealDiscountPercent > 0 ? timedealDiscountPercent : promotionDiscountPercent
+                
+                if (finalDiscountPercent > 0) {
+                  return (
+                    <>
+                      <div className="text-sm text-gray-500 line-through mb-2">
+                        {formatPrice(product.price)}원
+                      </div>
+                      <div className="flex items-baseline gap-2 mb-2">
+                        <span className="text-2xl font-bold text-red-600">{finalDiscountPercent}%</span>
+                        <span className="text-2xl font-extrabold text-gray-900">
+                          {formatPrice(calculateDiscountPrice(product.price, finalDiscountPercent))}
+                        </span>
+                        <span className="text-base text-gray-600">원</span>
+                      </div>
+                    </>
+                  )
+                } else {
+                  return (
+                    <div className="flex items-baseline mb-2">
+                      <span className="text-2xl font-bold text-gray-900">
+                        {formatPrice(product.price)}
+                      </span>
+                      <span className="text-base text-gray-600 ml-2">원</span>
+                    </div>
+                  )
+                }
+              })()}
             </div>
 
           </div>
@@ -495,7 +516,15 @@ function ProductDetailPageContent() {
                 
                 {/* 가격 (오른쪽 아래) */}
                 <span className="text-lg font-bold text-primary-900">
-                  {formatPrice(calculateDiscountPrice(product.price, product.promotion?.discount_percent || 0) * quantity)}원
+                  {(() => {
+                    // 타임딜 할인율 (우선순위 높음)
+                    const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
+                    // 프로모션 할인율
+                    const promotionDiscountPercent = product.promotion?.discount_percent || 0
+                    // 최종 할인율 (타임딜 우선)
+                    const finalDiscountPercent = timedealDiscountPercent > 0 ? timedealDiscountPercent : promotionDiscountPercent
+                    return formatPrice(calculateDiscountPrice(product.price, finalDiscountPercent) * quantity)
+                  })()}원
                 </span>
               </div>
             </div>
@@ -517,13 +546,20 @@ function ProductDetailPageContent() {
                     // 바로구매: 세션 스토리지에 저장 (장바구니에는 추가하지 않음)
                     if (!product) return
                     
+                    // 타임딜 할인율 (우선순위 높음)
+                    const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
+                    // 프로모션 할인율
+                    const promotionDiscountPercent = product.promotion?.discount_percent || 0
+                    // 최종 할인율 (타임딜 우선)
+                    const finalDiscountPercent = timedealDiscountPercent > 0 ? timedealDiscountPercent : promotionDiscountPercent
+
                     setDirectPurchaseItems([{
                       productId: product.id,
                       name: product.name,
                       price: product.price,
                       quantity,
                       imageUrl: product.image_url,
-                      discount_percent: product.promotion?.discount_percent ?? undefined,
+                      discount_percent: finalDiscountPercent > 0 ? finalDiscountPercent : undefined,
                       brand: product.brand ?? undefined,
                     }])
                     

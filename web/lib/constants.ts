@@ -14,9 +14,9 @@ export const ADMIN_CATEGORIES = CATEGORIES.filter(cat => cat !== '전체') as re
 // 메인 메뉴 (첫 번째 줄)
 export const MAIN_MENU_LINKS = [
   { name: '홈', href: '/' },
-  { name: '베스트', href: '/collections/best' },
-  { name: '특가', href: '/collections/sale' },
-  { name: '한우대가 NO.9', href: '/hanwoo-daega-no9' },
+  { name: '베스트', href: '/best' },
+  { name: '특가', href: '/sale' },
+  { name: '한우대가 NO.9', href: '/no9' },
   { name: '리뷰이벤트', href: '/review-event' },
 ]
 

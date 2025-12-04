@@ -103,6 +103,99 @@ export function extractPromotion(product: any): any | null {
   return pp?.promotions || null
 }
 
+// enrichProductsServer는 서버 사이드 전용이므로 별도 파일로 분리
+// lib/product-queries-server.ts 참조
+
+/**
+ * 클라이언트 사이드에서 상품 데이터 보강 (프로모션, 타임딜 할인율 등)
+ * @param products 상품 배열
+ * @param timedealDiscountMap 타임딜 할인율 맵 (선택사항, 없으면 조회)
+ * @returns 보강된 상품 배열
+ */
+export async function enrichProducts(
+  products: any[],
+  timedealDiscountMap?: Map<string, number>
+): Promise<any[]> {
+  if (!products || products.length === 0) {
+    return []
+  }
+
+  // 타임딜 할인율 맵이 없으면 조회
+  let discountMap = timedealDiscountMap
+  if (!discountMap) {
+    discountMap = await fetchTimedealDiscountMap(products.map((p: any) => p.id))
+  }
+
+  // 상품 데이터 보강
+  return products.map((product: any) => {
+    // 활성화된 프로모션 찾기
+    const activePromotion = extractActivePromotion(product)
+
+    // 타임딜 할인율 조회
+    const timedealDiscountPercent = discountMap?.get(product.id) || 0
+
+    return {
+      ...product,
+      average_rating: product.average_rating || 0,
+      review_count: product.review_count || 0,
+      promotion: activePromotion,
+      timedeal_discount_percent: timedealDiscountPercent,
+    }
+  })
+}
+
+/**
+ * 클라이언트 사이드에서 타임딜 할인율 맵 조회
+ * @param productIds 상품 ID 배열
+ * @returns 타임딜 할인율 맵
+ */
+async function fetchTimedealDiscountMap(productIds: string[]): Promise<Map<string, number>> {
+  const discountMap = new Map<string, number>()
+  
+  if (productIds.length === 0) {
+    return discountMap
+  }
+
+  try {
+    // 동적 import로 클라이언트 사이드에서만 실행
+    if (typeof window === 'undefined') {
+      return discountMap
+    }
+
+    const { supabase } = await import('./supabase')
+    const now = new Date().toISOString()
+    
+    // 활성 타임딜 조회
+    const { data: activeTimedeal } = await supabase
+      .from('timedeals')
+      .select('id')
+      .lte('start_at', now)
+      .gte('end_at', now)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (activeTimedeal) {
+      // 해당 상품들의 타임딜 할인율 조회
+      const { data: timedealProducts } = await supabase
+        .from('timedeal_products')
+        .select('product_id, discount_percent')
+        .eq('timedeal_id', activeTimedeal.id)
+        .in('product_id', productIds)
+
+      if (timedealProducts) {
+        timedealProducts.forEach((tp: any) => {
+          discountMap.set(tp.product_id, tp.discount_percent || 0)
+        })
+      }
+    }
+  } catch (error) {
+    console.error('타임딜 할인율 조회 실패:', error)
+  }
+
+  return discountMap
+}
+
 
 
 

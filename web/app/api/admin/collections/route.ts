@@ -11,12 +11,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { searchParams } = new URL(request.url)
-    const is_active = searchParams.get('is_active')
-
     let query = supabaseAdmin
       .from('collections')
       .select('*')
+      .order('sort_order', { ascending: true })
       .order('type', { ascending: true })
 
     const { data, error } = await query
@@ -42,10 +40,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { type, title, start_at, end_at } = body
+    const { type, title, description, image_url, color_theme, sort_order, start_at, end_at } = body
 
-    if (!type || !['timedeal', 'best', 'sale', 'no9'].includes(type)) {
-      return NextResponse.json({ error: 'type은 필수이며 timedeal, best, sale, no9 중 하나여야 합니다.' }, { status: 400 })
+    if (!type) {
+      return NextResponse.json({ error: 'type은 필수입니다.' }, { status: 400 })
     }
 
     // 같은 type이 이미 존재하는지 확인
@@ -64,6 +62,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (title !== undefined) insertData.title = title || null
+    if (description !== undefined) insertData.description = description || null
+    if (image_url !== undefined) insertData.image_url = image_url || null
+    if (color_theme !== undefined) insertData.color_theme = color_theme || null
+    if (sort_order !== undefined) insertData.sort_order = sort_order ?? 0
     if (start_at !== undefined) insertData.start_at = start_at || null
     if (end_at !== undefined) insertData.end_at = end_at || null
 

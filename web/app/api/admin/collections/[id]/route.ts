@@ -71,16 +71,13 @@ export async function PUT(
 
   try {
     const body = await request.json()
-    const { type, title, start_at, end_at } = body
+    const { type, title, description, image_url, color_theme, sort_order, start_at, end_at } = body
 
     const updateData: any = {
       updated_at: new Date().toISOString(),
     }
 
     if (type !== undefined) {
-      if (!['timedeal', 'best', 'sale', 'no9'].includes(type)) {
-        return NextResponse.json({ error: 'type은 timedeal, best, sale, no9 중 하나여야 합니다.' }, { status: 400 })
-      }
       // 같은 type이 다른 컬렉션에 있는지 확인
       const { data: existing } = await supabaseAdmin
         .from('collections')
@@ -95,6 +92,10 @@ export async function PUT(
       updateData.type = type
     }
     if (title !== undefined) updateData.title = title || null
+    if (description !== undefined) updateData.description = description || null
+    if (image_url !== undefined) updateData.image_url = image_url || null
+    if (color_theme !== undefined) updateData.color_theme = color_theme || null
+    if (sort_order !== undefined) updateData.sort_order = sort_order ?? 0
     if (start_at !== undefined) updateData.start_at = start_at || null
     if (end_at !== undefined) updateData.end_at = end_at || null
 

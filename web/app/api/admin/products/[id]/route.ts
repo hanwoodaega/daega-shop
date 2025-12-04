@@ -175,13 +175,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
   }
   
-  // 디버깅: 업데이트할 필드 확인
-  console.log('📝 Updating product:', id, 'Fields:', Object.keys(updates))
-  
   const { error } = await supabaseAdmin.from('products').update(updates).eq('id', id)
   if (error) {
-    console.error('❌ Product update error:', error)
-    console.error('❌ Update data:', updates)
+    console.error('Product update error:', error)
     
     // description 필드 관련 에러인 경우 특별 처리
     if (error.message?.includes('description')) {

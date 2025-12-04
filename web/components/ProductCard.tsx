@@ -35,22 +35,32 @@ function ProductCard({ product }: ProductCardProps) {
     hasValidImage && !isPlaceholderHost,
     [hasValidImage, isPlaceholderHost]
   )
-  // 프로모션 할인가 계산
+  // 타임딜 할인율 (우선순위 높음)
+  const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
+
+  // 프로모션 할인가 계산 (타임딜 할인율 우선, 없으면 프로모션 할인율)
   const discountPrice = useMemo(() => {
+    // 타임딜 할인율이 있으면 타임딜 할인가 사용
+    if (timedealDiscountPercent > 0) {
+      return calculateDiscountPrice(product.price, timedealDiscountPercent)
+    }
     // percent 타입 프로모션이 있으면 프로모션 할인율 사용
     if (product.promotion?.type === 'percent' && product.promotion.discount_percent) {
       return calculateDiscountPrice(product.price, product.promotion.discount_percent)
     }
     return product.price
-  }, [product.price, product.promotion])
+  }, [product.price, product.promotion, timedealDiscountPercent])
 
-  // 할인율 계산
+  // 할인율 계산 (타임딜 할인율 우선)
   const discountPercent = useMemo(() => {
+    if (timedealDiscountPercent > 0) {
+      return timedealDiscountPercent
+    }
     if (product.promotion?.type === 'percent' && product.promotion.discount_percent) {
       return product.promotion.discount_percent
     }
     return 0
-  }, [product.promotion])
+  }, [product.promotion, timedealDiscountPercent])
 
   // 100g당 가격 계산 (weight_gram 기준)
   const pricePer100g = useMemo(() => {

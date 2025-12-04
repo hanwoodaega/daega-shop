@@ -172,18 +172,26 @@ export default function RecommendationSection() {
             const hasValidImage = isValidImageUrl(product.image_url)
             const shouldRenderImage = hasValidImage && !product.image_url.includes('via.placeholder.com')
 
+            // 타임딜 할인율 (우선순위 높음)
+            const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
+
             // 프로모션 할인율 (percent 타입)
             const promotionDiscountPercent = product.promotion?.type === 'percent' && product.promotion.discount_percent
               ? product.promotion.discount_percent
               : 0
 
-            // 최종 할인율 (프로모션만)
-            const finalDiscountPercent = promotionDiscountPercent
+            // 최종 할인율 (타임딜 우선, 없으면 프로모션)
+            const finalDiscountPercent = timedealDiscountPercent > 0 ? timedealDiscountPercent : promotionDiscountPercent
 
-            // 최종 할인가 (프로모션 할인가 또는 원가)
-            const finalPrice = promotionDiscountPercent > 0
-              ? Math.round(product.price * (1 - promotionDiscountPercent / 100))
+            // 최종 할인가 계산
+            const finalPrice = finalDiscountPercent > 0
+              ? Math.round(product.price * (1 - finalDiscountPercent / 100))
               : product.price
+
+            // 100g당 가격 계산
+            const pricePer100g = product.weight_gram && product.weight_gram > 0
+              ? (finalPrice / product.weight_gram) * 100
+              : null
 
             // 프로모션 배지 텍스트
             const promotionBadge = product.promotion?.type === 'bogo' && product.promotion.buy_qty
@@ -203,6 +211,14 @@ export default function RecommendationSection() {
                   className="flex gap-4 p-3 transition hover:opacity-90"
                 >
                   <div className="relative w-24 h-24 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden">
+                    {/* 프로모션 배지 */}
+                    {promotionBadge && (
+                      <div className="absolute top-0 left-0 z-10">
+                        <span className="bg-red-600 text-white px-2 py-1 text-xs font-bold shadow-lg">
+                          {promotionBadge}
+                        </span>
+                      </div>
+                    )}
                     {shouldRenderImage ? (
                       <Image
                         src={product.image_url}
@@ -226,9 +242,16 @@ export default function RecommendationSection() {
                           {product.brand}
                         </div>
                       )}
-                      <h3 className="text-base font-medium line-clamp-2 mb-2" style={{ color: '#222222' }}>
-                        {product.name}
-                      </h3>
+                      <div className="flex items-center mb-2">
+                        <h3 className="text-base font-medium line-clamp-2" style={{ color: '#222222' }}>
+                          {product.name}
+                        </h3>
+                        {product.weight_gram && (
+                          <span className="text-base font-medium ml-1" style={{ color: '#222222' }}>
+                            {product.weight_gram}G
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -244,11 +267,23 @@ export default function RecommendationSection() {
                                 {formatPrice(finalPrice)}<span className="text-xs" style={{ color: '#222222' }}>원</span>
                               </span>
                             </div>
+                            {pricePer100g && (
+                              <p className="text-xs text-gray-600 mt-0.5">
+                                (100g당 {formatPrice(pricePer100g)}원)
+                              </p>
+                            )}
                           </>
                         ) : (
-                          <div className="text-base font-bold" style={{ color: '#222222' }}>
-                            {formatPrice(product.price)}<span className="text-xs" style={{ color: '#222222' }}>원</span>
-                          </div>
+                          <>
+                            <div className="text-base font-bold" style={{ color: '#222222' }}>
+                              {formatPrice(product.price)}<span className="text-xs" style={{ color: '#222222' }}>원</span>
+                            </div>
+                            {pricePer100g && (
+                              <p className="text-xs text-gray-600 mt-0.5">
+                                (100g당 {formatPrice(pricePer100g)}원)
+                              </p>
+                            )}
+                          </>
                         )}
                       </div>
 

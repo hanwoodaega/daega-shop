@@ -1,13 +1,25 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { convertLocalToISO, convertUTCToLocal } from '@/lib/time-utils'
+
+interface ColorTheme {
+  background?: string
+  accent?: string
+  title_color?: string
+  description_color?: string
+}
 
 interface Collection {
   id: string
-  type: 'timedeal' | 'best' | 'sale' | 'no9'
+  type: string
   title?: string | null
+  description?: string | null
+  image_url?: string | null
+  color_theme?: ColorTheme | null
+  sort_order?: number
   start_at?: string | null
   end_at?: string | null
   created_at: string
@@ -50,10 +62,21 @@ export default function CollectionsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const imageFileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
-    type: 'best' as 'timedeal' | 'best' | 'sale' | 'no9',
+    type: '',
     title: '',
+    description: '',
+    image_url: '',
+    color_theme: {
+      background: '#FFFFFF',
+      accent: '#C02020',
+      title_color: '#111111',
+      description_color: '#555555',
+    } as ColorTheme,
+    sort_order: 0,
     start_at: '',
     end_at: '',
   })
@@ -125,6 +148,38 @@ export default function CollectionsPage() {
     }
   }
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // 이미지 파일 타입 확인
+    if (!file.type.startsWith('image/')) {
+      toast.error('이미지 파일만 업로드 가능합니다.')
+      return
+    }
+
+    setUploadingImage(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: fd })
+      const data = await res.json()
+      
+      if (!res.ok) {
+        toast.error(data.error || '이미지 업로드 실패')
+        return
+      }
+      
+      setFormData({ ...formData, image_url: data.url })
+      toast.success('이미지가 업로드되었습니다.')
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error)
+      toast.error('이미지 업로드에 실패했습니다.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
   const fetchCollectionProducts = async (collectionId: string) => {
     try {
       const res = await fetch(`/api/admin/collections/${collectionId}`)
@@ -139,7 +194,7 @@ export default function CollectionsPage() {
 
   const handleCreate = async () => {
     if (!formData.type) {
-      toast.error('타입을 선택하세요')
+      toast.error('타입을 입력하세요')
       return
     }
 
@@ -150,8 +205,12 @@ export default function CollectionsPage() {
         body: JSON.stringify({
           type: formData.type,
           title: formData.title || null,
-          start_at: formData.start_at || null,
-          end_at: formData.end_at || null,
+          description: formData.description || null,
+          image_url: formData.image_url || null,
+          color_theme: formData.color_theme,
+          sort_order: formData.sort_order ?? 0,
+          start_at: formData.start_at ? convertLocalToISO(formData.start_at) : null,
+          end_at: formData.end_at ? convertLocalToISO(formData.end_at) : null,
         }),
       })
 
@@ -175,7 +234,7 @@ export default function CollectionsPage() {
     if (!editingCollection) return
 
     if (!formData.type) {
-      toast.error('타입을 선택하세요')
+      toast.error('타입을 입력하세요')
       return
     }
 
@@ -186,8 +245,12 @@ export default function CollectionsPage() {
         body: JSON.stringify({
           type: formData.type,
           title: formData.title || null,
-          start_at: formData.start_at || null,
-          end_at: formData.end_at || null,
+          description: formData.description || null,
+          image_url: formData.image_url || null,
+          color_theme: formData.color_theme,
+          sort_order: formData.sort_order ?? 0,
+          start_at: formData.start_at ? convertLocalToISO(formData.start_at) : null,
+          end_at: formData.end_at ? convertLocalToISO(formData.end_at) : null,
         }),
       })
 
@@ -291,8 +354,17 @@ export default function CollectionsPage() {
 
   const resetForm = () => {
     setFormData({
-      type: 'best',
+      type: '',
       title: '',
+      description: '',
+      image_url: '',
+      color_theme: {
+        background: '#FFFFFF',
+        accent: '#C02020',
+        title_color: '#111111',
+        description_color: '#555555',
+      },
+      sort_order: 0,
       start_at: '',
       end_at: '',
     })
@@ -303,8 +375,17 @@ export default function CollectionsPage() {
     setFormData({
       type: collection.type,
       title: collection.title || '',
-      start_at: collection.start_at ? new Date(collection.start_at).toISOString().slice(0, 16) : '',
-      end_at: collection.end_at ? new Date(collection.end_at).toISOString().slice(0, 16) : '',
+      description: collection.description || '',
+      image_url: collection.image_url || '',
+      color_theme: collection.color_theme || {
+        background: '#FFFFFF',
+        accent: '#C02020',
+        title_color: '#111111',
+        description_color: '#555555',
+      },
+      sort_order: collection.sort_order ?? 0,
+      start_at: collection.start_at ? convertUTCToLocal(collection.start_at) : '',
+      end_at: collection.end_at ? convertUTCToLocal(collection.end_at) : '',
     })
     setShowCreateModal(true)
   }
@@ -385,15 +466,11 @@ export default function CollectionsPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h3 className="font-medium">
-                            {collection.type === 'timedeal' ? '타임딜' :
-                             collection.type === 'best' ? '베스트' :
-                             collection.type === 'sale' ? '특가' :
-                             collection.type === 'no9' ? '한우대가 NO.9' : collection.type}
-                          </h3>
+                          <h3 className="font-medium">{collection.type}</h3>
                           {collection.title && (
-                            <p className="text-xs text-gray-500">{collection.title}</p>
+                            <p className="text-xs text-gray-500 mt-1">{collection.title}</p>
                           )}
+                          <p className="text-xs text-gray-400 mt-1">순서: {collection.sort_order ?? 0}</p>
                         </div>
                       </div>
                     </div>
@@ -409,15 +486,14 @@ export default function CollectionsPage() {
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-xl font-bold">
-                      {selectedCollection.type === 'timedeal' ? '타임딜' :
-                       selectedCollection.type === 'best' ? '베스트' :
-                       selectedCollection.type === 'sale' ? '특가' :
-                       selectedCollection.type === 'no9' ? '한우대가 NO.9' : selectedCollection.type}
-                    </h2>
+                    <h2 className="text-xl font-bold mb-1">{selectedCollection.type}</h2>
                     {selectedCollection.title && (
-                      <p className="text-sm text-gray-500">{selectedCollection.title}</p>
+                      <p className="text-sm text-gray-500 mb-1">{selectedCollection.title}</p>
                     )}
+                    {selectedCollection.description && (
+                      <p className="text-sm text-gray-400 mb-1">{selectedCollection.description}</p>
+                    )}
+                    <p className="text-xs text-gray-400">순서: {selectedCollection.sort_order ?? 0}</p>
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -507,40 +583,104 @@ export default function CollectionsPage() {
                 </button>
               </div>
 
-              <div className="p-6 space-y-4">
+              <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
                 <div>
-                  <label className="block text-sm font-medium mb-2">타입 *</label>
-                  <select
+                  <label className="block text-sm font-medium mb-2">타입 (고유 키) *</label>
+                  <input
+                    type="text"
                     value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg"
+                    placeholder="예: best, sale, no9, timedeal"
                     disabled={!!editingCollection}
-                  >
-                    <option value="best">베스트</option>
-                    <option value="sale">특가</option>
-                    <option value="no9">한우대가 NO.9</option>
-                    <option value="timedeal">타임딜</option>
-                  </select>
+                  />
                   {editingCollection && (
                     <p className="text-xs text-gray-500 mt-1">타입은 수정할 수 없습니다</p>
                   )}
                 </div>
 
-                {formData.type === 'timedeal' && (
-                  <>
                     <div>
-                      <label className="block text-sm font-medium mb-2">제목</label>
+                  <label className="block text-sm font-medium mb-2">타이틀</label>
                       <input
                         type="text"
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         className="w-full px-3 py-2 border rounded-lg"
-                        placeholder="예: 오늘만 특가!"
+                    placeholder="섹션 타이틀"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">설명</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg"
+                    placeholder="타이틀 아래 설명"
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    대표 이미지 <span className="text-red-500">*</span>
+                    <span className="text-xs text-gray-500 ml-2">(16:9 비율 이미지를 권장합니다)</span>
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="file"
+                        ref={imageFileInputRef}
+                        onChange={handleImageUpload}
+                        accept="image/*"
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => imageFileInputRef.current?.click()}
+                        disabled={uploadingImage}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      >
+                        {uploadingImage ? '업로드 중...' : '이미지 업로드'}
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.image_url}
+                      onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      placeholder="이미지 URL을 입력하거나 업로드하세요"
+                    />
+                    {formData.image_url && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-500 mb-1">미리보기:</p>
+                        <div className="relative w-full aspect-[16/9] border rounded-lg overflow-hidden bg-gray-100">
+                          <img
+                            src={formData.image_url}
+                            alt="미리보기"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">순서</label>
+                  <input
+                    type="number"
+                    value={formData.sort_order}
+                    onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border rounded-lg"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium mb-2">시작 시간</label>
+                <div>
+                  <label className="block text-sm font-medium mb-2">시작일시 (선택)</label>
                       <input
                         type="datetime-local"
                         value={formData.start_at}
@@ -550,7 +690,7 @@ export default function CollectionsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">종료 시간</label>
+                  <label className="block text-sm font-medium mb-2">종료일시 (선택)</label>
                       <input
                         type="datetime-local"
                         value={formData.end_at}
@@ -558,8 +698,104 @@ export default function CollectionsPage() {
                         className="w-full px-3 py-2 border rounded-lg"
                       />
                     </div>
-                  </>
-                )}
+
+                <div className="border-t pt-4">
+                  <label className="block text-sm font-medium mb-3">색상 테마</label>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">배경색</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={formData.color_theme.background}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            color_theme: { ...formData.color_theme, background: e.target.value }
+                          })}
+                          className="w-12 h-10 border rounded"
+                        />
+                        <input
+                          type="text"
+                          value={formData.color_theme.background}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            color_theme: { ...formData.color_theme, background: e.target.value }
+                          })}
+                          className="flex-1 px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">강조색 (타이틀 아래 구분선 색상)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={formData.color_theme.accent}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            color_theme: { ...formData.color_theme, accent: e.target.value }
+                          })}
+                          className="w-12 h-10 border rounded"
+                        />
+                        <input
+                          type="text"
+                          value={formData.color_theme.accent}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            color_theme: { ...formData.color_theme, accent: e.target.value }
+                          })}
+                          className="flex-1 px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">타이틀 색상</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={formData.color_theme.title_color}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            color_theme: { ...formData.color_theme, title_color: e.target.value }
+                          })}
+                          className="w-12 h-10 border rounded"
+                        />
+                        <input
+                          type="text"
+                          value={formData.color_theme.title_color}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            color_theme: { ...formData.color_theme, title_color: e.target.value }
+                          })}
+                          className="flex-1 px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">설명 색상</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={formData.color_theme.description_color}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            color_theme: { ...formData.color_theme, description_color: e.target.value }
+                          })}
+                          className="w-12 h-10 border rounded"
+                        />
+                        <input
+                          type="text"
+                          value={formData.color_theme.description_color}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            color_theme: { ...formData.color_theme, description_color: e.target.value }
+                          })}
+                          className="flex-1 px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 <div className="flex gap-2 pt-4">
                   <button
