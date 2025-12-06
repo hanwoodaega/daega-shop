@@ -55,6 +55,12 @@ const managementCards: AdminCard[] = [
     href: '/admin/collections',
     accent: 'bg-teal-100 text-teal-700',
   },
+  {
+    title: '히어로 이미지 관리',
+    description: '메인페이지 히어로 섹션 이미지를 관리하세요.',
+    href: '/admin/hero',
+    accent: 'bg-cyan-100 text-cyan-700',
+  },
 ]
 
 const supportCards: AdminCard[] = [

@@ -70,7 +70,7 @@ export default function SignupTermsPage() {
         </div>
       </header>
       
-      <main className="flex-1 bg-gray-50 flex items-start justify-center pt-6 pb-24 px-6">
+      <main className="flex-1 bg-white flex items-start justify-center pt-6 pb-24 px-6">
         <div className="max-w-md w-full">
           <div className="space-y-3 mb-6">
             {/* 전체 동의 */}

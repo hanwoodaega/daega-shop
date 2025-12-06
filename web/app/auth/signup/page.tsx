@@ -160,7 +160,7 @@ export default function SignupPage() {
           </div>
         </header>
         
-        <main className="flex-1 bg-gray-50 flex items-center justify-center py-12 px-6">
+        <main className="flex-1 bg-white flex items-center justify-center py-12 px-6">
           <div className="max-w-md w-full text-center">
             <div className="text-6xl mb-4">✅</div>
             <h2 className="text-3xl font-bold mb-4 text-primary-900">회원가입 완료!</h2>
@@ -203,7 +203,7 @@ export default function SignupPage() {
       </header>
       
       <main 
-        className="flex-1 bg-gray-50 flex items-start justify-center pt-12 pb-[17.5rem] px-6 overflow-y-auto scrollbar-hide"
+        className="flex-1 bg-white flex items-start justify-center pt-8 pb-32 px-6 overflow-y-auto scrollbar-hide"
         style={{ 
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -395,7 +395,7 @@ export default function SignupPage() {
                 )}
               </div>
 
-              <div>
+              <div className="mb-8">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   생년월일
                 </label>

@@ -34,37 +34,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
       return
     }
-    // 현재 세션 확인
-    supabase.auth.getSession().then(({ data: { session } }: any) => {
-      setUser(session?.user ?? null)
-      currentUserRef.current = session?.user ?? null
+    // 현재 사용자 확인
+    supabase.auth.getUser().then(({ data: { user }, error }: any) => {
+      setUser(user ?? null)
+      currentUserRef.current = user ?? null
       setLoading(false)
       
       // 로그인 상태라면 DB에서 데이터 불러오기
-      if (session?.user && !hasSyncedRef.current) {
+      if (user && !hasSyncedRef.current) {
         hasSyncedRef.current = true
         const t = window.setTimeout(() => {
-          syncWishlistOnLogin(session.user.id)
-          syncCartOnLogin(session.user.id)
+          syncWishlistOnLogin(user.id)
+          syncCartOnLogin(user.id)
         }, 100)
         timeoutsRef.current.push(t)
       }
     })
 
     // 인증 상태 변경 감지
+    // 주의: session 파라미터는 사용하지 않고 getUser()를 사용하여 보안 경고 방지
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
-      const newUser = session?.user ?? null
+    } = supabase.auth.onAuthStateChange(async (event: any, _session: any) => {
+      // getUser()를 사용하여 인증된 사용자 정보 가져오기 (보안상 안전)
+      const { data: { user: newUser }, error } = await supabase.auth.getUser()
       const prevUser = currentUserRef.current
       const wasLoggedOut = !!prevUser && !newUser
       const justLoggedIn = !prevUser && !!newUser
+      
+      if (error) {
+        console.error('사용자 인증 확인 실패:', error)
+        currentUserRef.current = null
+        setUser(null)
+        return
+      }
       
       currentUserRef.current = newUser
       setUser(newUser)
 
       // 로그인 시: localStorage → DB 마이그레이션 + DB에서 불러오기
-      if (justLoggedIn && !hasSyncedRef.current) {
+      if (justLoggedIn && newUser && !hasSyncedRef.current) {
         hasSyncedRef.current = true
         const t = window.setTimeout(async () => {
           try {

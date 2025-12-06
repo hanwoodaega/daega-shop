@@ -1,8 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
@@ -12,6 +10,7 @@ import CategoryGrid from '@/components/CategoryGrid'
 import CollectionSection from '@/components/CollectionSection'
 import RecommendationSection from '@/components/RecommendationSection'
 import TimeDealSection from '@/components/TimeDealSection'
+import HeroSlider from '@/components/HeroSlider'
 
 interface ColorTheme {
   background?: string
@@ -62,21 +61,7 @@ export default function Home() {
       
       <main className="flex-1">
         {/* 히어로 섹션 */}
-        <section className="relative bg-black text-white overflow-hidden">
-          <div className="relative w-full" style={{ aspectRatio: '3 / 2' }}>
-            <Image
-              src="/images/hero.jpg"
-              alt="히어로 이미지"
-              fill
-              className="object-cover"
-              sizes="100vw"
-              priority
-            />
-            <div className="absolute inset-0 flex items-center justify-center">
-              {/* 여기에 추가 콘텐츠를 넣을 수 있습니다 */}
-            </div>
-          </div>
-        </section>
+        <HeroSlider />
 
         {/* 카테고리 */}
         <section className="py-8 bg-white">

@@ -8,16 +8,16 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createSupabaseServerClient()
     
-    // 세션 확인
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    if (sessionError || !session?.user) {
+    // 사용자 인증 확인
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
       return NextResponse.json({ count: 0 })
     }
 
     const { count, error } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .eq('is_read', false)
 
     if (error) {

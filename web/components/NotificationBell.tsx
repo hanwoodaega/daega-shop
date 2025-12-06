@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { supabase } from '@/lib/supabase'
 
 export default function NotificationBell() {
   const router = useRouter()
@@ -18,17 +17,16 @@ export default function NotificationBell() {
     }
 
     try {
-      const { count, error } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false)
-
-      if (!error && count !== null) {
-        setUnreadCount(count)
+      const res = await fetch('/api/notifications/unread-count')
+      const data = await res.json()
+      
+      if (res.ok && typeof data.count === 'number') {
+        setUnreadCount(data.count)
       }
     } catch (error) {
       console.error('알림 개수 조회 실패:', error)
+      // 오류 발생 시 0으로 설정하여 UI가 깨지지 않도록
+      setUnreadCount(0)
     }
   }
 
@@ -52,27 +50,9 @@ export default function NotificationBell() {
     
     // 30초마다 갱신
     const interval = setInterval(fetchUnreadCount, 30000)
-    
-    // 실시간 구독 (선택사항)
-    const channel = supabase
-      .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          fetchUnreadCount()
-        }
-      )
-      .subscribe()
 
     return () => {
       clearInterval(interval)
-      supabase.removeChannel(channel)
     }
   }, [user?.id])
 

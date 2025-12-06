@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Product, isSupabaseConfigured } from '@/lib/supabase'
 import ProductCard from './ProductCard'
 import ProductCardSkeleton from './skeletons/ProductCardSkeleton'
@@ -180,11 +181,13 @@ export default function CollectionSection({ collection }: CollectionSectionProps
                 </div>
               )}
               {collection.image_url && (
-                <div className="mt-2 mb-0">
-                  <img 
-                    src={collection.image_url} 
-                    alt={collection.title || ''} 
-                    className="w-full h-auto rounded-sm"
+                <div className="mt-2 mb-0 relative w-full" style={{ aspectRatio: '16 / 9' }}>
+                  <Image
+                    src={collection.image_url}
+                    alt={collection.title || collection.description || '컬렉션 이미지'}
+                    fill
+                    className="object-cover rounded-sm"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 100vw, 100vw"
                   />
                 </div>
               )}

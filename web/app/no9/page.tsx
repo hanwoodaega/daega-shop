@@ -128,15 +128,15 @@ export default function HanwooDaegaNo9Page() {
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 bg-black min-h-[80vh]">
-        <div className="container mx-auto px-8 md:px-12 lg:px-16 py-16 md:py-24">
+        <div className="container mx-auto pl-5 md:pl-7 lg:pl-9 pr-8 md:pr-12 lg:pr-16 pt-8 md:pt-12 pb-16 md:pb-24">
           <div className="text-left">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-normal text-white">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white">
               한우대가 NO.9
             </h1>
-            <p className="text-4xl md:text-5xl lg:text-6xl font-thin text-white mt-4 md:mt-6">
+            <p className="text-3xl md:text-4xl lg:text-5xl font-normal text-white mt-5 md:mt-6">
               한우의 절정
             </p>
-            <p className="text-xl md:text-2xl lg:text-3xl text-gray-300 mt-4 md:mt-6">
+            <p className="text-xl md:text-2xl lg:text-3xl font-normal text-white mt-3 md:mt-4">
               1++ 중에서도 단 7% — NO.9
             </p>
           </div>

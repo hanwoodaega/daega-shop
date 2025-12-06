@@ -184,7 +184,7 @@ export default function TimeDealSection({ variant = 'scroll' }: TimeDealSectionP
           {timeDealDescription && (
             <div className="px-3 mb-4">
               <p 
-                className="text-lg"
+                className="text-xl"
                 style={{ 
                   color: '#000000',
                   fontFamily: 'Pretendard, sans-serif',

@@ -125,7 +125,7 @@ function LoginForm() {
         </div>
       </header>
       
-      <main className="flex-1 bg-gray-50 flex items-start justify-center pt-12 pb-12 px-6">
+      <main className="flex-1 bg-white flex items-start justify-center pt-12 pb-12 px-6">
         <div className="max-w-md w-full">
           <h2 className="text-3xl font-bold text-center mb-8 text-primary-900">로그인</h2>
 
@@ -174,7 +174,7 @@ function LoginForm() {
                 <div className="w-full border-t border-gray-300"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-gray-50 text-gray-500">또는</span>
+                <span className="px-2 bg-white text-gray-500">또는</span>
               </div>
             </div>
 
@@ -237,7 +237,7 @@ export default function LoginPage() {
             <div className="ml-auto w-10 h-10"></div>
           </div>
         </header>
-        <main className="flex-1 bg-gray-50 flex items-start justify-center pt-12 pb-12 px-6">
+        <main className="flex-1 bg-white flex items-start justify-center pt-12 pb-12 px-6">
           <div className="max-w-md w-full">
             <div className="animate-pulse">로딩 중...</div>
           </div>

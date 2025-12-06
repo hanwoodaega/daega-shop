@@ -23,8 +23,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['Pretendard', 'var(--font-inter)', 'sans-serif'],
-        display: ['var(--font-playfair)', 'serif'],
+        sans: ['Pretendard', 'sans-serif'],
+        display: ['Georgia', 'serif'],
       },
     },
   },
