@@ -95,18 +95,19 @@ function NaverCallbackContent() {
             throw new Error('로그인에 실패했습니다. 고객센터에 문의해주세요.')
           }
         } else {
-          // 회원가입 성공 후 users 테이블에 정보 저장
+          // 회원가입 성공 후 users 테이블에 정보 저장 (서버 API 사용)
           const { data: authUser } = await supabase.auth.getUser()
           if (authUser?.user) {
-            await supabase
-              .from('users')
-              .upsert({
-                id: authUser.user.id,
+            await fetch('/api/user/profile', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
                 email: user.email,
                 name: user.name,
                 phone: phoneNumber || null,
                 birthday: birthday,
-              })
+              }),
+            })
             
             // 네이버 회원가입 시 기본 약관 동의 (필수 약관만 동의, 마케팅은 미동의)
             try {
@@ -129,19 +130,19 @@ function NaverCallbackContent() {
           }
         }
       } else {
-        // 기존 사용자 로그인 성공 - 정보 업데이트 (있는 경우)
+        // 기존 사용자 로그인 성공 - 정보 업데이트 (있는 경우, 서버 API 사용)
         const { data: authUser } = await supabase.auth.getUser()
         if (authUser?.user) {
-          const updateData: any = {
-            id: authUser.user.id,
-            email: user.email,
-            name: user.name,
-            phone: phoneNumber || null,
-            birthday: birthday, // 생일이 없으면 null로 저장
-          }
-          await supabase
-            .from('users')
-            .upsert(updateData)
+          await fetch('/api/user/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: user.email,
+              name: user.name,
+              phone: phoneNumber || null,
+              birthday: birthday, // 생일이 없으면 null로 저장
+            }),
+          })
         }
       }
 

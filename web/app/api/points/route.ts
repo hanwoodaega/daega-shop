@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { getUserFromServer } from '@/lib/auth-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,15 +9,13 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createSupabaseServerClient()
     
-    // 사용자 인증 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    // 서버에서 사용자 인증 확인
+    const user = await getUserFromServer()
+    if (!user) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }
 
-    // RLS 정책을 통해 사용자 인증된 클라이언트로 조회
-    // RLS 정책이 제대로 설정되어 있으면 사용자는 자신의 포인트만 조회 가능
+    // 사용자 포인트 조회
     const { data: userPoints, error } = await supabase
       .from('user_points')
       .select('*')

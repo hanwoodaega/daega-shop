@@ -7,8 +7,9 @@ import { formatPrice } from '@/lib/utils'
 
 interface Banner {
   id: string
-  title_black?: string | null
-  title_red?: string | null
+  title?: string | null
+  subtitle_black?: string | null
+  subtitle_red?: string | null
   description?: string | null
   image_url: string
   background_color: string
@@ -55,8 +56,9 @@ export default function BannersPage() {
   const [searchQuery, setSearchQuery] = useState('')
 
   const [formData, setFormData] = useState({
-    title_black: '',
-    title_red: '',
+    title: '',
+    subtitle_black: '',
+    subtitle_red: '',
     description: '',
     image_url: '',
     background_color: '#FFFFFF',
@@ -95,8 +97,9 @@ export default function BannersPage() {
 
   const resetForm = () => {
     setFormData({
-      title_black: '',
-      title_red: '',
+      title: '',
+      subtitle_black: '',
+      subtitle_red: '',
       description: '',
       image_url: '',
       background_color: '#FFFFFF',
@@ -281,8 +284,9 @@ export default function BannersPage() {
   const openEditModal = (banner: Banner) => {
     setEditingBanner(banner)
     setFormData({
-      title_black: banner.title_black || '',
-      title_red: banner.title_red || '',
+      title: banner.title || '',
+      subtitle_black: banner.subtitle_black || '',
+      subtitle_red: banner.subtitle_red || '',
       description: banner.description || '',
       image_url: banner.image_url,
       background_color: banner.background_color,
@@ -359,13 +363,16 @@ export default function BannersPage() {
                             </span>
                             <span className="text-xs text-gray-500">순서: {banner.sort_order}</span>
                           </div>
-                          {banner.title_black && (
-                            <h3 className="font-medium text-sm text-black line-clamp-1">{banner.title_black}</h3>
+                          {banner.title && (
+                            <h3 className="font-medium text-sm text-gray-900 line-clamp-1">{banner.title}</h3>
                           )}
-                          {banner.title_red && (
-                            <h3 className="font-medium text-sm text-red-600 line-clamp-1">{banner.title_red}</h3>
+                          {banner.subtitle_black && (
+                            <h3 className="font-medium text-sm text-black line-clamp-1">{banner.subtitle_black}</h3>
                           )}
-                          {!banner.title_black && !banner.title_red && (
+                          {banner.subtitle_red && (
+                            <h3 className="font-medium text-sm text-red-600 line-clamp-1">{banner.subtitle_red}</h3>
+                          )}
+                          {!banner.title && !banner.subtitle_black && !banner.subtitle_red && (
                             <h3 className="font-medium text-sm text-gray-400">타이틀 없음</h3>
                           )}
                           {banner.slug && (
@@ -386,11 +393,14 @@ export default function BannersPage() {
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    {selectedBanner.title_black && (
-                      <h2 className="text-xl font-bold text-black mb-1">{selectedBanner.title_black}</h2>
+                    {selectedBanner.title && (
+                      <h2 className="text-xl font-bold text-gray-900 mb-1">{selectedBanner.title}</h2>
                     )}
-                    {selectedBanner.title_red && (
-                      <h2 className="text-xl font-bold text-red-600 mb-1">{selectedBanner.title_red}</h2>
+                    {selectedBanner.subtitle_black && (
+                      <h2 className="text-xl font-bold text-black mb-1">{selectedBanner.subtitle_black}</h2>
+                    )}
+                    {selectedBanner.subtitle_red && (
+                      <h2 className="text-xl font-bold text-red-600 mb-1">{selectedBanner.subtitle_red}</h2>
                     )}
                     {selectedBanner.description && (
                       <p className="text-sm text-gray-500 mb-1">{selectedBanner.description}</p>
@@ -583,23 +593,34 @@ export default function BannersPage() {
 
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">검정색 제목 (선택, 줄바꿈 가능)</label>
+                  <label className="block text-sm font-medium mb-2">타이틀 (선택, 줄바꿈 가능)</label>
                   <textarea
-                    value={formData.title_black}
-                    onChange={(e) => setFormData({ ...formData, title_black: e.target.value })}
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg"
-                    placeholder="검정색 제목 (Enter로 줄바꿈)"
+                    placeholder="타이틀 (Enter로 줄바꿈)"
                     rows={2}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">빨강색 제목 (선택, 줄바꿈 가능)</label>
+                  <label className="block text-sm font-medium mb-2">검정색 부제목 (선택, 줄바꿈 가능)</label>
                   <textarea
-                    value={formData.title_red}
-                    onChange={(e) => setFormData({ ...formData, title_red: e.target.value })}
+                    value={formData.subtitle_black}
+                    onChange={(e) => setFormData({ ...formData, subtitle_black: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg"
-                    placeholder="빨강색 제목 (Enter로 줄바꿈)"
+                    placeholder="검정색 부제목 (Enter로 줄바꿈)"
+                    rows={2}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">빨강색 부제목 (선택, 줄바꿈 가능)</label>
+                  <textarea
+                    value={formData.subtitle_red}
+                    onChange={(e) => setFormData({ ...formData, subtitle_red: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg"
+                    placeholder="빨강색 부제목 (Enter로 줄바꿈)"
                     rows={2}
                   />
                 </div>

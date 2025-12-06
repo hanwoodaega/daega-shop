@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import BottomNavbar from '@/components/BottomNavbar'
 import { useAuth } from '@/lib/auth-context'
-import { supabase } from '@/lib/supabase'
 import { useCartStore } from '@/lib/store'
 
 interface PaymentCard {
@@ -51,23 +50,17 @@ export default function PaymentPage() {
 
   const fetchCards = async () => {
     try {
-      const { data, error } = await supabase
-        .from('payment_cards')
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('is_default', { ascending: false })
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        // 테이블이 없는 경우 빈 배열 반환
-        if (error.code === 'PGRST205' || error.message?.includes('Could not find the table')) {
-          console.warn('payment_cards 테이블이 존재하지 않습니다. 마이그레이션을 실행해주세요.')
-          setCards([])
-          return
-        }
-        throw error
+      const res = await fetch('/api/payment-cards')
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        console.error('결제 카드 조회 실패:', res.status, errorData)
+        setCards([])
+        return
       }
-      setCards(data || [])
+
+      const data = await res.json()
+      setCards(data.cards || [])
     } catch (error) {
       console.error('카드 조회 실패:', error)
       setCards([])
@@ -96,27 +89,24 @@ export default function PaymentPage() {
       // 형식: **** **** **** 1111 (총 19자: 4+1+4+1+4+1+4)
       const maskedCardNumber = `**** **** **** ${last4}`
 
-      // 기본 카드로 설정하는 경우, 기존 기본 카드 해제
-      if (formData.is_default) {
-        await supabase
-          .from('payment_cards')
-          .update({ is_default: false })
-          .eq('user_id', user!.id)
-          .eq('is_default', true)
-      }
-
-      const { error } = await supabase
-        .from('payment_cards')
-        .insert({
-          user_id: user!.id,
+      const res = await fetch('/api/payment-cards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           card_number: maskedCardNumber,
           card_holder: formData.card_holder,
           expiry_month: formData.expiry_month,
           expiry_year: formData.expiry_year,
           is_default: formData.is_default,
-        })
+        }),
+      })
 
-      if (error) throw error
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || '카드 등록에 실패했습니다.')
+      }
 
       setShowAddModal(false)
       setFormData({
@@ -130,7 +120,7 @@ export default function PaymentPage() {
       fetchCards()
     } catch (error: any) {
       console.error('카드 등록 실패:', error)
-      alert('카드 등록에 실패했습니다.')
+      alert(error.message || '카드 등록에 실패했습니다.')
     } finally {
       setSaving(false)
     }
@@ -140,41 +130,37 @@ export default function PaymentPage() {
     if (!confirm('카드를 삭제하시겠습니까?')) return
 
     try {
-      const { error } = await supabase
-        .from('payment_cards')
-        .delete()
-        .eq('id', cardId)
-        .eq('user_id', user!.id)
+      const res = await fetch(`/api/payment-cards/${cardId}`, {
+        method: 'DELETE',
+      })
 
-      if (error) throw error
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || '카드 삭제에 실패했습니다.')
+      }
+
       fetchCards()
-    } catch (error) {
+    } catch (error: any) {
       console.error('카드 삭제 실패:', error)
-      alert('카드 삭제에 실패했습니다.')
+      alert(error.message || '카드 삭제에 실패했습니다.')
     }
   }
 
   const handleSetDefault = async (cardId: string) => {
     try {
-      // 기존 기본 카드 해제
-      await supabase
-        .from('payment_cards')
-        .update({ is_default: false })
-        .eq('user_id', user!.id)
-        .eq('is_default', true)
+      const res = await fetch(`/api/payment-cards/${cardId}`, {
+        method: 'PUT',
+      })
 
-      // 새 기본 카드 설정
-      const { error } = await supabase
-        .from('payment_cards')
-        .update({ is_default: true })
-        .eq('id', cardId)
-        .eq('user_id', user!.id)
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || '기본 카드 설정에 실패했습니다.')
+      }
 
-      if (error) throw error
       fetchCards()
-    } catch (error) {
+    } catch (error: any) {
       console.error('기본 카드 설정 실패:', error)
-      alert('기본 카드 설정에 실패했습니다.')
+      alert(error.message || '기본 카드 설정에 실패했습니다.')
     }
   }
 

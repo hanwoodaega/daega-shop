@@ -1,47 +1,48 @@
-// 위시리스트 DB 직접 접근 (클라이언트)
-import { supabase } from './supabase'
+// 위시리스트 서버 API 호출 (클라이언트)
 import { useWishlistStore } from './store'
 import toast from 'react-hot-toast'
 
-// DB에서 위시리스트 불러오기
+// 서버 API에서 위시리스트 불러오기
 export async function loadWishlistFromDB(userId: string): Promise<string[]> {
   try {
-    const { data, error } = await supabase
-      .from('wishlists')
-      .select('product_id')
-      .eq('user_id', userId)
-
-    if (error) {
-      console.error('위시리스트 조회 실패:', error)
+    // 서버 API로 위시리스트 조회
+    const res = await fetch('/api/wishlist')
+    
+    if (!res.ok) {
+      console.error('위시리스트 조회 실패:', res.status)
       return []
     }
-
-    return data?.map((item: any) => item.product_id) || []
+    
+    const data = await res.json()
+    return data.items || []
   } catch (error) {
     console.error('위시리스트 조회 에러:', error)
     return []
   }
 }
 
-// 위시리스트에 추가 (DB + 로컬)
+// 서버 API로 위시리스트에 추가
 export async function addToWishlistDB(userId: string, productId: string): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('wishlists')
-      .insert({
-        user_id: userId,
-        product_id: productId
-      })
-
-    if (error) {
-      // 중복 에러는 무시
-      if (error.code === '23505') {
+    // 서버 API로 위시리스트 추가
+    const res = await fetch('/api/wishlist', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ product_id: productId }),
+    })
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}))
+      // 중복 에러는 무시 (이미 찜한 상품)
+      if (errorData.exists) {
         return true
       }
-      console.error('위시리스트 추가 실패:', error)
+      console.error('위시리스트 추가 실패:', res.status, errorData)
       return false
     }
-
+    
     return true
   } catch (error) {
     console.error('위시리스트 추가 에러:', error)
@@ -49,20 +50,23 @@ export async function addToWishlistDB(userId: string, productId: string): Promis
   }
 }
 
-// 위시리스트에서 제거 (DB + 로컬)
+// 서버 API로 위시리스트에서 제거
 export async function removeFromWishlistDB(userId: string, productId: string): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('wishlists')
-      .delete()
-      .eq('user_id', userId)
-      .eq('product_id', productId)
-
-    if (error) {
-      console.error('위시리스트 제거 실패:', error)
+    // 서버 API로 위시리스트에서 제거
+    const res = await fetch('/api/wishlist', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ product_id: productId }),
+    })
+    
+    if (!res.ok) {
+      console.error('위시리스트 제거 실패:', res.status)
       return false
     }
-
+    
     return true
   } catch (error) {
     console.error('위시리스트 제거 에러:', error)

@@ -5,8 +5,9 @@ import Link from 'next/link'
 
 interface Banner {
   id: string
-  title_black?: string | null
-  title_red?: string | null
+  title?: string | null
+  subtitle_black?: string | null
+  subtitle_red?: string | null
   description?: string | null
   image_url: string
   background_color: string
@@ -50,16 +51,16 @@ export default function BannerSection() {
             <div className="flex flex-row items-center gap-6 md:gap-8">
               {/* 왼쪽: 텍스트 영역 */}
               <div className="flex-1 text-left">
-                {/* 타이틀 영역 */}
+                {/* 부제목 영역 */}
                 <div className="mb-3">
-                  {banner.title_black && (
+                  {banner.subtitle_black && (
                     <h2 className="text-2xl md:text-3xl font-bold text-black mb-0 whitespace-pre-line tracking-tight leading-tight">
-                      {banner.title_black}
+                      {banner.subtitle_black}
                     </h2>
                   )}
-                  {banner.title_red && (
+                  {banner.subtitle_red && (
                     <h2 className="text-2xl md:text-3xl font-bold text-red-600 whitespace-pre-line tracking-tight leading-tight">
-                      {banner.title_red}
+                      {banner.subtitle_red}
                     </h2>
                   )}
                 </div>
@@ -77,7 +78,7 @@ export default function BannerSection() {
                 {banner.image_url ? (
                   <img
                     src={banner.image_url}
-                    alt={banner.title_black || banner.title_red || '배너'}
+                    alt={banner.title || banner.subtitle_black || banner.subtitle_red || '배너'}
                     className="w-40 h-40 md:w-60 md:h-60 object-contain"
                   />
                 ) : null}

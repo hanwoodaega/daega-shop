@@ -173,26 +173,19 @@ function CartPageContent() {
     }
 
     try {
-      // 1. 모든 배송지의 is_default를 false로 설정
-      await supabase
-        .from('addresses')
-        .update({ is_default: false })
-        .eq('user_id', user.id)
+      // 서버 API로 기본 배송지 설정
+      const res = await fetch(`/api/addresses/${selectedAddressId}/default`, {
+        method: 'PUT',
+      })
 
-      // 2. 선택한 배송지를 기본 배송지로 설정
-      const { error } = await supabase
-        .from('addresses')
-        .update({ is_default: true })
-        .eq('id', selectedAddressId)
-        .eq('user_id', user.id)
-
-      if (error) {
-        console.error('기본 배송지 설정 실패:', error)
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        console.error('기본 배송지 설정 실패:', res.status, errorData)
         toast.error('배송지 설정에 실패했습니다.')
         return
       }
 
-      // 3. 배송지 목록 새로고침 (hook에서 자동 업데이트)
+      // 배송지 목록 새로고침 (hook에서 자동 업데이트)
       await Promise.all([
         loadAllAddresses(),
         reloadDefaultAddress()
@@ -516,7 +509,7 @@ function CartPageContent() {
                       checked={allSelected}
                       onChange={(e) => toggleSelectAll(e.target.checked)}
                       className="w-5 h-5 border-gray-300 focus:ring-red-600 accent-red-600"
-                      style={{ accentColor: '#1e3a8a' }}
+                      style={{ accentColor: '#dc2626' }}
                     />
                     <span className="ml-3 text-sm font-medium text-gray-900">전체선택</span>
                   </label>
@@ -546,7 +539,7 @@ function CartPageContent() {
                           checked={groupSelected}
                           onChange={() => toggleSelectGroup(groupId)}
                           className="w-5 h-5 border-gray-300 focus:ring-red-600 accent-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                          style={{ accentColor: '#1e3a8a' }}
+                          style={{ accentColor: '#dc2626' }}
                         />
                         <span className="text-base font-medium text-gray-900">
                           {groupItems[0].promotion_type || '2+1'} 적용
@@ -665,7 +658,7 @@ function CartPageContent() {
                             }}
                             onClick={(e) => e.stopPropagation()}
                             className="w-5 h-5 border-gray-300 focus:ring-red-600 bg-white accent-red-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ accentColor: '#1e3a8a' }}
+                            style={{ accentColor: '#dc2626' }}
                           />
                         </div>
                       )}

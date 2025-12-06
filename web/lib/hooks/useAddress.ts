@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 
 export interface Address {
@@ -41,35 +40,16 @@ export function useDefaultAddress(enabled: boolean = true) {
 
     setLoading(true)
     try {
-      // 기본 배송지 조회
-      const { data: defaultAddr, error } = await supabase
-        .from('addresses')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_default', true)
-        .maybeSingle()
-
-      if (error || !defaultAddr) {
-        // 기본 배송지가 없으면 첫 번째 배송지 조회
-        const { data: firstAddr } = await supabase
-          .from('addresses')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-
-        if (firstAddr) {
-          setAddress(firstAddr)
-          setHasDefaultAddress(true)
-        } else {
-          setAddress(null)
-          setHasDefaultAddress(false)
-        }
-      } else {
-        setAddress(defaultAddr)
-        setHasDefaultAddress(true)
+      // 서버 API로 기본 주소 조회
+      const res = await fetch('/api/addresses/default')
+      
+      if (!res.ok) {
+        throw new Error('기본 주소 조회 실패')
       }
+      
+      const data = await res.json()
+      setAddress(data.address)
+      setHasDefaultAddress(data.hasDefaultAddress)
     } catch (error) {
       console.error('배송지 조회 실패:', error)
       setAddress(null)
@@ -100,16 +80,15 @@ export function useAddresses() {
 
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('addresses')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('is_default', { ascending: false })
-        .order('created_at', { ascending: false })
-
-      if (!error && data) {
-        setAddresses(data)
+      // 서버 API로 주소 목록 조회
+      const res = await fetch('/api/addresses')
+      
+      if (!res.ok) {
+        throw new Error('주소 목록 조회 실패')
       }
+      
+      const data = await res.json()
+      setAddresses(data.addresses || [])
     } catch (error) {
       console.error('배송지 목록 조회 실패:', error)
     } finally {
@@ -158,15 +137,15 @@ export function useUserProfile() {
 
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('name, phone, email')
-        .eq('id', user.id)
-        .single()
-
-      if (!error && data) {
-        setProfile(data)
+      // 서버 API로 사용자 프로필 조회
+      const res = await fetch('/api/user/profile')
+      
+      if (!res.ok) {
+        throw new Error('사용자 정보 조회 실패')
       }
+      
+      const data = await res.json()
+      setProfile(data.profile)
     } catch (error) {
       console.error('사용자 정보 조회 실패:', error)
     } finally {

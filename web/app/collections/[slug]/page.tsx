@@ -4,7 +4,6 @@ import { useEffect, useState, Suspense, useCallback, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
@@ -13,11 +12,13 @@ import { Product } from '@/lib/supabase'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
+import { useCartStore } from '@/lib/store'
 
 function CollectionContent({ slug }: { slug: string }) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const collectionSlug = slug
+  const cartCount = useCartStore((state) => state.getTotalItems())
   
   const [collection, setCollection] = useState<any>(null)
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])
@@ -122,7 +123,45 @@ function CollectionContent({ slug }: { slug: string }) {
   if (!collection && !loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
+        {/* 컬렉션 전용 헤더 */}
+        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+          <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
+            <button
+              onClick={() => router.back()}
+              aria-label="뒤로가기"
+              className="p-2 text-gray-700 hover:text-gray-900"
+            >
+              <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+              <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">
+                컬렉션
+              </h1>
+            </div>
+            <div className="ml-auto flex items-center">
+              <button
+                onClick={() => router.push('/cart')}
+                className="p-2 hover:bg-gray-100 rounded-full transition relative"
+                aria-label="장바구니"
+              >
+                <svg className="w-8 h-8 md:w-9 md:h-9 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span
+                  className={`absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
+                    cartCount > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-0 pointer-events-none'
+                  }`}
+                  suppressHydrationWarning
+                  aria-hidden={cartCount <= 0}
+                >
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              </button>
+            </div>
+          </div>
+        </header>
         <main className="flex-1 container mx-auto px-4 py-20 text-center">
           <p className="text-xl text-gray-600 mb-4">컬렉션을 찾을 수 없습니다</p>
           <Link href="/">
@@ -138,10 +177,58 @@ function CollectionContent({ slug }: { slug: string }) {
   }
 
   const theme = collection?.color_theme || {}
+  const collectionTitle = collection?.title || 
+    (collection?.type === 'best' ? '베스트' :
+     collection?.type === 'sale' ? '특가' :
+     collection?.type === 'no9' ? '한우대가 NO.9' :
+     collection?.type === 'timedeal' ? '타임딜' : '컬렉션')
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      {/* 컬렉션 전용 헤더 */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+        <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
+          {/* 왼쪽: 뒤로가기 */}
+          <button
+            onClick={() => router.back()}
+            aria-label="뒤로가기"
+            className="p-2 text-gray-700 hover:text-gray-900"
+          >
+            <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          {/* 중앙: 제목 (absolute로 완전 중앙 배치) */}
+          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">
+              {collectionTitle}
+            </h1>
+          </div>
+          
+          {/* 오른쪽: 장바구니 버튼 */}
+          <div className="ml-auto flex items-center">
+            <button
+              onClick={() => router.push('/cart')}
+              className="p-2 hover:bg-gray-100 rounded-full transition relative"
+              aria-label="장바구니"
+            >
+              <svg className="w-8 h-8 md:w-9 md:h-9 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span
+                className={`absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
+                  cartCount > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-0 pointer-events-none'
+                }`}
+                suppressHydrationWarning
+                aria-hidden={cartCount <= 0}
+              >
+                {cartCount > 99 ? '99+' : cartCount}
+              </span>
+            </button>
+          </div>
+        </div>
+      </header>
       
       <main className="flex-1">
         {/* 대표 이미지 섹션 - 이미지가 있을 때만 표시 */}
@@ -159,22 +246,7 @@ function CollectionContent({ slug }: { slug: string }) {
         )}
 
         <div className="container mx-auto px-4 py-4 pt-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 
-              className="text-2xl md:text-3xl font-semibold"
-              style={{ 
-                color: '#000000',
-                fontFamily: 'Pretendard, sans-serif',
-                fontWeight: 600,
-                letterSpacing: '-0.5px',
-              }}
-            >
-              {collection?.title || 
-               (collection?.type === 'best' ? '베스트' :
-                collection?.type === 'sale' ? '특가' :
-                collection?.type === 'no9' ? '한우대가 NO.9' :
-                collection?.type === 'timedeal' ? '타임딜' : '')}
-            </h1>
+          <div className="flex justify-end items-center mb-6">
             <select
               value={sortOrder}
               onChange={(e) => {
@@ -241,7 +313,15 @@ export default function CollectionPage({ params }: { params: { slug: string } })
   return (
     <Suspense fallback={
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+          <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+              <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">
+                컬렉션
+              </h1>
+            </div>
+          </div>
+        </header>
         <main className="flex-1 container mx-auto px-4 py-4 pt-6">
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
             {[...Array(8)].map((_, i) => (

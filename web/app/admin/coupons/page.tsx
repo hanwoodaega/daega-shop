@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { supabase, Coupon } from '@/lib/supabase'
-import { createCoupon, updateCoupon, deleteCoupon } from '@/lib/coupons'
+import { Coupon } from '@/lib/supabase'
 
 export default function CouponsPage() {
   const router = useRouter()
@@ -59,16 +58,23 @@ export default function CouponsPage() {
 
   const fetchCoupons = async () => {
     try {
-      const { data, error } = await supabase
-        .from('coupons')
-        .select('*')
-        .order('created_at', { ascending: false })
+      const res = await fetch('/api/admin/coupons')
+      
+      if (res.status === 401) {
+        router.push('/admin/login?next=/admin/coupons')
+        return
+      }
 
-      if (error) throw error
-      setCoupons(data || [])
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || '쿠폰 조회 실패')
+      }
+
+      const data = await res.json()
+      setCoupons(data.coupons || [])
     } catch (error: any) {
       console.error('쿠폰 조회 실패:', error)
-      toast.error('쿠폰 목록을 불러오지 못했습니다.')
+      toast.error(error.message || '쿠폰 목록을 불러오지 못했습니다.')
     } finally {
       setLoading(false)
     }
@@ -107,15 +113,26 @@ export default function CouponsPage() {
         is_first_purchase_only: formData.is_first_purchase_only,
       }
 
-      const couponId = await createCoupon(couponData)
-      if (couponId) {
-        toast.success('쿠폰이 생성되었습니다.')
-        setShowCreateModal(false)
-        resetForm()
-        fetchCoupons()
-      } else {
-        toast.error('쿠폰 생성에 실패했습니다.')
+      const res = await fetch('/api/admin/coupons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(couponData),
+      })
+
+      if (res.status === 401) {
+        router.push('/admin/login?next=/admin/coupons')
+        return
       }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || '쿠폰 생성에 실패했습니다.')
+      }
+
+      toast.success('쿠폰이 생성되었습니다.')
+      setShowCreateModal(false)
+      resetForm()
+      fetchCoupons()
     } catch (error: any) {
       console.error('쿠폰 생성 실패:', error)
       toast.error(error.message || '쿠폰 생성에 실패했습니다.')
@@ -162,16 +179,27 @@ export default function CouponsPage() {
         is_first_purchase_only: formData.is_first_purchase_only,
       }
 
-      const success = await updateCoupon(editingCoupon.id, updates)
-      if (success) {
-        toast.success('쿠폰이 수정되었습니다.')
-        setShowCreateModal(false)
-        setEditingCoupon(null)
-        resetForm()
-        fetchCoupons()
-      } else {
-        toast.error('쿠폰 수정에 실패했습니다.')
+      const res = await fetch(`/api/admin/coupons/${editingCoupon.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+
+      if (res.status === 401) {
+        router.push('/admin/login?next=/admin/coupons')
+        return
       }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || '쿠폰 수정에 실패했습니다.')
+      }
+
+      toast.success('쿠폰이 수정되었습니다.')
+      setShowCreateModal(false)
+      setEditingCoupon(null)
+      resetForm()
+      fetchCoupons()
     } catch (error: any) {
       console.error('쿠폰 수정 실패:', error)
       toast.error(error.message || '쿠폰 수정에 실패했습니다.')
@@ -182,13 +210,22 @@ export default function CouponsPage() {
     if (!confirm('정말 삭제하시겠습니까?')) return
 
     try {
-      const success = await deleteCoupon(couponId)
-      if (success) {
-        toast.success('쿠폰이 삭제되었습니다.')
-        fetchCoupons()
-      } else {
-        toast.error('쿠폰 삭제에 실패했습니다.')
+      const res = await fetch(`/api/admin/coupons/${couponId}`, {
+        method: 'DELETE',
+      })
+
+      if (res.status === 401) {
+        router.push('/admin/login?next=/admin/coupons')
+        return
       }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || '쿠폰 삭제에 실패했습니다.')
+      }
+
+      toast.success('쿠폰이 삭제되었습니다.')
+      fetchCoupons()
     } catch (error: any) {
       console.error('쿠폰 삭제 실패:', error)
       toast.error(error.message || '쿠폰 삭제에 실패했습니다.')
@@ -197,14 +234,27 @@ export default function CouponsPage() {
 
   const toggleActive = async (coupon: Coupon) => {
     try {
-      const success = await updateCoupon(coupon.id, { is_active: !coupon.is_active })
-      if (success) {
-        toast.success(`쿠폰이 ${!coupon.is_active ? '활성화' : '비활성화'}되었습니다.`)
-        fetchCoupons()
+      const res = await fetch(`/api/admin/coupons/${coupon.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !coupon.is_active }),
+      })
+
+      if (res.status === 401) {
+        router.push('/admin/login?next=/admin/coupons')
+        return
       }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || '쿠폰 상태 변경에 실패했습니다.')
+      }
+
+      toast.success(`쿠폰이 ${!coupon.is_active ? '활성화' : '비활성화'}되었습니다.`)
+      fetchCoupons()
     } catch (error: any) {
       console.error('쿠폰 상태 변경 실패:', error)
-      toast.error('쿠폰 상태 변경에 실패했습니다.')
+      toast.error(error.message || '쿠폰 상태 변경에 실패했습니다.')
     }
   }
 

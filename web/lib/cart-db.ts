@@ -1,90 +1,35 @@
-// 장바구니 DB 직접 접근 (클라이언트)
-import { supabase } from './supabase'
+// 장바구니 서버 API 호출 (클라이언트)
 import { useCartStore, CartItem } from './store'
 import toast from 'react-hot-toast'
 import { debugLog } from './debug'
-import { getDiscountPercent } from './promotion-utils'
-import { extractPromotion, getPromotionTypeString } from './product-queries'
 
-// DB에서 장바구니 불러오기
+// 서버 API에서 장바구니 불러오기
 export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
   try {
-    const { data, error } = await supabase
-      .from('carts')
-      .select(`
-        id,
-        product_id,
-        quantity,
-        promotion_group_id,
-        discount_percent,
-        products (
-          id,
-          slug,
-          name,
-          price,
-          brand,
-          status,
-          promotion_products (
-            promotion_id,
-            promotions (
-              id,
-              type,
-              buy_qty,
-              discount_percent,
-              is_active
-            )
-          )
-        )
-      `)
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-
-    if (error) {
-      console.error('장바구니 조회 실패:', error)
+    // 서버 API로 장바구니 조회
+    const res = await fetch('/api/cart')
+    
+    if (!res.ok) {
+      console.error('장바구니 조회 실패:', res.status)
       return []
     }
-
-    // localStorage 형식으로 변환 (상품의 최신 정보 우선 사용)
+    
+    const data = await res.json()
+    const apiItems = data.items || []
+    
     // 기존 상태의 selected 값을 보존하기 위해 현재 스토어 상태 가져오기
     const currentItems = useCartStore.getState().items
-    const items = data?.map((item: any) => {
-      const product = Array.isArray(item.products) ? item.products[0] : item.products
-      
-      // 프로모션 정보 추출
-      const promotion = extractPromotion(product)
-      
-      // 할인율 결정 (프로모션 그룹 여부에 따라 우선순위 다름)
-      const discountPercent = getDiscountPercent(
-        item.discount_percent,
-        promotion?.discount_percent,
-        !!item.promotion_group_id
-      )
-      
-      // 프로모션 타입 결정 (BOGO인 경우 buy_qty로부터 생성)
-      const promotionType = getPromotionTypeString(promotion)
-      
-      // 기존 아이템의 selected 상태 보존 (없으면 true)
+    
+    // selected 상태 보존
+    const items = apiItems.map((item: CartItem) => {
       const existingItem = currentItems.find(i => i.id === item.id)
-      const selected = existingItem?.selected ?? true
-      
       return {
-        id: item.id,
-        productId: item.product_id,
-        slug: product?.slug || null,
-        name: product?.name || '',
-        price: product?.price || 0, // 상품의 최신 가격 사용
-        quantity: item.quantity,
-        imageUrl: '', // product_images에서 가져와야 함
-        discount_percent: discountPercent,
-        brand: product?.brand,
-        promotion_type: promotionType,
-        promotion_group_id: item.promotion_group_id,
-        selected: selected,
-        status: product?.status || 'active', // 상품 상태
+        ...item,
+        selected: existingItem?.selected ?? true
       }
-    }) || []
-
-    debugLog.log('[loadCartFromDB] 최신 상품 정보로 변환 완료:', items.length)
+    })
+    
+    debugLog.log('[loadCartFromDB] 서버 API에서 장바구니 로드 완료:', items.length)
     return items
   } catch (error) {
     console.error('장바구니 조회 에러:', error)
@@ -92,113 +37,61 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
   }
 }
 
-// 장바구니에 추가 (DB)
+// 서버 API로 장바구니에 추가
 export async function addToCartDB(userId: string, item: CartItem): Promise<string | null> {
   debugLog.log('[addToCartDB] 시작:', { userId, item })
   
   try {
-    // 프로모션 그룹이 있으면 항상 새로 추가
-    if (item.promotion_group_id) {
-      debugLog.log('[addToCartDB] 프로모션 상품 - 신규 추가')
-      const { data, error } = await supabase
-        .from('carts')
-        .insert({
-          user_id: userId,
-          product_id: item.productId,
-          quantity: item.quantity,
-          promotion_type: item.promotion_type,
-          promotion_group_id: item.promotion_group_id,
-          discount_percent: item.discount_percent
-        })
-        .select()
-        .single()
-
-      if (error) {
-        console.error('[addToCartDB] 프로모션 상품 추가 실패:', error)
-        return null
-      }
-
-      debugLog.log('[addToCartDB] 프로모션 상품 추가 성공:', data.id)
-      return data.id
-    }
-
-    // 일반 상품: 기존 상품 확인
-    debugLog.log('[addToCartDB] 일반 상품 - 기존 상품 확인 중')
-    const { data: existing, error: checkError } = await supabase
-      .from('carts')
-      .select('id, quantity, discount_percent')
-      .eq('user_id', userId)
-      .eq('product_id', item.productId)
-      .is('promotion_group_id', null)
-      .maybeSingle() // single() 대신 maybeSingle() 사용 (없어도 에러 안 남)
-    
-    // 406 에러 등 발생 시 로그
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('[addToCartDB] 장바구니 확인 실패:', checkError)
-    }
-
-    if (existing) {
-      // 수량 증가
-      debugLog.log('[addToCartDB] 기존 상품 있음 - 수량 증가:', existing.id)
-      const { data, error } = await supabase
-        .from('carts')
-        .update({ 
-          quantity: existing.quantity + item.quantity,
-          discount_percent: item.discount_percent ?? existing.discount_percent
-        })
-        .eq('id', existing.id)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('[addToCartDB] 장바구니 수량 업데이트 실패:', error)
-        return null
-      }
-
-      debugLog.log('[addToCartDB] 수량 업데이트 성공:', data.id)
-      return data.id
-    }
-
-    // 새 상품 추가
-    debugLog.log('[addToCartDB] 신규 상품 추가')
-    const { data, error } = await supabase
-      .from('carts')
-      .insert({
-        user_id: userId,
+    // 서버 API로 장바구니 추가
+    const res = await fetch('/api/cart', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         product_id: item.productId,
         quantity: item.quantity,
+        promotion_type: item.promotion_type,
+        promotion_group_id: item.promotion_group_id,
         discount_percent: item.discount_percent
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('[addToCartDB] 장바구니 추가 실패:', error)
+      }),
+    })
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}))
+      console.error('[addToCartDB] 장바구니 추가 실패:', res.status, errorData)
       return null
     }
-
-    debugLog.log('[addToCartDB] 신규 상품 추가 성공:', data.id)
-    return data.id
+    
+    const data = await res.json()
+    debugLog.log('[addToCartDB] 장바구니 추가 성공:', data.data?.id)
+    return data.data?.id || null
   } catch (error) {
     console.error('[addToCartDB] 장바구니 추가 에러:', error)
     return null
   }
 }
 
-// 장바구니 수량 수정 (DB)
+// 서버 API로 장바구니 수량 수정
 export async function updateCartQuantityDB(userId: string, cartId: string, quantity: number): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('carts')
-      .update({ quantity })
-      .eq('id', cartId)
-      .eq('user_id', userId)
-
-    if (error) {
-      console.error('장바구니 수량 수정 실패:', error)
+    // 서버 API로 장바구니 수량 수정
+    const res = await fetch('/api/cart', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        id: cartId,
+        quantity
+      }),
+    })
+    
+    if (!res.ok) {
+      console.error('장바구니 수량 수정 실패:', res.status)
       return false
     }
-
+    
     return true
   } catch (error) {
     console.error('장바구니 수량 수정 에러:', error)
@@ -206,35 +99,26 @@ export async function updateCartQuantityDB(userId: string, cartId: string, quant
   }
 }
 
-// 장바구니에서 제거 (DB)
+// 서버 API로 장바구니에서 제거
 export async function removeFromCartDB(userId: string, cartId: string, promotionGroupId?: string): Promise<boolean> {
   try {
-    if (promotionGroupId) {
-      // 프로모션 그룹 전체 삭제
-      const { error } = await supabase
-        .from('carts')
-        .delete()
-        .eq('user_id', userId)
-        .eq('promotion_group_id', promotionGroupId)
-
-      if (error) {
-        console.error('장바구니 제거 실패:', error)
-        return false
-      }
-    } else {
-      // 개별 상품 삭제
-      const { error } = await supabase
-        .from('carts')
-        .delete()
-        .eq('id', cartId)
-        .eq('user_id', userId)
-
-      if (error) {
-        console.error('장바구니 제거 실패:', error)
-        return false
-      }
+    // 서버 API로 장바구니에서 제거
+    const res = await fetch('/api/cart', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        id: cartId,
+        promotion_group_id: promotionGroupId
+      }),
+    })
+    
+    if (!res.ok) {
+      console.error('장바구니 제거 실패:', res.status)
+      return false
     }
-
+    
     return true
   } catch (error) {
     console.error('장바구니 제거 에러:', error)
@@ -387,7 +271,7 @@ export async function updateCartQuantityWithDB(
 }
 
 /**
- * 장바구니 전체 비우기 (DB 삭제 포함)
+ * 서버 API로 장바구니 전체 비우기
  * - localStorage와 DB 모두에서 삭제
  */
 export async function clearCartWithDB(userId: string | null): Promise<void> {
@@ -400,19 +284,18 @@ export async function clearCartWithDB(userId: string | null): Promise<void> {
   // 2. DB 삭제 (로그인 시)
   if (userId) {
     try {
-      const { error } = await supabase
-        .from('carts')
-        .delete()
-        .eq('user_id', userId)
+      // 모든 장바구니 항목 삭제 (각 항목마다 DELETE 호출)
+      // 또는 별도의 clear API를 만들 수도 있지만, 현재는 각 항목 삭제
+      const itemsToDelete = previousItems.filter(item => item.id && !item.id.startsWith('cart-'))
       
-      if (error) {
-        // DB 삭제 실패 시 롤백
-        useCartStore.setState({ items: previousItems })
-        toast.error('장바구니 비우기에 실패했습니다.')
-        console.error('장바구니 비우기 실패:', error)
-      } else {
-        toast.success('장바구니가 비워졌습니다.')
-      }
+      // 병렬로 모든 항목 삭제
+      await Promise.all(
+        itemsToDelete.map(item => 
+          removeFromCartDB(userId, item.id!, item.promotion_group_id)
+        )
+      )
+      
+      toast.success('장바구니가 비워졌습니다.')
     } catch (error) {
       // 에러 발생 시 롤백
       useCartStore.setState({ items: previousItems })

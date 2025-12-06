@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import { useAuth } from '@/lib/auth-context'
-import { supabase, Address } from '@/lib/supabase'
+import { Address } from '@/lib/supabase'
 import { formatPhoneNumber } from '@/lib/format-phone'
 import { useDaumPostcodeScript, openDaumPostcode, AddressSearchResult } from '@/lib/hooks/useDaumPostcode'
 import { useCartStore } from '@/lib/store'
@@ -51,17 +51,17 @@ export default function AddressesPage() {
 
   const fetchAddresses = async () => {
     try {
-      const { data, error } = await supabase
-        .from('addresses')
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('is_default', { ascending: false })
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setAddresses(data || [])
+      const res = await fetch('/api/addresses')
+      
+      if (!res.ok) {
+        throw new Error('배송지 조회 실패')
+      }
+      
+      const data = await res.json()
+      setAddresses(data.addresses || [])
     } catch (error) {
       console.error('배송지 조회 실패:', error)
+      toast.error('배송지 조회에 실패했습니다.')
     } finally {
       setLoadingAddresses(false)
     }
@@ -107,7 +107,6 @@ export default function AddressesPage() {
         (formData.is_default ? '기본 배송지' : `배송지 ${addresses.length + 1}`)
 
       const addressData = {
-        user_id: user!.id,
         name: addressName,
         recipient_name: formData.recipient_name.trim(),
         recipient_phone: formData.recipient_phone,
@@ -116,24 +115,36 @@ export default function AddressesPage() {
         address_detail: formData.address_detail.trim() || null,
         delivery_note: formData.delivery_note.trim() || null,
         is_default: formData.is_default,
-        updated_at: new Date().toISOString(),
       }
 
       if (editingAddress) {
-        // 수정
-        const { error } = await supabase
-          .from('addresses')
-          .update(addressData)
-          .eq('id', editingAddress.id)
+        // 수정 - 서버 API 사용
+        const res = await fetch(`/api/addresses/${editingAddress.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(addressData),
+        })
 
-        if (error) throw error
+        if (!res.ok) {
+          const errorData = await res.json()
+          throw new Error(errorData.error || '배송지 수정 실패')
+        }
       } else {
-        // 추가
-        const { error } = await supabase
-          .from('addresses')
-          .insert(addressData)
+        // 추가 - 서버 API 사용
+        const res = await fetch('/api/addresses', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(addressData),
+        })
 
-        if (error) throw error
+        if (!res.ok) {
+          const errorData = await res.json()
+          throw new Error(errorData.error || '배송지 추가 실패')
+        }
       }
 
       await fetchAddresses()
@@ -141,7 +152,7 @@ export default function AddressesPage() {
       toast.success(editingAddress ? '배송지가 수정되었습니다.' : '배송지가 추가되었습니다.')
     } catch (error: any) {
       console.error('배송지 저장 실패:', error)
-      toast.error('배송지 저장에 실패했습니다.')
+      toast.error(error.message || '배송지 저장에 실패했습니다.')
     } finally {
       setSaving(false)
     }
@@ -149,35 +160,39 @@ export default function AddressesPage() {
 
   const handleDeleteAddress = async (addressId: string) => {
     try {
-      const { error } = await supabase
-        .from('addresses')
-        .delete()
-        .eq('id', addressId)
+      const res = await fetch(`/api/addresses/${addressId}`, {
+        method: 'DELETE',
+      })
 
-      if (error) throw error
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || '배송지 삭제 실패')
+      }
 
       await fetchAddresses()
       toast.success('배송지가 삭제되었습니다.')
-    } catch (error) {
+    } catch (error: any) {
       console.error('배송지 삭제 실패:', error)
-      toast.error('배송지 삭제에 실패했습니다.')
+      toast.error(error.message || '배송지 삭제에 실패했습니다.')
     }
   }
 
   const handleSetDefault = async (addressId: string) => {
     try {
-      const { error } = await supabase
-        .from('addresses')
-        .update({ is_default: true })
-        .eq('id', addressId)
+      const res = await fetch(`/api/addresses/${addressId}/default`, {
+        method: 'PUT',
+      })
 
-      if (error) throw error
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || '기본 배송지 설정 실패')
+      }
 
       await fetchAddresses()
       toast.success('기본 배송지로 설정되었습니다.')
-    } catch (error) {
+    } catch (error: any) {
       console.error('기본 배송지 설정 실패:', error)
-      toast.error('기본 배송지 설정에 실패했습니다.')
+      toast.error(error.message || '기본 배송지 설정에 실패했습니다.')
     }
   }
 

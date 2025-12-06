@@ -23,18 +23,27 @@ function LoginForm() {
     setError('')
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('로그인 시도:', email)
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) throw error
+      console.log('로그인 결과:', { user: data?.user?.id, error })
 
+      if (error) {
+        console.error('로그인 에러:', error)
+        throw error
+      }
+
+      console.log('로그인 성공, 리다이렉트:', nextPath)
+      // 잠시 대기 후 리다이렉트 (인증 상태가 업데이트될 시간을 줌)
+      await new Promise(resolve => setTimeout(resolve, 100))
       router.push(nextPath)
       router.refresh()
     } catch (error: any) {
+      console.error('로그인 실패:', error)
       setError(error.message || '로그인에 실패했습니다.')
-    } finally {
       setLoading(false)
     }
   }

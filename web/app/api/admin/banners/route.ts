@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { title_black, title_red, description, image_url, background_color, is_active, sort_order, slug } = body
+    const { title, subtitle_black, subtitle_red, description, image_url, background_color, is_active, sort_order, slug } = body
 
     if (!image_url) {
       return NextResponse.json({ error: 'image_url은 필수입니다.' }, { status: 400 })
@@ -46,8 +46,9 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from('banners')
       .insert({
-        title_black: title_black || null,
-        title_red: title_red || null,
+        title: title || null,
+        subtitle_black: subtitle_black || null,
+        subtitle_red: subtitle_red || null,
         description: description || null,
         image_url,
         background_color: background_color || '#FFFFFF',

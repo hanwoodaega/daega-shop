@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import BottomNavbar from '@/components/BottomNavbar'
 import { useAuth } from '@/lib/auth-context'
-import { supabase } from '@/lib/supabase'
-import { getUserCoupons } from '@/lib/coupons'
 import { useCartStore } from '@/lib/store'
 
 export default function ProfilePage() {
@@ -21,65 +19,140 @@ export default function ProfilePage() {
   const cartCount = useCartStore((state) => state.getTotalItems())
 
   useEffect(() => {
-    if (!loading) {
-      if (user?.id) {
-        loadUserProfile()
-      } else {
-        setLoadingProfile(false)
-      }
+    let isMounted = true
+    let maxWaitTimeout: NodeJS.Timeout | null = null
+
+    if (loading) {
+      setLoadingProfile(false)
+      return
     }
-  }, [user?.id, loading, user]) // ✅ user.id만 의존성으로 (무한 루프 방지)
 
-  const loadUserProfile = async () => {
-    try {
-      // 타임아웃 설정 (5초)
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('타임아웃')), 5000)
+    if (user?.id) {
+      const currentUser = user
+      const userId = user.id
+      
+      setLoadingProfile(true)
+      
+      // 최대 대기 시간 설정 (3초 후 강제로 로딩 해제)
+      maxWaitTimeout = setTimeout(() => {
+        setLoadingProfile(false)
+      }, 3000)
+        
+      const loadUserProfile = async () => {
+        if (!userId || !isMounted) {
+          setLoadingProfile(false)
+          return
+        }
+
+        // 통합 서버 API로 모든 데이터 조회
+        const fetchProfileInfo = async () => {
+          try {
+            const res = await fetch('/api/profile/info')
+            
+            if (!res.ok) {
+              console.error('마이페이지 정보 조회 실패:', res.status)
+              return { 
+                name: null, 
+                orders_count: 0, 
+                coupons_count: 0, 
+                points: 0,
+                error: { message: `HTTP ${res.status}` } 
+              }
+            }
+            
+            const data = await res.json()
+            return data
+          } catch (error) {
+            console.error('마이페이지 정보 조회 예외:', error)
+            return { 
+              name: null, 
+              orders_count: 0, 
+              coupons_count: 0, 
+              points: 0,
+              error: error 
+            }
+          }
+        }
+
+        // 타임아웃 설정
+        const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+        
+        try {
+          const profileInfo = await Promise.race([
+            fetchProfileInfo(),
+            timeout(3000).then(() => ({ 
+              name: null, 
+              orders_count: 0, 
+              coupons_count: 0, 
+              points: 0,
+              error: { message: 'timeout' } 
+            }))
+          ])
+
+          if (!isMounted) return
+
+          // 사용자 이름 설정
+          const userName = profileInfo?.name || null
+          if (userName) {
+            setUserName(userName)
+          } else {
+            setUserName(currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || '사용자')
+          }
+
+          // 주문 개수 설정
+          const orderCountValue = profileInfo?.orders_count ?? 0
+          setOrderCount(orderCountValue)
+          
+          // 포인트 설정
+          const pointsValue = profileInfo?.points ?? 0
+          setPoints(pointsValue)
+          
+          // 쿠폰 개수 설정
+          const couponCountValue = profileInfo?.coupons_count ?? 0
+          setCouponCount(couponCountValue)
+          
+          // 선물함 개수
+          setGiftCount(0)
+        } catch (error) {
+          console.error('사용자 정보 조회 실패:', error)
+          if (!isMounted) return
+          // 기본값 설정
+          setUserName(currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || '사용자')
+          setOrderCount(0)
+          setPoints(0)
+          setCouponCount(0)
+          setGiftCount(0)
+        } finally {
+          if (isMounted) {
+            if (maxWaitTimeout) {
+              clearTimeout(maxWaitTimeout)
+            }
+            setLoadingProfile(false)
+          }
+        }
+      }
+        
+      loadUserProfile().catch(error => {
+        console.error('loadUserProfile 에러:', error)
+        if (isMounted) {
+          if (maxWaitTimeout) {
+            clearTimeout(maxWaitTimeout)
+          }
+          setLoadingProfile(false)
+        }
       })
-
-      const profilePromise = Promise.all([
-        // 사용자 이름
-        supabase
-          .from('users')
-          .select('name')
-          .eq('id', user!.id)
-          .single(),
-        // 주문 내역 개수
-        supabase
-          .from('orders')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user!.id),
-        // 포인트 (API를 통해 조회)
-        fetch('/api/points').then(res => res.json()).catch(() => ({ userPoints: { total_points: 0 } })),
-        // 쿠폰 개수
-        getUserCoupons(user!.id, false).catch(() => []),
-      ])
-
-      const [userData, ordersData, pointsResponse, couponsData] = await Promise.race([
-        profilePromise,
-        timeoutPromise
-      ]) as any[]
-
-      if (userData?.error) throw userData.error
-      setUserName(userData?.data?.name || user!.user_metadata?.name || user!.email?.split('@')[0] || '사용자')
-
-      setOrderCount(ordersData?.count || 0)
-      setPoints(pointsResponse?.userPoints?.total_points || 0)
-      setCouponCount(couponsData?.length || 0)
-      // 선물함 개수 - gifts 테이블이 없으므로 0으로 설정
-      setGiftCount(0)
-    } catch (error) {
-      console.error('사용자 정보 조회 실패:', error)
-      setUserName(user!.user_metadata?.name || user!.email?.split('@')[0] || '사용자')
-      // 기본값 설정
-      setOrderCount(0)
-      setPoints(0)
-      setCouponCount(0)
-      setGiftCount(0)
-    } finally {
+    } else {
       setLoadingProfile(false)
     }
-  }
+
+    return () => {
+      isMounted = false
+      if (maxWaitTimeout) {
+        clearTimeout(maxWaitTimeout)
+      }
+      setLoadingProfile(false)
+    }
+  }, [user?.id, loading])
 
   const handleSignOut = async () => {
     await signOut()
@@ -142,57 +215,66 @@ export default function ProfilePage() {
       <main className="flex-1 container mx-auto px-4 py-8 pb-24">
         {user ? (
           <>
-            {/* 사용자 정보 섹션 - 로그인 상태 */}
-            <div className="bg-pink-100 rounded-lg shadow-md p-6 mb-6">
-              <div className="mb-3">
-                <Link
-                  href="/profile/edit"
-                  className="flex items-center gap-2 hover:opacity-80 transition"
-                >
-                  <h1 className="text-base font-medium text-gray-900">
-                    안녕하세요. {userName}님
-                  </h1>
-                  <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Link>
-                <p className="text-xs text-gray-900 mt-1">주문 금액의 1% 적립</p>
+            {loadingProfile ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
               </div>
-              
-              {/* 통계 버튼들 */}
-              <div className="grid grid-cols-2 gap-3">
-                <Link
-                  href="/orders"
-                  className="px-4 py-2 bg-white rounded-lg hover:bg-gray-50 transition text-left border border-red-300"
-                >
-                  <div className="text-sm text-gray-900 mb-0.5">주문 내역</div>
-                  <div className="text-lg font-semibold text-gray-900">{orderCount}건</div>
-                </Link>
-                <Link
-                  href="/profile/points"
-                  className="px-4 py-2 bg-white rounded-lg hover:bg-gray-50 transition text-left border border-red-300"
-                >
-                  <div className="text-sm text-gray-900 mb-0.5">포인트</div>
-                  <div className="text-lg font-semibold text-gray-900">{points.toLocaleString()}원</div>
-                </Link>
-                <Link
-                  href="/profile/coupons"
-                  className="px-4 py-2 bg-white rounded-lg hover:bg-gray-50 transition text-left border border-red-300"
-                >
-                  <div className="text-sm text-gray-900 mb-0.5">쿠폰</div>
-                  <div className="text-lg font-semibold text-gray-900">{couponCount}장</div>
-                </Link>
-                <div
-                  className="px-4 py-2 bg-white rounded-lg text-left cursor-default border border-red-300"
-                >
-                  <div className="text-sm text-gray-900 mb-0.5">선물함</div>
-                  <div className="text-lg font-semibold text-gray-900">{giftCount}건</div>
+            ) : (
+              <>
+                {/* 사용자 정보 섹션 - 로그인 상태 */}
+                <div className="bg-pink-100 rounded-lg shadow-md p-6 mb-6">
+                  <div className="mb-3">
+                    <Link
+                      href="/profile/edit"
+                      className="flex items-center gap-2 hover:opacity-80 transition"
+                    >
+                      <h1 className="text-base font-medium text-gray-900">
+                        안녕하세요. {userName}님
+                      </h1>
+                      <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                    <p className="text-xs text-gray-900 mt-1">주문 금액의 1% 적립</p>
+                  </div>
+                  
+                  {/* 통계 버튼들 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Link
+                      href="/orders"
+                      className="px-4 py-2 bg-white rounded-lg hover:bg-gray-50 transition text-left border border-red-300"
+                    >
+                      <div className="text-sm text-gray-900 mb-0.5">주문 내역</div>
+                      <div className="text-lg font-semibold text-gray-900">{orderCount}건</div>
+                    </Link>
+                    <Link
+                      href="/profile/points"
+                      className="px-4 py-2 bg-white rounded-lg hover:bg-gray-50 transition text-left border border-red-300"
+                    >
+                      <div className="text-sm text-gray-900 mb-0.5">포인트</div>
+                      <div className="text-lg font-semibold text-gray-900">{points.toLocaleString()}원</div>
+                    </Link>
+                    <Link
+                      href="/profile/coupons"
+                      className="px-4 py-2 bg-white rounded-lg hover:bg-gray-50 transition text-left border border-red-300"
+                    >
+                      <div className="text-sm text-gray-900 mb-0.5">쿠폰</div>
+                      <div className="text-lg font-semibold text-gray-900">{couponCount}장</div>
+                    </Link>
+                    <div
+                      className="px-4 py-2 bg-white rounded-lg text-left cursor-default border border-red-300"
+                    >
+                      <div className="text-sm text-gray-900 mb-0.5">선물함</div>
+                      <div className="text-lg font-semibold text-gray-900">{giftCount}건</div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
 
             {/* 메뉴 섹션 */}
-            <div className="divide-y">
+            {!loadingProfile && (
+              <div className="divide-y">
               {/* 나의 쇼핑 */}
               <div className="px-4 pt-4 pb-2">
                 <h2 className="text-sm font-normal text-gray-500">나의 쇼핑</h2>
@@ -319,6 +401,7 @@ export default function ProfilePage() {
                 </svg>
               </Link>
             </div>
+            )}
           </>
         ) : (
           <>

@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { getUserFromServer } from '@/lib/auth-server'
+
+export const dynamic = 'force-dynamic'
 
 // GET: 위시리스트 조회
 export async function GET() {
   try {
     const supabase = createSupabaseServerClient()
     
-    // 사용자 인증 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    // 서버에서 사용자 인증 확인
+    const user = await getUserFromServer()
+    if (!user) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }
 
@@ -54,10 +56,9 @@ export async function POST(request: Request) {
   try {
     const supabase = createSupabaseServerClient()
     
-    // 사용자 인증 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    // 서버에서 사용자 인증 확인
+    const user = await getUserFromServer()
+    if (!user) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }
 
@@ -106,10 +107,9 @@ export async function DELETE(request: Request) {
   try {
     const supabase = createSupabaseServerClient()
     
-    // 사용자 인증 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    // 서버에서 사용자 인증 확인
+    const user = await getUserFromServer()
+    if (!user) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }
 

@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Footer from '@/components/Footer'
 import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
-import { supabase } from '@/lib/supabase'
 import { formatPrice, canUseKakaoDeepLink } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { useDaumPostcodeScript, openDaumPostcode, AddressSearchResult } from '@/lib/hooks/useDaumPostcode'
@@ -15,7 +14,6 @@ import { calculateOrderTotal } from '@/lib/order-calc'
 import { SHIPPING, GIFT_MIN_AMOUNT } from '@/lib/constants'
 import { getUserCoupons, isCouponValid } from '@/lib/coupons'
 import { UserCoupon, Coupon } from '@/lib/supabase'
-import { getUserPoints } from '@/lib/points'
 import { removeFromCartDB } from '@/lib/cart-db'
 
 function CheckoutPageContent() {
@@ -203,25 +201,20 @@ function CheckoutPageContent() {
 
     setLoadingCards(true)
     try {
-      const { data, error } = await supabase
-        .from('payment_cards')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('is_default', { ascending: false })
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        // 테이블이 없는 경우 빈 배열 반환
-        if (error.code === 'PGRST205' || error.message?.includes('Could not find the table')) {
-          console.warn('payment_cards 테이블이 존재하지 않습니다. 마이그레이션을 실행해주세요.')
-          setSavedCards([])
-          return
-        }
-        throw error
+      const res = await fetch('/api/payment-cards')
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        console.error('결제 카드 조회 실패:', res.status, errorData)
+        setSavedCards([])
+        return
       }
-      setSavedCards(data || [])
+
+      const data = await res.json()
+      setSavedCards(data.cards || [])
+      
       // 기본 카드가 있으면 자동 선택
-      const defaultCard = data?.find((card: any) => card.is_default)
+      const defaultCard = data.cards?.find((card: any) => card.is_default)
       if (defaultCard) {
         setSelectedCardId(defaultCard.id)
       }
@@ -238,8 +231,13 @@ function CheckoutPageContent() {
 
     setLoadingPoints(true)
     try {
-      const pointsData = await getUserPoints(user.id)
-      setUserPoints(pointsData?.total_points || 0)
+      // 서버 API로 포인트 조회
+      const res = await fetch('/api/points')
+      if (!res.ok) {
+        throw new Error('포인트 조회 실패')
+      }
+      const data = await res.json()
+      setUserPoints(data.userPoints?.total_points || 0)
     } catch (error) {
       console.error('포인트 조회 실패:', error)
     } finally {
@@ -877,58 +875,64 @@ function CheckoutPageContent() {
       // 기본 배송지로 저장 체크 시 배송지 저장 (택배 또는 퀵배달)
       if (saveAsDefaultAddress && (deliveryMethod === 'regular' || deliveryMethod === 'quick') && formData.address) {
         try {
-          // 1) 기존 기본 배송지 해제
-          await supabase
-            .from('addresses')
-            .update({ is_default: false })
-            .eq('user_id', user.id)
-            .eq('is_default', true)
+          // 1) 동일 주소 확인 및 주소 개수 조회 (서버 API)
+          const checkRes = await fetch('/api/addresses/check', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              address: formData.address.trim(),
+              address_detail: (formData.addressDetail || '').trim() || null,
+            }),
+          })
 
-          // 2) 동일 주소가 이미 있으면 기본 배송지로만 설정 (새로 저장하지 않음)
-          const { data: existing, error: findError } = await supabase
-            .from('addresses')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('address', formData.address.trim())
-            .eq('address_detail', (formData.addressDetail || '').trim() || null)
-            .maybeSingle()
+          const checkData = await checkRes.json()
+          const existing = checkData.existing
+          const addressCount = (checkData.addressCount || 0) + 1
 
-          if (!findError && existing) {
-            // 주소가 같으면 기본 배송지로만 설정하고 정보 업데이트 (새로 저장하지 않음)
-            await supabase
-              .from('addresses')
-              .update({
+          if (existing) {
+            // 주소가 같으면 기본 배송지로만 설정하고 정보 업데이트 (서버 API)
+            await fetch(`/api/addresses/${existing.id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                name: existing.name || '기본 배송지',
                 recipient_name: formData.name,
                 recipient_phone: formData.phone,
                 zipcode: formData.zipcode || null,
+                address: formData.address,
+                address_detail: formData.addressDetail || null,
                 delivery_note: formData.message || null,
                 is_default: true,
-              })
-              .eq('id', existing.id)
+              }),
+            })
           } else {
-            // 기존 주소 개수 확인하여 이름 생성
-            const { count } = await supabase
-              .from('addresses')
-              .select('*', { count: 'exact', head: true })
-              .eq('user_id', user.id)
-            
-            const addressCount = (count || 0) + 1
+            // 새 주소 저장 (서버 API에서 기본 배송지 해제 처리)
             const addressName = deliveryMethod === 'quick' 
               ? `퀵배달 주소 ${addressCount}`
               : addressCount === 1 
                 ? '기본 배송지'
                 : `배송지 ${addressCount}`
             
-            await supabase.from('addresses').insert({
-              user_id: user.id,
-              name: addressName,
-              recipient_name: formData.name,
-              recipient_phone: formData.phone,
-              zipcode: formData.zipcode || null,
-              address: formData.address,
-              address_detail: formData.addressDetail || null,
-              delivery_note: formData.message || null,
-              is_default: true,
+            // 서버 API로 주소 저장 (is_default: true로 설정하면 서버에서 기존 기본 배송지 자동 해제)
+            await fetch('/api/addresses', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                name: addressName,
+                recipient_name: formData.name,
+                recipient_phone: formData.phone,
+                zipcode: formData.zipcode || null,
+                address: formData.address,
+                address_detail: formData.addressDetail || null,
+                delivery_note: formData.message || null,
+                is_default: true,
+              }),
             })
           }
         } catch (error) {

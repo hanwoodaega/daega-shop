@@ -15,6 +15,7 @@ import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import { CATEGORIES, DEFAULT_PAGE_SIZE } from '@/lib/constants'
 import { getCategoryPath } from '@/lib/category-utils'
+import { useCartStore } from '@/lib/store'
 
 function ProductsContent() {
   const searchParams = useSearchParams()
@@ -22,6 +23,7 @@ function ProductsContent() {
   const category = searchParams.get('category')
   const searchQuery = searchParams.get('search')
   const filter = searchParams.get('filter')
+  const cartCount = useCartStore((state) => state.getTotalItems())
   
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -200,10 +202,57 @@ function ProductsContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header hideMainMenu={hasCategory} />
-      
-      {/* 카테고리 메뉴 - MainMenu 대신 표시 */}
-      {hasCategory && (
+      {/* 타임딜일 때는 커스텀 헤더, 아니면 일반 Header */}
+      {filter === 'flash-sale' ? (
+        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+          <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
+            {/* 왼쪽: 뒤로가기 */}
+            <button
+              onClick={() => router.back()}
+              aria-label="뒤로가기"
+              className="p-2 text-gray-700 hover:text-gray-900"
+            >
+              <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            
+            {/* 중앙: 제목 (absolute로 완전 중앙 배치) */}
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+              <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">
+                타임딜
+              </h1>
+            </div>
+            
+            {/* 오른쪽: 장바구니 버튼 */}
+            <div className="ml-auto flex items-center">
+              <button
+                onClick={() => router.push('/cart')}
+                className="p-2 hover:bg-gray-100 rounded-full transition relative"
+                aria-label="장바구니"
+              >
+                <svg className="w-8 h-8 md:w-9 md:h-9 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span
+                  className={`absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
+                    cartCount > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-0 pointer-events-none'
+                  }`}
+                  suppressHydrationWarning
+                  aria-hidden={cartCount <= 0}
+                >
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              </button>
+            </div>
+          </div>
+        </header>
+      ) : (
+        <>
+          <Header hideMainMenu={hasCategory} />
+          
+          {/* 카테고리 메뉴 - MainMenu 대신 표시 */}
+          {hasCategory && (
         <nav className="sticky top-0 z-50 shadow-sm bg-white">
           <div className="bg-white border-b border-gray-200">
             <div className="container mx-auto px-4">
@@ -233,67 +282,71 @@ function ProductsContent() {
             </div>
           </div>
         </nav>
+          )}
+        </>
       )}
       
       <main className="flex-1">
-        {/* 타임딜 헤더 - 메인페이지와 동일한 스타일 */}
+        {/* 타임딜 콘텐츠 */}
         {filter === 'flash-sale' && (
-          <section className="pt-8 overflow-x-hidden" style={{ backgroundColor: '#EF4444' }}>
-            <div className="container mx-auto px-2">
-              <div className="mb-8">
-                <div className="flex flex-col gap-2 mb-3 w-[95%] mx-auto">
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      {/* 시계 이미지 */}
-                      <div className="flex-shrink-0 relative -ml-1" style={{ width: '48px', height: '48px' }}>
-                        <Image
-                          src="/images/timedealclock.png"
-                          alt="타임딜 시계"
-                          fill
-                          className="object-contain"
-                          sizes="48px"
-                        />
+          <div>
+            {/* 타임딜 정보 섹션 */}
+            <section className="pt-8 overflow-x-hidden" style={{ backgroundColor: '#EF4444' }}>
+              <div className="container mx-auto px-2">
+                <div className="mb-8">
+                  <div className="flex flex-col gap-2 mb-3 w-[95%] mx-auto">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        {/* 시계 이미지 */}
+                        <div className="flex-shrink-0 relative -ml-1" style={{ width: '48px', height: '48px' }}>
+                          <Image
+                            src="/images/timedealclock.png"
+                            alt="타임딜 시계"
+                            fill
+                            className="object-contain"
+                            sizes="48px"
+                          />
+                        </div>
+                        <h2 
+                          className="font-extrabold text-[34px]" 
+                          style={{ 
+                            color: '#FFFFFF',
+                            fontFamily: 'Pretendard, sans-serif',
+                            fontWeight: 800,
+                            letterSpacing: '-0.5px',
+                            textShadow: '2px 2px 0px #000000, -2px -2px 0px #000000, 2px -2px 0px #000000, -2px 2px 0px #000000, 0px 2px 0px #000000, 2px 0px 0px #000000, 0px -2px 0px #000000, -2px 0px 0px #000000'
+                          }}
+                        >
+                          {timeDealTitle}
+                        </h2>
                       </div>
-                      <h2 
-                        className="font-extrabold text-[34px]" 
-                        style={{ 
-                          color: '#FFFFFF',
-                          fontFamily: 'Pretendard, sans-serif',
-                          fontWeight: 800,
-                          letterSpacing: '-0.5px',
-                          textShadow: '2px 2px 0px #000000, -2px -2px 0px #000000, 2px -2px 0px #000000, -2px 2px 0px #000000, 0px 2px 0px #000000, 2px 0px 0px #000000, 0px -2px 0px #000000, -2px 0px 0px #000000'
-                        }}
-                      >
-                        {timeDealTitle}
-                      </h2>
                     </div>
                   </div>
+                  {timeDealEndTime && (
+                    <div className="flex items-center ml-4">
+                      <TimeDealCountdown endTime={timeDealEndTime} className="text-2xl" />
+                    </div>
+                  )}
                 </div>
-                {timeDealEndTime && (
-                  <div className="flex items-center ml-4">
-                    <TimeDealCountdown endTime={timeDealEndTime} className="text-2xl" />
-                  </div>
-                )}
               </div>
-            </div>
 
-            {/* 상품 그리드 - 흰색 배경으로 감싸기 (메인페이지와 동일) */}
-            <div className="bg-white pt-4 pb-4 -mx-2 px-3 relative z-10">
-              {timeDealDescription && (
-                <div className="px-3 mb-4">
-                  <p 
-                    className="text-xl"
-                    style={{ 
-                      color: '#000000',
-                      fontFamily: 'Pretendard, sans-serif',
-                      fontWeight: 700
-                    }}
-                  >
-                    {timeDealDescription}
-                  </p>
-                </div>
-              )}
-              <div className="px-3 bg-white">
+              {/* 상품 그리드 - 흰색 배경으로 감싸기 */}
+              <div className="bg-white pb-4 -mx-2 px-3 relative z-10">
+                {timeDealDescription ? (
+                  <div className="px-3 pt-4 mb-4">
+                    <p 
+                      className="text-xl"
+                      style={{ 
+                        color: '#000000',
+                        fontFamily: 'Pretendard, sans-serif',
+                        fontWeight: 700
+                      }}
+                    >
+                      {timeDealDescription}
+                    </p>
+                  </div>
+                ) : null}
+                <div className="px-3 bg-white">
 
                 {/* 상품 그리드 */}
                 {loading ? (
@@ -331,10 +384,11 @@ function ProductsContent() {
                     )}
                   </>
                 )}
+                </div>
               </div>
-            </div>
-            <div className="bg-white h-8 -mt-4"></div>
-          </section>
+              <div className="bg-white h-8 -mt-4"></div>
+            </section>
+          </div>
         )}
 
         {/* 히어로 섹션 - 베스트/특가용 */}
@@ -455,7 +509,15 @@ export default function ProductsPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex flex-col">
-        <Header />
+        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+          <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+              <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">
+                상품
+              </h1>
+            </div>
+          </div>
+        </header>
         <main className="flex-1 container mx-auto px-4 py-4 pt-6">
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {[...Array(8)].map((_, i) => (

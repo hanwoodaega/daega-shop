@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import { useAuth } from '@/lib/auth-context'
-import { getUserPoints, getPointHistory } from '@/lib/points'
 import { PointHistory } from '@/lib/supabase'
 import { useCartStore } from '@/lib/store'
 import { formatPrice } from '@/lib/utils'
@@ -37,16 +36,21 @@ export default function PointsPage() {
 
     setLoading(true)
     try {
-      const [pointsData, historyData, pendingData] = await Promise.all([
-        getUserPoints(user.id),
-        getPointHistory(user.id, 50),
-        fetch('/api/points/pending').then(res => res.json())
+      // 서버 API로 포인트 정보 조회
+      const [pointsRes, historyRes, pendingRes] = await Promise.all([
+        fetch('/api/points'),
+        fetch('/api/points/history?limit=50'),
+        fetch('/api/points/pending')
       ])
 
-      if (pointsData) {
-        setTotalPoints(pointsData.total_points || 0)
+      const pointsData = pointsRes.ok ? await pointsRes.json() : null
+      const historyData = historyRes.ok ? await historyRes.json() : null
+      const pendingData = pendingRes.ok ? await pendingRes.json() : null
+
+      if (pointsData?.userPoints) {
+        setTotalPoints(pointsData.userPoints.total_points || 0)
       }
-      setHistory(historyData || [])
+      setHistory(historyData?.history || [])
       
       if (pendingData) {
         setPendingPoints(pendingData.pendingPoints || 0)

@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import BottomNavbar from '@/components/BottomNavbar'
 import { useAuth } from '@/lib/auth-context'
-import { supabase } from '@/lib/supabase'
 import { useCartStore } from '@/lib/store'
 
 function ProfileEditContent() {
@@ -123,20 +122,21 @@ function ProfileEditContent() {
 
   const loadUserData = async () => {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('name, phone, birthday')
-        .eq('id', user!.id)
-        .single()
+      const res = await fetch('/api/user/profile')
+      
+      if (!res.ok) {
+        throw new Error('사용자 정보 조회 실패')
+      }
+      
+      const data = await res.json()
+      const profile = data.profile
 
-      if (error) throw error
-
-      if (data) {
-        const loadedName = data.name || ''
-        const loadedPhone = data.phone || ''
+      if (profile) {
+        const loadedName = profile.name || ''
+        const loadedPhone = profile.phone || ''
         let loadedBirthday = ''
-        if (data.birthday) {
-          const date = new Date(data.birthday)
+        if (profile.birthday) {
+          const date = new Date(profile.birthday)
           const year = date.getFullYear()
           const month = String(date.getMonth() + 1).padStart(2, '0')
           const day = String(date.getDate()).padStart(2, '0')
@@ -168,13 +168,7 @@ function ProfileEditContent() {
     try {
       // 전화번호가 변경된 경우 인증 확인
       const phoneToSave = newPhone ? newPhone.replace(/[^0-9]/g, '') : phone.replace(/[^0-9]/g, '')
-      const { data: userData } = await supabase
-        .from('users')
-        .select('phone')
-        .eq('id', user!.id)
-        .single()
-      
-      const originalPhoneNumbers = userData?.phone?.replace(/[^0-9]/g, '') || ''
+      const originalPhoneNumbers = originalPhone.replace(/[^0-9]/g, '')
 
       // 전화번호가 변경되었고 인증이 완료되지 않은 경우
       if (phoneToSave !== originalPhoneNumbers && !isPhoneVerified) {
@@ -199,17 +193,22 @@ function ProfileEditContent() {
         }
       }
 
-      const { error } = await supabase
-        .from('users')
-        .update({
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           name: name.trim(),
           phone: phoneToSave,
           birthday: birthdayToSave,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user!.id)
+        }),
+      })
 
-      if (error) throw error
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || '회원정보 수정 실패')
+      }
 
       setMessage({ type: 'success', text: '회원정보가 수정되었습니다.' })
       

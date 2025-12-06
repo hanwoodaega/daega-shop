@@ -7,7 +7,7 @@ import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import OrderItemSkeleton from '@/components/skeletons/OrderItemSkeleton'
 import { useAuth } from '@/lib/auth-context'
-import { supabase, Order } from '@/lib/supabase'
+import { Order } from '@/lib/supabase'
 import { formatPrice } from '@/lib/utils'
 import { formatPhoneNumber } from '@/lib/format-phone'
 import { getStatusText, getDeliveryTypeText, getStatusColor, getStatusTextColor, getRefundStatusText } from '@/lib/order-utils'
@@ -109,56 +109,16 @@ function OrdersPageContent() {
     if (!user?.id) return
     
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items (
-            id,
-            product_id,
-            quantity,
-            price,
-            product:products (
-              name
-            )
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (error) throw handleSupabaseError(error)
+      // 서버 API로 주문 목록 조회 (구매확정 여부 포함)
+      const res = await fetch('/api/orders')
       
-      // 각 주문의 구매확정 여부 확인
-      // user_id로 필터링하여 RLS 정책 준수
-      const orderIds = (data || []).map((order: OrderWithItems) => order.id)
-      
-      let confirmedOrderIds = new Set<string>()
-      if (orderIds.length > 0 && user?.id) {
-        try {
-          const { data: pointHistories, error: pointError } = await supabase
-            .from('point_history')
-            .select('order_id')
-            .eq('user_id', user.id)
-            .in('order_id', orderIds)
-            .eq('type', 'purchase')
-          
-          if (pointError) {
-            console.error('구매확정 여부 조회 실패:', pointError)
-          } else if (pointHistories) {
-            confirmedOrderIds = new Set(pointHistories.map((ph: any) => ph.order_id))
-          }
-        } catch (error) {
-          console.error('구매확정 여부 조회 실패:', error)
-          // 에러가 발생해도 계속 진행
-        }
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || '주문 조회에 실패했습니다.')
       }
       
-      const ordersWithConfirmation = (data || []).map((order: OrderWithItems) => ({
-        ...order,
-        is_confirmed: confirmedOrderIds.has(order.id)
-      }))
-      
-      setOrders(ordersWithConfirmation)
+      const data = await res.json()
+      setOrders(data.orders || [])
     } catch (error) {
       showError(error)
     } finally {

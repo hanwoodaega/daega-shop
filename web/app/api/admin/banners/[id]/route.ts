@@ -67,11 +67,12 @@ export async function PUT(
 
   try {
     const body = await request.json()
-    const { title_black, title_red, description, image_url, background_color, is_active, sort_order, slug } = body
+    const { title, subtitle_black, subtitle_red, description, image_url, background_color, is_active, sort_order, slug } = body
 
     const updateData: any = {}
-    if (title_black !== undefined) updateData.title_black = title_black || null
-    if (title_red !== undefined) updateData.title_red = title_red || null
+    if (title !== undefined) updateData.title = title || null
+    if (subtitle_black !== undefined) updateData.subtitle_black = subtitle_black || null
+    if (subtitle_red !== undefined) updateData.subtitle_red = subtitle_red || null
     if (description !== undefined) updateData.description = description || null
     if (image_url !== undefined) updateData.image_url = image_url
     if (background_color !== undefined) updateData.background_color = background_color
