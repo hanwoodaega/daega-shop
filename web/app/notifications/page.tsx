@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { supabase } from '@/lib/supabase'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 
@@ -23,7 +22,7 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'general' | 'earned'>('general')
 
-  // 알림 목록 조회
+  // 알림 목록 조회 (서버 API 사용)
   const fetchNotifications = async () => {
     if (!user?.id) {
       setLoading(false)
@@ -32,15 +31,15 @@ export default function NotificationsPage() {
 
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (!error && data) {
-        setNotifications(data)
+      const res = await fetch('/api/notifications')
+      
+      if (!res.ok) {
+        throw new Error('알림 조회 실패')
+      }
+      
+      const data = await res.json()
+      if (data.notifications) {
+        setNotifications(data.notifications)
       }
     } catch (error) {
       console.error('알림 조회 실패:', error)
