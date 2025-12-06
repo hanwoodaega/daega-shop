@@ -15,8 +15,10 @@ import { useAuth } from '@/lib/auth-context'
 import { useCartStore, useDirectPurchaseStore, useWishlistStore, usePromotionModalStore } from '@/lib/store'
 import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart-db'
+import { CartItem } from '@/lib/store'
 import { formatPrice } from '@/lib/utils'
 import { calculateDiscountPrice, isSoldOut } from '@/lib/product-utils'
+import { SIMPLE_PRODUCT_SELECT_FIELDS, extractActivePromotion } from '@/lib/product-queries'
 
 function ProductDetailPageContent() {
   const params = useParams()
@@ -38,6 +40,10 @@ function ProductDetailPageContent() {
   const [averageRating, setAverageRating] = useState(0)
   const [ProductDescriptionComponent, setProductDescriptionComponent] = useState<React.ComponentType<{ productId: string; productName?: string }> | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [productImages, setProductImages] = useState<Array<{ id: string; image_url: string; priority: number }>>([])
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const { user } = useAuth()
   
   // 품절 여부 확인
@@ -58,70 +64,73 @@ function ProductDetailPageContent() {
 
   const fetchProduct = useCallback(async () => {
     try {
-      // slug 또는 UUID로 조회
-      const selectFields = 'id,slug,brand,name,price,image_url,weight_gram,status'
+      setLoading(true)
       
-      // UUID 형식인지 확인하는 함수
-      const isUUID = (str: string): boolean => {
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-        return uuidRegex.test(str)
-      }
+      // 타임아웃 설정 (5초)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
       
-      let query
-      let { data, error } = { data: null, error: null }
-      
-      // UUID인 경우 바로 id로 조회, 아니면 slug로 먼저 시도
-      if (isUUID(productId)) {
-        query = supabase
-          .from('products')
-          .select(selectFields)
-          .eq('id', productId)
-          .single()
+      try {
+        // API 라우트를 통해 서버 사이드에서 조회
+        const response = await fetch(`/api/products/${productId}`, {
+          signal: controller.signal
+        })
         
-        const result = await query
-        data = result.data
-        error = result.error
-      } else {
-        // slug로 먼저 시도
-        query = supabase
-          .from('products')
-          .select(selectFields)
-          .eq('slug', productId)
-          .single()
-
-        const result = await query
-        data = result.data
-        error = result.error
-
-        // slug로 찾지 못했으면 UUID로 시도
-        if (error || !data) {
-          query = supabase
-            .from('products')
-            .select(selectFields)
-            .eq('id', productId)
-            .single()
-          
-          const result = await query
-          data = result.data
-          error = result.error
+        clearTimeout(timeoutId)
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || '상품을 찾을 수 없습니다.')
         }
+        
+        const enrichedProduct = await response.json()
+        
+        // 상품 데이터 먼저 설정 (이미지 없어도 표시)
+        setProduct(enrichedProduct)
+        setLoading(false)
+        
+        // 상품 이미지 목록 불러오기 (비동기, 실패해도 무시)
+        if (enrichedProduct?.id) {
+          supabase
+            .from('product_images')
+            .select('id, image_url, priority')
+            .eq('product_id', enrichedProduct.id)
+            .order('priority', { ascending: true })
+            .order('created_at', { ascending: true })
+            .then(({ data: images, error: imagesError }: { data: Array<{ id: string; image_url: string; priority: number }> | null; error: any }) => {
+              if (!imagesError && images && images.length > 0) {
+                setProductImages(images)
+                setProduct((prev) => {
+                  if (!prev) return prev
+                  return {
+                    ...prev,
+                    image_url: images[0].image_url
+                  }
+                })
+              } else {
+                setProductImages([])
+              }
+            })
+            .catch(() => {
+              setProductImages([])
+            })
+        }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId)
+        if (fetchError.name === 'AbortError') {
+          throw new Error('요청 시간이 초과되었습니다.')
+        }
+        throw fetchError
       }
-      
-      if (error) throw error
-      setProduct(data)
-    } catch (error) {
-      console.error('상품 조회 실패:', error)
-      toast.error('상품을 찾을 수 없습니다.')
-      const t = window.setTimeout(() => router.push('/products'), 1000)
-      timeoutsRef.current.push(t)
-    } finally {
+    } catch (error: any) {
+      toast.error(error?.message || '상품을 불러오는 데 실패했습니다.')
       setLoading(false)
     }
-  }, [productId, router])
+  }, [productId])
 
   useEffect(() => {
     fetchProduct()
-  }, [fetchProduct])
+  }, [productId])
 
 
   // 상품 설명 컴포넌트 로드
@@ -213,12 +222,12 @@ function ProductDetailPageContent() {
     // 최종 할인율 (타임딜 우선)
     const finalDiscountPercent = timedealDiscountPercent > 0 ? timedealDiscountPercent : promotionDiscountPercent
 
-    const cartItem = {
+    const cartItem: CartItem = {
       productId: product.id,
       name: product.name,
       price: product.price,
       quantity,
-      imageUrl: product.image_url,
+      imageUrl: product.image_url || null,
       discount_percent: finalDiscountPercent > 0 ? finalDiscountPercent : undefined,
       brand: product.brand ?? undefined,
     }
@@ -316,7 +325,12 @@ function ProductDetailPageContent() {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            <span className="text-base md:text-lg font-semibold line-clamp-1">{product.name}</span>
+            <span className="text-lg md:text-xl font-semibold line-clamp-1">
+              {product.name}
+              {product.weight_gram && product.weight_gram > 0 && (
+                <span className="ml-1">{product.weight_gram}G</span>
+              )}
+            </span>
           </button>
           
           {/* 장바구니 버튼 */}
@@ -325,8 +339,8 @@ function ProductDetailPageContent() {
             className="p-2 hover:bg-gray-100 rounded-full transition relative"
             aria-label="장바구니"
           >
-            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            <svg className="w-8 h-8 md:w-9 md:h-9 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             {cartCount > 0 && (
               <span
@@ -344,9 +358,84 @@ function ProductDetailPageContent() {
       <main className="flex-1">
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
-          {/* 상품 이미지 - 상하좌우 패딩 제거 */}
-          <div className="bg-gray-200 overflow-hidden aspect-square flex items-center justify-center">
-            <span className="text-gray-500 text-base">이미지 준비중</span>
+          {/* 상품 이미지 - 여러 이미지 표시 */}
+          <div className="relative">
+            {/* 메인 이미지 - 스와이프 가능 */}
+            <div 
+              className="bg-gray-200 overflow-hidden aspect-square flex items-center justify-center relative"
+              onTouchStart={(e) => setTouchStart(e.targetTouches[0].clientX)}
+              onTouchMove={(e) => setTouchEnd(e.targetTouches[0].clientX)}
+              onTouchEnd={() => {
+                if (!touchStart || !touchEnd) return
+                const distance = touchStart - touchEnd
+                const isLeftSwipe = distance > 50
+                const isRightSwipe = distance < -50
+
+                if (isLeftSwipe && selectedImageIndex < productImages.length - 1) {
+                  setSelectedImageIndex(selectedImageIndex + 1)
+                }
+                if (isRightSwipe && selectedImageIndex > 0) {
+                  setSelectedImageIndex(selectedImageIndex - 1)
+                }
+
+                setTouchStart(null)
+                setTouchEnd(null)
+              }}
+            >
+              {productImages.length > 0 ? (
+                <img
+                  src={productImages[selectedImageIndex]?.image_url}
+                  alt={product.name}
+                  className="w-full h-full object-cover select-none"
+                  draggable={false}
+                />
+              ) : (
+                <span className="text-gray-500 text-base">이미지 준비중</span>
+              )}
+              
+              {/* 이전 버튼 (여러 이미지가 있을 때만) */}
+              {productImages.length > 1 && (
+                <>
+                  <button
+                    onClick={() => {
+                      if (selectedImageIndex > 0) {
+                        setSelectedImageIndex(selectedImageIndex - 1)
+                      }
+                    }}
+                    disabled={selectedImageIndex === 0}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full disabled:opacity-30 disabled:cursor-not-allowed transition z-10"
+                    aria-label="이전 이미지"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  
+                  {/* 다음 버튼 */}
+                  <button
+                    onClick={() => {
+                      if (selectedImageIndex < productImages.length - 1) {
+                        setSelectedImageIndex(selectedImageIndex + 1)
+                      }
+                    }}
+                    disabled={selectedImageIndex === productImages.length - 1}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full disabled:opacity-30 disabled:cursor-not-allowed transition z-10"
+                    aria-label="다음 이미지"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </>
+              )}
+              
+              {/* 이미지 인디케이터 (여러 이미지가 있을 때만 표시) */}
+              {productImages.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white text-sm px-3 py-1 rounded-full">
+                  {selectedImageIndex + 1}/{productImages.length}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 상품 정보 */}
@@ -354,9 +443,14 @@ function ProductDetailPageContent() {
             <div className="flex items-start justify-between gap-3 mb-2">
               <div className="flex-1">
                 {product.brand && (
-                  <div className="text-base font-bold text-primary-900 mb-1">{product.brand}</div>
+                  <div className="text-lg font-bold text-primary-900 mb-1">{product.brand}</div>
                 )}
-                <h1 className="text-lg font-normal">{product.name}</h1>
+                <h1 className="text-xl font-normal inline-flex items-center">
+                  {product.name}
+                  {product.weight_gram && product.weight_gram > 0 && (
+                    <span className="ml-1 text-xl font-normal">{product.weight_gram}G</span>
+                  )}
+                </h1>
                 {soldOut && (
                   <p className="text-sm text-gray-500 mt-1">해당 상품은 품절 되었습니다.</p>
                 )}
@@ -398,29 +492,51 @@ function ProductDetailPageContent() {
                 // 최종 할인율 (타임딜 우선)
                 const finalDiscountPercent = timedealDiscountPercent > 0 ? timedealDiscountPercent : promotionDiscountPercent
                 
+                // 할인가 계산
+                const discountPrice = finalDiscountPercent > 0 
+                  ? calculateDiscountPrice(product.price, finalDiscountPercent)
+                  : product.price
+                
+                // 100g당 가격 계산
+                const pricePer100g = product.weight_gram && product.weight_gram > 0
+                  ? (discountPrice / product.weight_gram) * 100
+                  : null
+                
                 if (finalDiscountPercent > 0) {
                   return (
                     <>
-                      <div className="text-sm text-gray-500 line-through mb-2">
+                      <div className="text-lg text-gray-500 line-through mb-2">
                         {formatPrice(product.price)}원
                       </div>
-                      <div className="flex items-baseline gap-2 mb-2">
-                        <span className="text-2xl font-bold text-red-600">{finalDiscountPercent}%</span>
-                        <span className="text-2xl font-extrabold text-gray-900">
-                          {formatPrice(calculateDiscountPrice(product.price, finalDiscountPercent))}
+                      <div className="flex items-baseline mb-2">
+                        <span className="text-3xl font-bold text-red-600">{finalDiscountPercent}%</span>
+                        <span className="text-3xl font-extrabold text-gray-900 ml-2">
+                          {formatPrice(discountPrice)}
                         </span>
-                        <span className="text-base text-gray-600">원</span>
+                        <span className="text-2xl font-bold text-gray-900 ml-1">원</span>
                       </div>
+                      {pricePer100g && (
+                        <div className="text-base text-gray-700 font-medium mt-1">
+                          100g당 {Math.round(pricePer100g).toLocaleString()}원
+                        </div>
+                      )}
                     </>
                   )
                 } else {
                   return (
-                    <div className="flex items-baseline mb-2">
-                      <span className="text-2xl font-bold text-gray-900">
-                        {formatPrice(product.price)}
-                      </span>
-                      <span className="text-base text-gray-600 ml-2">원</span>
-                    </div>
+                    <>
+                      <div className="flex items-baseline mb-2">
+                        <span className="text-3xl font-extrabold text-gray-900">
+                          {formatPrice(product.price)}
+                        </span>
+                        <span className="text-2xl font-bold text-gray-900 ml-1">원</span>
+                      </div>
+                      {pricePer100g && (
+                        <div className="text-base text-gray-700 font-medium mt-1">
+                          100g당 {Math.round(pricePer100g).toLocaleString()}원
+                        </div>
+                      )}
+                    </>
                   )
                 }
               })()}
@@ -674,7 +790,7 @@ function ProductDetailPageContent() {
         productId={product?.id || ''}
         orderId={reviewOrderId}
         productName={product?.name || ''}
-        productImage={product?.image_url}
+        productImage={product?.image_url || undefined}
         onSuccess={() => {
           // 리뷰 목록 새로고침은 ReviewList 컴포넌트에서 자동으로 처리
           window.location.reload()

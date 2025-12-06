@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { assertAdmin } from '@/lib/admin-auth'
+import { getProductMainImageUrlMap } from '@/lib/product-image-utils'
 
 // GET: 컬렉션 상세 조회 (상품 목록 포함)
 export async function GET(
@@ -25,7 +26,7 @@ export async function GET(
       return NextResponse.json({ error: '컬렉션을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    // 연결된 상품 목록
+    // 연결된 상품 목록 (image_url 제거 - product_images 테이블에서 조회)
     const { data: products, error: productsError } = await supabaseAdmin
       .from('collection_products')
       .select(`
@@ -36,7 +37,6 @@ export async function GET(
           id,
           name,
           price,
-          image_url,
           brand,
           category
         )
@@ -48,9 +48,34 @@ export async function GET(
       return NextResponse.json({ error: productsError.message }, { status: 400 })
     }
 
+    // product_images에서 이미지 URL 가져오기
+    const collectionProducts = products || []
+    const productIds = collectionProducts
+      .map((cp: any) => {
+        const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
+        return product?.id
+      })
+      .filter((id: string | undefined): id is string => !!id)
+
+    const imageUrlMap = await getProductMainImageUrlMap(productIds)
+
+    // 이미지 URL을 포함하여 응답 구성
+    const productsWithImages = collectionProducts.map((cp: any) => {
+      const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
+      if (!product) return cp
+
+      return {
+        ...cp,
+        products: {
+          ...product,
+          image_url: imageUrlMap.get(product.id) || null,
+        },
+      }
+    })
+
     return NextResponse.json({
       collection,
-      products: products || [],
+      products: productsWithImages,
     })
   } catch (error: any) {
     console.error('컬렉션 조회 실패:', error)

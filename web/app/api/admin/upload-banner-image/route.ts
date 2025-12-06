@@ -1,0 +1,85 @@
+import { NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { assertAdmin } from '@/lib/admin-auth'
+import sharp from 'sharp'
+
+export const runtime = 'nodejs'
+
+export async function POST(request: Request) {
+  try {
+    assertAdmin()
+  } catch (e: any) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const form = await request.formData()
+    const file = form.get('file') as File | null
+    if (!file) {
+      return NextResponse.json({ error: 'Missing file' }, { status: 400 })
+    }
+
+    if (file.size === 0) {
+      return NextResponse.json({ error: 'File is empty' }, { status: 400 })
+    }
+
+    const bucket = 'banner-images'
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png'
+    const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
+
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // 파일 확장자에 따라 처리 방식 결정
+    const isPNG = fileExt === 'png'
+    const isJPEG = fileExt === 'jpg' || fileExt === 'jpeg'
+    
+    let processedBuffer: Buffer
+    let contentType: string
+
+    if (isPNG) {
+      // PNG는 투명도 유지를 위해 원본 그대로 유지 (처리하지 않음)
+      processedBuffer = buffer
+      contentType = 'image/png'
+    } else if (isJPEG) {
+      // JPEG는 JPEG로 유지
+      processedBuffer = await sharp(buffer)
+        .resize(1200, 1200, {
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .jpeg({ quality: 90 })
+        .toBuffer()
+      contentType = 'image/jpeg'
+    } else {
+      // 기타 형식은 원본 유지
+      processedBuffer = buffer
+      contentType = file.type || `image/${fileExt}`
+    }
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from(bucket)
+      .upload(filePath, processedBuffer, {
+        contentType,
+        upsert: false,
+      })
+
+    if (uploadError) {
+      console.error('Supabase storage upload error:', uploadError)
+      const errorMessage = uploadError.message || String(uploadError)
+      if (errorMessage.includes('Bucket not found') || errorMessage.includes('404')) {
+        return NextResponse.json({ 
+          error: 'banner-images 버킷이 존재하지 않습니다. Supabase Storage에서 버킷을 생성해주세요.' 
+        }, { status: 400 })
+      }
+      return NextResponse.json({ error: errorMessage || '이미지 업로드 실패' }, { status: 400 })
+    }
+
+    const { data: publicUrlData } = supabaseAdmin.storage.from(bucket).getPublicUrl(filePath)
+    return NextResponse.json({ url: publicUrlData.publicUrl })
+  } catch (e: any) {
+    console.error('Image upload error:', e)
+    return NextResponse.json({ error: e?.message || 'Upload failed' }, { status: 500 })
+  }
+}
+

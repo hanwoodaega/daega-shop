@@ -18,7 +18,7 @@ export default function ProductInfoPage() {
     const fetchProduct = async () => {
       try {
         // slug 또는 UUID로 조회
-        const selectFields = 'id,slug,brand,name,price,image_url'
+        const selectFields = 'id,slug,brand,name,price'
         
         // UUID 형식인지 확인하는 함수
         const isUUID = (str: string): boolean => {

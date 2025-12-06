@@ -41,7 +41,6 @@ export async function GET(
           brand,
           name,
           price,
-          image_url,
           category,
           average_rating,
           review_count,
@@ -62,19 +61,31 @@ export async function GET(
       .eq('collection_id', collection.id)
       .neq('products.status', 'deleted') // deleted 상태 제외
 
-    // 정렬 적용
+    // 정렬 적용 (priority가 null인 것은 나중에 표시되도록 - Supabase 기본 동작)
     if (sort === 'price_asc') {
       collectionProductsQuery = collectionProductsQuery.order('priority', { ascending: true })
     } else if (sort === 'price_desc') {
       collectionProductsQuery = collectionProductsQuery.order('priority', { ascending: true })
     } else {
+      // default 정렬: priority가 낮은 순서대로, null은 나중에 (기본 동작)
       collectionProductsQuery = collectionProductsQuery.order('priority', { ascending: true })
     }
 
     const { data: collectionProducts, error: productsError, count } = await collectionProductsQuery.range(from, to)
 
     if (productsError) {
-      return NextResponse.json({ error: productsError.message }, { status: 400 })
+      console.error('컬렉션 상품 조회 실패:', productsError)
+      // 에러 상세 정보 로깅
+      if (productsError.message) {
+        console.error('에러 메시지:', productsError.message)
+      }
+      if (productsError.code) {
+        console.error('에러 코드:', productsError.code)
+      }
+      return NextResponse.json({ 
+        error: productsError.message || '상품 조회 실패',
+        code: productsError.code 
+      }, { status: 400 })
     }
 
     // 상품 데이터 추출

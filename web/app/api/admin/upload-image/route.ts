@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { assertAdmin } from '@/lib/admin-auth'
+import sharp from 'sharp'
 
 export const runtime = 'nodejs'
 
@@ -27,10 +28,21 @@ export async function POST(request: Request) {
     const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
 
     const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // 1:1 비율로 자동 압축 및 리사이즈
+    const processedBuffer = await sharp(buffer)
+      .resize(800, 800, {
+        fit: 'cover',
+        position: 'center'
+      })
+      .jpeg({ quality: 85 }) // JPEG로 변환하여 파일 크기 최적화
+      .toBuffer()
+
     const { error: uploadError } = await supabaseAdmin.storage
       .from(bucket)
-      .upload(filePath, Buffer.from(arrayBuffer), {
-        contentType: file.type || 'application/octet-stream',
+      .upload(filePath, processedBuffer, {
+        contentType: 'image/jpeg',
         upsert: false,
       })
 

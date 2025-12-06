@@ -32,7 +32,12 @@ export default function ProfilePage() {
 
   const loadUserProfile = async () => {
     try {
-      const [userData, ordersData, pointsResponse, couponsData] = await Promise.all([
+      // 타임아웃 설정 (5초)
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('타임아웃')), 5000)
+      })
+
+      const profilePromise = Promise.all([
         // 사용자 이름
         supabase
           .from('users')
@@ -45,22 +50,32 @@ export default function ProfilePage() {
           .select('id', { count: 'exact', head: true })
           .eq('user_id', user!.id),
         // 포인트 (API를 통해 조회)
-        fetch('/api/points').then(res => res.json()),
+        fetch('/api/points').then(res => res.json()).catch(() => ({ userPoints: { total_points: 0 } })),
         // 쿠폰 개수
-        getUserCoupons(user!.id, false),
+        getUserCoupons(user!.id, false).catch(() => []),
       ])
 
-      if (userData.error) throw userData.error
-      setUserName(userData.data?.name || user!.user_metadata?.name || user!.email?.split('@')[0] || '사용자')
+      const [userData, ordersData, pointsResponse, couponsData] = await Promise.race([
+        profilePromise,
+        timeoutPromise
+      ]) as any[]
 
-      setOrderCount(ordersData.count || 0)
-      setPoints(pointsResponse.userPoints?.total_points || 0)
-      setCouponCount(couponsData.length || 0)
+      if (userData?.error) throw userData.error
+      setUserName(userData?.data?.name || user!.user_metadata?.name || user!.email?.split('@')[0] || '사용자')
+
+      setOrderCount(ordersData?.count || 0)
+      setPoints(pointsResponse?.userPoints?.total_points || 0)
+      setCouponCount(couponsData?.length || 0)
       // 선물함 개수 - gifts 테이블이 없으므로 0으로 설정
       setGiftCount(0)
     } catch (error) {
       console.error('사용자 정보 조회 실패:', error)
       setUserName(user!.user_metadata?.name || user!.email?.split('@')[0] || '사용자')
+      // 기본값 설정
+      setOrderCount(0)
+      setPoints(0)
+      setCouponCount(0)
+      setGiftCount(0)
     } finally {
       setLoadingProfile(false)
     }
@@ -308,27 +323,27 @@ export default function ProfilePage() {
         ) : (
           <>
             {/* 로그아웃 상태 UI */}
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="bg-pink-100 rounded-lg shadow-md px-6 pt-6 pb-4 mb-6">
               <div className="mb-3">
                 <Link
                   href="/auth/login?next=/profile"
                   className="flex items-center gap-2 hover:opacity-80 transition"
                 >
-                  <h1 className="text-base font-medium text-gray-900">
+                  <h1 className="text-lg font-medium text-black">
                     로그인
                   </h1>
-                  <span className="text-4xl font-medium text-gray-400 leading-none self-center">·</span>
-                  <h1 className="text-base font-medium text-gray-900">
+                  <span className="text-4xl font-medium text-black leading-none self-center">·</span>
+                  <h1 className="text-lg font-medium text-black">
                     회원가입
                   </h1>
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </Link>
-                <p className="text-sm text-gray-600 mt-2">회원가입하고 첫구매 쿠폰 받아가세요!</p>
+                <p className="text-sm text-black mt-3">회원가입하고 첫구매 쿠폰 받아가세요!</p>
                 <Link
                   href="/auth/signup/terms"
-                  className="w-full mt-3 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-blue-950 transition flex items-center justify-between"
+                  className="w-full mt-2 px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-blue-950 transition flex items-center justify-between"
                 >
                   <span>신규 회원 가입 혜택 보기</span>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

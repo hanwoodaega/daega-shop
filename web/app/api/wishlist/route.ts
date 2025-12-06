@@ -24,7 +24,6 @@ export async function GET() {
           id,
           name,
           price,
-          image_url,
           brand
         )
       `)

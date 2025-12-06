@@ -11,6 +11,7 @@ import CollectionSection from '@/components/CollectionSection'
 import RecommendationSection from '@/components/RecommendationSection'
 import TimeDealSection from '@/components/TimeDealSection'
 import HeroSlider from '@/components/HeroSlider'
+import BannerSection from '@/components/BannerSection'
 
 interface ColorTheme {
   background?: string
@@ -77,6 +78,11 @@ export default function Home() {
         {collections.map((collection) => {
           return <CollectionSection key={collection.id} collection={collection} />
         })}
+
+        {/* 배너 섹션 */}
+        <div className="mt-20 mb-20">
+          <BannerSection />
+        </div>
 
         {/* 취향별 추천 섹션 */}
         <RecommendationSection />

@@ -28,7 +28,6 @@ export async function GET() {
           id,
           name,
           price,
-          image_url,
           brand
         )
       `)
@@ -49,7 +48,7 @@ export async function GET() {
         name: product?.name || '',
         price: product?.price || 0,
         quantity: item.quantity,
-        imageUrl: product?.image_url || '',
+        imageUrl: '', // product_images에서 가져와야 함
         brand: product?.brand,
         promotion_group_id: item.promotion_group_id,
         selected: true // 기본값

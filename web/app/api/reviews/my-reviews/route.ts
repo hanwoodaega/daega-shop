@@ -48,7 +48,6 @@ export async function GET(request: NextRequest) {
         products (
           id,
           name,
-          image_url,
           brand
         )
       `)
@@ -71,7 +70,7 @@ export async function GET(request: NextRequest) {
       created_at: review.created_at,
       product: {
         name: (review.products as any)?.name || '',
-        image_url: (review.products as any)?.image_url || '',
+        image_url: '', // product_images에서 가져와야 함
         brand: (review.products as any)?.brand || ''
       }
     }))

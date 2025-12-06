@@ -22,7 +22,7 @@ interface OrderWithItems extends Order {
     price: number
     product?: {
       name: string
-      image_url: string
+      image_url: string | null
     }
   }>
   is_confirmed?: boolean  // 구매확정 여부
@@ -119,8 +119,7 @@ function OrdersPageContent() {
             quantity,
             price,
             product:products (
-              name,
-              image_url
+              name
             )
           )
         `)
@@ -627,7 +626,7 @@ function OrdersPageContent() {
 
                           const cardImageUrl = cardDesign 
                             ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
-                            : giftOrder?.order_items?.[0]?.product?.image_url || `${window.location.origin}/images/gift-default.jpg`
+                            : `${window.location.origin}/images/gift-default.jpg`
                           
                           cardImage.src = cardImageUrl
                         })
@@ -719,24 +718,24 @@ function OrdersPageContent() {
                               } else {
                                 cardImageUrl = cardDesign 
                                   ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
-                                  : giftOrder?.order_items?.[0]?.product?.image_url || `${window.location.origin}/images/gift-default.jpg`
+                                  : `${window.location.origin}/images/gift-default.jpg`
                               }
                             } catch (uploadError) {
                               cardImageUrl = cardDesign 
                                 ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
-                                : giftOrder?.order_items?.[0]?.product?.image_url || `${window.location.origin}/images/gift-default.jpg`
+                                : `${window.location.origin}/images/gift-default.jpg`
                             }
                           } catch (imageError) {
                             // 이미지 생성 실패 시 원본 이미지 사용
                             console.error('이미지 생성 실패:', imageError)
                             cardImageUrl = cardDesign 
                               ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
-                              : giftOrder?.order_items?.[0]?.product?.image_url || `${window.location.origin}/images/gift-default.jpg`
+                              : `${window.location.origin}/images/gift-default.jpg`
                           }
                         } else {
                           cardImageUrl = cardDesign 
                             ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
-                            : giftOrder?.order_items?.[0]?.product?.image_url || `${window.location.origin}/images/gift-default.jpg`
+                            : `${window.location.origin}/images/gift-default.jpg`
                         }
 
                         // 카카오톡 공유 실행

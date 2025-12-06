@@ -48,7 +48,6 @@ export async function GET(request: NextRequest) {
               id,
               name,
               price,
-              image_url,
               brand,
               category
             )
@@ -77,7 +76,7 @@ export async function GET(request: NextRequest) {
               id: product.id,
               name: product.name,
               price: product.price,
-              image_url: product.image_url,
+              image_url: null,
               brand: product.brand,
               category: product.category,
             }

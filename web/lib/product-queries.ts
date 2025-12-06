@@ -11,7 +11,6 @@ export const PRODUCT_SELECT_FIELDS = `
   brand,
   name,
   price,
-  image_url,
   category,
   average_rating,
   review_count,
@@ -40,7 +39,6 @@ export const SIMPLE_PRODUCT_SELECT_FIELDS = `
   brand,
   name,
   price,
-  image_url,
   category,
   average_rating,
   review_count,
@@ -154,35 +152,49 @@ async function fetchTimedealDiscountMap(productIds: string[]): Promise<Map<strin
     const { supabase } = await import('./supabase')
     const now = new Date().toISOString()
     
-    // 활성 타임딜 조회
-    const { data: activeTimedeal } = await supabase
-      .from('timedeals')
-      .select('id')
-      .lte('start_at', now)
-      .gte('end_at', now)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    // 타임아웃 설정 (1.5초)
+    const timeoutPromise = new Promise<Map<string, number>>((resolve) => {
+      setTimeout(() => resolve(discountMap), 1500)
+    })
+    
+    const fetchPromise = (async () => {
+      // 활성 타임딜 조회
+      const { data: activeTimedeal, error: timedealError } = await supabase
+        .from('timedeals')
+        .select('id')
+        .lte('start_at', now)
+        .gte('end_at', now)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-    if (activeTimedeal) {
+      if (timedealError || !activeTimedeal) {
+        return discountMap
+      }
+
       // 해당 상품들의 타임딜 할인율 조회
-      const { data: timedealProducts } = await supabase
+      const { data: timedealProducts, error: productsError } = await supabase
         .from('timedeal_products')
         .select('product_id, discount_percent')
         .eq('timedeal_id', activeTimedeal.id)
         .in('product_id', productIds)
 
-      if (timedealProducts) {
-        timedealProducts.forEach((tp: any) => {
-          discountMap.set(tp.product_id, tp.discount_percent || 0)
-        })
+      if (productsError || !timedealProducts) {
+        return discountMap
       }
-    }
+
+      timedealProducts.forEach((tp: any) => {
+        discountMap.set(tp.product_id, tp.discount_percent || 0)
+      })
+
+      return discountMap
+    })()
+
+    return await Promise.race([fetchPromise, timeoutPromise])
   } catch (error) {
     console.error('타임딜 할인율 조회 실패:', error)
+    return discountMap
   }
-
-  return discountMap
 }
 
 

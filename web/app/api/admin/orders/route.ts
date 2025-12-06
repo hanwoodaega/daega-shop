@@ -38,7 +38,6 @@ export async function GET(request: NextRequest) {
           product:products (
             id,
             name,
-            image_url,
             price,
             promotion_products (
               promotion_id,

@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit') || '20')))
   const from = (page - 1) * limit
   const to = from + limit - 1
-  const selectFields = 'id,slug,brand,name,price,image_url,category,average_rating,review_count,weight_gram,status,created_at,updated_at'
+  const selectFields = 'id,slug,brand,name,price,category,average_rating,review_count,weight_gram,status,created_at,updated_at'
   
   let query = supabaseAdmin
     .from('products')
@@ -94,7 +94,6 @@ export async function POST(request: Request) {
     name: String(body.name),
     slug: slug || null,
     price: Number(body.price),
-    image_url: String(body.image_url || ''),
     category: String(body.category),
     status: 'active', // 기본값: active
   }

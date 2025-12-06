@@ -39,8 +39,7 @@ export async function GET(
           price,
           products (
             id,
-            name,
-            image_url
+            name
           )
         )
       `)

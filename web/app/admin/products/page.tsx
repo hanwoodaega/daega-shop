@@ -10,7 +10,6 @@ const INITIAL_FORM_STATE = {
   name: '',
   slug: '',
   price: '',
-  image_url: '',
   category: ADMIN_CATEGORIES[0],
   weight_gram: '',
 }
@@ -38,11 +37,9 @@ export default function AdminProductManagementPage() {
   const closeCreateModal = () => {
     setIsCreateOpen(false)
     setForm({ ...INITIAL_FORM_STATE })
-    if (fileInputRef.current) fileInputRef.current.value = ''
   }
   
   const limit = 20
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const { message, error, loading, loadingList } = uiState
   const { items, filterCategory, search, page, total } = listState
@@ -61,27 +58,13 @@ export default function AdminProductManagementPage() {
     e.preventDefault()
     setUiState(prev => ({ ...prev, message: null, error: null, loading: true }))
     try {
-      let imageUrl = form.image_url.trim()
-      const file = fileInputRef.current?.files?.[0]
-      if (file) {
-        const fd = new FormData()
-        fd.append('file', file)
-        const up = await fetch('/api/admin/upload-image', { method: 'POST', body: fd })
-        const upData = await up.json()
-        if (!up.ok) {
-          setUiState(prev => ({ ...prev, error: upData.error || '이미지 업로드 실패', loading: false }))
-          return
-        }
-        imageUrl = upData.url
-      }
       const payload = {
         brand: form.brand.trim() || null,
         name: form.name.trim(),
         slug: form.slug.trim() || null, // slug가 비어있으면 서버에서 자동 생성
         price: Number(form.price),
-        image_url: imageUrl,
         category: form.category,
-        weight_gram: form.weight_gram ? Number(form.weight_gram) : null,
+        weight_gram: form.weight_gram ? parseInt(form.weight_gram.toString(), 10) : null,
       }
       const res = await fetch('/api/admin/products', {
         method: 'POST',
@@ -96,7 +79,6 @@ export default function AdminProductManagementPage() {
       }
       setUiState(prev => ({ ...prev, message: '상품이 등록되었습니다.', loading: false }))
       setForm({ ...INITIAL_FORM_STATE })
-      if (fileInputRef.current) fileInputRef.current.value = ''
       await fetchList()
       closeCreateModal()
     } catch (error) {
@@ -182,9 +164,6 @@ export default function AdminProductManagementPage() {
     if (!editing) return
     setSavingEdit(true)
     try {
-      // 이미지 업로드 처리 (ProductEditModal에서 이미 업로드된 경우 image_url이 설정됨)
-      let imageUrl = editing.image_url?.trim() || ''
-      
       const res = await fetch(`/api/admin/products/${editing.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -193,9 +172,8 @@ export default function AdminProductManagementPage() {
           name: editing.name,
           slug: editing.slug?.trim() || null,
           price: Number(editing.price),
-          image_url: imageUrl,
           category: editing.category,
-          weight_gram: editing.weight_gram ? Number(editing.weight_gram) : null,
+          weight_gram: editing.weight_gram ? parseInt(editing.weight_gram.toString(), 10) : null,
         }),
       })
       if (res.ok) {
@@ -453,6 +431,7 @@ export default function AdminProductManagementPage() {
                     name="weight_gram" 
                     type="number" 
                     min="0"
+                    step="1"
                     value={form.weight_gram} 
                     onChange={handleChange} 
                     className="w-full border rounded-lg px-3 py-2 text-sm" 
@@ -467,14 +446,10 @@ export default function AdminProductManagementPage() {
                 </div>
               </div>
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-neutral-600">이미지 URL</label>
-                  <input name="image_url" value={form.image_url} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 text-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-neutral-600">이미지 업로드</label>
-                  <input ref={fileInputRef} type="file" accept="image/*" className="w-full text-sm" />
-                  <p className="text-xs text-neutral-500 mt-1">파일을 선택하면 URL 대신 업로드가 사용됩니다.</p>
+                <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/80 px-3 py-4 text-sm text-neutral-600">
+                  <p className="font-semibold text-neutral-700 mb-1">이미지 관리</p>
+                  <p>상품 등록 후 상품 수정 모달에서 이미지를 추가할 수 있습니다.</p>
+                  <p className="text-xs text-neutral-500 mt-1">여러 이미지를 추가하고 우선순위를 설정할 수 있습니다.</p>
                 </div>
               </div>
               <div className="md:col-span-2 flex items-center justify-end gap-3 pt-4 border-t border-neutral-100">

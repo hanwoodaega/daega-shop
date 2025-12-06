@@ -29,7 +29,7 @@ export interface Product {
   brand?: string | null
   name: string
   price: number
-  image_url: string
+  image_url: string | null  // product_images에서 가져온 이미지 (우선순위가 가장 높은 것)
   category: string
   average_rating?: number | null  // 평균 별점
   review_count?: number | null  // 리뷰 개수

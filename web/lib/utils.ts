@@ -16,6 +16,37 @@ export function isMobileUserAgent(): boolean {
   return MOBILE_USER_AGENT_REGEX.test(getUserAgent())
 }
 
+/**
+ * 모바일 디바이스 여부 확인 (OS, UA, 터치 지원 종합 판단)
+ */
+export function isMobileDevice(): boolean {
+  if (typeof window === "undefined") return false;
+
+  const ua = navigator.userAgent || navigator.vendor || (window as any).opera;
+
+  // OS 기반 체크
+  const isAndroid = /Android/i.test(ua);
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+  // UA 기반 모바일 여부
+  const isUAMobile = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+
+  // 터치 여부 체크
+  const touchSupport =
+    "ontouchstart" in window ||
+    navigator.maxTouchPoints > 0 ||
+    window.matchMedia("(pointer: coarse)").matches;
+
+  return (isAndroid || isIOS || isUAMobile) && touchSupport;
+}
+
+/**
+ * PC 디바이스 여부 확인
+ */
+export function isPC(): boolean {
+  return !isMobileDevice();
+}
+
 export function hasKakaoTalkApp(): boolean {
   return KAKAOTALK_USER_AGENT_REGEX.test(getUserAgent())
 }

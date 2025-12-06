@@ -34,7 +34,6 @@ export async function GET(request: NextRequest) {
         products (
           id,
           name,
-          image_url,
           brand
         )
       `)
@@ -113,7 +112,7 @@ export async function GET(request: NextRequest) {
       order_date: (item.orders as any)?.created_at,
       product_id: item.product_id,
       product_name: (item.products as any)?.name,
-      product_image: (item.products as any)?.image_url,
+      product_image: null, // product_images에서 가져와야 함
       product_brand: (item.products as any)?.brand,
       quantity: item.quantity,
       price: item.price,

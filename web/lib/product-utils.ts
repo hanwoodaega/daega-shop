@@ -15,7 +15,7 @@ export function calculateDiscountPrice(price: number, discountPercent?: number |
 /**
  * 상품 이미지 유효성 검사
  */
-export function isValidImageUrl(imageUrl: string): boolean {
+export function isValidImageUrl(imageUrl: string | null | undefined): boolean {
   if (!imageUrl || typeof imageUrl !== 'string') return false
   const trimmed = imageUrl.trim()
   // placeholder 도메인은 유효 이미지로 취급하지 않음

@@ -14,7 +14,7 @@ export interface OrderItem {
   created_at?: string
   product?: {
     name: string
-    image_url: string
+    image_url: string | null
   }
 }
 

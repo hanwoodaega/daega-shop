@@ -80,7 +80,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   
   const body = await request.json().catch(() => ({}))
-  const allowed = ['brand','name','slug','price','image_url','category','weight_gram','status'] as const
+  const allowed = ['brand','name','slug','price','category','weight_gram','status'] as const
   const updates: Record<string, any> = {}
   
   for (const key of allowed) {

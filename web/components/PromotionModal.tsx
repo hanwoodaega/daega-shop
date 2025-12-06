@@ -42,8 +42,8 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
               brand,
               name,
               price,
-              image_url,
-              category
+              category,
+              status
             )
           `)
           .eq('promotion_id', product.promotion.id)
@@ -51,10 +51,40 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
         if (ppError) throw ppError
         
         // 상품 데이터 변환
-        const products = (promotionProductsData || []).map((pp: any) => {
+        let products = (promotionProductsData || []).map((pp: any) => {
           const prod = Array.isArray(pp.products) ? pp.products[0] : pp.products
           return prod
         }).filter(Boolean)
+        
+        // 품절/삭제된 상품 제외
+        products = products.filter((p: any) => p.status === 'active')
+        
+        // 각 상품의 이미지 URL 조회
+        const productIds = products.map((p: any) => p.id)
+        if (productIds.length > 0) {
+          const { data: imagesData, error: imagesError } = await supabase
+            .from('product_images')
+            .select('product_id, image_url, priority')
+            .in('product_id', productIds)
+            .order('priority', { ascending: true })
+            .order('created_at', { ascending: true })
+          
+          if (!imagesError && imagesData) {
+            // 각 상품별로 우선순위가 가장 높은 이미지 선택
+            const imageMap = new Map<string, string>()
+            for (const img of imagesData) {
+              if (!imageMap.has(img.product_id)) {
+                imageMap.set(img.product_id, img.image_url)
+              }
+            }
+            
+            // 상품에 이미지 URL 추가
+            products = products.map((p: any) => ({
+              ...p,
+              image_url: imageMap.get(p.id) || null
+            }))
+          }
+        }
         
         setPromotionProducts(products)
       } catch (error) {
@@ -159,7 +189,7 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={() => { onClose(); setPromoQuantities({}) }}></div>
       <div className="relative w-full max-w-md bg-white rounded-md shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-        <div className="bg-teal-100 text-red-600 px-5 py-4">
+        <div className="bg-pink-100 text-pink-700 px-5 py-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold">
               🎁 {product.promotion?.type === 'bogo' && product.promotion.buy_qty ? `${product.promotion.buy_qty}+1` : '프로모션'} 골라담기
@@ -202,8 +232,18 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
                   >
                     <div className="flex items-center gap-4">
                       {/* 왼쪽: 이미지 */}
-                      <div className="w-20 h-20 bg-gray-200 rounded flex-shrink-0 flex items-center justify-center">
-                        <span className="text-gray-500 text-xs">이미지 준비중</span>
+                      <div className="w-20 h-20 bg-gray-200 rounded flex-shrink-0 overflow-hidden">
+                        {promo.image_url ? (
+                          <img 
+                            src={promo.image_url} 
+                            alt={promo.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-gray-500 text-xs">이미지 없음</span>
+                          </div>
+                        )}
                       </div>
                       
                       {/* 중앙: 상품명 + 가격 */}

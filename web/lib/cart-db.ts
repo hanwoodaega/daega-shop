@@ -22,7 +22,6 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
           slug,
           name,
           price,
-          image_url,
           brand,
           status,
           promotion_products (
@@ -75,7 +74,7 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
         name: product?.name || '',
         price: product?.price || 0, // 상품의 최신 가격 사용
         quantity: item.quantity,
-        imageUrl: product?.image_url || '',
+        imageUrl: '', // product_images에서 가져와야 함
         discount_percent: discountPercent,
         brand: product?.brand,
         promotion_type: promotionType,

@@ -29,19 +29,25 @@ export default function WishlistPage() {
 
       setLoading(true)
       try {
-        // 프로모션 정보와 weight_gram 포함하여 조회
-        const { data, error } = await supabase
-          .from('products')
-          .select(PRODUCT_SELECT_FIELDS)
-          .in('id', wishlistIds)
+        // API 라우트를 통해 서버 사이드에서 조회
+        const response = await fetch('/api/wishlist/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productIds: wishlistIds }),
+        })
 
-        if (!error && data) {
-          // 공통 유틸리티 함수로 상품 데이터 보강
-          const enrichedProducts = await enrichProducts(data)
-          setWishlistProducts(enrichedProducts as Product[])
+        if (!response.ok) {
+          console.error('위시리스트 상품 조회 실패:', response.status)
+          setWishlistProducts([])
+          setLoading(false)
+          return
         }
+
+        const data = await response.json()
+        setWishlistProducts((data.products || []) as Product[])
       } catch (error) {
         console.error('위시리스트 상품 조회 실패:', error)
+        setWishlistProducts([])
       } finally {
         setLoading(false)
       }

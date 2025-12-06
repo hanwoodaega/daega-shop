@@ -61,6 +61,18 @@ const managementCards: AdminCard[] = [
     href: '/admin/hero',
     accent: 'bg-cyan-100 text-cyan-700',
   },
+  {
+    title: '배너 관리',
+    description: '컬렉션 아래 표시되는 배너를 관리하세요.',
+    href: '/admin/banners',
+    accent: 'bg-yellow-100 text-yellow-700',
+  },
+  {
+    title: '맞춤별 추천 관리',
+    description: '메인페이지 맞춤별 추천 카테고리와 상품을 관리하세요.',
+    href: '/admin/recommendations',
+    accent: 'bg-green-100 text-green-700',
+  },
 ]
 
 const supportCards: AdminCard[] = [

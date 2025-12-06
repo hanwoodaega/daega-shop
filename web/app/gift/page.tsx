@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -13,6 +13,7 @@ import { Product } from '@/lib/supabase'
 import { useCartStore } from '@/lib/store'
 import { formatPrice } from '@/lib/utils'
 import { getCategoryPath } from '@/lib/category-utils'
+import { PRODUCT_SELECT_FIELDS, enrichProducts } from '@/lib/product-queries'
 
 export default function GiftPage() {
   const router = useRouter()
@@ -25,101 +26,55 @@ export default function GiftPage() {
   const [loadingTarget, setLoadingTarget] = useState(false)
   const [loadingBudget, setLoadingBudget] = useState(false)
   const cartCount = useCartStore((state) => state.getTotalItems())
+  const fetchingRef = useRef(false) // 중복 호출 방지
 
   const fetchGiftProducts = useCallback(async () => {
+    // 중복 호출 방지
+    if (fetchingRef.current) {
+      console.log('[선물관] 이미 조회 중입니다. 중복 호출 방지')
+      return
+    }
+    
     try {
-      // 실시간 인기 카테고리 조회
-      const { data: categoryData, error: categoryError } = await supabase
-        .from('gift_categories')
-        .select('id')
-        .eq('slug', 'featured')
-        .single()
-
-      if (categoryError || !categoryData) {
+      fetchingRef.current = true
+      setLoading(true)
+      console.log('[선물관] 상품 조회 시작')
+      
+      // API 라우트를 통해 서버 사이드에서 조회
+      const response = await fetch('/api/gift/featured')
+      
+      if (!response.ok) {
+        console.error('[선물관] API 응답 실패:', response.status)
         setGiftProducts([])
         setLoading(false)
         return
       }
-
-      // 실시간 인기 카테고리의 상품 조회 (프로모션 정보 포함)
-      const { data: productsData, error: productsError } = await supabase
-        .from('gift_category_products')
-        .select(`
-          priority,
-          products (
-            id,
-            slug,
-            brand,
-            name,
-            price,
-            image_url,
-            category,
-            average_rating,
-            review_count,
-            created_at,
-            updated_at,
-            promotion_products (
-              promotion_id,
-              promotions (
-                id,
-                type,
-                buy_qty,
-                discount_percent,
-                is_active
-              )
-            )
-          )
-        `)
-        .eq('gift_category_id', categoryData.id)
-        .order('priority', { ascending: true })
-
-      if (productsError) throw productsError
-
-      // 상품 데이터 변환 및 활성 프로모션 찾기
-      const now = new Date()
-      const featured = (productsData || [])
-        .map((cp: any) => {
-          const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
-          if (!product) return null
-
-          // 활성 프로모션 찾기
-          let activePromotion = null
-          if (product.promotion_products && product.promotion_products.length > 0) {
-            for (const pp of product.promotion_products) {
-              const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
-              if (promo && promo.is_active) {
-                activePromotion = promo
-                break
-              }
-            }
-          }
-
-          return {
-            ...product,
-            promotion: activePromotion,
-            gift_featured_order: cp.priority,
-          }
-        })
-        .filter((p: any) => p && p.id) // null 제거
-        .sort((a: any, b: any) => {
-          const orderA = a.gift_featured_order ?? 999999
-          const orderB = b.gift_featured_order ?? 999999
-          if (orderA !== orderB) return orderA - orderB
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        })
       
-      setGiftProducts(featured.slice(0, 20) as Product[])
-    } catch (error) {
-      console.error('선물세트 상품 조회 실패:', error)
-      setGiftProducts([])
-    } finally {
+      const data = await response.json()
+      console.log('[선물관] 상품 조회 성공:', data.products?.length || 0)
+      
+      setGiftProducts((data.products || []) as Product[])
       setLoading(false)
+    } catch (error) {
+      console.error('[선물관] 선물세트 상품 조회 실패:', error)
+      setGiftProducts([])
+      setLoading(false)
+    } finally {
+      fetchingRef.current = false
     }
   }, [])
 
   useEffect(() => {
-    fetchGiftProducts()
-  }, [fetchGiftProducts])
+    let mounted = true
+    fetchGiftProducts().catch(() => {
+      if (mounted) {
+        setLoading(false)
+      }
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const fetchTargetProducts = useCallback(async (target: string) => {
     setLoadingTarget(true)
@@ -139,91 +94,18 @@ export default function GiftPage() {
         return
       }
 
-      // 카테고리 조회
-      const { data: categoryData, error: categoryError } = await supabase
-        .from('gift_categories')
-        .select('id')
-        .eq('slug', targetSlug)
-        .single()
-
-      if (categoryError || !categoryData) {
+      // API 라우트를 통해 서버 사이드에서 조회
+      const response = await fetch(`/api/gift/target/${targetSlug}`)
+      
+      if (!response.ok) {
+        console.error('선물 대상 상품 조회 실패:', response.status)
         setTargetProducts([])
         setLoadingTarget(false)
         return
       }
-
-      // 카테고리의 상품 조회 (프로모션 정보 포함)
-      const { data: productsData, error: productsError } = await supabase
-        .from('gift_category_products')
-        .select(`
-          priority,
-          products (
-            id,
-            slug,
-            brand,
-            name,
-            price,
-            image_url,
-            category,
-            average_rating,
-            review_count,
-            created_at,
-            updated_at,
-            promotion_products (
-              promotion_id,
-              promotions (
-                id,
-                type,
-                buy_qty,
-                discount_percent,
-                is_active
-              )
-            )
-          )
-        `)
-        .eq('gift_category_id', categoryData.id)
-        .order('priority', { ascending: true })
-
-      if (productsError) {
-        console.error('상품 조회 에러:', productsError)
-        throw productsError
-      }
       
-      // 상품 데이터 변환 및 활성 프로모션 찾기
-      const now = new Date()
-      const filtered = (productsData || [])
-        .map((cp: any) => {
-          const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
-          if (!product) return null
-
-          // 활성 프로모션 찾기
-          let activePromotion = null
-          if (product.promotion_products && product.promotion_products.length > 0) {
-            for (const pp of product.promotion_products) {
-              const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
-              if (promo && promo.is_active) {
-                activePromotion = promo
-                break
-              }
-            }
-          }
-
-          return {
-            ...product,
-            promotion: activePromotion,
-            gift_display_order: cp.priority,
-          }
-        })
-        .filter((p: any) => p && p.id) // null 제거
-        .sort((a: any, b: any) => {
-          const orderA = a.gift_display_order ?? 999999
-          const orderB = b.gift_display_order ?? 999999
-          if (orderA !== orderB) return orderA - orderB
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        })
-      
-      const result = filtered.slice(0, 20)
-      setTargetProducts(result as Product[])
+      const data = await response.json()
+      setTargetProducts((data.products || []) as Product[])
     } catch (error) {
       console.error('선물 대상 상품 조회 실패:', error)
       setTargetProducts([])
@@ -238,91 +120,18 @@ export default function GiftPage() {
       // 예산별 카테고리 slug는 이미 budgetType과 동일 (under-50k, over-50k 등)
       const budgetSlug = budgetType
 
-      // 카테고리 조회
-      const { data: categoryData, error: categoryError } = await supabase
-        .from('gift_categories')
-        .select('id')
-        .eq('slug', budgetSlug)
-        .single()
-
-      if (categoryError || !categoryData) {
+      // API 라우트를 통해 서버 사이드에서 조회
+      const response = await fetch(`/api/gift/budget/${budgetSlug}`)
+      
+      if (!response.ok) {
+        console.error('예산별 상품 조회 실패:', response.status)
         setBudgetProducts([])
         setLoadingBudget(false)
         return
       }
-
-      // 카테고리의 상품 조회 (프로모션 정보 포함)
-      const { data: productsData, error: productsError } = await supabase
-        .from('gift_category_products')
-        .select(`
-          priority,
-          products (
-            id,
-            slug,
-            brand,
-            name,
-            price,
-            image_url,
-            category,
-            average_rating,
-            review_count,
-            created_at,
-            updated_at,
-            promotion_products (
-              promotion_id,
-              promotions (
-                id,
-                type,
-                buy_qty,
-                discount_percent,
-                is_active
-              )
-            )
-          )
-        `)
-        .eq('gift_category_id', categoryData.id)
-        .order('priority', { ascending: true })
-
-      if (productsError) {
-        console.error('상품 조회 에러:', productsError)
-        throw productsError
-      }
       
-      // 상품 데이터 변환 및 활성 프로모션 찾기
-      const now = new Date()
-      const filtered = (productsData || [])
-        .map((cp: any) => {
-          const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
-          if (!product) return null
-
-          // 활성 프로모션 찾기
-          let activePromotion = null
-          if (product.promotion_products && product.promotion_products.length > 0) {
-            for (const pp of product.promotion_products) {
-              const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
-              if (promo && promo.is_active) {
-                activePromotion = promo
-                break
-              }
-            }
-          }
-
-          return {
-            ...product,
-            promotion: activePromotion,
-            gift_budget_order: cp.priority,
-          }
-        })
-        .filter((p: any) => p && p.id) // null 제거
-        .sort((a: any, b: any) => {
-          const orderA = a.gift_budget_order ?? 999999
-          const orderB = b.gift_budget_order ?? 999999
-          if (orderA !== orderB) return orderA - orderB
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        })
-      
-      const result = filtered.slice(0, 20)
-      setBudgetProducts(result as Product[])
+      const data = await response.json()
+      setBudgetProducts((data.products || []) as Product[])
     } catch (error) {
       console.error('예산별 상품 조회 실패:', error)
       setBudgetProducts([])

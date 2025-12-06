@@ -27,7 +27,7 @@ interface Collection {
 interface CollectionProduct {
   id: string
   product_id: string
-  priority: number
+  priority: number | null
   products: {
     id: string
     name: string
@@ -344,6 +344,32 @@ export default function CollectionsPage() {
     }
   }
 
+  const handleUpdatePriority = async (collectionProductId: string, newPriority: number | null) => {
+    if (!selectedCollection) return
+
+    try {
+      const res = await fetch(`/api/admin/collections/${selectedCollection.id}/products`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collection_product_id: collectionProductId,
+          priority: newPriority === null || newPriority === undefined ? null : newPriority,
+        }),
+      })
+
+      if (res.ok) {
+        toast.success('순서가 변경되었습니다')
+        fetchCollectionProducts(selectedCollection.id)
+      } else {
+        const data = await res.json()
+        toast.error(data.error || '순서 변경에 실패했습니다')
+      }
+    } catch (error) {
+      console.error('순서 변경 실패:', error)
+      toast.error('순서 변경에 실패했습니다')
+    }
+  }
+
 
   const resetForm = () => {
     setFormData({
@@ -512,37 +538,68 @@ export default function CollectionsPage() {
                 </div>
 
                 <div>
-                  <h3 className="font-medium mb-3">
-                    포함된 상품 ({collectionProducts.length}개)
-                  </h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium">
+                      포함된 상품 ({collectionProducts.length}개)
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      * 순서를 설정하면 낮은 순서부터 표시됩니다 (메인 페이지에서 상위 4개만 표시)
+                    </p>
+                  </div>
                   {collectionProducts.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       상품이 없습니다
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      {collectionProducts.map((cp) => {
-                        const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
-                        return product ? (
-                          <div
-                            key={cp.id}
-                            className="flex items-center justify-between p-3 border rounded-lg"
-                          >
-                            <div className="flex-1">
-                              <p className="font-medium">{product.name}</p>
-                              <p className="text-sm text-gray-600">
-                                {product.category} • {product.price.toLocaleString()}원
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => handleRemoveProduct(product.id)}
-                              className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded"
+                    <div className="grid grid-cols-2 gap-3">
+                      {[...collectionProducts]
+                        .sort((a, b) => {
+                          // priority가 있는 것들을 먼저, null인 것들은 나중에
+                          const aPriority = a.priority ?? 999999
+                          const bPriority = b.priority ?? 999999
+                          return aPriority - bPriority
+                        })
+                        .map((cp) => {
+                          const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
+                          return product ? (
+                            <div
+                              key={cp.id}
+                              className="flex flex-col gap-2 p-3 border rounded-lg"
                             >
-                              제거
-                            </button>
-                          </div>
-                        ) : null
-                      })}
+                              <div className="flex items-center justify-between">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={cp.priority ?? ''}
+                                  placeholder="순서"
+                                  onChange={(e) => {
+                                    const value = e.target.value
+                                    const newPriority = value === '' ? null : (parseInt(value) || null)
+                                    handleUpdatePriority(cp.id, newPriority)
+                                  }}
+                                  onBlur={(e) => {
+                                    if (e.target.value === '') {
+                                      handleUpdatePriority(cp.id, null)
+                                    }
+                                  }}
+                                  className="w-16 px-1 py-0.5 text-xs border rounded text-center"
+                                />
+                                <button
+                                  onClick={() => handleRemoveProduct(cp.product_id)}
+                                  className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
+                                >
+                                  제거
+                                </button>
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium text-sm line-clamp-2">{product.name}</p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {product.category} • {product.price.toLocaleString()}원
+                                </p>
+                              </div>
+                            </div>
+                          ) : null
+                        })}
                     </div>
                   )}
                 </div>

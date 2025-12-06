@@ -12,37 +12,82 @@ import { usePromotionModalStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
 import { addCartItemWithDB } from '@/lib/cart-db'
 
-const CATEGORIES = [
-  '아이 / 어린이',
-  '다이어터',
-  '부모님',
-  '캠핑/BBQ',
-  '홈파티',
-  '빠르게 조리 가능',
-  '1인분 / 소포장'
-]
+const PRODUCTS_PER_PAGE = 3
+
+interface RecommendationCategory {
+  id: string
+  name: string
+  sort_order: number
+  is_active: boolean
+}
 
 export default function RecommendationSection() {
+  const [categories, setCategories] = useState<RecommendationCategory[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const openPromotionModal = usePromotionModalStore((state) => state.openModal)
   const { user } = useAuth()
 
+  // 페이지 수 계산
+  const totalPages = Math.ceil(products.length / PRODUCTS_PER_PAGE)
+  
+  // 현재 페이지의 상품들
+  const currentProducts = products.slice(
+    currentPage * PRODUCTS_PER_PAGE,
+    (currentPage + 1) * PRODUCTS_PER_PAGE
+  )
+
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchCategories = async () => {
       if (!isSupabaseConfigured) {
         setLoading(false)
         return
       }
 
       try {
-        // 전체 상품 조회 (일단 아무 상품이나)
-        const response = await fetch('/api/products?page=1&limit=4')
+        const response = await fetch('/api/recommendations')
+        if (response.ok) {
+          const data = await response.json()
+          const categoriesList = data.categories || []
+          setCategories(categoriesList)
+          
+          // 첫 번째 카테고리를 기본 선택
+          if (categoriesList.length > 0 && !selectedCategoryId) {
+            setSelectedCategoryId(categoriesList[0].id)
+          }
+        }
+      } catch (error) {
+        console.error('추천 카테고리 조회 실패:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCategories()
+  }, [])
+
+  useEffect(() => {
+    if (!selectedCategoryId) {
+      setProducts([])
+      setCurrentPage(0)
+      return
+    }
+
+    const fetchProducts = async () => {
+      if (!isSupabaseConfigured) {
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/recommendations/${selectedCategoryId}/products`)
         
         if (!response.ok) {
           setProducts([])
-          setLoading(false)
+          setCurrentPage(0)
           return
         }
 
@@ -50,7 +95,7 @@ export default function RecommendationSection() {
         
         if (!data.products || data.products.length === 0) {
           setProducts([])
-          setLoading(false)
+          setCurrentPage(0)
           return
         }
 
@@ -59,15 +104,16 @@ export default function RecommendationSection() {
           ...product
         } as Product))
         setProducts(activeProducts as any)
+        setCurrentPage(0) // 카테고리 변경 시 첫 페이지로 리셋
       } catch (error) {
         console.error('추천 상품 조회 실패:', error)
-      } finally {
-        setLoading(false)
+        setProducts([])
+        setCurrentPage(0)
       }
     }
 
     fetchProducts()
-  }, [])
+  }, [selectedCategoryId])
 
   if (loading) {
     return (
@@ -146,31 +192,53 @@ export default function RecommendationSection() {
           </div>
 
           {/* 카테고리 필터 버튼 */}
-          <div className="mb-6">
-            <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {CATEGORIES.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(selectedCategory === category ? null : category)}
-                  className="px-5 py-2.5 rounded-lg font-medium text-base whitespace-nowrap transition"
-                  style={{
-                    backgroundColor: selectedCategory === category ? '#D9C79E' : '#FFFFFF',
-                    color: selectedCategory === category ? '#FFFFFF' : '#2A2A2A',
-                    border: '1px solid #D9C79E'
-                  }}
-                >
-                  {category}
-                </button>
-              ))}
+          {categories.length > 0 && (
+            <div className="mb-6">
+              <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {categories.map((category) => (
+                  <button
+                    key={category.id}
+                    onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
+                    className="px-5 py-2.5 rounded-lg font-medium text-base whitespace-nowrap transition"
+                    style={{
+                      backgroundColor: selectedCategoryId === category.id ? '#D9C79E' : '#FFFFFF',
+                      color: selectedCategoryId === category.id ? '#FFFFFF' : '#2A2A2A',
+                      border: '1px solid #D9C79E'
+                    }}
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="bg-white pt-2 pb-4 -mx-2 px-2 relative z-10">
-          <div className="space-y-4 px-2 bg-white">
-          {products.map((product) => {
+          <div 
+            className="space-y-4 px-2 bg-white overflow-hidden"
+            onTouchStart={(e) => setTouchStart(e.targetTouches[0].clientX)}
+            onTouchMove={(e) => setTouchEnd(e.targetTouches[0].clientX)}
+            onTouchEnd={() => {
+              if (!touchStart || !touchEnd) return
+              const distance = touchStart - touchEnd
+              const isLeftSwipe = distance > 50
+              const isRightSwipe = distance < -50
+
+              if (isLeftSwipe && currentPage < totalPages - 1) {
+                setCurrentPage(currentPage + 1)
+              }
+              if (isRightSwipe && currentPage > 0) {
+                setCurrentPage(currentPage - 1)
+              }
+
+              setTouchStart(null)
+              setTouchEnd(null)
+            }}
+          >
+          {currentProducts.map((product) => {
             const hasValidImage = isValidImageUrl(product.image_url)
-            const shouldRenderImage = hasValidImage && !product.image_url.includes('via.placeholder.com')
+            const shouldRenderImage = hasValidImage && !product.image_url?.includes('via.placeholder.com')
 
             // 타임딜 할인율 (우선순위 높음)
             const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
@@ -219,7 +287,7 @@ export default function RecommendationSection() {
                         </span>
                       </div>
                     )}
-                    {shouldRenderImage ? (
+                    {shouldRenderImage && product.image_url ? (
                       <Image
                         src={product.image_url}
                         alt={product.name}
@@ -317,6 +385,24 @@ export default function RecommendationSection() {
             )
           })}
           </div>
+          
+          {/* 인디케이터 점 */}
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4 pb-2">
+              {Array.from({ length: totalPages }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentPage(index)}
+                  className={`w-2 h-2 rounded-full transition ${
+                    currentPage === index
+                      ? 'bg-gray-800'
+                      : 'bg-gray-300'
+                  }`}
+                  aria-label={`페이지 ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
         <div className="bg-white h-8 -mt-4"></div>
     </section>

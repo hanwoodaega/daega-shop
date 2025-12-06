@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useState, useMemo, useCallback, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -13,6 +13,7 @@ import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import { useCartStore, useWishlistStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth-context'
 import { formatPrice, canUseKakaoDeepLink } from '@/lib/utils'
+import { useIsMobile } from '@/lib/hooks/useDevice'
 import { supabase, Product } from '@/lib/supabase'
 import { toggleWishlistDB } from '@/lib/wishlist-db'
 import { removeCartItemWithDB, updateCartQuantityWithDB, addCartItemWithDB, loadCartFromDB, clearCartWithDB } from '@/lib/cart-db'
@@ -24,6 +25,7 @@ import { calculateOrderTotal } from '@/lib/order-calc'
 function CartPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
   
   // ✅ Selector 패턴 - 필요한 것만 구독
   const items = useCartStore((state) => state.items)
@@ -47,6 +49,7 @@ function CartPageContent() {
   const [quickDeliveryArea, setQuickDeliveryArea] = useState('')
   const [quickDeliveryTime, setQuickDeliveryTime] = useState('')
   const [isKakaoGiftAvailable, setIsKakaoGiftAvailable] = useState(() => canUseKakaoDeepLink())
+  const isMobile = useIsMobile()
 
   // hydration 에러 방지
   useEffect(() => {
@@ -876,11 +879,11 @@ function CartPageContent() {
         )}
       </main>
 
-      {/* 하단 고정 액션 바: 선물하기 / 주문하기 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
+      {/* 하단 고정 액션 바: 선물하기 (모바일만) / 주문하기 */}
+      <div className="fixed bottom-0 left-0 right-0 z-50" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
         <div className="w-full flex justify-center">
           <div className="w-full max-w-[480px] bg-white shadow-lg px-0 pb-0 flex gap-0">
-          {deliveryMethod === 'regular' && (
+          {deliveryMethod === 'regular' && isMobile && (
             <button
               type="button"
               onClick={handleGiftCheckout}
@@ -903,8 +906,8 @@ function CartPageContent() {
           )}
           <button
             onClick={handleCheckout}
-            className={`bg-red-600 text-white py-3 text-base font-medium hover:bg-red-600 ${deliveryMethod === 'regular' ? '' : 'w-full'}`}
-            style={{ width: deliveryMethod === 'regular' ? '65%' : '100%' }}
+            className={`bg-red-600 text-white py-3 text-base font-medium hover:bg-red-600 ${deliveryMethod === 'regular' && isMobile ? '' : 'w-full'}`}
+            style={{ width: deliveryMethod === 'regular' && isMobile ? '65%' : '100%' }}
             suppressHydrationWarning
           >
             주문하기 ({mounted ? getSelectedItems().filter(item => !isSoldOut(item.status)).reduce((total, item) => total + item.quantity, 0) : 0})
@@ -1026,7 +1029,8 @@ function CartPageContent() {
       )}
 
       <Footer />
-      <BottomNavbar />
+      {/* 장바구니 페이지에서는 하단 액션 바가 있으므로 BottomNavbar 숨김 */}
+      {pathname !== '/cart' && <BottomNavbar />}
     </div>
   )
 }

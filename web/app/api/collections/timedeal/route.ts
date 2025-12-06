@@ -53,7 +53,6 @@ export async function GET(request: NextRequest) {
           brand,
           name,
           price,
-          image_url,
           category,
           average_rating,
           review_count,
@@ -76,7 +75,18 @@ export async function GET(request: NextRequest) {
       .limit(limit)
 
     if (productsError) {
-      return NextResponse.json({ error: productsError.message }, { status: 400 })
+      console.error('타임딜 상품 조회 실패:', productsError)
+      // 에러 상세 정보 로깅
+      if (productsError.message) {
+        console.error('에러 메시지:', productsError.message)
+      }
+      if (productsError.code) {
+        console.error('에러 코드:', productsError.code)
+      }
+      return NextResponse.json({ 
+        error: productsError.message || '상품 조회 실패',
+        code: productsError.code 
+      }, { status: 400 })
     }
 
     // 상품 데이터 정리 및 타임딜 할인율 적용

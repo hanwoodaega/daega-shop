@@ -130,7 +130,20 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('상품 조회 실패:', error)
-      return NextResponse.json({ error: '상품 조회 실패' }, { status: 500 })
+      // 에러 상세 정보 로깅
+      if (error.message) {
+        console.error('에러 메시지:', error.message)
+      }
+      if (error.code) {
+        console.error('에러 코드:', error.code)
+      }
+      if (error.details) {
+        console.error('에러 상세:', error.details)
+      }
+      return NextResponse.json({ 
+        error: error.message || '상품 조회 실패',
+        code: error.code 
+      }, { status: 500 })
     }
 
     if (!products || products.length === 0) {

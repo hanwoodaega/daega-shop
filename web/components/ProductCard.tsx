@@ -28,7 +28,7 @@ function ProductCard({ product }: ProductCardProps) {
   // ✅ 계산 결과 메모이제이션
   const hasValidImage = useMemo(() => isValidImageUrl(product.image_url), [product.image_url])
   const isPlaceholderHost = useMemo(() => 
-    hasValidImage && product.image_url.includes('via.placeholder.com'),
+    hasValidImage && product.image_url?.includes('via.placeholder.com'),
     [hasValidImage, product.image_url]
   )
   const shouldRenderImage = useMemo(() => 
@@ -176,7 +176,7 @@ function ProductCard({ product }: ProductCardProps) {
               </span>
             </div>
           )}
-          {shouldRenderImage ? (
+          {shouldRenderImage && product.image_url ? (
             <Image
               src={product.image_url}
               alt={product.name}
@@ -267,7 +267,7 @@ function ProductCard({ product }: ProductCardProps) {
           {/* 100g당 가격 표시 */}
           {pricePer100g && (
             <p className="text-sm font-medium text-gray-600 mt-0.5 mb-0 leading-tight tracking-tighter">
-              (100g당 {formatPrice(pricePer100g)}원)
+              (100g당 {Math.round(pricePer100g).toLocaleString()}원)
             </p>
           )}
           

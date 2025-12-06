@@ -21,6 +21,7 @@ export default function SalePage() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const isFetchingRef = useRef(false)
+  const [hasActiveTimedeal, setHasActiveTimedeal] = useState(false)
 
   const fetchDiscountedProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
     if (isFetchingRef.current) return
@@ -112,18 +113,46 @@ export default function SalePage() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [loadingMore, hasMore])
 
+  // 타임딜 존재 여부 확인
+  useEffect(() => {
+    const checkTimedeal = async () => {
+      try {
+        const response = await fetch('/api/collections/timedeal?limit=1')
+        if (response.ok) {
+          const data = await response.json()
+          const hasTimedeal = !!(data.timedeal && data.products && data.products.length > 0)
+          setHasActiveTimedeal(hasTimedeal)
+        } else {
+          setHasActiveTimedeal(false)
+        }
+      } catch (error) {
+        console.error('타임딜 확인 실패:', error)
+        setHasActiveTimedeal(false)
+      }
+    }
+
+    checkTimedeal()
+    
+    // 1분마다 갱신
+    const interval = setInterval(checkTimedeal, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       
       <main className="flex-1">
-        {/* 타임딜 섹션 */}
-        <TimeDealSection variant="grid" />
+        {/* 타임딜 섹션 (타임딜이 있을 때만 표시) */}
+        {hasActiveTimedeal && (
+          <>
+            <TimeDealSection variant="grid" />
+            {/* 구분선 */}
+            <div className="border-t border-gray-300 my-6"></div>
+          </>
+        )}
 
-        {/* 구분선 */}
-        <div className="border-t border-gray-300 my-6"></div>
-
-        <div className="container mx-auto px-4 py-4 pt-6">
+        <div className={`container mx-auto px-4 ${hasActiveTimedeal ? 'py-4 pt-6' : 'pt-4 pb-4'}`}>
           <div className="flex justify-between items-center mb-6">
             <h1 
               className="text-2xl md:text-3xl font-semibold"

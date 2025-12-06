@@ -46,7 +46,6 @@ export default function RecentlyViewedSection() {
           brand,
           name,
           price,
-          image_url,
           category,
           average_rating,
           review_count,
@@ -110,6 +109,44 @@ export default function RecentlyViewedSection() {
           .filter((p): p is Product => p !== undefined)
           // 중복 제거 (같은 상품이 여러 번 나타날 수 있음)
           .filter((p, index, self) => index === self.findIndex(pr => pr.id === p.id))
+
+        // 이미지 보강 (product_images에서 가져오기)
+        if (orderedProducts.length > 0) {
+          try {
+            const productIds = orderedProducts.map((p: Product) => p.id)
+            const { data: imagesData } = await supabase
+              .from('product_images')
+              .select('product_id, image_url, priority')
+              .in('product_id', productIds)
+              .order('priority', { ascending: true })
+              .order('created_at', { ascending: true })
+            
+            if (imagesData && imagesData.length > 0) {
+              const imageMap = new Map<string, string>()
+              for (const img of imagesData) {
+                const existing = imageMap.get(img.product_id)
+                if (!existing) {
+                  imageMap.set(img.product_id, img.image_url)
+                } else {
+                  const existingImg = imagesData.find((i: any) => i.product_id === img.product_id && i.image_url === existing)
+                  if (existingImg && img.priority < existingImg.priority) {
+                    imageMap.set(img.product_id, img.image_url)
+                  }
+                }
+              }
+              
+              orderedProducts = orderedProducts.map((p: Product) => ({
+                ...p,
+                image_url: imageMap.get(p.id) || null
+              }))
+            } else {
+              orderedProducts = orderedProducts.map((p: Product) => ({ ...p, image_url: null }))
+            }
+          } catch (error) {
+            console.error('이미지 보강 실패:', error)
+            orderedProducts = orderedProducts.map((p: Product) => ({ ...p, image_url: null }))
+          }
+        }
 
         // 공통 유틸리티 함수로 상품 데이터 보강
         const enrichedProducts = await enrichProducts(orderedProducts)

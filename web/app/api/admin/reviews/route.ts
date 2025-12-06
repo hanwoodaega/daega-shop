@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
         .select(`
           *,
           users!reviews_user_id_fkey(name),
-          products!reviews_product_id_fkey(name, image_url, brand)
+          products!reviews_product_id_fkey(name, brand)
         `, { count: 'exact' })
         .eq('status', status)
         .order('created_at', { ascending: false })
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         .select(`
           *,
           users!reviews_user_id_fkey(name),
-          products!reviews_product_id_fkey(name, image_url, brand)
+          products!reviews_product_id_fkey(name, brand)
         `, { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       user_name: r.users?.name || '익명',
       product: r.products ? {
         name: r.products.name,
-        image_url: r.products.image_url,
+        image_url: null,
         brand: r.products.brand,
       } : null,
       users: undefined,
