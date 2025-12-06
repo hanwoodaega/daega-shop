@@ -30,7 +30,7 @@ export default function TimeDealSection({ variant = 'scroll' }: TimeDealSectionP
       try {
         // 타임딜 조회 (새로운 timedeals 테이블 구조)
         // grid 모드일 때는 더 많은 상품을 가져옴
-        const limit = variant === 'grid' ? 100 : 10
+        const limit = variant === 'grid' ? 100 : 5
         const response = await fetch(`/api/collections/timedeal?limit=${limit}`)
         
         if (!response.ok) {
@@ -146,9 +146,9 @@ export default function TimeDealSection({ variant = 'scroll' }: TimeDealSectionP
           <div className="mb-8">
             <div className="flex flex-col gap-2 mb-3 w-[95%] mx-auto">
               <div className="flex flex-col">
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   {/* 시계 이미지 */}
-                  <div className="flex-shrink-0 relative" style={{ width: '48px', height: '48px' }}>
+                  <div className="flex-shrink-0 relative -ml-1" style={{ width: '48px', height: '48px' }}>
                     <Image
                       src="/images/timedealclock.png"
                       alt="타임딜 시계"

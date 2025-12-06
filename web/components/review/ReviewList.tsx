@@ -251,7 +251,7 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
         {total > 0 && (
           <button
             onClick={() => {
-              router.push(`/products/${productId}/reviews`)
+              router.push(`/product/${productId}/reviews`)
             }}
             className="text-sm text-blue-600 font-bold hover:underline"
             suppressHydrationWarning
@@ -349,7 +349,7 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
             <div className="mt-6 text-center">
               <button
                 onClick={() => {
-                  router.push(`/products/${productId}/reviews`)
+                  router.push(`/product/${productId}/reviews`)
                 }}
                 className="px-6 py-3 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
               >

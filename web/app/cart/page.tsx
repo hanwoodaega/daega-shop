@@ -6,6 +6,7 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 // Navbar 제거: 장바구니 전용 헤더 사용
 import ProductCard from '@/components/ProductCard'
+import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import FreeShippingProgress from '@/components/FreeShippingProgress'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
@@ -503,9 +504,9 @@ function CartPageContent() {
                 )}
               </div>
 
-              {/* 전체 선택 체크박스 및 장바구니 비우기 */}
-              <div className={`bg-white pt-4 pb-4 ${deliveryMethod === 'regular' ? 'border-b border-gray-300' : ''}`}>
-                <div className="flex items-center justify-between pl-2">
+              {/* 전체 선택 체크박스 */}
+              <div className="bg-white pt-4 pb-4 border-b border-gray-300">
+                <div className="flex items-center pl-2">
                   <label className="flex items-center cursor-pointer">
                     <input
                       type="checkbox"
@@ -516,15 +517,6 @@ function CartPageContent() {
                     />
                     <span className="ml-3 text-sm font-medium text-gray-900">전체선택</span>
                   </label>
-                  <button
-                    onClick={async () => {
-                      if (!confirm('장바구니를 모두 비우시겠습니까?')) return
-                      await clearCartWithDB(user?.id || null)
-                    }}
-                    className="text-xs text-gray-600 hover:text-red-600 px-2 py-1"
-                  >
-                    장바구니 비우기
-                  </button>
                 </div>
               </div>
 
@@ -574,14 +566,14 @@ function CartPageContent() {
                     <div key={item.id} className={`${itemIndex === 0 ? 'pt-1' : 'pt-3'} pb-3 ${itemIndex < groupItems.length - 1 ? 'border-dashed-long' : ''}`}>
                       <div className="flex items-start space-x-3">
                         {/* 상품 이미지 */}
-                        <Link href={`/products/${item.slug || item.productId}`} className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 text-xs hover:opacity-80 transition">
+                        <Link href={`/product/${item.slug || item.productId}`} className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 text-xs hover:opacity-80 transition">
                           이미지 준비중
                         </Link>
 
                         {/* 상품 정보 */}
                         <div className="flex-1">
                           <div className="flex items-start justify-between">
-                            <Link href={`/products/${item.slug || item.productId}`} className="flex-1 pr-2 hover:opacity-80 transition">
+                            <Link href={`/product/${item.slug || item.productId}`} className="flex-1 pr-2 hover:opacity-80 transition">
                               {item.brand && (
                                 <div className="text-sm font-bold text-gray-900 mb-0.5">{item.brand}</div>
                               )}
@@ -688,7 +680,7 @@ function CartPageContent() {
                     {/* 상품 정보 */}
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
-                        <Link href={`/products/${item.slug || item.productId}`} className="flex-1 pr-2 hover:opacity-80 transition">
+                        <Link href={`/product/${item.slug || item.productId}`} className="flex-1 pr-2 hover:opacity-80 transition">
                           {item.brand && (
                             <div className="text-sm font-bold text-gray-900 mb-0.5 line-clamp-1">{item.brand}</div>
                           )}
@@ -767,7 +759,7 @@ function CartPageContent() {
                       <div className="flex items-start space-x-3">
                         {/* 상품 이미지 (품절 오버레이) */}
                         <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center">
-                          <Link href={`/products/${item.slug || item.productId}`} className="absolute inset-0 flex items-center justify-center hover:opacity-80 transition">
+                          <Link href={`/product/${item.slug || item.productId}`} className="absolute inset-0 flex items-center justify-center hover:opacity-80 transition">
                             <span className="text-gray-500 text-xs">이미지 준비중</span>
                           </Link>
                           {/* 품절 오버레이 */}
@@ -779,7 +771,7 @@ function CartPageContent() {
                         {/* 상품 정보 */}
                         <div className="flex-1">
                           <div className="flex items-start justify-between">
-                            <Link href={`/products/${item.slug || item.productId}`} className="flex-1 pr-2 hover:opacity-80 transition">
+                            <Link href={`/product/${item.slug || item.productId}`} className="flex-1 pr-2 hover:opacity-80 transition">
                               {item.brand && (
                                 <div className="text-sm font-bold text-gray-900 mb-0.5 line-clamp-1">{item.brand}</div>
                               )}
@@ -1032,6 +1024,9 @@ function CartPageContent() {
           </div>
         </div>
       )}
+
+      <Footer />
+      <BottomNavbar />
     </div>
   )
 }

@@ -21,9 +21,11 @@ export const MAIN_MENU_LINKS = [
 ]
 
 // 카테고리 메뉴 (두 번째 줄) - 동적으로 생성
+// 주의: 이 상수는 동적 import가 필요한 경우를 위해 유지하지만,
+// 실제 링크는 getCategoryPath() 함수를 사용하는 것을 권장합니다.
 export const CATEGORY_LINKS = CATEGORIES.map(category => ({
   name: category,
-  href: category === '전체' ? '/products' : `/products?category=${encodeURIComponent(category)}`
+  href: category === '전체' ? '/products' : `/category/${category === '한우' ? 'hanwoo' : category === '한돈' ? 'handon' : category === '수입육' ? 'imported' : category === '닭·오리' ? 'chicken' : category === '가공육' ? 'processed' : category === '양념육' ? 'seasoned' : category === '과일·야채' ? 'produce' : category === '선물세트' ? 'gift-set' : category}`
 }))
 
 // ==================== Order Status ====================

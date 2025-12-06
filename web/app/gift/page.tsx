@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
@@ -11,6 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { Product } from '@/lib/supabase'
 import { useCartStore } from '@/lib/store'
 import { formatPrice } from '@/lib/utils'
+import { getCategoryPath } from '@/lib/category-utils'
 
 export default function GiftPage() {
   const router = useRouter()
@@ -63,9 +65,7 @@ export default function GiftPage() {
                 type,
                 buy_qty,
                 discount_percent,
-                is_active,
-                start_at,
-                end_at
+                is_active
               )
             )
           )
@@ -88,12 +88,8 @@ export default function GiftPage() {
             for (const pp of product.promotion_products) {
               const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
               if (promo && promo.is_active) {
-                const startAt = promo.start_at ? new Date(promo.start_at) : null
-                const endAt = promo.end_at ? new Date(promo.end_at) : null
-                if ((!startAt || startAt <= now) && (!endAt || endAt >= now)) {
-                  activePromotion = promo
-                  break
-                }
+                activePromotion = promo
+                break
               }
             }
           }
@@ -180,9 +176,7 @@ export default function GiftPage() {
                 type,
                 buy_qty,
                 discount_percent,
-                is_active,
-                start_at,
-                end_at
+                is_active
               )
             )
           )
@@ -208,12 +202,8 @@ export default function GiftPage() {
             for (const pp of product.promotion_products) {
               const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
               if (promo && promo.is_active) {
-                const startAt = promo.start_at ? new Date(promo.start_at) : null
-                const endAt = promo.end_at ? new Date(promo.end_at) : null
-                if ((!startAt || startAt <= now) && (!endAt || endAt >= now)) {
-                  activePromotion = promo
-                  break
-                }
+                activePromotion = promo
+                break
               }
             }
           }
@@ -285,9 +275,7 @@ export default function GiftPage() {
                 type,
                 buy_qty,
                 discount_percent,
-                is_active,
-                start_at,
-                end_at
+                is_active
               )
             )
           )
@@ -313,12 +301,8 @@ export default function GiftPage() {
             for (const pp of product.promotion_products) {
               const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
               if (promo && promo.is_active) {
-                const startAt = promo.start_at ? new Date(promo.start_at) : null
-                const endAt = promo.end_at ? new Date(promo.end_at) : null
-                if ((!startAt || startAt <= now) && (!endAt || endAt >= now)) {
-                  activePromotion = promo
-                  break
-                }
+                activePromotion = promo
+                break
               }
             }
           }
@@ -393,8 +377,8 @@ export default function GiftPage() {
               className="p-2 hover:bg-gray-100 rounded-full transition relative"
               aria-label="장바구니"
             >
-              <svg className="w-7 h-7 md:w-8 md:h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              <svg className="w-8 h-8 md:w-9 md:h-9 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
               <span
                 className={`absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
@@ -448,7 +432,7 @@ export default function GiftPage() {
               </div>
               {/* 전체보기 버튼 */}
               <div className="mt-4">
-                <Link href="/products?category=선물세트" className="block">
+                <Link href={getCategoryPath('선물세트')} className="block">
                   <button className="w-full px-6 py-2.5 bg-white border border-gray-300 rounded-lg font-semibold text-gray-900 hover:bg-gray-50 transition flex items-center justify-center gap-2">
                     <span>전체보기</span>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -530,7 +514,7 @@ export default function GiftPage() {
                       : null
                     
                     return (
-                      <Link key={product.id} href={`/products/${product.id}`}>
+                      <Link key={product.id} href={`/product/${product.id}`}>
                         <div className="flex gap-4 hover:opacity-80 transition mb-4">
                           {/* 이미지 - 왼쪽 */}
                           <div className="relative w-28 h-28 flex-shrink-0 bg-gray-200 rounded-md overflow-hidden">
@@ -682,7 +666,7 @@ export default function GiftPage() {
                       : null
                     
                     return (
-                      <Link key={product.id} href={`/products/${product.id}`}>
+                      <Link key={product.id} href={`/product/${product.id}`}>
                         <div className="flex gap-4 hover:opacity-80 transition mb-4">
                           {/* 이미지 - 왼쪽 */}
                           <div className="relative w-28 h-28 flex-shrink-0 bg-gray-200 rounded-md overflow-hidden">
@@ -765,6 +749,7 @@ export default function GiftPage() {
         </section>
       </main>
 
+      <Footer />
       <BottomNavbar />
     </div>
   )

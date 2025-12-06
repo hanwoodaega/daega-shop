@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { type, title, description, image_url, color_theme, sort_order, start_at, end_at } = body
+    const { type, title, description, image_url, color_theme, sort_order, is_active } = body
 
     if (!type) {
       return NextResponse.json({ error: 'type은 필수입니다.' }, { status: 400 })
@@ -66,8 +66,7 @@ export async function POST(request: NextRequest) {
     if (image_url !== undefined) insertData.image_url = image_url || null
     if (color_theme !== undefined) insertData.color_theme = color_theme || null
     if (sort_order !== undefined) insertData.sort_order = sort_order ?? 0
-    if (start_at !== undefined) insertData.start_at = start_at || null
-    if (end_at !== undefined) insertData.end_at = end_at || null
+    if (is_active !== undefined) insertData.is_active = is_active ?? true
 
     const { data, error } = await supabaseAdmin
       .from('collections')

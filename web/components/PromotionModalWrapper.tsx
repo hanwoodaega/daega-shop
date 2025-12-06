@@ -23,15 +23,13 @@ export default function PromotionModalWrapper() {
             *,
             promotion_products (
               promotion_id,
-              promotions (
-                id,
-                type,
-                buy_qty,
-                discount_percent,
-                is_active,
-                start_at,
-                end_at
-              )
+            promotions (
+              id,
+              type,
+              buy_qty,
+              discount_percent,
+              is_active
+            )
             )
           `)
           .eq('id', productId)
@@ -42,18 +40,11 @@ export default function PromotionModalWrapper() {
         // 활성화된 프로모션 찾기
         let activePromotion = null
         if (data.promotion_products && data.promotion_products.length > 0) {
-          const now = new Date()
           for (const pp of data.promotion_products) {
             const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
             if (promo && promo.is_active) {
-              const startAt = promo.start_at ? new Date(promo.start_at) : null
-              const endAt = promo.end_at ? new Date(promo.end_at) : null
-              const isInDateRange = (!startAt || now >= startAt) && (!endAt || now <= endAt)
-              
-              if (isInDateRange) {
-                activePromotion = promo
-                break
-              }
+              activePromotion = promo
+              break
             }
           }
         }

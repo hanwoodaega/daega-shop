@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { convertLocalToISO, convertUTCToLocal } from '@/lib/time-utils'
 
 interface ColorTheme {
   background?: string
@@ -20,8 +19,7 @@ interface Collection {
   image_url?: string | null
   color_theme?: ColorTheme | null
   sort_order?: number
-  start_at?: string | null
-  end_at?: string | null
+  is_active?: boolean
   created_at: string
   updated_at: string
 }
@@ -72,13 +70,10 @@ export default function CollectionsPage() {
     image_url: '',
     color_theme: {
       background: '#FFFFFF',
-      accent: '#C02020',
-      title_color: '#111111',
       description_color: '#555555',
     } as ColorTheme,
     sort_order: 0,
-    start_at: '',
-    end_at: '',
+    is_active: true,
   })
 
   useEffect(() => {
@@ -209,8 +204,7 @@ export default function CollectionsPage() {
           image_url: formData.image_url || null,
           color_theme: formData.color_theme,
           sort_order: formData.sort_order ?? 0,
-          start_at: formData.start_at ? convertLocalToISO(formData.start_at) : null,
-          end_at: formData.end_at ? convertLocalToISO(formData.end_at) : null,
+          is_active: formData.is_active ?? true,
         }),
       })
 
@@ -249,8 +243,7 @@ export default function CollectionsPage() {
           image_url: formData.image_url || null,
           color_theme: formData.color_theme,
           sort_order: formData.sort_order ?? 0,
-          start_at: formData.start_at ? convertLocalToISO(formData.start_at) : null,
-          end_at: formData.end_at ? convertLocalToISO(formData.end_at) : null,
+          is_active: formData.is_active ?? true,
         }),
       })
 
@@ -365,8 +358,7 @@ export default function CollectionsPage() {
         description_color: '#555555',
       },
       sort_order: 0,
-      start_at: '',
-      end_at: '',
+      is_active: true,
     })
   }
 
@@ -384,8 +376,7 @@ export default function CollectionsPage() {
         description_color: '#555555',
       },
       sort_order: collection.sort_order ?? 0,
-      start_at: collection.start_at ? convertUTCToLocal(collection.start_at) : '',
-      end_at: collection.end_at ? convertUTCToLocal(collection.end_at) : '',
+      is_active: collection.is_active ?? true,
     })
     setShowCreateModal(true)
   }
@@ -611,13 +602,13 @@ export default function CollectionsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">설명</label>
+                  <label className="block text-sm font-medium mb-2">설명 (줄바꿈 가능)</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="w-full px-3 py-2 border rounded-lg"
-                    placeholder="타이틀 아래 설명"
-                    rows={3}
+                    placeholder="타이틀 아래 설명 (Enter로 줄바꿈)"
+                    rows={5}
                   />
                 </div>
 
@@ -680,24 +671,17 @@ export default function CollectionsPage() {
                     </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">시작일시 (선택)</label>
-                      <input
-                        type="datetime-local"
-                        value={formData.start_at}
-                        onChange={(e) => setFormData({ ...formData, start_at: e.target.value })}
-                        className="w-full px-3 py-2 border rounded-lg"
-                      />
-                    </div>
-
-                    <div>
-                  <label className="block text-sm font-medium mb-2">종료일시 (선택)</label>
-                      <input
-                        type="datetime-local"
-                        value={formData.end_at}
-                        onChange={(e) => setFormData({ ...formData, end_at: e.target.value })}
-                        className="w-full px-3 py-2 border rounded-lg"
-                      />
-                    </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_active}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                      className="w-5 h-5 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium">활성화</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">비활성화된 컬렉션은 메인 페이지에 표시되지 않습니다</p>
+                </div>
 
                 <div className="border-t pt-4">
                   <label className="block text-sm font-medium mb-3">색상 테마</label>
@@ -720,52 +704,6 @@ export default function CollectionsPage() {
                           onChange={(e) => setFormData({
                             ...formData,
                             color_theme: { ...formData.color_theme, background: e.target.value }
-                          })}
-                          className="flex-1 px-3 py-2 border rounded-lg"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">강조색 (타이틀 아래 구분선 색상)</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="color"
-                          value={formData.color_theme.accent}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            color_theme: { ...formData.color_theme, accent: e.target.value }
-                          })}
-                          className="w-12 h-10 border rounded"
-                        />
-                        <input
-                          type="text"
-                          value={formData.color_theme.accent}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            color_theme: { ...formData.color_theme, accent: e.target.value }
-                          })}
-                          className="flex-1 px-3 py-2 border rounded-lg"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">타이틀 색상</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="color"
-                          value={formData.color_theme.title_color}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            color_theme: { ...formData.color_theme, title_color: e.target.value }
-                          })}
-                          className="w-12 h-10 border rounded"
-                        />
-                        <input
-                          type="text"
-                          value={formData.color_theme.title_color}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            color_theme: { ...formData.color_theme, title_color: e.target.value }
                           })}
                           className="flex-1 px-3 py-2 border rounded-lg"
                         />

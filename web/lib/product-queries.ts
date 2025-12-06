@@ -26,9 +26,7 @@ export const PRODUCT_SELECT_FIELDS = `
       type,
       buy_qty,
       discount_percent,
-      is_active,
-      start_at,
-      end_at
+      is_active
     )
   )
 `
@@ -57,21 +55,12 @@ export function extractActivePromotion(product: any): any | null {
   if (!product?.promotion_products || !Array.isArray(product.promotion_products) || product.promotion_products.length === 0) {
     return null
   }
-
-  const now = new Date()
   
   for (const pp of product.promotion_products) {
     const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
     
     if (promo && promo.is_active) {
-      // 날짜 체크
-      const startAt = promo.start_at ? new Date(promo.start_at) : null
-      const endAt = promo.end_at ? new Date(promo.end_at) : null
-      const isInDateRange = (!startAt || now >= startAt) && (!endAt || now <= endAt)
-      
-      if (isInDateRange) {
-        return promo
-      }
+      return promo
     }
   }
   

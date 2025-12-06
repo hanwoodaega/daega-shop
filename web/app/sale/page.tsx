@@ -20,25 +20,7 @@ export default function SalePage() {
   const [sortOrder, setSortOrder] = useState<'default' | 'price_asc' | 'price_desc'>('default')
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
-  const [timedealProductIds, setTimedealProductIds] = useState<Set<string>>(new Set())
   const isFetchingRef = useRef(false)
-
-  // 타임딜 상품 ID 목록 가져오기
-  useEffect(() => {
-    const fetchTimedealProductIds = async () => {
-      try {
-        const response = await fetch('/api/collections/timedeal?limit=100')
-        if (response.ok) {
-          const data = await response.json()
-          const ids = new Set<string>((data.products || []).map((p: any) => p.id as string))
-          setTimedealProductIds(ids)
-        }
-      } catch (error) {
-        console.error('타임딜 상품 ID 조회 실패:', error)
-      }
-    }
-    fetchTimedealProductIds()
-  }, [])
 
   const fetchDiscountedProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
     if (isFetchingRef.current) return
@@ -71,24 +53,18 @@ export default function SalePage() {
 
       const data = await response.json()
       
-      // 타임딜 상품은 제외
-      const discountedProducts = (data.products || []).filter((product: any) => {
-        // 타임딜 상품은 제외
-        return !timedealProductIds.has(product.id)
-      })
-      
       if (pageNum === 1) {
-        setDisplayedProducts(discountedProducts)
+        setDisplayedProducts(data.products || [])
       } else {
         setDisplayedProducts(prev => {
           const existingIds = new Set(prev.map((p: any) => p.id))
-          const newProducts = discountedProducts.filter((p: any) => !existingIds.has(p.id))
+          const newProducts = (data.products || []).filter((p: any) => !existingIds.has(p.id))
           return [...prev, ...newProducts]
         })
       }
       
       // 다음 페이지가 있는지 확인
-      setHasMore(pageNum < data.totalPages && discountedProducts.length > 0)
+      setHasMore(pageNum < data.totalPages && (data.products || []).length > 0)
     } catch (error: any) {
       console.error('할인 상품 조회 실패:', error)
       if (error.name === 'AbortError') {
@@ -99,7 +75,7 @@ export default function SalePage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [timedealProductIds])
+  }, [])
 
   useEffect(() => {
     setPage(1)
@@ -143,6 +119,9 @@ export default function SalePage() {
       <main className="flex-1">
         {/* 타임딜 섹션 */}
         <TimeDealSection variant="grid" />
+
+        {/* 구분선 */}
+        <div className="border-t border-gray-300 my-6"></div>
 
         <div className="container mx-auto px-4 py-4 pt-6">
           <div className="flex justify-between items-center mb-6">

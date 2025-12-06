@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { title, type, buy_qty, discount_percent, start_at, end_at, is_active, product_ids, group_id } = body
+    const { title, type, buy_qty, discount_percent, is_active, product_ids, group_id } = body
 
     // 유효성 검사
     if (!title || !type) {
@@ -69,8 +69,6 @@ export async function POST(request: NextRequest) {
         type,
         buy_qty: type === 'bogo' ? buy_qty : null,
         discount_percent: type === 'percent' ? discount_percent : null,
-        start_at: start_at || null,
-        end_at: end_at || null,
         is_active: is_active !== undefined ? is_active : true,
       })
       .select()

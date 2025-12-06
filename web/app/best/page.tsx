@@ -1,23 +1,26 @@
 'use client'
 
-import { Suspense } from 'react'
-import CollectionContent from './CollectionContent'
+import Header from '@/components/Header'
+import Footer from '@/components/Footer'
+import BottomNavbar from '@/components/BottomNavbar'
+import ScrollToTop from '@/components/common/ScrollToTop'
+import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 
 export default function BestPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex flex-col">
-        <div className="flex-1 container mx-auto px-4 py-4 pt-6">
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="animate-pulse bg-gray-200 rounded-lg aspect-square"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    }>
-      <CollectionContent type="best" />
-    </Suspense>
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      
+      <main className="flex-1 container mx-auto px-4 py-4 pt-6">
+        <h1 className="text-2xl font-bold mb-4">베스트</h1>
+        {/* 여기에 베스트 페이지 내용을 추가하세요 */}
+      </main>
+
+      <ScrollToTop />
+      <Footer />
+      <BottomNavbar />
+      <PromotionModalWrapper />
+    </div>
   )
 }
 

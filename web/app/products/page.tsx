@@ -3,15 +3,18 @@
 import { useEffect, useState, Suspense, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
+import TimeDealCountdown from '@/components/TimeDealCountdown'
 import { Product } from '@/lib/supabase'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import { CATEGORIES, DEFAULT_PAGE_SIZE } from '@/lib/constants'
+import { getCategoryPath } from '@/lib/category-utils'
 
 function ProductsContent() {
   const searchParams = useSearchParams()
@@ -28,11 +31,50 @@ function ProductsContent() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const isFetchingRef = useRef(false) // 중복 호출 방지
+  
+  // 타임딜 정보
+  const [timeDealTitle, setTimeDealTitle] = useState('오늘만 특가!')
+  const [timeDealDescription, setTimeDealDescription] = useState<string | null>(null)
+  const [timeDealEndTime, setTimeDealEndTime] = useState<string | null>(null)
 
   // URL 파라미터가 변경되면 selectedCategory 업데이트
   useEffect(() => {
     setSelectedCategory(category || '전체')
   }, [category])
+
+  // 타임딜 정보 가져오기 (filter === 'flash-sale'일 때만)
+  useEffect(() => {
+    if (filter !== 'flash-sale') return
+
+    const fetchTimeDealInfo = async () => {
+      try {
+        const response = await fetch('/api/collections/timedeal?limit=1')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.timedeal) {
+            setTimeDealTitle(data.timedeal.title || data.title || '오늘만 특가!')
+            setTimeDealDescription(data.timedeal.description || null)
+            setTimeDealEndTime(data.timedeal.end_at || null)
+          } else {
+            setTimeDealTitle(data.title || '오늘만 특가!')
+            setTimeDealDescription(null)
+            setTimeDealEndTime(null)
+          }
+        }
+      } catch (error) {
+        console.error('타임딜 정보 조회 실패:', error)
+        setTimeDealTitle('오늘만 특가!')
+        setTimeDealDescription(null)
+        setTimeDealEndTime(null)
+      }
+    }
+
+    fetchTimeDealInfo()
+    
+    // 1분마다 갱신
+    const interval = setInterval(fetchTimeDealInfo, 60000)
+    return () => clearInterval(interval)
+  }, [filter])
 
   const fetchProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
     // 중복 호출 방지
@@ -140,12 +182,11 @@ function ProductsContent() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [loadMore])
 
-  // 페이지 타이틀 메모이제이션
+  // 페이지 타이틀 메모이제이션 (타임딜일 때는 사용 안 함)
   const pageTitle = useMemo(() => {
     if (searchQuery) return `"${searchQuery}" 검색 결과`
     if (filter === 'best') return '베스트'
     if (filter === 'sale') return '특가'
-    if (filter === 'flash-sale') return '타임딜'
     if (selectedCategory && selectedCategory !== '전체') return selectedCategory
     return '전체 상품'
   }, [searchQuery, filter, selectedCategory])
@@ -154,11 +195,7 @@ function ProductsContent() {
   const hasCategory = Boolean(selectedCategory && !searchQuery && !filter)
 
   const handleCategoryNav = useCallback((cat: string) => {
-    if (cat === '전체') {
-      router.push('/products')
-    } else {
-      router.push(`/products?category=${encodeURIComponent(cat)}`)
-    }
+    router.push(getCategoryPath(cat))
   }, [router])
 
   return (
@@ -199,110 +236,211 @@ function ProductsContent() {
       )}
       
       <main className="flex-1">
-        {/* 히어로 섹션 */}
-        {filter && (
+        {/* 타임딜 헤더 - 메인페이지와 동일한 스타일 */}
+        {filter === 'flash-sale' && (
+          <section className="pt-8 overflow-x-hidden" style={{ backgroundColor: '#EF4444' }}>
+            <div className="container mx-auto px-2">
+              <div className="mb-8">
+                <div className="flex flex-col gap-2 mb-3 w-[95%] mx-auto">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      {/* 시계 이미지 */}
+                      <div className="flex-shrink-0 relative -ml-1" style={{ width: '48px', height: '48px' }}>
+                        <Image
+                          src="/images/timedealclock.png"
+                          alt="타임딜 시계"
+                          fill
+                          className="object-contain"
+                          sizes="48px"
+                        />
+                      </div>
+                      <h2 
+                        className="font-extrabold text-[34px]" 
+                        style={{ 
+                          color: '#FFFFFF',
+                          fontFamily: 'Pretendard, sans-serif',
+                          fontWeight: 800,
+                          letterSpacing: '-0.5px',
+                          textShadow: '2px 2px 0px #000000, -2px -2px 0px #000000, 2px -2px 0px #000000, -2px 2px 0px #000000, 0px 2px 0px #000000, 2px 0px 0px #000000, 0px -2px 0px #000000, -2px 0px 0px #000000'
+                        }}
+                      >
+                        {timeDealTitle}
+                      </h2>
+                    </div>
+                  </div>
+                </div>
+                {timeDealEndTime && (
+                  <div className="flex items-center ml-4">
+                    <TimeDealCountdown endTime={timeDealEndTime} className="text-2xl" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 상품 그리드 - 흰색 배경으로 감싸기 (메인페이지와 동일) */}
+            <div className="bg-white pt-4 pb-4 -mx-2 px-3 relative z-10">
+              {timeDealDescription && (
+                <div className="px-3 mb-4">
+                  <p 
+                    className="text-lg"
+                    style={{ 
+                      color: '#000000',
+                      fontFamily: 'Pretendard, sans-serif',
+                      fontWeight: 700
+                    }}
+                  >
+                    {timeDealDescription}
+                  </p>
+                </div>
+              )}
+              <div className="px-3 bg-white">
+
+                {/* 상품 그리드 */}
+                {loading ? (
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    {[...Array(8)].map((_, i) => (
+                      <ProductCardSkeleton key={i} />
+                    ))}
+                  </div>
+                ) : displayedProducts.length === 0 ? (
+                  <div className="text-center py-20">
+                    <div className="text-6xl mb-4">🔍</div>
+                    <p className="text-xl text-gray-600 mb-2">
+                      {searchQuery ? '검색 결과가 없습니다' : '등록된 상품이 없습니다'}
+                    </p>
+                    {searchQuery && (
+                      <Link href="/products">
+                        <button className="mt-4 px-6 py-2 bg-primary-800 text-white rounded-lg hover:bg-primary-900 transition">
+                          전체 상품 보기
+                        </button>
+                      </Link>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                      {displayedProducts.map((product) => (
+                        <ProductCard key={product.id} product={product} />
+                      ))}
+                    </div>
+                    
+                    {loadingMore && (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-800"></div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="bg-white h-8 -mt-4"></div>
+          </section>
+        )}
+
+        {/* 히어로 섹션 - 베스트/특가용 */}
+        {filter && filter !== 'flash-sale' && (
           <section className={`py-16 ${
             filter === 'best' ? 'bg-gradient-to-r from-yellow-600 to-orange-600 text-white' :
-            filter === 'sale' ? 'bg-gradient-to-r from-red-600 to-red-600 text-white' :
-            'bg-gradient-to-r from-red-50 to-orange-50 text-gray-900'
+            'bg-gradient-to-r from-red-600 to-red-600 text-white'
           }`}>
             <div className="container mx-auto px-4 text-center">
               <h1 className="text-4xl font-bold mb-2">
-                {filter === 'best' ? '👑 베스트' : filter === 'sale' ? '🔥 특가' : '⏰ 타임딜'}
+                {filter === 'best' ? '👑 베스트' : '🔥 특가'}
               </h1>
               <p className={`text-sm tracking-widest ${
-                filter === 'best' ? 'text-yellow-100' :
-                filter === 'sale' ? 'text-red-100' :
-                'text-gray-600'
+                filter === 'best' ? 'text-yellow-100' : 'text-red-100'
               }`}>
-                {filter === 'best' ? 'BEST SELLERS' : filter === 'sale' ? 'HOT DEALS' : 'FLASH SALE'}
+                {filter === 'best' ? 'BEST SELLERS' : 'HOT DEALS'}
               </p>
             </div>
           </section>
         )}
 
-        <div className="container mx-auto px-4 py-4 pt-6">
-        {/* 페이지 제목 & 정렬 - 카테고리 선택 시 숨김 */}
-        {!hasCategory && (
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-xl font-bold mb-1">
-                {pageTitle}
-              </h1>
-              {searchQuery && displayedProducts.length > 0 && (
-                <p className="text-gray-600 text-sm">
-                  검색 결과
-                </p>
-              )}
-            </div>
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as 'default' | 'price_asc' | 'price_desc')}
-              className="px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-800 focus:border-transparent transition"
-            >
-              <option value="default">최신순</option>
-              <option value="price_asc">낮은 가격순</option>
-              <option value="price_desc">높은 가격순</option>
-            </select>
-          </div>
-        )}
-        
-        {/* 카테고리 필터 - 데스크탑만 표시 */}
-        {!searchQuery && !filter && !hasCategory && (
-          <div className="hidden md:flex flex-wrap gap-2 mb-8">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-lg font-medium transition ${
-                  selectedCategory === cat
-                    ? 'bg-primary-800 text-white shadow-md'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* 상품 그리드 */}
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {[...Array(8)].map((_, i) => (
-              <ProductCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : displayedProducts.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">🔍</div>
-            <p className="text-xl text-gray-600 mb-2">
-              {searchQuery ? '검색 결과가 없습니다' : '등록된 상품이 없습니다'}
-            </p>
-            {searchQuery && (
-              <Link href="/products">
-                <button className="mt-4 px-6 py-2 bg-primary-800 text-white rounded-lg hover:bg-primary-900 transition">
-                  전체 상품 보기
-                </button>
-              </Link>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              {displayedProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-            
-            {loadingMore && (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-800"></div>
+        {/* 타임딜이 아닐 때만 일반 레이아웃 표시 */}
+        {filter !== 'flash-sale' && (
+          <div className="container mx-auto px-4 py-4 pt-6">
+            {/* 페이지 제목 & 정렬 - 카테고리 선택 시 숨김 */}
+            {!hasCategory && (
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h1 className="text-xl font-bold mb-1">
+                    {pageTitle}
+                  </h1>
+                  {searchQuery && displayedProducts.length > 0 && (
+                    <p className="text-gray-600 text-sm">
+                      검색 결과
+                    </p>
+                  )}
+                </div>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as 'default' | 'price_asc' | 'price_desc')}
+                  className="px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-800 focus:border-transparent transition"
+                >
+                  <option value="default">최신순</option>
+                  <option value="price_asc">낮은 가격순</option>
+                  <option value="price_desc">높은 가격순</option>
+                </select>
               </div>
             )}
-          </>
+            
+            {/* 카테고리 필터 - 데스크탑만 표시 */}
+            {!searchQuery && !filter && !hasCategory && (
+              <div className="hidden md:flex flex-wrap gap-2 mb-8">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-4 py-2 rounded-lg font-medium transition ${
+                      selectedCategory === cat
+                        ? 'bg-primary-800 text-white shadow-md'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 상품 그리드 */}
+            {loading ? (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <ProductCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : displayedProducts.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="text-6xl mb-4">🔍</div>
+                <p className="text-xl text-gray-600 mb-2">
+                  {searchQuery ? '검색 결과가 없습니다' : '등록된 상품이 없습니다'}
+                </p>
+                {searchQuery && (
+                  <Link href="/products">
+                    <button className="mt-4 px-6 py-2 bg-primary-800 text-white rounded-lg hover:bg-primary-900 transition">
+                      전체 상품 보기
+                    </button>
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  {displayedProducts.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+                
+                {loadingMore && (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-800"></div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         )}
-        </div>
       </main>
 
       <ScrollToTop />

@@ -31,19 +31,8 @@ export async function enrichProductsServer(
 
   // 상품 데이터 보강
   return products.map((product: any) => {
-    // filter=promotion일 때는 활성화 여부와 관계없이 프로모션 정보 반환
-    // 그 외에는 활성화된 프로모션만 반환
-    let promotion = null
-    if (options?.filter === 'promotion') {
-      // promotion_products가 있으면 첫 번째 프로모션 정보 반환 (활성화 여부 무관)
-      if (product.promotion_products && Array.isArray(product.promotion_products) && product.promotion_products.length > 0) {
-        const pp = product.promotion_products[0]
-        promotion = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
-      }
-    } else {
-      // 활성화된 프로모션 찾기
-      promotion = extractActivePromotion(product)
-    }
+    // 활성화된 프로모션만 반환
+    const promotion = extractActivePromotion(product)
 
     // 타임딜 할인율 조회
     const timedealDiscountPercent = discountMap?.get(product.id) || 0

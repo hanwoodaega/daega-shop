@@ -30,8 +30,7 @@ interface Collection {
   image_url?: string | null
   color_theme?: ColorTheme | null
   sort_order?: number
-  start_at?: string | null
-  end_at?: string | null
+  is_active?: boolean
 }
 
 export default function Home() {
@@ -64,7 +63,7 @@ export default function Home() {
       <main className="flex-1">
         {/* 히어로 섹션 */}
         <section className="relative bg-black text-white overflow-hidden">
-          <div className="relative w-full" style={{ aspectRatio: '1 / 1' }}>
+          <div className="relative w-full" style={{ aspectRatio: '3 / 2' }}>
             <Image
               src="/images/hero.jpg"
               alt="히어로 이미지"
@@ -80,7 +79,7 @@ export default function Home() {
         </section>
 
         {/* 카테고리 */}
-        <section className="py-3 bg-white">
+        <section className="py-8 bg-white">
           <div className="container mx-auto px-4">
             <CategoryGrid selectedCategory="" />
           </div>

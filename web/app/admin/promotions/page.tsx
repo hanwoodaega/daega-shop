@@ -10,8 +10,6 @@ interface Promotion {
   type: 'bogo' | 'percent'
   buy_qty: number | null
   discount_percent: number | null
-  start_at: string | null
-  end_at: string | null
   is_active: boolean
   created_at: string
   updated_at: string
@@ -58,8 +56,6 @@ export default function PromotionsPage() {
     type: 'bogo' as 'bogo' | 'percent',
     buy_qty: 1,
     discount_percent: 0,
-    start_at: '',
-    end_at: '',
     is_active: true,
     group_id: '',
   })
@@ -265,8 +261,6 @@ export default function PromotionsPage() {
       type: 'bogo',
       buy_qty: 1,
       discount_percent: 0,
-      start_at: '',
-      end_at: '',
       is_active: true,
       group_id: '',
     })
@@ -280,8 +274,6 @@ export default function PromotionsPage() {
       type: promotion.type,
       buy_qty: promotion.buy_qty || 1,
       discount_percent: promotion.discount_percent || 0,
-      start_at: promotion.start_at ? promotion.start_at.split('T')[0] : '',
-      end_at: promotion.end_at ? promotion.end_at.split('T')[0] : '',
       is_active: promotion.is_active,
       group_id: '',
     })
@@ -403,12 +395,6 @@ export default function PromotionsPage() {
                       </span>
                     </div>
                     <div className="text-sm text-gray-600 space-y-1">
-                      {promotion.start_at && (
-                        <p>시작: {new Date(promotion.start_at).toLocaleString('ko-KR')}</p>
-                      )}
-                      {promotion.end_at && (
-                        <p>종료: {new Date(promotion.end_at).toLocaleString('ko-KR')}</p>
-                      )}
                       <p>생성일: {new Date(promotion.created_at).toLocaleString('ko-KR')}</p>
                     </div>
                     
@@ -536,27 +522,6 @@ export default function PromotionsPage() {
                     />
                   </div>
                 )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">시작일</label>
-                    <input
-                      type="date"
-                      value={formData.start_at}
-                      onChange={(e) => setFormData({ ...formData, start_at: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">종료일</label>
-                    <input
-                      type="date"
-                      value={formData.end_at}
-                      onChange={(e) => setFormData({ ...formData, end_at: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-                </div>
 
                 <div>
                   <label className="flex items-center gap-2">

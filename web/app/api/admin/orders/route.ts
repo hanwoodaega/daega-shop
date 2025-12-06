@@ -47,9 +47,7 @@ export async function GET(request: NextRequest) {
                 type,
                 buy_qty,
                 discount_percent,
-                is_active,
-                start_at,
-                end_at
+                is_active
               )
             )
           )
@@ -133,18 +131,11 @@ export async function GET(request: NextRequest) {
             // 프로모션 정보에서 할인율 확인
             let discountPercent = 0
             if (item.product?.promotion_products && item.product.promotion_products.length > 0) {
-              const now = new Date()
               for (const pp of item.product.promotion_products) {
                 const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
                 if (promo && promo.is_active && promo.type === 'percent' && promo.discount_percent) {
-                  const startAt = promo.start_at ? new Date(promo.start_at) : null
-                  const endAt = promo.end_at ? new Date(promo.end_at) : null
-                  const isInDateRange = (!startAt || now >= startAt) && (!endAt || now <= endAt)
-                  
-                  if (isInDateRange) {
-                    discountPercent = promo.discount_percent
-                    break
-                  }
+                  discountPercent = promo.discount_percent
+                  break
                 }
               }
             }

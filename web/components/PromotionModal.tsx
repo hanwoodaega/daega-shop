@@ -185,6 +185,10 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
             </div>
+          ) : promotionProducts.length === 0 ? (
+            <div className="flex justify-center items-center py-8">
+              <p className="text-sm text-gray-500 text-center">프로모션 상품이 없습니다.</p>
+            </div>
           ) : (
             <div className="space-y-3">
               {promotionProducts.map((promo) => {
@@ -237,7 +241,7 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
         </div>
         
         <div className="px-5 py-4 bg-white border-t">
-          {product.promotion?.type === 'bogo' && product.promotion.buy_qty ? (
+          {product.promotion?.type === 'bogo' && product.promotion.buy_qty && promotionProducts.length > 0 ? (
             <>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-medium">
@@ -257,7 +261,12 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
               </button>
             </>
           ) : (
-            <p className="text-sm text-gray-500 text-center">프로모션 정보를 불러올 수 없습니다.</p>
+            <p className="text-sm text-gray-500 text-center">
+              {!product.promotion ? '프로모션 정보를 불러올 수 없습니다.' : 
+               product.promotion.type !== 'bogo' ? 'BOGO 프로모션이 아닙니다.' :
+               !product.promotion.buy_qty ? '프로모션 수량 정보가 없습니다.' :
+               '프로모션 상품이 없습니다.'}
+            </p>
           )}
         </div>
       </div>

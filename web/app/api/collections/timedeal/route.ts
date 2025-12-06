@@ -65,9 +65,7 @@ export async function GET(request: NextRequest) {
               type,
               buy_qty,
               discount_percent,
-              is_active,
-              start_at,
-              end_at
+              is_active
             )
           )
         )

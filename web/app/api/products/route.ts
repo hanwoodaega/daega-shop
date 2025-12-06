@@ -23,17 +23,31 @@ export async function GET(request: NextRequest) {
 
     const supabase = createSupabaseServerClient()
 
-    // filter=promotion일 때는 promotion_products 테이블에서 product_id를 먼저 조회
+    // filter=promotion일 때는 활성화된 프로모션의 상품만 조회
     let promotionProductIds: string[] = []
     if (filter === 'promotion') {
-      const { data: promotionProducts, error: ppError } = await supabase
-        .from('promotion_products')
-        .select('product_id')
+      // 활성화된 프로모션 ID 조회
+      const { data: activePromotions, error: promoError } = await supabase
+        .from('promotions')
+        .select('id')
+        .eq('is_active', true)
       
-      if (ppError) {
-        console.error('프로모션 상품 조회 실패:', ppError)
-      } else {
-        promotionProductIds = Array.from(new Set(promotionProducts?.map((pp: any) => pp.product_id) || []))
+      if (promoError) {
+        console.error('프로모션 조회 실패:', promoError)
+      } else if (activePromotions && activePromotions.length > 0) {
+        const promotionIds = activePromotions.map((p: any) => p.id)
+        
+        // 활성화된 프로모션에 연결된 상품 ID 조회
+        const { data: promotionProducts, error: ppError } = await supabase
+          .from('promotion_products')
+          .select('product_id')
+          .in('promotion_id', promotionIds)
+        
+        if (ppError) {
+          console.error('프로모션 상품 조회 실패:', ppError)
+        } else {
+          promotionProductIds = Array.from(new Set(promotionProducts?.map((pp: any) => pp.product_id) || []))
+        }
       }
     }
 

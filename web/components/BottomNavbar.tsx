@@ -80,7 +80,7 @@ export default function BottomNavbar() {
             <Link
               href="/"
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
-                pathname === '/' ? 'text-red-600' : 'text-gray-600'
+                pathname === '/' ? 'text-red-600' : 'text-black'
               }`}
             >
               <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,7 +93,7 @@ export default function BottomNavbar() {
             <Link
               href="/categories"
               className={`flex flex-col items-center justify-center flex-1 py-2 relative ${
-                pathname === '/categories' ? 'text-red-600' : 'text-gray-600'
+                pathname === '/categories' ? 'text-red-600' : 'text-black'
               }`}
             >
               {/* 검색 아이콘과 카테고리 아이콘을 합친 아이콘 */}
@@ -119,7 +119,7 @@ export default function BottomNavbar() {
             <Link
               href="/gift"
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
-                pathname?.startsWith('/gift') ? 'text-red-600' : 'text-gray-600'
+                pathname?.startsWith('/gift') ? 'text-red-600' : 'text-black'
               }`}
             >
               <svg className="w-6 h-6 mb-1" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -132,7 +132,7 @@ export default function BottomNavbar() {
             <Link
               href="/wishlist"
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
-                pathname === '/wishlist' ? 'text-red-600' : 'text-gray-600'
+                pathname === '/wishlist' ? 'text-red-600' : 'text-black'
               }`}
             >
               <svg className="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
@@ -145,7 +145,7 @@ export default function BottomNavbar() {
             <Link
               href="/profile"
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
-                pathname?.startsWith('/auth') || pathname?.startsWith('/profile') ? 'text-red-600' : 'text-gray-600'
+                pathname?.startsWith('/auth') || pathname?.startsWith('/profile') ? 'text-red-600' : 'text-black'
               }`}
             >
               <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

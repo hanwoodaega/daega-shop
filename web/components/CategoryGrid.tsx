@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { CATEGORIES } from '@/lib/constants'
+import { getCategoryPath } from '@/lib/category-utils'
 
 interface CategoryGridProps {
   selectedCategory?: string
@@ -22,11 +23,11 @@ const CATEGORY_IMAGES: { [key: string]: string } = {
 
 export default function CategoryGrid({ selectedCategory = '전체' }: CategoryGridProps) {
   return (
-    <div className="grid grid-cols-5 gap-3">
+    <div className="grid grid-cols-5 gap-4">
       {CATEGORIES.map((cat, idx) => (
         <Link
           key={cat}
-          href={cat === '전체' ? '/products' : `/products?category=${cat}`}
+          href={getCategoryPath(cat)}
           className="flex flex-col items-center"
         >
           <div

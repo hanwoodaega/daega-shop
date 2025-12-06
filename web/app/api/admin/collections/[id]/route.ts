@@ -71,7 +71,7 @@ export async function PUT(
 
   try {
     const body = await request.json()
-    const { type, title, description, image_url, color_theme, sort_order, start_at, end_at } = body
+    const { type, title, description, image_url, color_theme, sort_order, is_active } = body
 
     const updateData: any = {
       updated_at: new Date().toISOString(),
@@ -96,8 +96,7 @@ export async function PUT(
     if (image_url !== undefined) updateData.image_url = image_url || null
     if (color_theme !== undefined) updateData.color_theme = color_theme || null
     if (sort_order !== undefined) updateData.sort_order = sort_order ?? 0
-    if (start_at !== undefined) updateData.start_at = start_at || null
-    if (end_at !== undefined) updateData.end_at = end_at || null
+    if (is_active !== undefined) updateData.is_active = is_active ?? true
 
     const { data, error } = await supabaseAdmin
       .from('collections')

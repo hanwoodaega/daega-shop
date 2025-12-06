@@ -21,8 +21,7 @@ interface Collection {
   image_url?: string | null
   color_theme?: ColorTheme | null
   sort_order?: number
-  start_at?: string | null
-  end_at?: string | null
+  is_active?: boolean
 }
 
 interface CollectionSectionProps {
@@ -116,27 +115,16 @@ export default function CollectionSection({ collection }: CollectionSectionProps
         <div className="container mx-auto px-4">
           <div className="mb-8">
             <div className="flex flex-col gap-2">
-              <h2 
-                className="font-extrabold md:text-[36px] text-[28px]" 
-                style={{ 
-                  color: theme.title_color || '#2A2A2A',
-                  fontFamily: 'Pretendard, sans-serif',
-                  fontWeight: 800,
-                  letterSpacing: '-0.5px',
-                  borderBottom: theme.accent ? `2px solid ${theme.accent}` : undefined,
-                  paddingBottom: theme.accent ? '8px' : undefined,
-                }}
-              >
-                {collection.title || '섹션 타이틀'}
-              </h2>
               {collection.description && (
                 <p 
-                  className="md:text-[19px] text-[17px] mt-2" 
+                  className="md:text-[26px] text-[22px]" 
                   style={{ 
                     color: theme.description_color || '#7A6F62',
                     fontFamily: 'Pretendard, sans-serif',
-                    fontWeight: 500,
-                    lineHeight: '1.5'
+                    fontWeight: 700,
+                    lineHeight: '1.5',
+                    letterSpacing: '-0.5px',
+                    whiteSpace: 'pre-line'
                   }}
                 >
                   {collection.description}
@@ -161,39 +149,38 @@ export default function CollectionSection({ collection }: CollectionSectionProps
   }
 
   return (
-    <section className="pt-8 overflow-x-hidden" style={{ backgroundColor: theme.background || '#F3E9D7' }}>
+    <section className="pt-6 overflow-x-hidden" style={{ backgroundColor: theme.background || '#F3E9D7' }}>
       <div className="container mx-auto px-2">
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-3">
-            <div className="flex flex-col gap-1 w-[95%] mx-auto">
-              <h2 
-                className="font-extrabold md:text-[36px] text-[28px]" 
-                style={{ 
-                  color: theme.title_color || '#2A2A2A',
-                  fontFamily: 'Pretendard, sans-serif',
-                  fontWeight: 800,
-                  letterSpacing: '-0.5px',
-                  borderBottom: theme.accent ? `2px solid ${theme.accent}` : undefined,
-                  paddingBottom: theme.accent ? '8px' : undefined,
-                }}
-              >
-                {collection.title || '섹션 타이틀'}
-              </h2>
+            <div className="flex flex-col gap-1 w-[96%] mx-auto">
               {collection.description && (
-                <p 
-                  className="md:text-[19px] text-[17px] mt-2" 
-                  style={{ 
-                    color: theme.description_color || '#7A6F62',
-                    fontFamily: 'Pretendard, sans-serif',
-                    fontWeight: 500,
-                    lineHeight: '1.5'
-                  }}
-                >
-                  {collection.description}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p 
+                    className="md:text-[26px] text-[22px] flex-1" 
+                    style={{ 
+                      color: theme.description_color || '#7A6F62',
+                      fontFamily: 'Pretendard, sans-serif',
+                      fontWeight: 700,
+                      lineHeight: '1.5',
+                      letterSpacing: '-0.5px',
+                      whiteSpace: 'pre-line'
+                    }}
+                  >
+                    {collection.description}
+                  </p>
+                  <Link href={getViewAllLink()}>
+                    <button className="flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 hover:opacity-80 transition flex-shrink-0" style={{ color: theme.description_color || '#7A6F62' }}>
+                      <span>전체보기</span>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </Link>
+                </div>
               )}
               {collection.image_url && (
-                <div className="mt-4 mb-0">
+                <div className="mt-2 mb-0">
                   <img 
                     src={collection.image_url} 
                     alt={collection.title || ''} 

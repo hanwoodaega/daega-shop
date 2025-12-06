@@ -21,8 +21,6 @@ export interface Promotion {
   buy_qty?: number | null
   discount_percent?: number | null
   is_active: boolean
-  start_at?: string | null
-  end_at?: string | null
 }
 
 export interface Product {

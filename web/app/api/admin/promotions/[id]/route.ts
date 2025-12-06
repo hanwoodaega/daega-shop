@@ -71,7 +71,7 @@ export async function PUT(
 
   try {
     const body = await request.json()
-    const { title, type, buy_qty, discount_percent, start_at, end_at, is_active } = body
+    const { title, type, buy_qty, discount_percent, is_active } = body
 
     // 유효성 검사
     if (type === 'bogo' && !buy_qty) {
@@ -88,8 +88,6 @@ export async function PUT(
 
     if (title !== undefined) updateData.title = title
     if (type !== undefined) updateData.type = type
-    if (start_at !== undefined) updateData.start_at = start_at
-    if (end_at !== undefined) updateData.end_at = end_at
     if (is_active !== undefined) updateData.is_active = is_active
 
     if (type === 'bogo') {

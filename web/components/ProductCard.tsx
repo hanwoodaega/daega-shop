@@ -44,8 +44,8 @@ function ProductCard({ product }: ProductCardProps) {
     if (timedealDiscountPercent > 0) {
       return calculateDiscountPrice(product.price, timedealDiscountPercent)
     }
-    // percent 타입 프로모션이 있으면 프로모션 할인율 사용
-    if (product.promotion?.type === 'percent' && product.promotion.discount_percent) {
+    // 활성화된 percent 타입 프로모션이 있으면 프로모션 할인율 사용
+    if (product.promotion?.is_active && product.promotion?.type === 'percent' && product.promotion.discount_percent) {
       return calculateDiscountPrice(product.price, product.promotion.discount_percent)
     }
     return product.price
@@ -56,7 +56,7 @@ function ProductCard({ product }: ProductCardProps) {
     if (timedealDiscountPercent > 0) {
       return timedealDiscountPercent
     }
-    if (product.promotion?.type === 'percent' && product.promotion.discount_percent) {
+    if (product.promotion?.is_active && product.promotion?.type === 'percent' && product.promotion.discount_percent) {
       return product.promotion.discount_percent
     }
     return 0
@@ -73,12 +73,9 @@ function ProductCard({ product }: ProductCardProps) {
   // 품절 여부 확인
   const soldOut = useMemo(() => isSoldOut(product.status), [product.status])
 
-  // 프로모션 배지 텍스트
+  // 프로모션 배지 텍스트 (활성화된 프로모션만)
   const promotionBadge = useMemo(() => {
-    if (product.promotion?.type === 'bogo' && product.promotion.buy_qty) {
-      return `${product.promotion.buy_qty}+1`
-    }
-    if (product.promotion?.type === 'bogo' && product.promotion.buy_qty) {
+    if (product.promotion?.is_active && product.promotion?.type === 'bogo' && product.promotion.buy_qty) {
       return `${product.promotion.buy_qty}+1`
     }
     return null
@@ -113,7 +110,7 @@ function ProductCard({ product }: ProductCardProps) {
       icon: '🛒',
     })
     
-    if (product.promotion?.type === 'bogo') {
+    if (product.promotion?.is_active && product.promotion?.type === 'bogo') {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
       timeoutRef.current = window.setTimeout(() => {
         toast('상품 상세페이지에서 프로모션을 확인하세요', {
@@ -168,7 +165,7 @@ function ProductCard({ product }: ProductCardProps) {
   }, [product.id, userId, isWished])
 
   return (
-    <Link href={`/products/${product.slug || product.id}`}>
+    <Link href={`/product/${product.slug || product.id}`}>
       <div className="bg-white transition">
         <div className="relative aspect-square bg-gray-200 overflow-hidden rounded-md">
           {/* 프로모션 배지 */}
@@ -274,8 +271,8 @@ function ProductCard({ product }: ProductCardProps) {
             </p>
           )}
           
-          {/* 프로모션 상품 버튼 (BOGO 타입만) */}
-          {product.promotion?.type === 'bogo' && promotionBadge && (
+          {/* 프로모션 상품 버튼 (활성화된 BOGO 타입만) */}
+          {product.promotion?.is_active && product.promotion?.type === 'bogo' && promotionBadge && (
             <button
               onClick={(e) => {
                 e.preventDefault()
