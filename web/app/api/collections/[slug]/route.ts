@@ -5,6 +5,8 @@ import { getTimedealDiscountPercentMap } from '@/lib/timedeal-utils'
 
 // GET: 컬렉션별 상품 목록 조회 (공개 API)
 // params.slug는 실제로는 type (best, sale, no9)
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { slug: string } }
@@ -18,18 +20,49 @@ export async function GET(
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    // 컬렉션 정보 조회 (type으로 조회)
+    // type 필드를 소문자로 정규화 (DB 저장 시 소문자로 저장되도록 했으므로)
+    const normalizedType = params.slug.trim().toLowerCase()
+
+    // 컬렉션 정보 조회 (type으로 조회, 활성 상태만)
     const { data: collection, error: collectionError } = await supabase
       .from('collections')
       .select('*')
-      .eq('type', params.slug)
+      .eq('type', normalizedType)
+      .eq('is_active', true)
       .single()
 
     if (collectionError || !collection) {
-      return NextResponse.json({ error: '컬렉션을 찾을 수 없습니다.' }, { status: 404 })
+      // 활성 상태와 무관하게 컬렉션이 존재하는지 확인
+      const { data: allCollection } = await supabase
+        .from('collections')
+        .select('id, type, is_active, title')
+        .eq('type', normalizedType)
+        .maybeSingle()
+      
+      // 소문자로 못 찾으면 원본 slug로도 시도 (기존 데이터 호환성)
+      let fallbackCollection = allCollection
+      if (!allCollection && params.slug !== normalizedType) {
+        const { data: fallback } = await supabase
+          .from('collections')
+          .select('id, type, is_active, title')
+          .eq('type', params.slug)
+          .maybeSingle()
+        fallbackCollection = fallback || null
+      }
+      
+      if (fallbackCollection) {
+        return NextResponse.json({ 
+          error: '컬렉션이 비활성화되어 있습니다.',
+        }, { status: 404 })
+      } else {
+        return NextResponse.json({ 
+          error: '컬렉션을 찾을 수 없습니다.',
+        }, { status: 404 })
+      }
     }
 
     // 컬렉션에 속한 상품 조회 (프로모션 정보 포함, deleted 상태 제외)
+    // 주의: Supabase에서 join된 테이블 필드 필터링 시 .neq() 대신 다른 방식 사용
     let collectionProductsQuery = supabase
       .from('collection_products')
       .select(`
@@ -45,6 +78,7 @@ export async function GET(
           average_rating,
           review_count,
           weight_gram,
+          status,
           created_at,
           promotion_products (
             promotion_id,
@@ -59,42 +93,33 @@ export async function GET(
         )
       `, { count: 'exact' })
       .eq('collection_id', collection.id)
-      .neq('products.status', 'deleted') // deleted 상태 제외
+      // .neq() 대신 클라이언트 측에서 필터링 (join된 테이블 필터링 제한)
 
-    // 정렬 적용 (priority가 null인 것은 나중에 표시되도록 - Supabase 기본 동작)
-    if (sort === 'price_asc') {
-      collectionProductsQuery = collectionProductsQuery.order('priority', { ascending: true })
-    } else if (sort === 'price_desc') {
-      collectionProductsQuery = collectionProductsQuery.order('priority', { ascending: true })
-    } else {
+    // 정렬 적용
+    // 가격 정렬일 때는 priority 정렬을 하지 않음 (클라이언트에서 가격 정렬)
+    // default일 때만 priority 정렬
+    if (sort === 'default') {
       // default 정렬: priority가 낮은 순서대로, null은 나중에 (기본 동작)
       collectionProductsQuery = collectionProductsQuery.order('priority', { ascending: true })
     }
+    // price_asc, price_desc는 DB에서 정렬하지 않음 (클라이언트에서 처리)
 
     const { data: collectionProducts, error: productsError, count } = await collectionProductsQuery.range(from, to)
 
     if (productsError) {
       console.error('컬렉션 상품 조회 실패:', productsError)
-      // 에러 상세 정보 로깅
-      if (productsError.message) {
-        console.error('에러 메시지:', productsError.message)
-      }
-      if (productsError.code) {
-        console.error('에러 코드:', productsError.code)
-      }
       return NextResponse.json({ 
         error: productsError.message || '상품 조회 실패',
-        code: productsError.code 
       }, { status: 400 })
     }
 
-    // 상품 데이터 추출
+    // 상품 데이터 추출 및 deleted 상태 필터링 (서버 측에서 필터링)
     const rawProducts = (collectionProducts || [])
       .map((cp: any) => {
         const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
         return product
       })
-      .filter(Boolean)
+      .filter((p: any) => p && p.status !== 'deleted') // deleted 상태 제외
 
     // 타임딜 할인율 일괄 조회
     const productIds = rawProducts.map((p: any) => p.id).filter(Boolean)

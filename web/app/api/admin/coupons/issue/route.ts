@@ -26,11 +26,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '쿠폰 ID가 필요합니다.' }, { status: 400 })
     }
 
-    // 쿠폰 정보 확인
+    // 쿠폰 정보 확인 (삭제되지 않은 쿠폰만)
     const { data: coupon, error: couponError } = await supabase
       .from('coupons')
       .select('*')
       .eq('id', coupon_id)
+      .eq('is_deleted', false)  // soft delete 필터링
       .single()
 
     if (couponError || !coupon) {
@@ -96,6 +97,7 @@ export async function POST(request: NextRequest) {
     
     let successCount = 0
     let skipCount = 0
+    const issuedUserIds: string[] = [] // 실제로 쿠폰이 발급된 사용자 ID 목록
 
     // 배치 단위로 나누어 처리
     for (let i = 0; i < targetUsers.length; i += BATCH_SIZE) {
@@ -115,48 +117,120 @@ export async function POST(request: NextRequest) {
             console.warn('RPC 함수가 없습니다. 일반 배치 INSERT로 처리합니다. (성능 저하 가능)')
             
             // 일반 배치 INSERT (중복은 에러 발생, 일부만 성공 가능)
+            // 서버에서 expires_at 계산 (발급일 + validity_days)
+            const now = new Date()
+            const expiresAt = new Date(now)
+            expiresAt.setDate(expiresAt.getDate() + coupon.validity_days)
+            
             const userCouponsToInsert = batch.map(user => ({
               user_id: user.id,
               coupon_id: coupon_id,
               is_used: false,
+              expires_at: expiresAt.toISOString(),  // 서버에서 계산한 만료일
             }))
 
             const { data: insertedData, error: insertError } = await supabase
               .from('user_coupons')
               .insert(userCouponsToInsert)
-              .select('id')
+              .select('user_id')
 
             if (insertError) {
               // 중복 에러 발생 시, 실제 보유자 수 확인
               if (insertError.code === '23505') {
+                // 실제로 발급된 사용자 조회 (평생 1번 정책 적용)
+                const { data: newlyIssued } = await supabase
+                  .from('user_coupons')
+                  .select('user_id')
+                  .in('user_id', userIds)
+                  .eq('coupon_id', coupon_id)
+                  .gte('created_at', new Date(Date.now() - 60000).toISOString()) // 1분 이내 생성된 것만
+                
+                if (newlyIssued) {
+                  const newlyIssuedIds = newlyIssued.map((uc: any) => uc.user_id)
+                  issuedUserIds.push(...newlyIssuedIds)
+                  successCount += newlyIssuedIds.length
+                }
+                
+                // 이미 받은 적이 있는 사용자 수 확인 (사용 여부와 관계없이)
                 const { count } = await supabase
                   .from('user_coupons')
                   .select('id', { count: 'exact', head: true })
                   .in('user_id', userIds)
                   .eq('coupon_id', coupon_id)
-                  .eq('is_used', false)
                 
                 const totalExisting = count || 0
-                const newlyInserted = Math.max(0, totalExisting - skipCount)
-                successCount += newlyInserted
-                skipCount = totalExisting
+                skipCount = totalExisting - (newlyIssued?.length || 0)
               } else {
                 console.error(`배치 ${Math.floor(i / BATCH_SIZE) + 1} 처리 실패:`, insertError)
               }
-            } else {
+            } else if (insertedData) {
               // 성공 시 모두 삽입됨
-              successCount += insertedData?.length || 0
+              const insertedIds = insertedData.map((uc: any) => uc.user_id)
+              issuedUserIds.push(...insertedIds)
+              successCount += insertedIds.length
             }
           } else {
             console.error(`배치 ${Math.floor(i / BATCH_SIZE) + 1} 처리 실패:`, error)
           }
         } else if (data && data.length > 0) {
           // RPC 함수 결과 사용
-          successCount += data[0].inserted_count || 0
+          const insertedCount = data[0].inserted_count || 0
+          successCount += insertedCount
           skipCount += data[0].skipped_count || 0
+          
+          // RPC 함수가 반환한 실제로 발급된 사용자 ID 추가
+          if (data[0].inserted_user_ids && Array.isArray(data[0].inserted_user_ids)) {
+            issuedUserIds.push(...data[0].inserted_user_ids)
+          } else if (insertedCount > 0) {
+            // RPC 함수가 user_ids를 반환하지 않는 경우 폴백 (최근 1분 이내 생성된 것만)
+            const { data: newlyIssued } = await supabase
+              .from('user_coupons')
+              .select('user_id')
+              .in('user_id', userIds)
+              .eq('coupon_id', coupon_id)
+              .gte('created_at', new Date(Date.now() - 60000).toISOString()) // 1분 이내 생성된 것만
+            
+            if (newlyIssued) {
+              const newlyIssuedIds = newlyIssued.map((uc: any) => uc.user_id)
+              issuedUserIds.push(...newlyIssuedIds)
+            }
+          }
         }
       } catch (err: any) {
         console.error(`배치 ${Math.floor(i / BATCH_SIZE) + 1} 처리 중 에러:`, err)
+      }
+    }
+
+    // 실제로 쿠폰이 발급된 사용자에게 알림 생성
+    if (issuedUserIds.length > 0) {
+      // 제목: 쿠폰명
+      const notificationTitle = coupon.name
+      
+      // 내용: 쿠폰 설명 + 쿠폰함 가기 링크
+      const couponDescription = coupon.description || ''
+      const validityInfo = `${coupon.validity_days}일 이내 사용 가능합니다.`
+      const notificationContent = `${couponDescription ? couponDescription + ' ' : ''}${validityInfo} 쿠폰함 가기`
+      
+      // 배치 단위로 알림 생성 (성능 최적화)
+      const NOTIFICATION_BATCH_SIZE = 1000
+      for (let i = 0; i < issuedUserIds.length; i += NOTIFICATION_BATCH_SIZE) {
+        const notificationBatch = issuedUserIds.slice(i, i + NOTIFICATION_BATCH_SIZE)
+        const notifications = notificationBatch.map((userId: string) => ({
+          user_id: userId,
+          title: notificationTitle,
+          content: notificationContent,
+          type: 'general',
+          is_read: false,
+        }))
+
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert(notifications)
+
+        if (notificationError) {
+          console.error(`알림 생성 실패 (배치 ${Math.floor(i / NOTIFICATION_BATCH_SIZE) + 1}):`, notificationError)
+          // 알림 생성 실패해도 쿠폰 발급은 성공으로 처리
+        }
       }
     }
 

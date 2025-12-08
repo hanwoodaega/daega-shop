@@ -14,7 +14,7 @@ export async function POST(
   }
 
   try {
-    const { id } = await params
+    const { id } = params
     const body = await request.json()
     const { product_ids, priority } = body
 
@@ -50,7 +50,8 @@ export async function POST(
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('상품 추가 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
@@ -66,19 +67,21 @@ export async function DELETE(
   }
 
   try {
-    const { id } = await params
+    const { id } = params
     const { searchParams } = new URL(request.url)
-    const productId = searchParams.get('product_id')
+    const productIds = searchParams.getAll('product_id')
 
-    if (!productId) {
+    // 빈 배열 방어 코드 (Supabase .in()에 빈 배열이 들어가면 위험)
+    if (!productIds || productIds.length === 0) {
       return NextResponse.json({ error: 'product_id가 필요합니다.' }, { status: 400 })
     }
 
+    // 단일 또는 다중 상품 삭제 지원
     const { error } = await supabaseAdmin
       .from('gift_category_products')
       .delete()
       .eq('gift_category_id', id)
-      .eq('product_id', productId)
+      .in('product_id', productIds)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
@@ -87,7 +90,8 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('상품 제거 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
@@ -103,7 +107,7 @@ export async function PATCH(
   }
 
   try {
-    const { id } = await params
+    const { id } = params
     const body = await request.json()
     const { product_id, priority } = body
 
@@ -111,9 +115,15 @@ export async function PATCH(
       return NextResponse.json({ error: 'product_id와 priority가 필요합니다.' }, { status: 400 })
     }
 
+    // priority 타입 검증 및 파싱 (문자열이 올 수 있으므로)
+    const parsedPriority = Number(priority)
+    if (isNaN(parsedPriority)) {
+      return NextResponse.json({ error: 'priority는 숫자여야 합니다.' }, { status: 400 })
+    }
+
     const { error } = await supabaseAdmin
       .from('gift_category_products')
-      .update({ priority })
+      .update({ priority: parsedPriority })
       .eq('gift_category_id', id)
       .eq('product_id', product_id)
 
@@ -124,7 +134,8 @@ export async function PATCH(
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('상품 priority 업데이트 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 

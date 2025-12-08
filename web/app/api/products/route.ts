@@ -129,17 +129,11 @@ export async function GET(request: NextRequest) {
     const { data: products, error, count } = await query
 
     if (error) {
-      console.error('상품 조회 실패:', error)
-      // 에러 상세 정보 로깅
-      if (error.message) {
-        console.error('에러 메시지:', error.message)
-      }
-      if (error.code) {
-        console.error('에러 코드:', error.code)
-      }
-      if (error.details) {
-        console.error('에러 상세:', error.details)
-      }
+      console.error('[API/products] 상품 조회 실패:', error)
+      console.error('[API/products] 에러 코드:', error.code)
+      console.error('[API/products] 에러 메시지:', error.message)
+      console.error('[API/products] 에러 상세:', error.details)
+      console.error('[API/products] 쿼리 파라미터:', { page, limit, sort, category, filter, searchQuery })
       return NextResponse.json({ 
         error: error.message || '상품 조회 실패',
         code: error.code 

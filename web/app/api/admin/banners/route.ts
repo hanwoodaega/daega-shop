@@ -43,6 +43,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'image_url은 필수입니다.' }, { status: 400 })
     }
 
+    // slug 중복 검사 (slug가 제공된 경우)
+    if (slug && slug.trim()) {
+      const normalizedSlug = slug.trim()
+      
+      const { data: existing } = await supabaseAdmin
+        .from('banners')
+        .select('id')
+        .eq('slug', normalizedSlug)
+        .maybeSingle()
+
+      if (existing) {
+        return NextResponse.json({ error: '이미 사용 중인 slug입니다.' }, { status: 400 })
+      }
+    }
+
     const { data, error } = await supabaseAdmin
       .from('banners')
       .insert({
@@ -54,7 +69,7 @@ export async function POST(request: NextRequest) {
         background_color: background_color || '#FFFFFF',
         is_active: is_active !== undefined ? is_active : true,
         sort_order: sort_order || 0,
-        slug: slug || null,
+        slug: slug?.trim() || null,
       })
       .select()
       .single()

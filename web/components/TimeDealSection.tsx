@@ -31,7 +31,7 @@ export default function TimeDealSection({ variant = 'scroll' }: TimeDealSectionP
         // 타임딜 조회 (새로운 timedeals 테이블 구조)
         // grid 모드일 때는 더 많은 상품을 가져옴
         const limit = variant === 'grid' ? 100 : 5
-        const response = await fetch(`/api/collections/timedeal?limit=${limit}`)
+        const response = await fetch(`/api/timedeals?limit=${limit}`)
         
         if (!response.ok) {
           setTimeDealProducts([])

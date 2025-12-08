@@ -131,9 +131,8 @@ export interface Coupon {
   valid_from?: string | null  // 레거시 컬럼 (사용 안 함, validity_days로 대체됨)
   valid_until?: string | null  // 레거시 컬럼 (사용 안 함, validity_days로 대체됨)
   is_active: boolean
-  usage_limit?: number | null  // 전체 사용 가능 횟수 (null이면 무제한)
-  usage_count: number  // 현재 사용 횟수
   is_first_purchase_only: boolean  // 첫구매 전용 여부
+  is_deleted: boolean  // 삭제 여부 (soft delete)
   created_at: string
   updated_at: string
 }
@@ -148,6 +147,7 @@ export interface UserCoupon {
   is_used: boolean
   used_at?: string | null
   order_id?: string | null
+  expires_at?: string | null  // 만료일 (서버에서 계산하여 저장)
   created_at: string
   coupon?: Coupon
 }

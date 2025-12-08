@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { assertAdmin } from '@/lib/admin-auth'
 import { getProductMainImageUrlMap } from '@/lib/product-image-utils'
+import { normalizeCategoryProduct } from '@/components/admin/gift-management/utils/fetchers'
 
 // GET: 선물 카테고리 상세 조회 (상품 목록 포함)
 export async function GET(
@@ -15,7 +16,9 @@ export async function GET(
   }
 
   try {
-    const { id } = await params
+    const { id } = params
+    const { searchParams } = new URL(request.url)
+    const productId = searchParams.get('product_id')
 
     // 카테고리 정보
     const { data: category, error: categoryError } = await supabaseAdmin
@@ -29,7 +32,7 @@ export async function GET(
     }
 
     // 연결된 상품 목록 (image_url 제거 - product_images 테이블에서 조회)
-    const { data: products, error: productsError } = await supabaseAdmin
+    let productsQuery = supabaseAdmin
       .from('gift_category_products')
       .select(`
         id,
@@ -44,7 +47,13 @@ export async function GET(
         )
       `)
       .eq('gift_category_id', id)
-      .order('priority', { ascending: true })
+
+    // product_id가 제공되면 필터링 (존재 여부 확인용)
+    if (productId) {
+      productsQuery = productsQuery.eq('product_id', productId)
+    }
+
+    const { data: products, error: productsError } = await productsQuery.order('priority', { ascending: true })
 
     if (productsError) {
       return NextResponse.json({ error: productsError.message }, { status: 400 })
@@ -54,7 +63,7 @@ export async function GET(
     const categoryProducts = products || []
     const productIds = categoryProducts
       .map((cp: any) => {
-        const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
+        const product = normalizeCategoryProduct(cp)
         return product?.id
       })
       .filter((id: string | undefined): id is string => !!id)
@@ -63,7 +72,7 @@ export async function GET(
 
     // 이미지 URL을 포함하여 응답 구성
     const productsWithImages = categoryProducts.map((cp: any) => {
-      const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
+      const product = normalizeCategoryProduct(cp)
       if (!product) return cp
 
       return {
@@ -81,7 +90,8 @@ export async function GET(
     })
   } catch (error: any) {
     console.error('선물 카테고리 조회 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
@@ -97,7 +107,7 @@ export async function PUT(
   }
 
   try {
-    const { id } = await params
+    const { id } = params
     const body = await request.json()
     const { name, slug, priority } = body
 
@@ -121,7 +131,8 @@ export async function PUT(
     return NextResponse.json({ category: data })
   } catch (error: any) {
     console.error('선물 카테고리 수정 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
@@ -137,7 +148,7 @@ export async function DELETE(
   }
 
   try {
-    const { id } = await params
+    const { id } = params
 
     // CASCADE로 gift_category_products도 자동 삭제됨
     const { error } = await supabaseAdmin
@@ -152,7 +163,8 @@ export async function DELETE(
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('선물 카테고리 삭제 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 

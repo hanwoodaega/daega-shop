@@ -207,7 +207,7 @@ web/
 #### 컬렉션 (`/api/collections`)
 - `GET /api/collections/main` - 메인 컬렉션 조회
 - `GET /api/collections/[slug]` - 컬렉션 상세
-- `GET /api/collections/timedeal` - 타임딜 컬렉션
+- `GET /api/timedeals` - 타임딜 상품 목록 조회 (공개)
 
 #### 선물 (`/api/gift`)
 - `POST /api/gift/create-pending` - 선물 생성
@@ -264,7 +264,10 @@ web/
 - `PUT /api/admin/collections/[id]` - 컬렉션 수정
 - `DELETE /api/admin/collections/[id]` - 컬렉션 삭제
 - `POST /api/admin/collections/[id]/products` - 컬렉션 상품 추가
-- `POST /api/admin/collections/timedeal` - 타임딜 컬렉션 설정
+- `GET /api/admin/timedeals` - 타임딜 목록 조회 (관리자)
+- `POST /api/admin/timedeals` - 타임딜 생성 (관리자)
+- `PUT /api/admin/timedeals` - 타임딜 수정 (관리자)
+- `DELETE /api/admin/timedeals` - 타임딜 삭제 (관리자)
 
 #### 선물관 관리 (`/api/admin/gift-categories`)
 - 선물 카테고리 및 상품 관리

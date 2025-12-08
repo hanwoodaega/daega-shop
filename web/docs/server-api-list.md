@@ -265,11 +265,20 @@
 - **조회 테이블**: `collections`, `collection_products`, `products`, `product_images`, `reviews`
 - **사용 위치**: `web/app/collections/[slug]/page.tsx`
 
-### `/api/collections/timedeal` (GET)
-- **용도**: 타임딜 정보 조회
+### `/api/timedeals` (GET)
+- **용도**: 타임딜 상품 목록 조회 (공개 API)
 - **쿼리 파라미터**: `limit`
-- **조회 테이블**: `timedeals`, `timedeal_products`
-- **사용 위치**: `web/app/products/page.tsx`, `web/app/sale/page.tsx`
+- **조회 테이블**: `timedeals`, `timedeal_products`, `products`, `promotion_products`
+- **사용 위치**: `web/app/products/page.tsx`, `web/app/sale/page.tsx`, `web/components/TimeDealSection.tsx`, `web/components/CollectionSection.tsx`
+
+### `/api/admin/timedeals` (GET, POST, PUT, DELETE)
+- **용도**: 타임딜 관리 (관리자 API)
+- **GET**: 타임딜 목록 조회 (쿼리 파라미터: `active_only`)
+- **POST**: 타임딜 생성
+- **PUT**: 타임딜 수정
+- **DELETE**: 타임딜 삭제 (쿼리 파라미터: `id`)
+- **조회 테이블**: `timedeals`, `timedeal_products`, `products`
+- **사용 위치**: `web/app/admin/timedeals/page.tsx`
 
 ---
 

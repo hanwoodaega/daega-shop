@@ -56,7 +56,7 @@ export async function GET(
         )
       `)
       .eq('gift_category_id', categoryData.id)
-      .neq('products.status', 'deleted')
+      // .neq() 대신 클라이언트 측에서 필터링 (join된 테이블 필터링 제한)
       .order('priority', { ascending: true })
 
     if (productsError) {
@@ -64,11 +64,11 @@ export async function GET(
       return NextResponse.json({ products: [] })
     }
     
-    // 상품 데이터 변환
+    // 상품 데이터 변환 (deleted 상태 제외)
     const filtered = (productsData || [])
       .map((cp: any) => {
         const product = Array.isArray(cp.products) ? cp.products[0] : cp.products
-        if (!product) return null
+        if (!product || product.status === 'deleted') return null
 
         return {
           ...product,

@@ -43,7 +43,7 @@ export default function CollectionSection({ collection }: CollectionSectionProps
       try {
         // 타임딜은 별도 API 사용
         const apiPath = collection.type === 'timedeal' 
-          ? '/api/collections/timedeal?limit=4'
+          ? '/api/timedeals?limit=4'
           : `/api/collections/${collection.type}?limit=4`
         
         const response = await fetch(apiPath)

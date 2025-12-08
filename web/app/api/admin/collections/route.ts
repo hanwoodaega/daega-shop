@@ -40,10 +40,17 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { type, title, description, image_url, color_theme, sort_order, is_active } = body
+    const { title, description, image_url, color_theme, sort_order, is_active } = body
+
+    // type 필드 검증 및 정규화 (trim + lowercase)
+    if (!body.type) {
+      return NextResponse.json({ error: 'type은 필수입니다.' }, { status: 400 })
+    }
+
+    const type = String(body.type).trim().toLowerCase()
 
     if (!type) {
-      return NextResponse.json({ error: 'type은 필수입니다.' }, { status: 400 })
+      return NextResponse.json({ error: 'type은 비어있을 수 없습니다.' }, { status: 400 })
     }
 
     // 같은 type이 이미 존재하는지 확인
@@ -55,6 +62,18 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       return NextResponse.json({ error: '이미 존재하는 타입입니다.' }, { status: 400 })
+    }
+
+    // color_theme 검증 (객체여야 함)
+    if (color_theme !== undefined && color_theme !== null) {
+      if (typeof color_theme !== 'object' || Array.isArray(color_theme)) {
+        return NextResponse.json({ error: 'color_theme은 객체여야 합니다.' }, { status: 400 })
+      }
+      
+      // 필수 필드 검증
+      if (!color_theme.background || !color_theme.description_color) {
+        return NextResponse.json({ error: 'color_theme의 필수 필드(background, description_color)가 누락되었습니다.' }, { status: 400 })
+      }
     }
 
     const insertData: any = {

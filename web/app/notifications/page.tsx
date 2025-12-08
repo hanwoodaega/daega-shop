@@ -264,6 +264,25 @@ export default function NotificationsPage() {
                               )
                             })}
                           </>
+                        ) : notification.type === 'general' && notification.content.includes('쿠폰함 가기') ? (
+                          <>
+                            {notification.content.split('쿠폰함 가기').map((part, index, array) => {
+                              if (index === array.length - 1) {
+                                return <span key={index}>{part}</span>
+                              }
+                              return (
+                                <span key={index}>
+                                  {part}
+                                  <button
+                                    onClick={() => router.push('/profile/coupons')}
+                                    className="text-blue-600 hover:text-red-600 underline font-medium"
+                                  >
+                                    쿠폰함 가기
+                                  </button>
+                                </span>
+                              )
+                            })}
+                          </>
                         ) : (
                           notification.content
                         )}

@@ -117,7 +117,7 @@ export default function SalePage() {
   useEffect(() => {
     const checkTimedeal = async () => {
       try {
-        const response = await fetch('/api/collections/timedeal?limit=1')
+        const response = await fetch('/api/timedeals?limit=1')
         if (response.ok) {
           const data = await response.json()
           const hasTimedeal = !!(data.timedeal && data.products && data.products.length > 0)

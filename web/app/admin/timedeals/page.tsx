@@ -106,7 +106,7 @@ export default function TimeDealsPage() {
 
   const fetchTimeDeals = async () => {
     try {
-      const res = await fetch('/api/admin/collections/timedeal')
+      const res = await fetch('/api/admin/timedeals')
       const data = await res.json()
       if (res.ok) {
         setTimeDeals(data.timedeals || [])
@@ -133,7 +133,7 @@ export default function TimeDealsPage() {
 
   const fetchTimeDealProducts = async (timeDealId: number) => {
     try {
-      const res = await fetch(`/api/admin/collections/timedeal`)
+      const res = await fetch(`/api/admin/timedeals`)
       const data = await res.json()
       if (res.ok) {
         const timeDeal = data.timedeals?.find((td: TimeDeal) => td.id === timeDealId)
@@ -164,7 +164,7 @@ export default function TimeDealsPage() {
     const startAt = formData.start_at || defaultStartAt
 
     try {
-      const res = await fetch('/api/admin/collections/timedeal', {
+      const res = await fetch('/api/admin/timedeals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -212,7 +212,7 @@ export default function TimeDealsPage() {
     const startAt = formData.start_at || defaultStartAt
 
     try {
-      const res = await fetch('/api/admin/collections/timedeal', {
+      const res = await fetch('/api/admin/timedeals', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -248,7 +248,7 @@ export default function TimeDealsPage() {
     if (!confirm('이 타임딜을 삭제하시겠습니까?')) return
 
     try {
-      const res = await fetch(`/api/admin/collections/timedeal?id=${timeDealId}`, {
+      const res = await fetch(`/api/admin/timedeals?id=${timeDealId}`, {
         method: 'DELETE',
       })
 
@@ -292,7 +292,7 @@ export default function TimeDealsPage() {
       // 기존 상품과 새 상품 합치기
       const allProducts = [...existingProducts, ...newProducts]
 
-      const res = await fetch('/api/admin/collections/timedeal', {
+      const res = await fetch('/api/admin/timedeals', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -332,7 +332,7 @@ export default function TimeDealsPage() {
           sort_order: index,
         }))
 
-      const res = await fetch('/api/admin/collections/timedeal', {
+      const res = await fetch('/api/admin/timedeals', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -374,7 +374,7 @@ export default function TimeDealsPage() {
         }
       })
 
-      const res = await fetch('/api/admin/collections/timedeal', {
+      const res = await fetch('/api/admin/timedeals', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

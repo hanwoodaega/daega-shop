@@ -36,13 +36,13 @@ export default function CouponsPage() {
     setLoading(true)
     try {
       // 현재 탭에 맞는 쿠폰 로드
-      const userCoupons = await getUserCoupons(user.id, activeTab === 'used')
+      const userCoupons = await getUserCoupons(activeTab === 'used')
       setCoupons(userCoupons)
       
       // 사용 완료 쿠폰 개수를 항상 표시하기 위해 사용 완료 쿠폰도 조회
       // activeTab이 'available'일 때만 별도로 조회 (이미 'used'일 때는 userCoupons에 포함됨)
       if (activeTab === 'available') {
-        const allCoupons = await getUserCoupons(user.id, true)
+        const allCoupons = await getUserCoupons(true)
         setUsedCouponsList(allCoupons.filter(uc => uc.is_used))
       } else {
         setUsedCouponsList(userCoupons.filter(uc => uc.is_used))

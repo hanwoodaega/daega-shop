@@ -38,19 +38,38 @@ export async function POST(request: NextRequest) {
 
     const coupon = userCoupon.coupon as any
 
+    // 쿠폰 정보가 없으면 제외 (쿠폰이 삭제되었거나 RLS 정책 문제)
+    if (!coupon) {
+      return NextResponse.json({ error: '쿠폰을 찾을 수 없습니다.' }, { status: 404 })
+    }
+
+    // 쿠폰이 삭제되었으면 제외 (soft delete)
+    if (coupon.is_deleted) {
+      return NextResponse.json({ error: '삭제된 쿠폰입니다.' }, { status: 400 })
+    }
+
     // 활성화 여부 체크
     if (!coupon.is_active) {
       return NextResponse.json({ error: '비활성화된 쿠폰입니다.' }, { status: 400 })
     }
 
-    // 유효기간 체크 - 발급일(created_at)부터 validity_days만큼 유효
-    const todayStr = new Date().toISOString().split('T')[0]
-    const issuedAt = new Date(userCoupon.created_at)
-    const validUntil = new Date(issuedAt)
-    validUntil.setDate(validUntil.getDate() + coupon.validity_days)
-    const validUntilStr = validUntil.toISOString().split('T')[0]
+    // 유효기간 체크 - expires_at 필드 우선 사용 (서버에서 계산된 값)
+    const now = new Date()
+    let isExpired = false
+    
+    if (userCoupon.expires_at) {
+      // expires_at이 있으면 그것을 사용
+      const expiresAt = new Date(userCoupon.expires_at)
+      isExpired = now > expiresAt
+    } else {
+      // 레거시: expires_at이 없으면 created_at + validity_days로 계산
+      const issuedAt = new Date(userCoupon.created_at)
+      const validUntil = new Date(issuedAt)
+      validUntil.setDate(validUntil.getDate() + coupon.validity_days)
+      isExpired = now > validUntil
+    }
 
-    if (todayStr > validUntilStr) {
+    if (isExpired) {
       return NextResponse.json({ error: '만료된 쿠폰입니다.' }, { status: 400 })
     }
 
@@ -85,19 +104,6 @@ export async function POST(request: NextRequest) {
     if (useError) {
       console.error('쿠폰 사용 처리 실패:', useError)
       return NextResponse.json({ error: '쿠폰 사용 처리에 실패했습니다.' }, { status: 500 })
-    }
-
-    // 쿠폰 사용 횟수 증가
-    const { error: countError } = await supabase
-      .from('coupons')
-      .update({
-        usage_count: coupon.usage_count + 1,
-      })
-      .eq('id', coupon.id)
-
-    if (countError) {
-      console.error('쿠폰 사용 횟수 증가 실패:', countError)
-      // 쿠폰 사용은 이미 처리되었으므로 경고만 로그
     }
 
     return NextResponse.json({ success: true, discountAmount })

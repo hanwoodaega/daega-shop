@@ -85,8 +85,11 @@ export async function GET(
     const enrichedProduct = enrichedProducts[0] || data
     
     return NextResponse.json(enrichedProduct)
-  } catch (error) {
-    console.error('상품 조회 실패:', error)
+  } catch (error: any) {
+    console.error('[API/products/[id]] 상품 조회 실패:', error)
+    console.error('[API/products/[id]] 상품 ID:', params.id)
+    console.error('[API/products/[id]] 에러 코드:', error?.code)
+    console.error('[API/products/[id]] 에러 메시지:', error?.message)
     return NextResponse.json({ error: '상품 조회 실패' }, { status: 500 })
   }
 }

@@ -255,7 +255,7 @@ function CheckoutPageContent() {
 
     setLoadingCoupons(true)
     try {
-      const coupons = await getUserCoupons(user.id, false)
+      const coupons = await getUserCoupons(false)
       // 유효기간 내 쿠폰만 필터링
       const validCoupons = coupons.filter(uc => {
         const coupon = uc.coupon as Coupon

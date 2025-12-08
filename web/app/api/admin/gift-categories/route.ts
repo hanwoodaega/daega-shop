@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ categories: data || [] })
   } catch (error: any) {
     console.error('선물 카테고리 조회 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
@@ -69,7 +70,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ category: data })
   } catch (error: any) {
     console.error('선물 카테고리 생성 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 

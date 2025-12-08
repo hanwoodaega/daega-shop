@@ -16,6 +16,7 @@ export async function GET() {
     }
 
     // 장바구니 조회 (상품 정보, 프로모션 정보 포함)
+    // status 필드를 SELECT에 포함해야 .neq('products.status') 필터가 작동함
     const { data, error } = await supabase
       .from('carts')
       .select(`
@@ -46,10 +47,13 @@ export async function GET() {
         )
       `)
       .eq('user_id', user.id)
+      // .neq() 대신 클라이언트 측에서 필터링 (join된 테이블 필터링 제한)
       .order('updated_at', { ascending: false })
 
     if (error) {
-      console.error('장바구니 조회 실패:', error)
+      console.error('[API] 장바구니 조회 실패:', error)
+      console.error('[API] 에러 코드:', error.code)
+      console.error('[API] 에러 메시지:', error.message)
       return NextResponse.json({ error: '장바구니 조회 실패' }, { status: 500 })
     }
 
@@ -72,43 +76,48 @@ export async function GET() {
       }
     }
 
-    // localStorage 형식과 호환되도록 변환
-    const items = (data || []).map((item: any) => {
-      const product = Array.isArray(item.products) ? item.products[0] : item.products
+    // localStorage 형식과 호환되도록 변환 (deleted 상태 제외)
+    const items = (data || [])
+      .filter((item: any) => {
+        const product = Array.isArray(item.products) ? item.products[0] : item.products
+        return product && product.status !== 'deleted'
+      })
+      .map((item: any) => {
+        const product = Array.isArray(item.products) ? item.products[0] : item.products
       
-      // 프로모션 정보 추출
-      const promotionProducts = product?.promotion_products || []
-      const promotion = promotionProducts.length > 0 
-        ? promotionProducts[0]?.promotions 
-        : null
+        // 프로모션 정보 추출
+        const promotionProducts = product?.promotion_products || []
+        const promotion = promotionProducts.length > 0 
+          ? promotionProducts[0]?.promotions 
+          : null
       
-      // 할인율 결정
-      const discountPercent = item.discount_percent || promotion?.discount_percent || 0
+        // 할인율 결정
+        const discountPercent = item.discount_percent || promotion?.discount_percent || 0
       
-      // 프로모션 타입 결정
-      let promotionType: string | undefined = undefined
-      if (promotion?.is_active && promotion?.type === 'bogo' && promotion.buy_qty) {
-        promotionType = `${promotion.buy_qty}+1`
-      } else if (promotion?.is_active && promotion?.type === 'discount') {
-        promotionType = 'discount'
-      }
+        // 프로모션 타입 결정
+        let promotionType: string | undefined = undefined
+        if (promotion?.is_active && promotion?.type === 'bogo' && promotion.buy_qty) {
+          promotionType = `${promotion.buy_qty}+1`
+        } else if (promotion?.is_active && promotion?.type === 'discount') {
+          promotionType = 'discount'
+        }
       
-      return {
-        id: item.id,
-        productId: item.product_id,
-        slug: product?.slug || null,
-        name: product?.name || '',
-        price: product?.price || 0,
-        quantity: item.quantity,
-        imageUrl: productImages[item.product_id] || '',
-        discount_percent: discountPercent,
-        brand: product?.brand,
-        promotion_type: promotionType,
-        promotion_group_id: item.promotion_group_id,
-        selected: true, // 기본값
-        status: product?.status || 'active'
-      }
-    })
+        return {
+          id: item.id,
+          productId: item.product_id,
+          slug: product?.slug || null,
+          name: product?.name || '',
+          price: product?.price || 0,
+          quantity: item.quantity,
+          imageUrl: productImages[item.product_id] || '',
+          discount_percent: discountPercent,
+          brand: product?.brand,
+          promotion_type: promotionType,
+          promotion_group_id: item.promotion_group_id,
+          selected: true, // 기본값
+          status: product?.status || 'active'
+        }
+      })
 
     return NextResponse.json({ 
       success: true, 

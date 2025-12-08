@@ -129,6 +129,38 @@ export function scrollToTop(): void {
 }
 
 /**
+ * throttle 함수: 지정된 시간 간격으로만 함수 실행
+ * 스크롤 이벤트 최적화에 사용
+ * @param func 실행할 함수
+ * @param delay 간격 (ms)
+ * @returns throttled 함수
+ */
+export function throttle<T extends (...args: any[]) => any>(
+  func: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let timeoutId: NodeJS.Timeout | null = null
+  let lastExecTime = 0
+  
+  return function (this: any, ...args: Parameters<T>) {
+    const currentTime = Date.now()
+    
+    if (currentTime - lastExecTime > delay) {
+      func.apply(this, args)
+      lastExecTime = currentTime
+    } else {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+      timeoutId = setTimeout(() => {
+        func.apply(this, args)
+        lastExecTime = Date.now()
+      }, delay - (currentTime - lastExecTime))
+    }
+  }
+}
+
+/**
  * 상품 이름을 slug로 변환합니다.
  * 예: "한우대가 NO.9 프리미엄 세트" → "hanwoo-daega-no9-premium-set"
  * @param name 상품 이름

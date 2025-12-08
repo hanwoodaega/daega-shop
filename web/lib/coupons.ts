@@ -10,24 +10,31 @@ function getKSTDateString(date: Date): string {
 
 /**
  * 쿠폰 유효기간 체크
- * 발급일(created_at)부터 validity_days만큼 유효한지 확인
+ * expires_at 필드를 우선 사용하고, 없으면 created_at + validity_days로 계산 (레거시 지원)
  */
 export function isCouponValid(userCoupon: UserCoupon, coupon: Coupon): boolean {
   if (!coupon || !coupon.is_active) return false
+  if (userCoupon.is_used) return false
   
-  // 현재 날짜 (KST)
-  const todayStr = getKSTDateString(new Date())
+  const now = new Date()
   
-  // 발급일 (KST)
+  // expires_at이 있으면 그것을 사용 (서버에서 계산된 값)
+  if (userCoupon.expires_at) {
+    const expiresAt = new Date(userCoupon.expires_at)
+    return now <= expiresAt
+  }
+  
+  // 레거시: expires_at이 없으면 created_at + validity_days로 계산
+  // validity_days가 null이거나 0 이하면 유효하지 않음
+  if (!coupon.validity_days || coupon.validity_days <= 0) {
+    return false
+  }
+  
   const issuedAt = new Date(userCoupon.created_at)
-  const issuedAtKST = new Date(issuedAt.getTime() + 9 * 60 * 60 * 1000)
+  const validUntil = new Date(issuedAt)
+  validUntil.setDate(validUntil.getDate() + coupon.validity_days)
   
-  // 유효기간 종료일 계산
-  const validUntilKST = new Date(issuedAtKST)
-  validUntilKST.setUTCDate(validUntilKST.getUTCDate() + coupon.validity_days)
-  const validUntilStr = getKSTDateString(validUntilKST)
-  
-  return todayStr <= validUntilStr
+  return now <= validUntil
 }
 
 /**
@@ -41,8 +48,11 @@ export function getCouponValidityPeriod(userCoupon: UserCoupon, coupon: Coupon):
   const month = issuedAtKST.getUTCMonth() + 1
   const day = issuedAtKST.getUTCDate()
   
+  // validity_days가 null이거나 0 이하면 기본값 사용 (안전장치)
+  const validityDays = coupon.validity_days && coupon.validity_days > 0 ? coupon.validity_days : 30
+  
   const validUntilKST = new Date(issuedAtKST)
-  validUntilKST.setUTCDate(validUntilKST.getUTCDate() + coupon.validity_days)
+  validUntilKST.setUTCDate(validUntilKST.getUTCDate() + validityDays)
   const endYear = validUntilKST.getUTCFullYear()
   const endMonth = validUntilKST.getUTCMonth() + 1
   const endDay = validUntilKST.getUTCDate()
@@ -55,13 +65,13 @@ export function getCouponValidityPeriod(userCoupon: UserCoupon, coupon: Coupon):
 
 /**
  * 서버 API로 사용자 보유 쿠폰 조회
+ * 서버 API가 JWT 기반으로 자동으로 현재 로그인한 사용자의 쿠폰만 반환합니다.
  */
 export async function getUserCoupons(
-  userId: string,
   includeUsed: boolean = false
 ): Promise<UserCoupon[]> {
   try {
-    // 서버 API로 쿠폰 조회
+    // 서버 API로 쿠폰 조회 (JWT로 자동 필터링됨)
     const res = await fetch(`/api/coupons?includeUsed=${includeUsed}`)
     
     if (!res.ok) {
@@ -78,65 +88,38 @@ export async function getUserCoupons(
 }
 
 /**
- * 쿠폰 지급 (서버 API 사용)
+ * @deprecated 일반 사용자가 직접 쿠폰을 받는 기능은 제거되었습니다.
+ * 쿠폰 지급은 관리자만 할 수 있으며, /api/admin/coupons/issue를 사용해야 합니다.
+ * 
+ * 이 함수는 더 이상 사용하지 않습니다. 관리자 페이지에서 쿠폰을 지급하세요.
  */
 export async function issueCoupon(
   userId: string,
-  couponId: string,
-  skipValidityCheck: boolean = false
+  couponId: string
 ): Promise<boolean> {
-  try {
-    const res = await fetch('/api/coupons/issue', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ couponId, skipValidityCheck }),
-    })
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}))
-      console.error('쿠폰 지급 실패:', res.status, errorData)
-      return false
-    }
-
-    return true
-  } catch (error) {
-    console.error('쿠폰 지급 실패:', error)
-    return false
-  }
+  console.warn('issueCoupon() is deprecated. Use admin API instead.')
+  return false
 }
 
 /**
- * 첫구매 쿠폰 지급 (서버 API 사용)
+ * @deprecated 첫구매 쿠폰은 이제 DB Trigger로 자동 발급됩니다.
+ * users 테이블에 INSERT가 발생하면 자동으로 첫구매 쿠폰이 발급됩니다.
+ * 
+ * 이 함수를 호출할 필요가 없습니다. 회원가입 시 자동으로 처리됩니다.
+ * 
+ * @see migrations/first_purchase_coupon_trigger.sql
  */
-export async function issueFirstPurchaseCoupon(userId: string): Promise<boolean> {
-  try {
-    const res = await fetch('/api/coupons/first-purchase', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}))
-      console.error('첫구매 쿠폰 지급 실패:', res.status, errorData)
-      return false
-    }
-
-    return true
-  } catch (error) {
-    console.error('첫구매 쿠폰 지급 실패:', error)
-    return false
-  }
+export async function issueFirstPurchaseCoupon(): Promise<boolean> {
+  console.warn('issueFirstPurchaseCoupon() is deprecated. First purchase coupons are now issued automatically via DB trigger.')
+  // Trigger가 이미 처리했을 가능성이 높으므로 성공으로 반환
+  return true
 }
 
 /**
  * 쿠폰 사용 (서버 API 사용)
+ * 서버 API가 JWT 기반으로 자동으로 현재 로그인한 사용자의 쿠폰만 사용할 수 있도록 처리합니다.
  */
 export async function useCoupon(
-  userId: string,
   userCouponId: string,
   orderId: string,
   purchaseAmount: number

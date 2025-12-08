@@ -65,16 +65,11 @@ export async function GET(
         )
       `)
       .eq('banner_id', banner.id)
-      .neq('products.status', 'deleted')
+      // .neq() 대신 클라이언트 측에서 필터링 (join된 테이블 필터링 제한)
 
-    // 정렬
-    if (sort === 'price_asc') {
-      query = query.order('products(price)', { ascending: true })
-    } else if (sort === 'price_desc') {
-      query = query.order('products(price)', { ascending: false })
-    } else {
-      query = query.order('products(created_at)', { ascending: false })
-    }
+    // 정렬: Supabase에서는 join된 테이블 필드로 직접 정렬할 수 없으므로
+    // 가격 정렬은 클라이언트에서 처리하고, 기본 정렬만 DB에서 수행
+    // 가격 정렬일 때는 DB 정렬을 하지 않음 (클라이언트에서 처리)
 
     const { data: bannerProducts, error: productsError } = await query
       .range(offset, offset + limit - 1)
@@ -84,13 +79,13 @@ export async function GET(
       return NextResponse.json({ error: '상품 조회 실패' }, { status: 500 })
     }
 
-    // 상품 데이터 변환
+    // 상품 데이터 변환 (deleted 상태 제외)
     const rawProducts = (bannerProducts || [])
       .map((bp: any) => {
         const product = Array.isArray(bp.products) ? bp.products[0] : bp.products
         return product
       })
-      .filter((p: any) => p && p.id)
+      .filter((p: any) => p && p.id && p.status !== 'deleted')
 
     // 타임딜 할인율 맵 조회
     const now = new Date().toISOString()
@@ -120,7 +115,15 @@ export async function GET(
     }
 
     // 상품 데이터 보강
-    const products = await enrichProductsServer(rawProducts, timedealDiscountMap)
+    let products = await enrichProductsServer(rawProducts, timedealDiscountMap)
+
+    // 가격 정렬 (클라이언트 사이드에서 처리 - Supabase의 join 정렬 제한)
+    if (sort === 'price_asc') {
+      products = products.sort((a: any, b: any) => a.price - b.price)
+    } else if (sort === 'price_desc') {
+      products = products.sort((a: any, b: any) => b.price - a.price)
+    }
+    // default 정렬은 이미 DB에서 created_at으로 정렬된 상태이거나 순서 유지
 
     const totalCount = count || 0
     const totalPages = Math.ceil(totalCount / limit)

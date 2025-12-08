@@ -22,7 +22,9 @@ export async function POST(request: NextRequest) {
       .neq('status', 'deleted')
 
     if (productsError) {
-      console.error('위시리스트 상품 조회 실패:', productsError)
+      console.error('[API/wishlist/products] 위시리스트 상품 조회 실패:', productsError)
+      console.error('[API/wishlist/products] 에러 코드:', productsError.code)
+      console.error('[API/wishlist/products] 에러 메시지:', productsError.message)
       return NextResponse.json({ products: [] })
     }
 

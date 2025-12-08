@@ -69,6 +69,23 @@ export async function PUT(
     const body = await request.json()
     const { title, subtitle_black, subtitle_red, description, image_url, background_color, is_active, sort_order, slug } = body
 
+    // slug 중복 검사 (slug가 변경되는 경우)
+    if (slug !== undefined && slug && slug.trim()) {
+      const normalizedSlug = slug.trim()
+      
+      // 다른 배너에서 같은 slug를 사용하는지 확인
+      const { data: existing } = await supabaseAdmin
+        .from('banners')
+        .select('id')
+        .eq('slug', normalizedSlug)
+        .neq('id', params.id)
+        .maybeSingle()
+
+      if (existing) {
+        return NextResponse.json({ error: '이미 사용 중인 slug입니다.' }, { status: 400 })
+      }
+    }
+
     const updateData: any = {}
     if (title !== undefined) updateData.title = title || null
     if (subtitle_black !== undefined) updateData.subtitle_black = subtitle_black || null
@@ -78,7 +95,7 @@ export async function PUT(
     if (background_color !== undefined) updateData.background_color = background_color
     if (is_active !== undefined) updateData.is_active = is_active
     if (sort_order !== undefined) updateData.sort_order = sort_order
-    if (slug !== undefined) updateData.slug = slug || null
+    if (slug !== undefined) updateData.slug = slug?.trim() || null
     updateData.updated_at = new Date().toISOString()
 
     const { data, error } = await supabaseAdmin

@@ -5,7 +5,7 @@ import { assertAdmin } from '@/lib/admin-auth'
 // GET: 배너의 상품 목록 조회
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     assertAdmin()
@@ -14,7 +14,7 @@ export async function GET(
   }
 
   try {
-    const { id } = await params
+    const { id } = params
     
     const { data, error } = await supabaseAdmin
       .from('banner_products')
@@ -46,7 +46,7 @@ export async function GET(
 // POST: 배너에 상품 추가
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     assertAdmin()
@@ -55,7 +55,7 @@ export async function POST(
   }
 
   try {
-    const { id } = await params
+    const { id } = params
     const body = await request.json()
     const { product_ids } = body
 
@@ -72,6 +72,38 @@ export async function POST(
 
     if (bannerError || !banner) {
       return NextResponse.json({ error: '배너를 찾을 수 없습니다.' }, { status: 404 })
+    }
+
+    // product_id 존재 여부 검증
+    const { data: validProducts, error: productsCheckError } = await supabaseAdmin
+      .from('products')
+      .select('id')
+      .in('id', product_ids)
+
+    if (productsCheckError) {
+      return NextResponse.json({ error: '상품 조회 실패' }, { status: 400 })
+    }
+
+    if (!validProducts || validProducts.length !== product_ids.length) {
+      return NextResponse.json({ error: '유효하지 않은 상품 ID가 포함되어 있습니다.' }, { status: 400 })
+    }
+
+    // 중복 체크: 이미 배너에 추가된 상품이 있는지 확인
+    const { data: existingProducts, error: existingCheckError } = await supabaseAdmin
+      .from('banner_products')
+      .select('product_id')
+      .eq('banner_id', id)
+      .in('product_id', product_ids)
+
+    if (existingCheckError) {
+      return NextResponse.json({ error: '중복 체크 실패' }, { status: 400 })
+    }
+
+    if (existingProducts && existingProducts.length > 0) {
+      const existingIds = existingProducts.map((ep: any) => ep.product_id).join(', ')
+      return NextResponse.json({ 
+        error: `이미 추가된 상품이 있습니다: ${existingIds}` 
+      }, { status: 400 })
     }
 
     // 상품 추가
@@ -99,7 +131,7 @@ export async function POST(
 // DELETE: 배너에서 상품 제거
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     assertAdmin()
@@ -108,7 +140,7 @@ export async function DELETE(
   }
 
   try {
-    const { id } = await params
+    const { id } = params
     const { searchParams } = new URL(request.url)
     const product_id = searchParams.get('product_id')
 
