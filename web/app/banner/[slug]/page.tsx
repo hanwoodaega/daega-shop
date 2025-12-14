@@ -381,5 +381,5 @@ export default function BannerPage({ params }: { params: { slug: string } }) {
       <BannerContent slug={params.slug} />
     </Suspense>
   )
-}
+}  
 
