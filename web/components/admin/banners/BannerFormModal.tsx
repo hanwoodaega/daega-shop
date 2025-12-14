@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { supabase } from '@/lib/supabase'
 import type { Banner } from './types'
 
 interface BannerFormModalProps {
@@ -72,31 +71,27 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
 
     setUploadingImage(true)
     try {
-      const bucket = 'banner-images'
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png'
-      const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
+      // 서버 API를 통해 이미지 업로드
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('bucket', 'banner-images') // 배너 이미지 버킷 지정
 
-      // 클라이언트에서 직접 Supabase Storage에 업로드
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, file, {
-          contentType: file.type,
-          upsert: false,
-        })
+      const res = await fetch('/api/admin/upload-image', {
+        method: 'POST',
+        body: formData,
+      })
 
-      if (error) {
-        console.error('이미지 업로드 실패:', error)
-        toast.error(error.message || '이미지 업로드 실패')
-        return
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || '이미지 업로드 실패')
       }
 
-      // 공개 URL 가져오기
-      const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(filePath)
-      setFormData(prev => ({ ...prev, image_url: publicUrlData.publicUrl }))
+      const data = await res.json()
+      setFormData(prev => ({ ...prev, image_url: data.url }))
       toast.success('이미지 업로드 완료')
     } catch (error: any) {
       console.error('이미지 업로드 실패:', error)
-      toast.error('이미지 업로드에 실패했습니다.')
+      toast.error(error.message || '이미지 업로드에 실패했습니다.')
     } finally {
       setUploadingImage(false)
       if (imageFileInputRef.current) imageFileInputRef.current.value = ''

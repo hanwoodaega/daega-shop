@@ -23,26 +23,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'File is empty' }, { status: 400 })
     }
 
-    const bucket = 'product-images'
-    const fileExt = file.name.split('.').pop() || 'png'
+    // 버킷 지정 (기본값: product-images)
+    const bucket = (form.get('bucket') as string) || 'product-images'
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png'
     const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // 1:1 비율로 자동 압축 및 리사이즈
-    const processedBuffer = await sharp(buffer)
-      .resize(800, 800, {
-        fit: 'cover',
-        position: 'center'
-      })
-      .jpeg({ quality: 85 }) // JPEG로 변환하여 파일 크기 최적화
-      .toBuffer()
+    let processedBuffer: Buffer
+    let contentType: string
+
+    // 배너 이미지는 원본 유지, 상품 이미지는 리사이즈 및 압축
+    if (bucket === 'banner-images') {
+      // 배너 이미지: 원본 유지 (리사이즈 없음)
+      processedBuffer = buffer
+      contentType = file.type || 'image/png'
+    } else {
+      // 상품 이미지: 1:1 비율로 자동 압축 및 리사이즈
+      processedBuffer = await sharp(buffer)
+        .resize(800, 800, {
+          fit: 'cover',
+          position: 'center'
+        })
+        .jpeg({ quality: 85 }) // JPEG로 변환하여 파일 크기 최적화
+        .toBuffer()
+      contentType = 'image/jpeg'
+    }
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from(bucket)
       .upload(filePath, processedBuffer, {
-        contentType: 'image/jpeg',
+        contentType,
         upsert: false,
       })
 
@@ -52,8 +64,14 @@ export async function POST(request: Request) {
       const errorMessage = uploadError.message || String(uploadError)
       if (errorMessage.includes('Bucket not found') || errorMessage.includes('404')) {
         return NextResponse.json({ 
-          error: 'product-images 버킷이 존재하지 않습니다. Supabase Storage에서 버킷을 생성해주세요.' 
+          error: `${bucket} 버킷이 존재하지 않습니다. Supabase Storage에서 버킷을 생성해주세요.` 
         }, { status: 400 })
+      }
+      // RLS 정책 위반 오류 처리
+      if (errorMessage.includes('row-level security') || errorMessage.includes('RLS')) {
+        return NextResponse.json({ 
+          error: 'RLS 정책 위반: 관리자 권한으로 업로드할 수 없습니다. Supabase Storage 버킷의 RLS 정책을 확인해주세요.' 
+        }, { status: 403 })
       }
       return NextResponse.json({ error: errorMessage || '이미지 업로드 실패' }, { status: 400 })
     }
