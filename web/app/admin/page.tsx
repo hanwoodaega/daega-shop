@@ -1,7 +1,7 @@
 import { assertAdmin } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
-import AdminDashboardClient from '@/components/admin/AdminDashboardClient'
+import AdminDashboardClient from './_components/AdminDashboardClient'
 
 // 서버에서 주문 개수 조회
 async function getOrderCounts() {

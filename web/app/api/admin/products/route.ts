@@ -114,12 +114,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { data, error } = await supabaseAdmin.from('products').insert([payload]).select()
+    const { data, error } = await supabaseAdmin.from('products').insert([payload]).select('id')
     if (error) {
       console.error('Supabase insert error:', error)
       return NextResponse.json({ error: error.message || 'Database error' }, { status: 400 })
     }
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, product: data?.[0] })
   } catch (e: any) {
     console.error('Unexpected error:', e)
     return NextResponse.json({ error: e?.message || 'Unknown error' }, { status: 500 })

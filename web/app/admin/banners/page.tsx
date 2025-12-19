@@ -1,8 +1,8 @@
 import { assertAdmin } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
-import { BannersClient } from '@/components/admin/banners'
-import type { Banner, Product } from '@/components/admin/banners'
+import BannersClient from './_components/BannersClient'
+import type { Banner, Product } from './_types'
 
 export type { Banner, Product }
 

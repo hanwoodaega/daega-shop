@@ -147,8 +147,8 @@ export const useCartStore = create<CartStore>()(
         return get().items.filter((item) => item.selected !== false && item.status !== 'soldout' && item.status !== 'deleted')
       },
       getTotalItems: () => {
-        const items = get().items
-        // 모든 상품을 개별적으로 카운트 (프로모션 그룹 내 상품도 포함)
+        const items = get().items.filter(item => item.status !== 'soldout' && item.status !== 'deleted')
+        // 구매 가능한 상품만 카운트 (품절/삭제 제외)
         return items.reduce((total, item) => total + item.quantity, 0)
       },
     }),

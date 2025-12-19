@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
-import GiftManagementPage from '@/components/admin/gift-management/GiftManagementPage'
+import GiftManagementPage from './_components/GiftManagementPage'
 
 export default async function Page() {
   const supabase = createSupabaseServerClient()

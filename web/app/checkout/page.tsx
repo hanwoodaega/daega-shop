@@ -893,13 +893,14 @@ function CheckoutPageContent() {
 
           if (existing) {
             // 주소가 같으면 기본 배송지로만 설정하고 정보 업데이트 (서버 API)
+            // 기존 이름을 그대로 유지 (변경하지 않음)
             await fetch(`/api/addresses/${existing.id}`, {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                name: existing.name || '기본 배송지',
+                name: existing.name, // 기존 이름 그대로 유지
                 recipient_name: formData.name,
                 recipient_phone: formData.phone,
                 zipcode: formData.zipcode || null,
@@ -957,7 +958,8 @@ function CheckoutPageContent() {
               const groupId = it.promotion_group_id
               if (groupId) {
                 if (!handledGroups.has(groupId)) {
-                  const success = await removeFromCartDB(user.id, '', groupId)
+                  // DB ID가 있으면 전달, 없으면 groupId로 삭제
+                  const success = await removeFromCartDB(user.id, dbId || '', groupId)
                   if (success) {
                     handledGroups.add(groupId)
                   }

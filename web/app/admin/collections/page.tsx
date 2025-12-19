@@ -1,8 +1,8 @@
 import { assertAdmin } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
-import { CollectionsClient } from '@/components/admin/collections'
-import type { Collection, Product } from '@/components/admin/collections'
+import CollectionsClient from './_components/CollectionsClient'
+import type { Collection, Product } from './_types'
 
 export type { Collection, Product }
 

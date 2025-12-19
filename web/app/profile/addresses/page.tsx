@@ -437,13 +437,13 @@ export default function AddressesPage() {
                     type="text"
                     value={formData.zipcode}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                    className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
                     placeholder="우편번호"
                   />
                   <button
                     type="button"
                     onClick={handleSearchAddress}
-                    className="px-4 py-2 bg-white text-red-600 border border-red-600 rounded-lg hover:bg-blue-50 transition whitespace-nowrap"
+                    className="px-3 py-2 bg-white text-red-600 border border-red-600 rounded-lg hover:bg-blue-50 transition whitespace-nowrap flex-shrink-0 text-sm"
                   >
                     주소찾기
                   </button>
@@ -497,9 +497,9 @@ export default function AddressesPage() {
                   id="is_default"
                   checked={formData.is_default}
                   onChange={(e) => setFormData({ ...formData, is_default: e.target.checked })}
-                  className="w-4 h-4 text-primary-800 border-gray-300 rounded focus:ring-primary-500"
+                  className="w-4 h-4 accent-red-600 border-gray-300 rounded focus:ring-red-500 cursor-pointer"
                 />
-                <label htmlFor="is_default" className="ml-2 text-sm text-gray-700">
+                <label htmlFor="is_default" className="ml-2 text-sm text-gray-700 cursor-pointer">
                   기본 배송지로 설정
                 </label>
               </div>

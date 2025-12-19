@@ -114,7 +114,8 @@ export async function PATCH(
           'review',
           description,
           undefined, // order_id는 없음
-          reviewId
+          reviewId,
+          supabaseAdmin
         )
 
         if (success) {

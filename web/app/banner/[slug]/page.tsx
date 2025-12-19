@@ -306,6 +306,28 @@ function BannerContent({ slug }: { slug: string }) {
       
       <main className="flex-1">
         <div className="container mx-auto px-4 py-4 pt-6">
+          {/* 배너 정보 영역 (텍스트만 표시) */}
+          {banner && (
+            <div className="mb-6">
+              <div className="mb-3">
+                {banner.subtitle_black && (
+                  <h2 className="text-2xl md:text-3xl font-bold text-black mb-1 whitespace-pre-line tracking-tight leading-tight">
+                    {banner.subtitle_black}
+                  </h2>
+                )}
+                {banner.subtitle_red && (
+                  <h2 className="text-2xl md:text-3xl font-bold text-red-600 mb-0 whitespace-pre-line tracking-tight leading-tight">
+                    {banner.subtitle_red}
+                  </h2>
+                )}
+              </div>
+              {banner.description && (
+                <p className="text-sm md:text-base text-gray-600 whitespace-pre-line leading-relaxed">
+                  {banner.description}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* 상품 그리드 */}
           {loading ? (

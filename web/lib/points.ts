@@ -1,17 +1,19 @@
-import { supabase, UserPoints, PointHistory } from './supabase'
+import { supabase as browserSupabase, UserPoints, PointHistory } from './supabase'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * 포인트 적립 규칙
+ * Point accrual rules
  */
 export const pointRules = {
-  purchase: (amount: number) => Math.floor(amount * 0.01), // 1% 적립
-  review: 500,        // 리뷰 작성 시
+  purchase: (amount: number) => Math.floor(amount * 0.01), // 1% accrual
+  review: 500,        // Upon review
 }
 
 /**
- * 사용자 포인트 조회
+ * Get user points
  */
-export async function getUserPoints(userId: string): Promise<UserPoints | null> {
+export async function getUserPoints(userId: string, client?: SupabaseClient): Promise<UserPoints | null> {
+  const supabase = client || browserSupabase
   try {
     const { data, error } = await supabase
       .from('user_points')
@@ -21,23 +23,24 @@ export async function getUserPoints(userId: string): Promise<UserPoints | null> 
 
     if (error) {
       if (error.code === 'PGRST116') {
-        // 레코드가 없으면 초기화
-        return await initializeUserPoints(userId)
+        // Initialize if record doesn't exist
+        return await initializeUserPoints(userId, client)
       }
       throw error
     }
 
     return data
   } catch (error) {
-    console.error('포인트 조회 실패:', error)
+    console.error('Point lookup failed:', error)
     return null
   }
 }
 
 /**
- * 사용자 포인트 초기화
+ * Initialize user points
  */
-export async function initializeUserPoints(userId: string): Promise<UserPoints | null> {
+export async function initializeUserPoints(userId: string, client?: SupabaseClient): Promise<UserPoints | null> {
+  const supabase = client || browserSupabase
   try {
     const { data, error } = await supabase
       .from('user_points')
@@ -52,13 +55,13 @@ export async function initializeUserPoints(userId: string): Promise<UserPoints |
     if (error) throw error
     return data
   } catch (error) {
-    console.error('포인트 초기화 실패:', error)
+    console.error('Point initialization failed:', error)
     return null
   }
 }
 
 /**
- * 포인트 적립
+ * Add points
  */
 export async function addPoints(
   userId: string,
@@ -66,17 +69,17 @@ export async function addPoints(
   type: 'purchase' | 'review',
   description: string,
   orderId?: string,
-  reviewId?: string
+  reviewId?: string,
+  client?: SupabaseClient
 ): Promise<boolean> {
+  const supabase = client || browserSupabase
   try {
-    // 사용자 포인트 조회 또는 초기화
-    let userPoints = await getUserPoints(userId)
+    let userPoints = await getUserPoints(userId, client)
     if (!userPoints) {
-      userPoints = await initializeUserPoints(userId)
+      userPoints = await initializeUserPoints(userId, client)
       if (!userPoints) return false
     }
 
-    // 포인트 적립
     const { error: updateError } = await supabase
       .from('user_points')
       .update({
@@ -87,7 +90,6 @@ export async function addPoints(
 
     if (updateError) throw updateError
 
-    // 포인트 내역 기록
     const { error: historyError } = await supabase
       .from('point_history')
       .insert({
@@ -101,7 +103,6 @@ export async function addPoints(
 
     if (historyError) throw historyError
 
-    // 구매 횟수 업데이트 (구매 시)
     if (type === 'purchase') {
       await supabase
         .from('user_points')
@@ -113,27 +114,28 @@ export async function addPoints(
 
     return true
   } catch (error) {
-    console.error('포인트 적립 실패:', error)
+    console.error('Point add failed:', error)
     return false
   }
 }
 
 /**
- * 포인트 사용
+ * Use points
  */
 export async function usePoints(
   userId: string,
   points: number,
   orderId: string,
-  description: string
+  description: string,
+  client?: SupabaseClient
 ): Promise<boolean> {
+  const supabase = client || browserSupabase
   try {
-    const userPoints = await getUserPoints(userId)
+    const userPoints = await getUserPoints(userId, client)
     if (!userPoints || userPoints.total_points < points) {
       return false
     }
 
-    // 포인트 차감
     const { error: updateError } = await supabase
       .from('user_points')
       .update({
@@ -144,7 +146,6 @@ export async function usePoints(
 
     if (updateError) throw updateError
 
-    // 포인트 내역 기록
     const { error: historyError } = await supabase
       .from('point_history')
       .insert({
@@ -159,44 +160,44 @@ export async function usePoints(
 
     return true
   } catch (error) {
-    console.error('포인트 사용 실패:', error)
+    console.error('Point usage failed:', error)
     return false
   }
 }
 
 /**
- * 포인트 회수 (주문 취소 시 적립 포인트 회수)
+ * Deduct points
  */
 export async function deductPoints(
   userId: string,
   points: number,
   orderId: string,
-  description: string
+  description: string,
+  client?: SupabaseClient
 ): Promise<boolean> {
+  const supabase = client || browserSupabase
   try {
-    const userPoints = await getUserPoints(userId)
+    const userPoints = await getUserPoints(userId, client)
     if (!userPoints) {
       return false
     }
 
-    // 포인트 차감 (음수가 될 수 있음 - 이미 사용한 경우)
     const { error: updateError } = await supabase
       .from('user_points')
       .update({
-        total_points: Math.max(0, userPoints.total_points - points), // 최소 0으로 제한
+        total_points: Math.max(0, userPoints.total_points - points),
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId)
 
     if (updateError) throw updateError
 
-    // 포인트 내역 기록 (음수로 기록)
     const { error: historyError } = await supabase
       .from('point_history')
       .insert({
         user_id: userId,
         points: -points,
-        type: 'usage', // 취소로 인한 회수도 usage로 기록
+        type: 'usage',
         description: description,
         order_id: orderId,
       })
@@ -205,63 +206,64 @@ export async function deductPoints(
 
     return true
   } catch (error) {
-    console.error('포인트 회수 실패:', error)
+    console.error('Point deduction failed:', error)
     return false
   }
 }
 
 /**
- * 포인트 환불 (주문 취소 시 사용한 포인트 환불)
+ * Refund points
  */
 export async function refundPoints(
   userId: string,
   points: number,
   orderId: string,
-  description: string
+  description: string,
+  client?: SupabaseClient
 ): Promise<boolean> {
   try {
-    // 사용한 포인트를 다시 지급 (적립과 동일한 로직)
-    return await addPoints(userId, points, 'purchase', description, orderId)
+    return await addPoints(userId, points, 'purchase', description, orderId, undefined, client)
   } catch (error) {
-    console.error('포인트 환불 실패:', error)
+    console.error('Point refund failed:', error)
     return false
   }
 }
 
 /**
- * 주문 취소 시 포인트 처리 (적립 회수 + 사용 포인트 환불)
+ * Handle cancellation points
  */
 export async function handleOrderCancellationPoints(
   userId: string,
   orderId: string,
   finalAmount: number,
-  usedPoints: number = 0
+  usedPoints: number = 0,
+  client?: SupabaseClient
 ): Promise<{ success: boolean; deducted: number; refunded: number }> {
   try {
     let deducted = 0
     let refunded = 0
 
-    // 1. 적립된 포인트 회수
     const pointsEarned = Math.floor(finalAmount * 0.01)
     if (pointsEarned > 0) {
       const deductSuccess = await deductPoints(
         userId,
         pointsEarned,
         orderId,
-        `주문 #${orderId} 취소로 인한 적립 포인트 회수`
+        `Order #${orderId} cancellation - point deduction`,
+        client
       )
       if (deductSuccess) {
         deducted = pointsEarned
       }
     }
 
-    // 2. 사용한 포인트 환불
     if (usedPoints > 0) {
       const refundSuccess = await refundPoints(
         userId,
         usedPoints,
         orderId,
-        `주문 #${orderId} 취소로 인한 포인트 환불`
+        `Order #${orderId} cancellation - point refund`,
+        client
       )
       if (refundSuccess) {
         refunded = usedPoints
@@ -274,7 +276,7 @@ export async function handleOrderCancellationPoints(
       refunded,
     }
   } catch (error) {
-    console.error('주문 취소 포인트 처리 실패:', error)
+    console.error('Cancellation points handling failed:', error)
     return {
       success: false,
       deducted: 0,
@@ -284,12 +286,14 @@ export async function handleOrderCancellationPoints(
 }
 
 /**
- * 포인트 내역 조회
+ * Get point history
  */
 export async function getPointHistory(
   userId: string,
-  limit: number = 20
+  limit: number = 20,
+  client?: SupabaseClient
 ): Promise<PointHistory[]> {
+  const supabase = client || browserSupabase
   try {
     const { data, error } = await supabase
       .from('point_history')
@@ -301,8 +305,7 @@ export async function getPointHistory(
     if (error) throw error
     return data || []
   } catch (error) {
-    console.error('포인트 내역 조회 실패:', error)
+    console.error('Point history lookup failed:', error)
     return []
   }
 }
-

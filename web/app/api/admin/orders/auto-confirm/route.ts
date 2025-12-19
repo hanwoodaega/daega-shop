@@ -93,7 +93,9 @@ export async function GET(request: NextRequest) {
             pointsToAdd,
             'purchase',
             `주문 #${order.id} 자동 구매확정 적립`,
-            order.id
+            order.id,
+            undefined,
+            supabase
           )
 
           if (success) {

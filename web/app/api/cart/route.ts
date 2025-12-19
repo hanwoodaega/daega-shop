@@ -296,8 +296,8 @@ export async function DELETE(request: Request) {
 
     const { id, promotion_group_id } = await request.json()
 
-    if (!id) {
-      return NextResponse.json({ error: '상품 ID가 필요합니다.' }, { status: 400 })
+    if (!id && !promotion_group_id) {
+      return NextResponse.json({ error: '삭제할 항목의 ID가 필요합니다.' }, { status: 400 })
     }
 
     // 프로모션 그룹이 있으면 같은 그룹의 모든 상품 삭제

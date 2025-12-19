@@ -13,9 +13,6 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  const [birthYear, setBirthYear] = useState('')
-  const [birthMonth, setBirthMonth] = useState('')
-  const [birthDay, setBirthDay] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -77,10 +74,6 @@ export default function SignupPage() {
     }
 
     try {
-      const birthday = birthYear && birthMonth && birthDay 
-        ? `${birthYear}-${birthMonth}-${birthDay}` 
-        : null
-
       const { data: authData, error } = await supabase.auth.signUp({
         email,
         password,
@@ -88,13 +81,21 @@ export default function SignupPage() {
           data: {
             name: name,
             phone: phone,
-            // 메타데이터에도 생일 저장 (이후 서버에서 users로 동기화)
-            birthday: birthday,
           },
         },
       })
 
-      if (error) throw error
+      if (error) {
+        // 이메일 중복 체크
+        if (error.message?.includes('already registered') || 
+            error.message?.includes('User already registered') ||
+            error.message?.includes('email address is already')) {
+          setError('이미 가입된 이메일입니다.\n로그인하거나 비밀번호 찾기를 이용하세요.')
+          setLoading(false)
+          return
+        }
+        throw error
+      }
 
       // 이메일 인증이 필요한 경우 즉시 세션이 없을 수 있어
       // 클라이언트에서 users 테이블에 쓰기가 RLS에 의해 실패할 수 있음.
@@ -130,7 +131,16 @@ export default function SignupPage() {
 
       setSuccess(true)
     } catch (error: any) {
-      setError(error.message || '회원가입에 실패했습니다.')
+      // 이미 처리된 에러는 그대로 사용
+      if (error.message?.includes('이미 가입된 이메일입니다.')) {
+        setError(error.message)
+      } else if (error.message?.includes('already registered') || 
+                 error.message?.includes('User already registered') ||
+                 error.message?.includes('email address is already')) {
+        setError('이미 가입된 이메일입니다.\n로그인하거나 비밀번호 찾기를 이용하세요.')
+      } else {
+        setError(error.message || '회원가입에 실패했습니다.')
+      }
     } finally {
       setLoading(false)
     }
@@ -213,7 +223,7 @@ export default function SignupPage() {
           <h2 className="text-3xl font-bold text-center mb-8 text-primary-900">회원가입</h2>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm whitespace-pre-line">
               {error}
             </div>
           )}
@@ -393,66 +403,6 @@ export default function SignupPage() {
                     </button>
                   </div>
                 )}
-              </div>
-
-              <div className="mb-8">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  생년월일
-                </label>
-                <div className="flex gap-2">
-                  <select
-                    value={birthYear}
-                    onChange={(e) => setBirthYear(e.target.value)}
-                    required
-                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-900 bg-white"
-                  >
-                    <option value="">연도</option>
-                    {Array.from({ length: 100 }, (_, i) => {
-                      const year = new Date().getFullYear() - i
-                      return (
-                        <option key={year} value={year}>
-                          {year}
-                        </option>
-                      )
-                    })}
-                  </select>
-                  <select
-                    value={birthMonth}
-                    onChange={(e) => {
-                      setBirthMonth(e.target.value)
-                      setBirthDay('') // 월이 변경되면 일 초기화
-                    }}
-                    required
-                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-900 bg-white"
-                  >
-                    <option value="">월</option>
-                    {Array.from({ length: 12 }, (_, i) => {
-                      const month = i + 1
-                      return (
-                        <option key={month} value={month.toString().padStart(2, '0')}>
-                          {month}
-                        </option>
-                      )
-                    })}
-                  </select>
-                  <select
-                    value={birthDay}
-                    onChange={(e) => setBirthDay(e.target.value)}
-                    required
-                    disabled={!birthYear || !birthMonth}
-                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-900 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  >
-                    <option value="">일</option>
-                    {birthYear && birthMonth && Array.from({ length: new Date(parseInt(birthYear), parseInt(birthMonth), 0).getDate() }, (_, i) => {
-                      const day = i + 1
-                      return (
-                        <option key={day} value={day.toString().padStart(2, '0')}>
-                          {day}
-                        </option>
-                      )
-                    })}
-                  </select>
-                </div>
               </div>
           </form>
 

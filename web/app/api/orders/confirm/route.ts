@@ -72,7 +72,9 @@ export async function POST(request: NextRequest) {
         pointsToAdd,
         'purchase',
         `주문 #${order.id} 구매확정 적립`,
-        order.id
+        order.id,
+        undefined,
+        supabase
       )
 
       if (!success) {

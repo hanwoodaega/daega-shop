@@ -43,6 +43,9 @@ export async function POST(request: NextRequest) {
           points,
           pointType,
           `관리자 적립: ${points.toLocaleString()}P`,
+          undefined,
+          undefined,
+          supabase
         )
 
         if (!success) {

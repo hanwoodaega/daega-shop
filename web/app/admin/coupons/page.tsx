@@ -3,14 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Coupon } from '@/lib/supabase'
-import {
-  CouponTable,
-  CouponFormModal,
-  CouponIssueModal,
-  useCoupons,
-  useCouponForm,
-  useIssueCoupon,
-} from '@/components/admin/coupons'
+import CouponTable from './_components/CouponTable'
+import CouponFormModal from './_components/CouponFormModal'
+import CouponIssueModal from './_components/CouponIssueModal'
+import { useCoupons } from './_hooks/useCoupons'
+import { useCouponForm } from './_hooks/useCouponForm'
+import { useIssueCoupon } from './_hooks/useIssueCoupon'
 
 export default function CouponsPage() {
   const router = useRouter()

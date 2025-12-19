@@ -11,11 +11,12 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const nextPath = searchParams.get('next') || '/'
+  const urlError = searchParams.get('error')
   const cartCount = useCartStore((state) => state.getTotalItems())
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(urlError || '')
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -138,9 +139,9 @@ function LoginForm() {
         <div className="max-w-md w-full">
           <h2 className="text-3xl font-bold text-center mb-8 text-primary-900">로그인</h2>
 
-            {error && (
+            {(error || urlError) && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
-                {error}
+                {error || urlError}
               </div>
             )}
 
@@ -216,11 +217,11 @@ function LoginForm() {
                   회원가입
                 </Link>
                 <span className="text-gray-400">|</span>
-                <Link href="#" className="text-gray-600 hover:text-gray-900">
+                <Link href="/auth/find-id" className="text-gray-600 hover:text-gray-900">
                   아이디 찾기
                 </Link>
                 <span className="text-gray-400">|</span>
-                <Link href="#" className="text-gray-600 hover:text-gray-900">
+                <Link href="/auth/find-password" title="비밀번호 찾기" className="text-gray-600 hover:text-gray-900">
                   비밀번호 찾기
                 </Link>
               </div>
