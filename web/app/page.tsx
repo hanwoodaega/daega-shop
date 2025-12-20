@@ -33,21 +33,25 @@ interface Collection {
 export default async function Home() {
   let collections: Collection[] = []
 
-  try {
-    // 서버 컴포넌트에서는 절대 URL 사용 권장 (Vercel, Edge, SSR 환경 대응)
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-    
-    const res = await fetch(`${siteUrl}/api/collections`, {
-      next: { revalidate: 300 }, // 5분 캐시
-    })
-    
-    if (res.ok) {
-      const data = await res.json()
-      collections = data.collections || []
+  // 빌드 시점에는 fetch를 건너뜀 (서버가 실행되지 않음)
+  // NEXT_PHASE가 설정되어 있지 않으면 빌드 시점으로 간주
+  const isBuildTime = !process.env.NEXT_PHASE || process.env.NEXT_PHASE === 'phase-production-build'
+  
+  if (!isBuildTime) {
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+      
+      const res = await fetch(`${siteUrl}/api/collections`, {
+        next: { revalidate: 300 }, // 5분 캐시
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        collections = data.collections || []
+      }
+    } catch (error: any) {
+      // 에러 시 빈 배열로 fallback
     }
-  } catch (error) {
-    console.error('컬렉션 조회 실패:', error)
-    // 에러 시 빈 배열로 fallback
   }
 
   return (
