@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag, revalidatePath } from 'next/cache'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { assertAdmin } from '@/lib/admin-auth'
-import { getKSTNowISO } from '@/lib/time-utils'
+import { getNowUTCISO } from '@/lib/time-utils'
 
 // GET: 타임딜 목록 조회 (관리자)
 // 새로운 timedeals 테이블 구조 사용
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const activeOnly = searchParams.get('active_only') === 'true'
-    const now = getKSTNowISO()
+    const now = getNowUTCISO()
 
     let query = supabaseAdmin
       .from('timedeals')
@@ -157,6 +158,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 캐시 무효화: 타임딜 생성 시 즉시 반영
+    revalidateTag('timedeal')
+    revalidatePath('/')
+
     return NextResponse.json({ success: true, timedeal: newTimedeal })
   } catch (error: any) {
     console.error('타임딜 생성 실패:', error)
@@ -228,6 +233,10 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // 캐시 무효화: 타임딜 업데이트 시 즉시 반영
+    revalidateTag('timedeal')
+    revalidatePath('/')
+
     return NextResponse.json({ success: true, timedeal: updatedTimedeal })
   } catch (error: any) {
     console.error('타임딜 업데이트 실패:', error)
@@ -260,6 +269,10 @@ export async function DELETE(request: NextRequest) {
     if (deleteError) {
       return NextResponse.json({ error: deleteError.message }, { status: 400 })
     }
+
+    // 캐시 무효화: 타임딜 삭제 시 즉시 반영
+    revalidateTag('timedeal')
+    revalidatePath('/')
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

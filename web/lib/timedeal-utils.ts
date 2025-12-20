@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from './supabase-server'
-import { getKSTNowISO } from './time-utils'
+import { getNowUTCISO } from './time-utils'
 
 /**
  * 활성 타임딜에서 특정 상품의 할인율 조회
@@ -9,7 +9,7 @@ import { getKSTNowISO } from './time-utils'
 export async function getTimedealDiscountPercent(productId: string): Promise<number> {
   try {
     const supabase = createSupabaseServerClient()
-    const now = getKSTNowISO()
+    const now = getNowUTCISO()
 
     // 활성 타임딜 조회
     const { data: activeTimedeal } = await supabase
@@ -54,7 +54,7 @@ export async function getTimedealDiscountPercentMap(productIds: string[]): Promi
 
   try {
     const supabase = createSupabaseServerClient()
-    const now = getKSTNowISO()
+    const now = getNowUTCISO()
 
     // 활성 타임딜 조회
     const { data: activeTimedeal } = await supabase

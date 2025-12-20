@@ -314,7 +314,7 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
             {/* 8번째 칸: +더보기 버튼 */}
             {allImages.length > 0 && (
               <button
-                onClick={() => router.push(`/products/${productId}/reviews/gallery`)}
+                onClick={() => router.push(`/product/${productId}/reviews/gallery`)}
                 className="aspect-square bg-blue-600 rounded flex flex-col items-center justify-center text-white hover:bg-blue-700 transition"
               >
                 <span className="text-2xl mb-1">+</span>

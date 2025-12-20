@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag, revalidatePath } from 'next/cache'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { assertAdmin } from '@/lib/admin-auth'
 
@@ -77,6 +78,10 @@ export async function POST(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
+
+    // 캐시 무효화
+    revalidateTag('banner')
+    revalidatePath('/')
 
     return NextResponse.json({ banner: data })
   } catch (error: any) {

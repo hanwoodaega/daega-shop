@@ -96,6 +96,7 @@ export function useAdminOrders() {
       const response = await fetch('/api/admin/orders', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // 쿠키 포함
         body: JSON.stringify({ 
           orderId, 
           status: newStatus,
@@ -103,19 +104,24 @@ export function useAdminOrders() {
         })
       })
 
-      if (response.status === 401) {
+      if (response.status === 401 || response.status === 403) {
+        const errorData = await response.json().catch(() => ({ error: '관리자 권한이 필요합니다.' }))
+        toast.error(errorData.error || '관리자 권한이 필요합니다.')
         redirectToLogin()
         return false
       }
 
-      if (!response.ok) throw new Error('상태 변경 실패')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: '상태 변경 실패' }))
+        throw new Error(errorData.error || '상태 변경 실패')
+      }
 
       await fetchOrders()
       toast.success('주문 상태가 변경되었습니다.')
       return true
     } catch (error) {
       console.error('상태 변경 실패:', error)
-      toast.error('상태 변경에 실패했습니다.')
+      toast.error(error instanceof Error ? error.message : '상태 변경에 실패했습니다.')
       return false
     } finally {
       setUpdatingOrderId(null)

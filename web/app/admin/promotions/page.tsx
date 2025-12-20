@@ -7,6 +7,7 @@ import PromotionHeader from './_components/PromotionHeader'
 import PromotionList from './_components/PromotionList'
 import PromotionCreateModal from './_components/PromotionCreateModal'
 import ProductSelectorModal from './_components/ProductSelectorModal'
+import AdminPageLayout from '../_components/AdminPageLayout'
 
 export default function PromotionsPage() {
   const {
@@ -54,9 +55,8 @@ export default function PromotionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
-        <PromotionHeader onCreateClick={openCreateModal} />
+    <AdminPageLayout title="프로모션 관리">
+      <PromotionHeader onCreateClick={openCreateModal} />
 
         <PromotionList
           promotions={promotions}
@@ -93,7 +93,6 @@ export default function PromotionsPage() {
           onSearchChange={setSearchQuery}
           onToggleProduct={toggleProduct}
         />
-      </main>
-    </div>
+    </AdminPageLayout>
   )
 }

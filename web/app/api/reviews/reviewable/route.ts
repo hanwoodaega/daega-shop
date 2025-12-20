@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
 // GET: 리뷰 작성 가능한 상품 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
-
+    const supabaseAuth = createSupabaseServerClient()
+    
     // 사용자 인증 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
     
     if (authError || !user) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }
+
+    // RLS 우회를 위해 admin client 사용
+    const supabase = createSupabaseAdminClient()
 
     // 1. 배송 완료된 주문의 모든 주문 상품 조회
     const { data: orderItems, error: orderItemsError } = await supabase
@@ -52,12 +55,18 @@ export async function GET(request: NextRequest) {
 
     // 2. 구매확정된 주문 ID 조회 (point_history에서 type='purchase'인 주문)
     const orderIds = Array.from(new Set(orderItems.map((item: any) => item.order_id)))
+    
+    if (orderIds.length === 0) {
+      return NextResponse.json({ reviewableProducts: [] })
+    }
+
     const { data: confirmedOrders, error: confirmedError } = await supabase
       .from('point_history')
       .select('order_id')
       .eq('user_id', user.id)
       .in('order_id', orderIds)
       .eq('type', 'purchase')
+      .not('order_id', 'is', null) // order_id가 null이 아닌 것만
 
     if (confirmedError) {
       console.error('구매확정 주문 조회 실패:', confirmedError)
@@ -65,7 +74,9 @@ export async function GET(request: NextRequest) {
     }
 
     const confirmedOrderIds = new Set(
-      (confirmedOrders || []).map((ph: any) => ph.order_id)
+      (confirmedOrders || [])
+        .map((ph: any) => ph.order_id)
+        .filter((id: string | null) => id !== null) // null 제거
     )
 
     // 3. 구매확정된 주문의 상품만 필터링

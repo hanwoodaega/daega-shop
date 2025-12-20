@@ -5,6 +5,7 @@ import CollectionHeader from './CollectionHeader'
 import CollectionList from './CollectionList'
 import CollectionDetail from './CollectionDetail'
 import CollectionFormModal from './CollectionFormModal'
+import AdminPageLayout from '../../_components/AdminPageLayout'
 import type { Collection, Product } from '../_types'
 
 export interface CollectionsClientProps {
@@ -34,9 +35,8 @@ export default function CollectionsClient({
   } = useCollections(initialCollections, initialPromotedProductIds)
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
-        <CollectionHeader onCreateClick={openCreateModal} />
+    <AdminPageLayout title="컬렉션 관리">
+      <CollectionHeader onCreateClick={openCreateModal} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 컬렉션 목록 */}
@@ -68,7 +68,6 @@ export default function CollectionsClient({
             onSuccess={editingCollection ? handleCollectionUpdated : handleCollectionCreated}
           />
         )}
-      </main>
-    </div>
+    </AdminPageLayout>
   )
 }

@@ -39,7 +39,7 @@ export default function OrderActions({
   }
 
   const handleStatusChangeWithConfirm = async (newStatus: OrderStatus, trackingNumber?: string) => {
-    if (!window.confirm('Are you sure you want to change the order status?')) {
+    if (!window.confirm('주문 상태를 변경하시겠습니까?')) {
       return
     }
     await onStatusChange(order.id, newStatus, trackingNumber)
@@ -52,22 +52,22 @@ export default function OrderActions({
     <div className="space-y-4">
       {(order.status === 'PREPARING' || order.status === 'ORDER_RECEIVED' || order.status === 'paid') && !order.tracking_number && (
         <div className="pb-4 border-b space-y-2">
-          <p className="text-sm font-medium text-gray-700">Tracking Number</p>
+          <p className="text-sm font-medium text-gray-700">송장번호</p>
           <div className="space-y-2">
             <div>
-              <label className="block text-xs text-gray-600 mb-1">Tracking Number (Lotte)</label>
+              <label className="block text-xs text-gray-600 mb-1">송장번호 (롯데택배)</label>
               <input
                 type="text"
                 value={trackingInput}
                 onChange={(e) => onTrackingChange(e.target.value)}
-                placeholder="Enter tracking number"
+                placeholder="송장번호를 입력하세요"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-800"
               />
             </div>
             <button
               onClick={() => {
                 if (!trackingInput) {
-                  toast.error('Please enter a tracking number.')
+                  toast.error('송장번호를 입력해주세요.')
                   return
                 }
                 handleStatusChangeWithConfirm('IN_TRANSIT', trackingInput)
@@ -75,7 +75,7 @@ export default function OrderActions({
               disabled={isUpdating}
               className="w-full py-2 px-4 bg-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-700 transition disabled:opacity-50"
             >
-              {isUpdating ? 'Updating...' : 'Set Tracking & Mark Shipped'}
+              {isUpdating ? '처리 중...' : '송장번호 입력 및 배송 시작'}
             </button>
           </div>
         </div>
@@ -83,7 +83,7 @@ export default function OrderActions({
 
       {availableStatuses.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-700">Change Status</p>
+          <p className="text-sm font-medium text-gray-700">상태 변경</p>
           <div className="flex gap-2">
             {availableStatuses.map((status) => (
               <button
@@ -96,7 +96,7 @@ export default function OrderActions({
                     : 'bg-primary-800 text-white hover:bg-primary-900'
                 } disabled:opacity-50`}
               >
-                {isUpdating ? 'Updating...' : getStatusText(status as OrderStatus, order.delivery_type as any)}
+                {isUpdating ? '처리 중...' : getStatusText(status as OrderStatus, order.delivery_type as any)}
               </button>
             ))}
           </div>

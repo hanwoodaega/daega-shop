@@ -9,6 +9,7 @@ import CouponIssueModal from './_components/CouponIssueModal'
 import { useCoupons } from './_hooks/useCoupons'
 import { useCouponForm } from './_hooks/useCouponForm'
 import { useIssueCoupon } from './_hooks/useIssueCoupon'
+import AdminPageLayout from '../_components/AdminPageLayout'
 
 export default function CouponsPage() {
   const router = useRouter()
@@ -118,47 +119,44 @@ export default function CouponsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">로딩 중...</div>
-        </div>
-      </div>
+      <AdminPageLayout title="쿠폰 관리">
+        <div className="text-center py-12">로딩 중...</div>
+      </AdminPageLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* 에러 표시 (401은 redirect되므로 여기서는 500 등 다른 에러만 표시) */}
-        {error && error.status !== 401 && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-red-800 font-semibold">오류가 발생했습니다</h3>
-                <p className="text-red-600 text-sm mt-1">{error.message}</p>
-              </div>
-              <button
-                onClick={() => refetch()}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
-              >
-                다시 시도
-              </button>
+    <AdminPageLayout 
+      title="쿠폰 관리"
+      extra={
+        <button
+          onClick={() => {
+            resetForm()
+            setShowCreateModal(true)
+          }}
+          className="bg-primary-800 text-white px-4 py-2 rounded-lg hover:bg-primary-900 transition"
+        >
+          + 쿠폰 생성
+        </button>
+      }
+    >
+      {/* 에러 표시 (401은 redirect되므로 여기서는 500 등 다른 에러만 표시) */}
+      {error && error.status !== 401 && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-red-800 font-semibold">오류가 발생했습니다</h3>
+              <p className="text-red-600 text-sm mt-1">{error.message}</p>
             </div>
+            <button
+              onClick={() => refetch()}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
+            >
+              다시 시도
+            </button>
           </div>
-        )}
-
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">쿠폰 관리</h1>
-          <button
-            onClick={() => {
-              resetForm()
-              setShowCreateModal(true)
-            }}
-            className="bg-primary-800 text-white px-4 py-2 rounded-lg hover:bg-primary-900 transition"
-          >
-            + 쿠폰 생성
-          </button>
         </div>
+      )}
 
         <CouponTable
           coupons={coupons}
@@ -192,7 +190,6 @@ export default function CouponsPage() {
           onSubmit={handleIssueWithConditionsSubmit}
           onConditionsChange={setIssueConditions}
         />
-      </div>
-    </div>
+    </AdminPageLayout>
   )
 }

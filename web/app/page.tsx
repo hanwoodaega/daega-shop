@@ -1,6 +1,3 @@
-'use client'
-
-import { useEffect, useState } from 'react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
@@ -9,9 +6,9 @@ import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import CategoryGrid from '@/components/CategoryGrid'
 import CollectionSection from '@/components/CollectionSection'
 import RecommendationSection from '@/components/RecommendationSection'
-import TimeDealSection from '@/components/TimeDealSection'
+import TimeDealSection from '@/components/timedeal/TimeDealSection'
 import HeroSlider from '@/components/HeroSlider'
-import BannerSection from '@/components/BannerSection'
+import BannerSection from '@/components/banner/BannerSection'
 
 interface ColorTheme {
   background?: string
@@ -33,58 +30,51 @@ interface Collection {
   is_active?: boolean
 }
 
-export default function Home() {
-  const [collections, setCollections] = useState<Collection[]>([])
-  const [loading, setLoading] = useState(true)
+export default async function Home() {
+  let collections: Collection[] = []
 
-  useEffect(() => {
-    const fetchCollections = async () => {
-      try {
-        const res = await fetch('/api/collections/main')
-        const data = await res.json()
-        if (res.ok) {
-          setCollections(data.collections || [])
-        }
-      } catch (error) {
-        console.error('컬렉션 조회 실패:', error)
-      } finally {
-        setLoading(false)
-      }
+  try {
+    // 서버 컴포넌트에서는 절대 URL 사용 권장 (Vercel, Edge, SSR 환경 대응)
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    
+    const res = await fetch(`${siteUrl}/api/collections`, {
+      next: { revalidate: 300 }, // 5분 캐시
+    })
+    
+    if (res.ok) {
+      const data = await res.json()
+      collections = data.collections || []
     }
-
-    fetchCollections()
-  }, [])
-
+  } catch (error) {
+    console.error('컬렉션 조회 실패:', error)
+    // 에러 시 빈 배열로 fallback
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       
       <main className="flex-1">
-        {/* 히어로 섹션 */}
         <HeroSlider />
 
-        {/* 카테고리 */}
         <section className="py-8 bg-white">
           <div className="container mx-auto px-4">
             <CategoryGrid selectedCategory="" />
           </div>
         </section>
 
-        {/* 타임딜 섹션 */}
         <TimeDealSection />
 
-        {/* 컬렉션 섹션들 */}
-        {collections.map((collection) => {
-          return <CollectionSection key={collection.id} collection={collection} />
-        })}
+        {collections.length > 0 &&
+          collections.map((collection) => (
+            <CollectionSection key={collection.id} collection={collection} />
+          ))
+        }
 
-        {/* 배너 섹션 */}
         <div className="mt-20 mb-20">
           <BannerSection />
         </div>
 
-        {/* 취향별 추천 섹션 */}
         <RecommendationSection />
       </main>
 

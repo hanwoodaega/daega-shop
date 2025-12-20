@@ -80,28 +80,60 @@ export async function addPoints(
       if (!userPoints) return false
     }
 
-    const { error: updateError } = await supabase
-      .from('user_points')
-      .update({
-        total_points: userPoints.total_points + points,
-        updated_at: new Date().toISOString(),
+    // 포인트가 0보다 클 때만 user_points 업데이트
+    // 하지만 point_history에는 항상 기록 (구매확정 기록을 위해)
+    if (points > 0) {
+      const { error: updateError } = await supabase
+        .from('user_points')
+        .update({
+          total_points: userPoints.total_points + points,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId)
+
+      if (updateError) throw updateError
+    }
+
+    // point_history에는 항상 기록 (구매확정 기록을 위해 order_id 저장 필요)
+    const historyPayload: any = {
+      user_id: userId,
+      points: points,
+      type: type,
+      description: description,
+    }
+    
+    // order_id와 review_id는 명시적으로 설정
+    // purchase 타입일 때는 order_id가 필수이므로 항상 설정
+    if (orderId) {
+      historyPayload.order_id = orderId
+    } else if (type === 'purchase') {
+      // purchase 타입인데 orderId가 없으면 에러
+      console.error('Purchase type requires orderId:', {
+        userId,
+        points,
+        type,
+        description,
       })
-      .eq('user_id', userId)
+      throw new Error('Purchase type requires orderId')
+    }
+    
+    if (reviewId) {
+      historyPayload.review_id = reviewId
+    }
 
-    if (updateError) throw updateError
-
-    const { error: historyError } = await supabase
+    const { error: historyError, data: insertedData } = await supabase
       .from('point_history')
-      .insert({
-        user_id: userId,
-        points: points,
-        type: type,
-        description: description,
-        order_id: orderId || null,
-        review_id: reviewId || null,
-      })
+      .insert(historyPayload)
+      .select('id, order_id, type')
 
-    if (historyError) throw historyError
+    if (historyError) {
+      console.error('Point history insert failed:', {
+        error: historyError,
+        payload: historyPayload,
+      })
+      throw historyError
+    }
+
 
     if (type === 'purchase') {
       await supabase

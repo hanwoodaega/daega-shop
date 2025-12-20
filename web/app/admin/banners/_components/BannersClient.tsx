@@ -5,6 +5,7 @@ import BannerHeader from './BannerHeader'
 import BannerList from './BannerList'
 import BannerDetail from './BannerDetail'
 import BannerFormModal from './BannerFormModal'
+import AdminPageLayout from '../../_components/AdminPageLayout'
 import type { Banner, Product } from '../_types'
 
 export interface BannersClientProps {
@@ -28,9 +29,8 @@ export default function BannersClient({ initialBanners, initialProducts }: Banne
   } = useBanners(initialBanners)
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
-        <BannerHeader onCreateClick={openCreateModal} />
+    <AdminPageLayout title="배너 관리">
+      <BannerHeader onCreateClick={openCreateModal} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 배너 목록 */}
@@ -61,8 +61,7 @@ export default function BannersClient({ initialBanners, initialProducts }: Banne
             onSuccess={editingBanner ? handleBannerUpdated : handleBannerCreated}
           />
         )}
-      </main>
-    </div>
+    </AdminPageLayout>
   )
 }
 

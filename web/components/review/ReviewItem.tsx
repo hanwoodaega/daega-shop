@@ -70,7 +70,7 @@ function ReviewItem({ review, isOwner = false, onEdit, onDelete }: ReviewItemPro
         <div className="mb-3 overflow-x-auto -mx-4 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="flex gap-1 w-max">
             {review.images.map((image, index) => (
-              <div key={index} className="w-[calc(25vw-1rem)] aspect-square bg-gray-200 rounded overflow-hidden flex-shrink-0">
+              <div key={index} className="w-24 aspect-square bg-gray-200 rounded overflow-hidden flex-shrink-0">
                 <img 
                   src={image} 
                   alt={`리뷰 이미지 ${index + 1}`}

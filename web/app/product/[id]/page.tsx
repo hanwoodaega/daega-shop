@@ -356,14 +356,12 @@ function ProductDetailPageContent() {
       </header>
       
       <main className="flex-1">
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
-          {/* 상품 이미지 - 여러 이미지 표시 */}
-          <div className="relative">
-            {/* 메인 이미지 - 스와이프 가능 */}
-            <div 
-              className="bg-gray-200 overflow-hidden aspect-square flex items-center justify-center relative"
-              onTouchStart={(e) => setTouchStart(e.targetTouches[0].clientX)}
+        {/* 상품 이미지 - 여러 이미지 표시 */}
+        <div className="w-full aspect-square">
+          {/* 메인 이미지 - 스와이프 가능 */}
+          <div 
+            className="w-full h-full bg-gray-200 overflow-hidden relative"
+            onTouchStart={(e) => setTouchStart(e.targetTouches[0].clientX)}
               onTouchMove={(e) => setTouchEnd(e.targetTouches[0].clientX)}
               onTouchEnd={() => {
                 if (!touchStart || !touchEnd) return
@@ -390,7 +388,9 @@ function ProductDetailPageContent() {
                   draggable={false}
                 />
               ) : (
-                <span className="text-gray-500 text-base">이미지 준비중</span>
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="text-gray-500 text-base">이미지 준비중</span>
+                </div>
               )}
               
               {/* 이전 버튼 (여러 이미지가 있을 때만) */}
@@ -436,10 +436,10 @@ function ProductDetailPageContent() {
                 </div>
               )}
             </div>
-          </div>
+        </div>
 
-          {/* 상품 정보 */}
-          <div className="px-4 py-8">
+        {/* 상품 정보 */}
+        <div className="px-4 py-8">
             <div className="flex items-start justify-between gap-3 mb-2">
               <div className="flex-1">
                 {product.brand && (
@@ -541,11 +541,8 @@ function ProductDetailPageContent() {
                 }
               })()}
             </div>
-
-          </div>
         </div>
       </main>
-
 
       {/* 하단 고정 액션 바 (품절 상품이 아닐 때만 표시) */}
       {!soldOut && (

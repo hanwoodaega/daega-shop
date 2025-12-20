@@ -45,14 +45,20 @@ export async function POST(request: NextRequest) {
     }
 
     // 이미 구매확정되었는지 확인 (point_history에서 확인)
-    const { data: existingPoints } = await supabase
+    const { data: existingPoints, error: existingError } = await supabase
       .from('point_history')
-      .select('id')
+      .select('id, order_id')
       .eq('order_id', orderId)
       .eq('type', 'purchase')
-      .single()
+      .not('order_id', 'is', null) // order_id가 null이 아닌 것만
+      .maybeSingle()
 
-    if (existingPoints) {
+    if (existingError && existingError.code !== 'PGRST116') {
+      console.error('구매확정 중복 확인 실패:', existingError)
+      // 에러가 있어도 계속 진행 (중복 체크는 실패해도 괜찮음)
+    }
+
+    if (existingPoints && existingPoints.order_id) {
       return NextResponse.json({ 
         error: '이미 구매확정된 주문입니다.' 
       }, { status: 400 })
@@ -66,23 +72,60 @@ export async function POST(request: NextRequest) {
     // 포인트 적립 (최종 결제 금액의 1%)
     const pointsToAdd = Math.floor(Math.max(0, finalAmount) * 0.01)
     
-    if (pointsToAdd > 0) {
-      const success = await addPoints(
-        user.id,
+    // 포인트가 0이어도 구매확정 기록을 남기기 위해 항상 addPoints 호출
+    // (리뷰 작성 가능 여부 확인을 위해 point_history에 order_id가 필요)
+    const success = await addPoints(
+      user.id,
+      pointsToAdd,
+      'purchase',
+      `주문 #${order.id} 구매확정 적립`,
+      order.id, // order_id 전달
+      undefined,
+      supabase
+    )
+
+    if (!success) {
+      console.error('구매확정 포인트 적립 실패:', {
+        userId: user.id,
+        orderId: order.id,
         pointsToAdd,
-        'purchase',
-        `주문 #${order.id} 구매확정 적립`,
-        order.id,
-        undefined,
-        supabase
-      )
+      })
+      return NextResponse.json({ 
+        error: '구매확정 처리에 실패했습니다.' 
+      }, { status: 500 })
+    }
 
-      if (!success) {
-        return NextResponse.json({ 
-          error: '포인트 적립에 실패했습니다.' 
-        }, { status: 500 })
-      }
+    // 구매확정 기록이 제대로 저장되었는지 확인
+    const { data: verifyHistory, error: verifyError } = await supabase
+      .from('point_history')
+      .select('id, order_id, points, type')
+      .eq('user_id', user.id)
+      .eq('order_id', order.id)
+      .eq('type', 'purchase')
+      .not('order_id', 'is', null) // order_id가 null이 아닌 것만
+      .maybeSingle()
 
+    if (verifyError) {
+      console.error('구매확정 기록 확인 실패:', {
+        userId: user.id,
+        orderId: order.id,
+        error: verifyError,
+      })
+      // 에러가 있어도 성공으로 처리 (이미 addPoints에서 처리했으므로)
+    } else if (!verifyHistory || !verifyHistory.order_id) {
+      console.error('구매확정 기록이 저장되지 않았거나 order_id가 null입니다:', {
+        userId: user.id,
+        orderId: order.id,
+        verifyHistory,
+      })
+      // 기록이 없거나 order_id가 null이면 실패로 처리
+      return NextResponse.json({ 
+        error: '구매확정 기록 저장에 실패했습니다.' 
+      }, { status: 500 })
+    }
+
+    // 포인트가 0보다 클 때만 알림 생성
+    if (pointsToAdd > 0) {
       // 구매확정 포인트 적립 알림 생성
       const orderNumber = order.order_number || order.id.slice(0, 8)
       const notificationTitle = `구매확정 ${pointsToAdd.toLocaleString()}P 적립`
@@ -102,25 +145,25 @@ export async function POST(request: NextRequest) {
         console.error('구매확정 알림 생성 실패:', notificationError)
         // 알림 생성 실패해도 구매확정은 성공으로 처리
       }
+    }
 
-      // 리뷰 작성 알림 생성
-      const reviewNotificationTitle = '리뷰 작성'
-      const reviewNotificationContent = `구매확정이 완료되었습니다. 상품 리뷰를 작성해주세요. 리뷰 작성하기`
+    // 리뷰 작성 알림 생성 (포인트와 관계없이 항상 생성)
+    const reviewNotificationTitle = '리뷰 작성'
+    const reviewNotificationContent = `구매확정이 완료되었습니다. 상품 리뷰를 작성해주세요. 리뷰 작성하기`
 
-      const { error: reviewNotificationError } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: user.id,
-          title: reviewNotificationTitle,
-          content: reviewNotificationContent,
-          type: 'general',
-          is_read: false,
-        })
+    const { error: reviewNotificationError } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: user.id,
+        title: reviewNotificationTitle,
+        content: reviewNotificationContent,
+        type: 'general',
+        is_read: false,
+      })
 
-      if (reviewNotificationError) {
-        console.error('리뷰 작성 알림 생성 실패:', reviewNotificationError)
-        // 알림 생성 실패해도 구매확정은 성공으로 처리
-      }
+    if (reviewNotificationError) {
+      console.error('리뷰 작성 알림 생성 실패:', reviewNotificationError)
+      // 알림 생성 실패해도 구매확정은 성공으로 처리
     }
 
     return NextResponse.json({ 

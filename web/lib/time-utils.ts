@@ -4,25 +4,21 @@
  */
 
 /**
- * 현재 한국 시간을 UTC ISO 문자열로 반환
- * 데이터베이스에 저장할 때 사용
+ * 현재 UTC 시간을 ISO 문자열로 반환
  * 
- * 데이터베이스는 UTC로 저장되므로, 비교할 때도 UTC 시간을 사용해야 함
- * 프론트엔드에서 입력받은 한국 시간은 convertLocalToISO()로 UTC로 변환되어 저장됨
- * 따라서 비교할 때는 현재 UTC 시간을 사용하면 됨
+ * DB가 UTC 기준이므로 그대로 비교
+ * 한국 기준 판단은 입력/표시(UI)에서만 처리
  */
-export function getKSTNowISO(): string {
-  // new Date()는 서버의 현재 시간을 반환하고, toISOString()은 UTC로 변환
-  // 데이터베이스의 UTC 시간과 비교하기 위해 UTC 시간을 반환
+export function getNowUTCISO(): string {
   return new Date().toISOString()
 }
 
 /**
  * 현재 시간을 Date 객체로 반환 (비교용)
- * 데이터베이스의 UTC 시간과 비교하기 위해 사용
+ * 
+ * @deprecated getNowUTCISO() 사용 권장
  */
 export function getKSTNow(): Date {
-  // 데이터베이스의 시간은 UTC로 저장되므로, 비교할 때도 UTC를 사용
   return new Date()
 }
 
@@ -56,6 +52,8 @@ export function convertUTCToLocal(utcDateTime: string): string {
 
 /**
  * 한국 시간 기준으로 날짜를 YYYY-MM-DD 문자열로 변환
+ * 
+ * 주의: 날짜 문자열만 필요할 때 사용 (타임딜 비교 로직에는 사용하지 않음)
  */
 export function getKSTDateString(date: Date): string {
   const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000)

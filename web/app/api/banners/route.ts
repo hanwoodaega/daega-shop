@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 
-// 동적 라우트로 처리 (cookies 사용)
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
@@ -16,13 +15,27 @@ export async function GET() {
     
     if (error) {
       console.error('배너 조회 실패:', error)
-      return NextResponse.json({ error: '배너 조회 실패' }, { status: 500 })
+      return NextResponse.json({ error: '배너 조회 실패' }, {
+        status: 500,
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        },
+      })
     }
     
-    return NextResponse.json({ banners: banners || [] })
+    return NextResponse.json({ banners: banners || [] }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
+    })
   } catch (error) {
     console.error('배너 조회 에러:', error)
-    return NextResponse.json({ error: '배너 조회 실패' }, { status: 500 })
+    return NextResponse.json({ error: '배너 조회 실패' }, {
+      status: 500,
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
+    })
   }
 }
 

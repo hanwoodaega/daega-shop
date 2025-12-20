@@ -230,8 +230,44 @@ function OrdersPageContent() {
         }
       )
 
-      // 주문 목록 새로고침
-      await fetchOrders()
+      // 즉시 로컬 상태 업데이트 (구매확정 버튼 제거)
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId 
+            ? { ...order, is_confirmed: true }
+            : order
+        )
+      )
+
+      // 주문 목록 새로고침 (약간의 지연 후 - point_history가 DB에 반영될 시간을 줌)
+      setTimeout(async () => {
+        try {
+          const res = await fetch('/api/orders')
+          if (res.ok) {
+            const data = await res.json()
+            // 서버 데이터와 로컬 상태 병합 (구매확정 상태는 로컬 상태 우선)
+            setOrders(prevOrders => {
+              const serverOrdersMap = new Map<string, OrderWithItems>(
+                (data.orders || []).map((order: OrderWithItems) => [order.id, order])
+              )
+              return prevOrders.map(order => {
+                const serverOrder = serverOrdersMap.get(order.id)
+                if (serverOrder) {
+                  // 구매확정한 주문은 로컬 상태의 is_confirmed를 유지
+                  return {
+                    ...serverOrder,
+                    is_confirmed: order.is_confirmed ?? serverOrder.is_confirmed,
+                  } as OrderWithItems
+                }
+                return order
+              })
+            })
+          }
+        } catch (err) {
+          console.error('주문 목록 새로고침 실패:', err)
+          // 실패해도 로컬 상태는 이미 업데이트되었으므로 무시
+        }
+      }, 1000) // 1초 지연
     } catch (error: any) {
       showError(error)
     } finally {

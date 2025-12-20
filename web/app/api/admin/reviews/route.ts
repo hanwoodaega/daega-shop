@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || 'pending'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
+    const date = searchParams.get('date') || ''
     const offset = (page - 1) * limit
 
     // status 컬럼이 없을 수도 있으니, 우선 시도 후 실패 시 폴백
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
     let count: number | null = null
     let error: any = null
     try {
-      const res = await supabase
+      let query = supabase
         .from('reviews')
         .select(`
           *,
@@ -28,8 +29,23 @@ export async function GET(request: NextRequest) {
           products!reviews_product_id_fkey(name, brand)
         `, { count: 'exact' })
         .eq('status', status)
+      
+      // 날짜 필터 적용
+      if (date) {
+        const startDate = new Date(date)
+        startDate.setHours(0, 0, 0, 0)
+        const endDate = new Date(date)
+        endDate.setHours(23, 59, 59, 999)
+        
+        query = query
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString())
+      }
+      
+      const res = await query
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
+      
       data = res.data as any[] | null
       count = res.count as number | null
       error = res.error
@@ -39,15 +55,30 @@ export async function GET(request: NextRequest) {
 
     // 폴백: 전체 리뷰에서 페이지네이션
     if (error) {
-      const res = await supabase
+      let query = supabase
         .from('reviews')
         .select(`
           *,
           users!reviews_user_id_fkey(name),
           products!reviews_product_id_fkey(name, brand)
         `, { count: 'exact' })
+      
+      // 날짜 필터 적용
+      if (date) {
+        const startDate = new Date(date)
+        startDate.setHours(0, 0, 0, 0)
+        const endDate = new Date(date)
+        endDate.setHours(23, 59, 59, 999)
+        
+        query = query
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString())
+      }
+      
+      const res = await query
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
+      
       data = res.data as any[] | null
       count = res.count as number | null
     }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag, revalidatePath } from 'next/cache'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { assertAdmin } from '@/lib/admin-auth'
 
@@ -109,6 +110,10 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
+    // 캐시 무효화
+    revalidateTag('banner')
+    revalidatePath('/')
+
     return NextResponse.json({ banner: data })
   } catch (error: any) {
     console.error('배너 수정 실패:', error)
@@ -136,6 +141,10 @@ export async function DELETE(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
+
+    // 캐시 무효화
+    revalidateTag('banner')
+    revalidatePath('/')
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

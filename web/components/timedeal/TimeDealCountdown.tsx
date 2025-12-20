@@ -19,12 +19,19 @@ function getRemainingSeconds(endTime: string | null | undefined): number | null 
 }
 
 export default function TimeDealCountdown({ endTime, className = '' }: TimeDealCountdownProps) {
-  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(
-    getRemainingSeconds(endTime)
-  )
+  // hydration mismatch 방지: 클라이언트에서만 렌더링
+  const [mounted, setMounted] = useState(false)
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
 
   useEffect(() => {
-    if (remainingSeconds === null || remainingSeconds <= 0) {
+    // 클라이언트에서 마운트된 후에만 시간 계산
+    setMounted(true)
+    const initialRemaining = getRemainingSeconds(endTime)
+    setRemainingSeconds(initialRemaining)
+  }, [endTime])
+
+  useEffect(() => {
+    if (!mounted || remainingSeconds === null || remainingSeconds <= 0) {
       return
     }
 
@@ -38,9 +45,10 @@ export default function TimeDealCountdown({ endTime, className = '' }: TimeDealC
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [endTime, remainingSeconds])
+  }, [mounted, endTime, remainingSeconds])
 
-  if (remainingSeconds === null || remainingSeconds <= 0) {
+  // hydration mismatch 방지: 서버에서는 렌더링하지 않음
+  if (!mounted || remainingSeconds === null || remainingSeconds <= 0) {
     return null
   }
 

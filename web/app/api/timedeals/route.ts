@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { getKSTNowISO } from '@/lib/time-utils'
+import { getNowUTCISO } from '@/lib/time-utils'
 
 export const dynamic = 'force-dynamic'
 
 // GET: 타임딜 상품 목록 조회 (공개 API)
 // 새로운 timedeals 테이블 구조 사용
+// revalidateTag를 통해 캐시 무효화 가능
 export async function GET(request: NextRequest) {
   try {
     const supabase = createSupabaseServerClient()
     const { searchParams } = new URL(request.url)
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '10')))
 
-    // 활성 타임딜 조회 (현재 한국 시간이 start_at과 end_at 사이인 것)
-    const now = getKSTNowISO()
+    // 활성 타임딜 조회
+    // DB가 UTC 기준이므로 현재 UTC 시간과 비교
+    const now = getNowUTCISO()
     const { data: activeTimedeal, error: timedealError } = await supabase
       .from('timedeals')
       .select('*')
@@ -29,6 +31,10 @@ export async function GET(request: NextRequest) {
         timedeal: null,
         products: [],
         title: '오늘만 특가!'
+      }, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        },
       })
     }
 
@@ -37,6 +43,10 @@ export async function GET(request: NextRequest) {
         timedeal: null,
         products: [],
         title: '오늘만 특가!'
+      }, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        },
       })
     }
 
@@ -120,6 +130,10 @@ export async function GET(request: NextRequest) {
       timedeal: activeTimedeal,
       products,
       title: activeTimedeal.title || '오늘만 특가!',
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
     })
   } catch (error: any) {
     console.error('타임딜 조회 실패:', error)
