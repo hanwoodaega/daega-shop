@@ -12,13 +12,6 @@ interface Banner {
 }
 
 export default async function BannerSection() {
-  // 빌드 시점에는 fetch를 건너뜀 (서버가 실행되지 않음)
-  const isBuildTime = !process.env.NEXT_PHASE || process.env.NEXT_PHASE === 'phase-production-build'
-  
-  if (isBuildTime) {
-    return null
-  }
-
   try {
     // 서버 컴포넌트에서는 절대 URL 사용 권장 (Vercel, Edge, SSR 환경 대응)
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
@@ -41,6 +34,11 @@ export default async function BannerSection() {
 
     return <BannerUI banners={banners} />
   } catch (error: any) {
+    // 빌드 시점 연결 실패는 무시 (정상적인 동작)
+    // 런타임 에러만 로깅
+    if (error?.code !== 'ECONNREFUSED' && error?.cause?.code !== 'ECONNREFUSED') {
+      console.error('배너 조회 실패:', error)
+    }
     return null
   }
 }

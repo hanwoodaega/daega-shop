@@ -5,13 +5,6 @@ interface TimeDealSectionProps {
 }
 
 export default async function TimeDealSection({ variant = 'scroll' }: TimeDealSectionProps) {
-  // 빌드 시점에는 fetch를 건너뜀 (서버가 실행되지 않음)
-  const isBuildTime = !process.env.NEXT_PHASE || process.env.NEXT_PHASE === 'phase-production-build'
-  
-  if (isBuildTime) {
-    return null
-  }
-
   try {
     // grid 모드일 때는 더 많은 상품을 가져옴
     const limit = variant === 'grid' ? 100 : 5
@@ -37,6 +30,11 @@ export default async function TimeDealSection({ variant = 'scroll' }: TimeDealSe
 
     return <TimeDealUI data={data} variant={variant} />
   } catch (error: any) {
+    // 빌드 시점 연결 실패는 무시 (정상적인 동작)
+    // 런타임 에러만 로깅
+    if (error?.code !== 'ECONNREFUSED' && error?.cause?.code !== 'ECONNREFUSED') {
+      console.error('타임딜 상품 조회 실패:', error)
+    }
     return null
   }
 }
