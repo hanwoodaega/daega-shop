@@ -55,6 +55,12 @@ const managementCards: AdminCard[] = [
     accent: 'bg-teal-100 text-teal-700',
   },
   {
+    title: '카테고리 상품 관리',
+    description: '베스트, 특가, 한우대가 NO.9 카테고리의 상품을 빠르게 관리하세요.',
+    href: '/admin/category-products',
+    accent: 'bg-violet-100 text-violet-700',
+  },
+  {
     title: '히어로 이미지 관리',
     description: '메인페이지 히어로 섹션 이미지를 관리하세요.',
     href: '/admin/hero',

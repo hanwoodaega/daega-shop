@@ -23,7 +23,7 @@ export default function SalePage() {
   const isFetchingRef = useRef(false)
   const [timedealData, setTimedealData] = useState<any>(null)
 
-  const fetchDiscountedProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
+  const fetchCategoryProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
     if (isFetchingRef.current) return
     
     isFetchingRef.current = true
@@ -35,13 +35,12 @@ export default function SalePage() {
         page: pageNum.toString(),
         limit: DEFAULT_PAGE_SIZE.toString(),
         sort: sort,
-        filter: 'promotion', // promotion_products가 있는 상품만 조회
       })
 
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-      const response = await fetch(`/api/products?${params.toString()}`, { 
+      const response = await fetch(`/api/categories/sale?${params.toString()}`, { 
         cache: 'no-store',
         signal: controller.signal
       })
@@ -49,7 +48,7 @@ export default function SalePage() {
       clearTimeout(timeoutId)
 
       if (!response.ok) {
-        throw new Error('상품 조회 실패')
+        throw new Error('카테고리 조회 실패')
       }
 
       const data = await response.json()
@@ -65,9 +64,9 @@ export default function SalePage() {
       }
       
       // 다음 페이지가 있는지 확인
-      setHasMore(pageNum < data.totalPages && (data.products || []).length > 0)
+      setHasMore(pageNum < data.pagination.totalPages && (data.products || []).length > 0)
     } catch (error: any) {
-      console.error('할인 상품 조회 실패:', error)
+      console.error('카테고리 상품 조회 실패:', error)
       if (error.name === 'AbortError') {
         alert('상품을 불러오는데 시간이 오래 걸립니다. 잠시 후 다시 시도해주세요.')
       }
@@ -81,14 +80,14 @@ export default function SalePage() {
   useEffect(() => {
     setPage(1)
     setDisplayedProducts([])
-    fetchDiscountedProducts(1, sortOrder)
-  }, [sortOrder, fetchDiscountedProducts])
+    fetchCategoryProducts(1, sortOrder)
+  }, [sortOrder, fetchCategoryProducts])
 
   useEffect(() => {
     if (page > 1) {
-      fetchDiscountedProducts(page, sortOrder)
+      fetchCategoryProducts(page, sortOrder)
     }
-  }, [page, sortOrder, fetchDiscountedProducts])
+  }, [page, sortOrder, fetchCategoryProducts])
 
   const handleLoadMore = () => {
     if (!loadingMore && hasMore) {

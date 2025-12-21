@@ -59,12 +59,12 @@ export default function HanwooDaegaNo9Page() {
     return () => clearInterval(interval)
   }, [totalSlides])
 
-  // 한우대가 NO.9 컬렉션 상품 조회
+  // 한우대가 NO.9 카테고리 상품 조회
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true)
-        const response = await fetch('/api/collections/no9?limit=100&page=1')
+        const response = await fetch('/api/categories/no9?limit=100&page=1')
         if (response.ok) {
           const data = await response.json()
           setProducts(data.products || [])
