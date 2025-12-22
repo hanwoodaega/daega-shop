@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { supabase, Product } from '@/lib/supabase'
-import { useAuth } from '@/lib/auth-context'
-import { addCartItemWithDB } from '@/lib/cart-db'
-import { formatPrice, getPromotionRequiredCount, getPromotionPaidCount, getTotalPromoQuantity } from '@/lib/utils'
-import { generatePromotionGroupId, processPromotionItems } from '@/lib/promotion-utils'
+import { supabase, Product } from '@/lib/supabase/supabase'
+import { useAuth } from '@/lib/auth/auth-context'
+import { addCartItemWithDB } from '@/lib/cart/cart-db'
+import { formatPrice, getPromotionRequiredCount, getPromotionPaidCount, getTotalPromoQuantity } from '@/lib/utils/utils'
+import { generatePromotionGroupId, processPromotionItems } from '@/lib/promotion/promotion-utils'
 import { CartItem } from '@/lib/store'
 
 interface PromotionModalProps {

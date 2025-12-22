@@ -15,7 +15,7 @@ export async function GET(
     }
     
     // gift_token으로 주문 조회 (RLS 우회를 위해 admin client 사용)
-    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+    const { supabaseAdmin } = await import('@/lib/supabase/supabase-admin')
     let { data: orders, error: orderError } = await supabaseAdmin
       .from('orders')
       .select(`
@@ -139,7 +139,7 @@ export async function POST(
     }
 
     // 토큰으로 주문 조회 (RLS 우회를 위해 admin client 사용)
-    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+    const { supabaseAdmin } = await import('@/lib/supabase/supabase-admin')
     const { data: order, error: tokenError } = await supabaseAdmin
       .from('orders')
       .select('id, shipping_address, status, gift_token, gift_expires_at, gift_status, user_id, total_amount, created_at, is_gift')

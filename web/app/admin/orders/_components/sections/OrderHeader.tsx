@@ -1,6 +1,6 @@
 import { Order } from '../../_types'
-import { getStatusText, getStatusTextColor, getRefundStatusText } from '@/lib/order-utils'
-import { getDeliveryTypeText } from '@/lib/order-utils'
+import { getStatusText, getStatusTextColor, getRefundStatusText } from '@/lib/order/order-utils'
+import { getDeliveryTypeText } from '@/lib/order/order-utils'
 
 interface OrderHeaderProps {
   order: Order

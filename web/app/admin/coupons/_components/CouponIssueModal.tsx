@@ -1,6 +1,6 @@
 'use client'
 
-import { Coupon } from '@/lib/supabase'
+import { Coupon } from '@/lib/supabase/supabase'
 import { IssueConditions } from '../_types'
 
 interface CouponIssueModalProps {

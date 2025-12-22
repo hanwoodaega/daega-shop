@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { supabase } from './supabase'
+import { supabase } from './supabase/supabase'
 
 export interface CartItem {
   id?: string  // 장바구니 아이템 고유 ID

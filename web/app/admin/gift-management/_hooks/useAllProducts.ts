@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { Product } from '@/lib/supabase'
+import { Product } from '@/lib/supabase/supabase'
 import { fetchAllProducts } from '../_utils/fetchers'
 
 export function useAllProducts(searchQuery: string) {

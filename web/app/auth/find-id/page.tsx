@@ -123,6 +123,7 @@ export default function FindIdPage() {
               {foundEmails.map((user, idx) => (
                 <div key={idx} className="flex flex-col items-center py-2">
                   <span className="text-lg font-semibold text-gray-900">{maskEmail(user.email)}</span>
+                  <span className="text-xs text-gray-500 mt-1">보안을 위해 일부 정보는 숨김 처리되었습니다.</span>
                   <span className="text-xs text-gray-500 mt-1">가입일: {new Date(user.created_at).toLocaleDateString()}</span>
                 </div>
               ))}

@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { CartItem } from '@/lib/store'
-import { formatPrice } from '@/lib/utils'
-import { isSoldOut } from '@/lib/product-utils'
+import { formatPrice } from '@/lib/utils/utils'
+import { isSoldOut } from '@/lib/product/product-utils'
 
 interface GroupedItems {
   groups: { [key: string]: CartItem[] }

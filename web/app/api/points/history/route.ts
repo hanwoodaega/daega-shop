@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { getUserFromServer } from '@/lib/auth-server'
+import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { getUserFromServer } from '@/lib/auth/auth-server'
 
 export const dynamic = 'force-dynamic'
 
 // GET: 포인트 히스토리 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
-    
     // 서버에서 사용자 인증 확인
     const user = await getUserFromServer()
     if (!user) {
@@ -18,6 +16,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
+
+    // RLS 우회를 위해 admin client 사용 (다른 API와 동일한 방식)
+    const supabase = createSupabaseAdminClient()
 
     // 포인트 히스토리 조회
     const { data: history, error } = await supabase
@@ -29,9 +30,12 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('포인트 히스토리 조회 실패:', error)
-      return NextResponse.json({ error: '포인트 히스토리 조회 실패' }, { status: 500 })
+      return NextResponse.json({ 
+        error: '포인트 히스토리 조회 실패',
+        details: error.message 
+      }, { status: 500 })
     }
-
+    
     return NextResponse.json({ history: history || [] })
   } catch (error: any) {
     console.error('포인트 히스토리 조회 오류:', error)

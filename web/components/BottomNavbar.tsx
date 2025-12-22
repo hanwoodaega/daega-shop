@@ -4,7 +4,7 @@ import { useCallback, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useCartStore, useSearchUIStore } from '@/lib/store'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/auth/auth-context'
 
 export default function BottomNavbar() {
   const pathname = usePathname()

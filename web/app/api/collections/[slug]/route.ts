@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { enrichProductsServer } from '@/lib/product-queries-server'
-import { getTimedealDiscountPercentMap } from '@/lib/timedeal-utils'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { enrichProductsServer } from '@/lib/product/product-queries-server'
+import { getTimedealDiscountPercentMap } from '@/lib/timedeal/timedeal-utils'
 
 // GET: 컬렉션별 상품 목록 조회 (공개 API)
 // params.slug는 실제로는 type (best, sale, no9)

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useDaumPostcode } from '@/lib/hooks/useDaumPostcode'
+import { useDaumPostcode } from '@/lib/postcode/useDaumPostcode'
 import toast from 'react-hot-toast'
 
 interface OrderItem {

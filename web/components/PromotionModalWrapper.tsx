@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase, Product } from '@/lib/supabase'
+import { supabase, Product } from '@/lib/supabase/supabase'
 import { usePromotionModalStore } from '@/lib/store'
 import PromotionModal from './PromotionModal'
 

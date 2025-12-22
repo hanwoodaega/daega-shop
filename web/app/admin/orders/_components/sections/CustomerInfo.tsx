@@ -1,5 +1,5 @@
 import { Order } from '../../_types'
-import { formatPhoneNumber } from '@/lib/format-phone'
+import { formatPhoneNumber } from '@/lib/utils/format-phone'
 
 interface CustomerInfoProps {
   order: Order

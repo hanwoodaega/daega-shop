@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
-import { assertAdmin } from '@/lib/admin-auth'
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
+import { assertAdmin } from '@/lib/auth/admin-auth'
 
 // PUT: 히어로 슬라이드 수정
 export async function PUT(

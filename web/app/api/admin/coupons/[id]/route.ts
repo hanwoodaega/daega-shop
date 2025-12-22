@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseAdminClient } from '@/lib/supabase-server'
-import { assertAdmin } from '@/lib/admin-auth'
+import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { assertAdmin } from '@/lib/auth/admin-auth'
 
 export const dynamic = 'force-dynamic'
 

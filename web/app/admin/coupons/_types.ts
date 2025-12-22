@@ -1,4 +1,4 @@
-import { Coupon } from '@/lib/supabase'
+import { Coupon } from '@/lib/supabase/supabase'
 
 export interface CouponFormData {
   name: string

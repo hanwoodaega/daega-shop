@@ -1,6 +1,6 @@
 'use client'
 
-import { ADMIN_CATEGORIES } from '@/lib/constants'
+import { ADMIN_CATEGORIES } from '@/lib/utils/constants'
 import { ProductFormData } from '../_types'
 
 type CreateProductResult =

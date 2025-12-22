@@ -1,5 +1,5 @@
 import { Order } from '../../_types'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice } from '@/lib/utils/utils'
 
 interface OrderItemsProps {
   order: Order

@@ -1,5 +1,5 @@
-import { assertAdmin } from '@/lib/admin-auth'
-import { createSupabaseAdminClient } from '@/lib/supabase-server'
+import { assertAdmin } from '@/lib/auth/admin-auth'
+import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { redirect } from 'next/navigation'
 import CollectionsClient from './_components/CollectionsClient'
 import type { Collection, Product } from './_types'

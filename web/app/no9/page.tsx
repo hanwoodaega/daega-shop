@@ -8,7 +8,7 @@ import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
-import { Product } from '@/lib/supabase'
+import { Product } from '@/lib/supabase/supabase'
 
 export default function HanwooDaegaNo9Page() {
   const [currentSlide, setCurrentSlide] = useState(0)

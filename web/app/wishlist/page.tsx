@@ -7,9 +7,9 @@ import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ProductCard from '@/components/ProductCard'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
-import { supabase, Product } from '@/lib/supabase'
+import { supabase, Product } from '@/lib/supabase/supabase'
 import { useWishlistStore, useCartStore } from '@/lib/store'
-import { PRODUCT_SELECT_FIELDS, enrichProducts } from '@/lib/product-queries'
+import { PRODUCT_SELECT_FIELDS, enrichProducts } from '@/lib/product/product-queries'
 
 export default function WishlistPage() {
   const router = useRouter()

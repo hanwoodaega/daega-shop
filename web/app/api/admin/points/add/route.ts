@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { assertAdmin } from '@/lib/admin-auth'
-import { createSupabaseAdminClient } from '@/lib/supabase-server'
-import { addPoints } from '@/lib/points'
+import { assertAdmin } from '@/lib/auth/admin-auth'
+import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { addPoints } from '@/lib/point/points'
 
 // POST: 관리자가 고객에게 포인트 적립 및 알림 발송
 export async function POST(request: NextRequest) {

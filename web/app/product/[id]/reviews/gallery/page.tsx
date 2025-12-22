@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
-import { handleApiError } from '@/lib/error-handler'
+import { handleApiError } from '@/lib/utils/error-handler'
 
 export default function ReviewGalleryPage() {
   const params = useParams()

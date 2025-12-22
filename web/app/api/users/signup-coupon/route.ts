@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 
 /**
  * @deprecated 첫구매 쿠폰은 이제 DB Trigger로 자동 발급됩니다.

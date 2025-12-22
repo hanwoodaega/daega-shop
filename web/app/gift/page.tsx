@@ -8,12 +8,12 @@ import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
-import { supabase } from '@/lib/supabase'
-import { Product } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/supabase'
+import { Product } from '@/lib/supabase/supabase'
 import { useCartStore } from '@/lib/store'
-import { formatPrice } from '@/lib/utils'
-import { getCategoryPath } from '@/lib/category-utils'
-import { PRODUCT_SELECT_FIELDS, enrichProducts } from '@/lib/product-queries'
+import { formatPrice } from '@/lib/utils/utils'
+import { getCategoryPath } from '@/lib/category/category-utils'
+import { PRODUCT_SELECT_FIELDS, enrichProducts } from '@/lib/product/product-queries'
 
 export default function GiftPage() {
   const router = useRouter()

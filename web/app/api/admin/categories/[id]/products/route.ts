@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
-import { assertAdmin } from '@/lib/admin-auth'
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
+import { assertAdmin } from '@/lib/auth/admin-auth'
 
 // POST: 카테고리에 상품 추가
 export async function POST(

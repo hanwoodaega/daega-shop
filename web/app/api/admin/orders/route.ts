@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseAdminClient } from '@/lib/supabase-server'
+import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { cookies } from 'next/headers'
-import { VALID_ORDER_STATUSES } from '@/lib/constants'
+import { VALID_ORDER_STATUSES } from '@/lib/utils/constants'
 
 // 관리자 인증 확인 (쿠키 기반)
 async function verifyAdmin() {

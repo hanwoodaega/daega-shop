@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
-import { assertAdmin } from '@/lib/admin-auth'
-import { nameToSlug } from '@/lib/utils'
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
+import { assertAdmin } from '@/lib/auth/admin-auth'
+import { nameToSlug } from '@/lib/utils/utils'
 
 export async function GET(request: Request) {
   try { assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }

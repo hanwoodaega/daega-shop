@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { AuthProvider } from '@/lib/auth-context'
+import { AuthProvider } from '@/lib/auth/auth-context'
 
 export default function ClientLayout({
   children,

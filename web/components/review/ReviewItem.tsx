@@ -2,7 +2,7 @@
 
 import { useState, useEffect, memo } from 'react'
 import ReviewStars from './ReviewStars'
-import { formatDate } from '@/lib/utils'
+import { formatDate } from '@/lib/utils/utils'
 import { ReviewItemProps } from '@/lib/types/review'
 
 function ReviewItem({ review, isOwner = false, onEdit, onDelete }: ReviewItemProps) {

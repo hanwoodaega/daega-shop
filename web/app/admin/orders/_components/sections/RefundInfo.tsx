@@ -1,6 +1,6 @@
 import { Order } from '../../_types'
-import { getRefundStatusText } from '@/lib/order-utils'
-import { formatPrice } from '@/lib/utils'
+import { getRefundStatusText } from '@/lib/order/order-utils'
+import { formatPrice } from '@/lib/utils/utils'
 
 interface RefundInfoProps {
   order: Order

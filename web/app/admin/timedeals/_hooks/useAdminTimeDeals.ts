@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { convertLocalToISO, convertUTCToLocal } from '@/lib/time-utils'
+import { convertLocalToISO, convertUTCToLocal } from '@/lib/utils/time-utils'
 import type { TimeDeal, TimeDealFormData } from '../_types'
 
 export function useAdminTimeDeals() {

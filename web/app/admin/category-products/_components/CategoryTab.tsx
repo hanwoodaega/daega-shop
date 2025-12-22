@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice } from '@/lib/utils/utils'
 import CategoryProductSelectorModal from './CategoryProductSelectorModal'
 import CategoryEditModal from './CategoryEditModal'
 import type { Category, Product, CategoryProduct } from '../_types'

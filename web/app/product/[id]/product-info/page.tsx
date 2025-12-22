@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase, Product } from '@/lib/supabase'
+import { supabase, Product } from '@/lib/supabase/supabase'
 import { getProductInfo } from '@/components/product-info'
 import toast from 'react-hot-toast'
 

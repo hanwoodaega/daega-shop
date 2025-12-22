@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { assertAdmin } from '@/lib/admin-auth'
-import { createSupabaseAdminClient } from '@/lib/supabase-server'
+import { assertAdmin } from '@/lib/auth/admin-auth'
+import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 
 // GET: 관리자가 사용자 목록 조회
 export async function GET(request: NextRequest) {

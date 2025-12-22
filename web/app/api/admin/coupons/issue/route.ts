@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server'
-import { assertAdmin } from '@/lib/admin-auth'
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { assertAdmin } from '@/lib/auth/admin-auth'
 
 /**
  * 쿠폰 일괄 지급 API

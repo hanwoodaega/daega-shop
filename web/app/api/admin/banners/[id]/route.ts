@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag, revalidatePath } from 'next/cache'
-import { supabaseAdmin } from '@/lib/supabase-admin'
-import { assertAdmin } from '@/lib/admin-auth'
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
+import { assertAdmin } from '@/lib/auth/admin-auth'
 
 // GET: 배너 조회 (상품 목록 포함)
 export async function GET(

@@ -1,5 +1,5 @@
 import { Order, OrderStatus } from '../../_types'
-import { getStatusText } from '@/lib/order-utils'
+import { getStatusText } from '@/lib/order/order-utils'
 import toast from 'react-hot-toast'
 
 interface OrderActionsProps {

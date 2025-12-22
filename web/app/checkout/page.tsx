@@ -1,26 +1,29 @@
 'use client'
 
-import { Fragment, useState, useEffect, useRef, Suspense, useMemo, useCallback } from 'react'
+import { useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import Footer from '@/components/Footer'
-import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
-import { formatPrice, canUseKakaoDeepLink } from '@/lib/utils'
-import { useAuth } from '@/lib/auth-context'
-import { useDaumPostcodeScript, openDaumPostcode, AddressSearchResult } from '@/lib/hooks/useDaumPostcode'
-import { showError, showSuccess, showInfo } from '@/lib/error-handler'
-import { useDefaultAddress, useUserProfile } from '@/lib/hooks/useAddress'
-import { calculateOrderTotal } from '@/lib/order-calc'
-import { SHIPPING, GIFT_MIN_AMOUNT } from '@/lib/constants'
-import { getUserCoupons, isCouponValid } from '@/lib/coupons'
-import { UserCoupon, Coupon } from '@/lib/supabase'
-import { removeFromCartDB } from '@/lib/cart-db'
+import { formatPrice, canUseKakaoDeepLink } from '@/lib/utils/utils'
+import { useAuth } from '@/lib/auth/auth-context'
+import { useDaumPostcodeScript } from '@/lib/postcode/useDaumPostcode'
+import { Coupon } from '@/lib/supabase/supabase'
+import { useCheckoutController } from '@/lib/checkout/useCheckoutController'
+import { CheckoutHeader } from '@/components/checkout/CheckoutHeader'
+import { CouponModal } from '@/components/checkout/CouponModal'
+import { GiftStep1Summary } from '@/components/checkout/GiftStep1Summary'
+import { GiftSenderInfo } from '@/components/checkout/GiftSenderInfo'
+import { OrdererInfo } from '@/components/checkout/OrdererInfo'
+import { DeliveryFormQuick } from '@/components/checkout/DeliveryFormQuick'
+import { DeliveryFormRegular } from '@/components/checkout/DeliveryFormRegular'
+import { GiftMessageCard } from '@/components/checkout/GiftMessageCard'
+import { PaymentMethodSelector } from '@/components/checkout/PaymentMethodSelector'
+import { OrderSummaryBox } from '@/components/checkout/OrderSummaryBox'
+import { CheckoutBottomBar } from '@/components/checkout/CheckoutBottomBar'
 
 function CheckoutPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
-  const timeoutsRef = useRef<number[]>([])
   
   // 선물 모드 확인
   const isGiftMode = searchParams?.get('mode') === 'gift'
@@ -34,85 +37,85 @@ function CheckoutPageContent() {
     router.replace('/cart')
   }, [isGiftMode, router])
   
-  // ✅ Selector 패턴 - 필요한 것만 구독
-  const cartItems = useCartStore((state) => state.items)
-  const getCartTotalPrice = useCartStore((state) => state.getTotalPrice)
-  const removeSelectedFromCart = useCartStore((state) => state.removeSelectedItems)
-  const getSelectedItems = useCartStore((state) => state.getSelectedItems)
+  // ✅ Checkout Controller Hook 사용
+  const { state, actions, derived } = useCheckoutController({ isGiftMode })
   
-  const directPurchaseItems = useDirectPurchaseStore((state) => state.items)
-  const getDirectPurchaseTotalPrice = useDirectPurchaseStore((state) => state.getTotalPrice)
-  const clearDirectPurchase = useDirectPurchaseStore((state) => state.clearItems)
-  
-  // 바로구매가 있으면 그것을 사용, 없으면 장바구니 선택 상품 사용
-  const isDirectPurchase = directPurchaseItems.length > 0
-  const items = isDirectPurchase ? directPurchaseItems : getSelectedItems()
-  const getTotalPrice = isDirectPurchase ? getDirectPurchaseTotalPrice : getCartTotalPrice
-  
-  // ✅ 배송 관련 state 그룹화
-  const [deliveryState, setDeliveryState] = useState({
-    method: 'regular' as 'pickup' | 'quick' | 'regular',
-    pickupTime: '',
-    quickDeliveryArea: '',
-    quickDeliveryTime: '',
-  })
-  
-  // ✅ 폼 데이터 (이미 그룹화됨)
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    address: '',
-    addressDetail: '',
-    zipcode: '',
-    message: '',
-  })
-  
-  // ✅ 플래그 state 그룹화
-  const [flags, setFlags] = useState({
-    isProcessing: false,
-    mounted: false,
-    saveAsDefaultAddress: false,
-    isEditingOrderer: false,
-  })
+  // Destructuring for convenience
+  const {
+    deliveryState,
+    formData,
+    flags,
+    availableCoupons,
+    selectedCoupon,
+    showCouponModal,
+    loadingCoupons,
+    userPoints,
+    usedPoints,
+    loadingPoints,
+    usedPointsInput,
+    paymentMethod,
+    selectedCardId,
+    savedCards,
+    loadingCards,
+    giftData,
+    currentStep,
+    items,
+    isDirectPurchase,
+  } = state
 
-  // 쿠폰 관련 state
-  const [availableCoupons, setAvailableCoupons] = useState<UserCoupon[]>([])
-  const [selectedCoupon, setSelectedCoupon] = useState<UserCoupon | null>(null)
-  const [showCouponModal, setShowCouponModal] = useState(false)
-  const [loadingCoupons, setLoadingCoupons] = useState(false)
+  const {
+    setDeliveryState,
+    setFormData,
+    setFlags,
+    setSelectedCoupon,
+    setShowCouponModal,
+    setUsedPoints,
+    setUsedPointsInput,
+    setPaymentMethod,
+    setSelectedCardId,
+    setGiftData,
+    setCurrentStep,
+    handleSubmit,
+    handleNextStep,
+    handleSearchAddress,
+    loadAvailableCoupons,
+    loadUserPoints,
+    loadSavedCards,
+    applyAddress,
+    handleInputChange,
+  } = actions
 
-  // 포인트 관련 state
-  const [userPoints, setUserPoints] = useState(0)
-  const [usedPoints, setUsedPoints] = useState(0)
-  const [loadingPoints, setLoadingPoints] = useState(false)
-  const [usedPointsInput, setUsedPointsInput] = useState('')
+  const {
+    deliveryMethod,
+    pickupTime,
+    quickDeliveryArea,
+    quickDeliveryTime,
+    isProcessing,
+    mounted,
+    saveAsDefaultAddress,
+    isEditingOrderer,
+    isGiftFinalStep,
+    gridColumnsClass,
+    originalTotal,
+    discountAmount,
+    shipping,
+    discountedTotal,
+    orderTotal,
+    subtotal,
+    couponDiscount,
+    afterCouponDiscount,
+    finalTotal,
+    pickupTimeSlots,
+    quickDeliveryAreas,
+    quickDeliveryTimeSlots,
+    defaultAddress,
+    loadingDefaultAddress,
+    hasDefaultAddress,
+    userProfile,
+    loadingUserProfile,
+  } = derived
 
-  // 결제 방법 관련 state
-  const [paymentMethod, setPaymentMethod] = useState('card')
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
-  const [savedCards, setSavedCards] = useState<any[]>([])
-  const [loadingCards, setLoadingCards] = useState(false)
-
-  // 선물 관련 state
-  const [giftData, setGiftData] = useState({
-    message: '',
-    cardDesign: 'birthday-1' as string,
-    withMessage: true, // 메시지 함께 보내기 기본값
-  })
   const totalGiftSteps = 3
-  const [currentStep, setCurrentStep] = useState(1)
-  const isGiftFinalStep = !isGiftMode || currentStep === totalGiftSteps
-  const gridColumnsClass = isGiftFinalStep ? 'lg:grid-cols-3' : 'lg:grid-cols-1'
-  
-
-  // Destructuring for backward compatibility
-  const { method: deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime } = deliveryState
-  const { isProcessing, mounted, saveAsDefaultAddress, isEditingOrderer } = flags
-
-  // ✅ 공통 hook 사용
-  const { address: defaultAddress, loading: loadingDefaultAddress, hasDefaultAddress } = useDefaultAddress()
-  const { profile: userProfile, loading: loadingUserProfile } = useUserProfile()
 
   // 클라이언트 마운트 확인 및 장바구니에서 선택한 배송 방법 불러오기
   useEffect(() => {
@@ -139,30 +142,8 @@ function CheckoutPageContent() {
     setCurrentStep(1)
   }, [isGiftMode])
 
-  // 카카오톡 SDK 로드 (페이지 로드 시 미리 로드)
-  useEffect(() => {
-    if (typeof window === 'undefined' || window.Kakao) return
-
-    const script = document.createElement('script')
-    script.src = 'https://developers.kakao.com/sdk/js/kakao.js'
-    script.async = true
-    script.onload = () => {
-      const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY || ''
-      if (kakaoAppKey && window.Kakao && !window.Kakao.isInitialized()) {
-        try {
-          window.Kakao.init(kakaoAppKey)
-        } catch (error) {
-          // SDK 초기화 실패 (조용히 처리)
-        }
-      }
-    }
-    script.onerror = () => {
-      // SDK 스크립트 로드 실패 (조용히 처리)
-    }
-    document.head.appendChild(script)
-  }, [])
-
-  // Daum 우편번호 스크립트 로드
+  // Daum 우편번호 스크립트 로드 (한 번만 실행)
+  // 카카오 SDK 초기화는 useCheckoutController에서 처리됨
   useDaumPostcodeScript()
 
   // 기본 배송지 적용
@@ -187,863 +168,7 @@ function CheckoutPageContent() {
     }
   }, [userProfile, user?.email])
 
-  // 사용 가능한 쿠폰 로드
-  useEffect(() => {
-    if (user?.id) {
-      loadAvailableCoupons()
-      loadUserPoints()
-      loadSavedCards()
-    }
-  }, [user?.id])
-
-  const loadSavedCards = async () => {
-    if (!user?.id) return
-
-    setLoadingCards(true)
-    try {
-      const res = await fetch('/api/payment-cards')
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        console.error('결제 카드 조회 실패:', res.status, errorData)
-        setSavedCards([])
-        return
-      }
-
-      const data = await res.json()
-      setSavedCards(data.cards || [])
-      
-      // 기본 카드가 있으면 자동 선택
-      const defaultCard = data.cards?.find((card: any) => card.is_default)
-      if (defaultCard) {
-        setSelectedCardId(defaultCard.id)
-      }
-    } catch (error) {
-      console.error('카드 조회 실패:', error)
-      setSavedCards([])
-    } finally {
-      setLoadingCards(false)
-    }
-  }
-
-  const loadUserPoints = async () => {
-    if (!user?.id) return
-
-    setLoadingPoints(true)
-    try {
-      // 서버 API로 포인트 조회
-      const res = await fetch('/api/points')
-      if (!res.ok) {
-        throw new Error('포인트 조회 실패')
-      }
-      const data = await res.json()
-      setUserPoints(data.userPoints?.total_points || 0)
-    } catch (error) {
-      console.error('포인트 조회 실패:', error)
-    } finally {
-      setLoadingPoints(false)
-    }
-  }
-
-  // usedPoints 변화에 맞춰 입력 필드 동기화
-  useEffect(() => {
-    setUsedPointsInput(usedPoints ? String(usedPoints) : '')
-  }, [usedPoints])
-
-  const loadAvailableCoupons = async () => {
-    if (!user?.id) return
-
-    setLoadingCoupons(true)
-    try {
-      const coupons = await getUserCoupons(false)
-      // 유효기간 내 쿠폰만 필터링
-      const validCoupons = coupons.filter(uc => {
-        const coupon = uc.coupon as Coupon
-        return isCouponValid(uc, coupon)
-      })
-      setAvailableCoupons(validCoupons)
-    } catch (error) {
-      console.error('쿠폰 조회 실패:', error)
-    } finally {
-      setLoadingCoupons(false)
-    }
-  }
-
-  const applyAddress = useCallback((address: {
-    recipient_name?: string | null
-    recipient_phone?: string | null
-    zipcode?: string | null
-    address?: string | null
-    address_detail?: string | null
-    delivery_note?: string | null
-  }) => {
-    setFormData(prev => ({
-      ...prev,
-      name: prev.name || address.recipient_name || '',
-      phone: prev.phone || address.recipient_phone || '',
-      zipcode: address.zipcode || '',
-      address: address.address || '',
-      addressDetail: address.address_detail || '',
-      message: address.delivery_note || '',
-    }))
-  }, [])
-
-  // 픽업 가능 시간대 (오전 10시 ~ 오후 8시) - 메모이제이션
-  const pickupTimeSlots = useMemo(() => [
-    '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
-    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
-    '19:00', '19:30', '20:00'
-  ], [])
-
-  // 퀵배달 가능 지역 - 메모이제이션
-  const quickDeliveryAreas = useMemo(() => [
-    '연향동', '조례동', '풍덕동', '해룡면'
-  ], [])
-
-  // 퀵배달 시간대 (오전 10시 ~ 오후 10시) - 메모이제이션
-  const quickDeliveryTimeSlots = useMemo(() => [
-    '10:00~11:00', '11:00~12:00', '12:00~13:00',
-    '13:00~14:00', '14:00~15:00', '15:00~16:00',
-    '16:00~17:00', '17:00~18:00', '18:00~19:00',
-    '19:00~20:00', '20:00~21:00', '21:00~22:00'
-  ], [])
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }, [])
-
-  const handleNextStep = (e?: React.MouseEvent) => {
-    e?.preventDefault()
-    e?.stopPropagation()
-    
-    if (!isGiftMode || currentStep >= totalGiftSteps) return
-
-    // 선물하기는 결제 예상 금액이 최소 금액 이상이어야 함
-    const { originalTotal, discountAmount, shipping, discountedTotal } = calculateOrderTotal(items, deliveryMethod)
-    const couponDiscount = calculateCouponDiscount(discountedTotal)
-    const afterCouponDiscount = Math.max(0, discountedTotal - couponDiscount)
-    const finalTotal = Math.max(0, afterCouponDiscount - usedPoints)
-    const expectedAmount = finalTotal + shipping
-    
-    if (expectedAmount < GIFT_MIN_AMOUNT) {
-      toast.error(`선물하기는 결제 금액이 ${formatPrice(GIFT_MIN_AMOUNT)}원 이상이어야 합니다.`, { icon: '🎁' })
-      return
-    }
-
-    if (currentStep === 1) {
-      if (!formData.name.trim() || !formData.phone.trim()) {
-        toast.error('보내는 분 정보를 입력해주세요.', { icon: '⚠️' })
-        return
-      }
-    }
-
-    setCurrentStep(prev => Math.min(prev + 1, totalGiftSteps))
-  }
-
-
-  // 결제 완료 후 카카오톡 공유 함수
-  const shareGiftToKakao = async (orderId: string, giftToken: string) => {
-    try {
-      await performKakaoShare(orderId, giftToken)
-    } catch (error: any) {
-      const shareUrl = `${window.location.origin}/gift/receive/${giftToken}`
-      const isKakaoLinkError = error.message?.includes('kakaolink://') || 
-                               error.message?.includes('scheme does not have a registered handler')
-      
-      try {
-        await navigator.clipboard.writeText(shareUrl)
-        toast.success(
-          isKakaoLinkError
-            ? `PC에서는 카카오톡 앱이 없어 공유할 수 없습니다.\n선물 링크가 클립보드에 복사되었습니다.\n모바일로 링크를 보내거나, 모바일에서 다시 시도해주세요.`
-            : `카카오톡 공유에 실패했습니다. 선물 링크가 클립보드에 복사되었습니다.\n링크를 카카오톡으로 직접 보내주세요.`,
-          {
-            icon: isKakaoLinkError ? '📱' : '📋',
-            duration: 8000,
-          }
-        )
-      } catch (clipboardError) {
-        toast.error(
-          `카카오톡 공유에 실패했습니다. 아래 링크를 복사해서 보내주세요:\n${shareUrl}`,
-          {
-            icon: '❌',
-            duration: 10000,
-          }
-        )
-      }
-    }
-  }
-
-  // 카드 이미지에 메시지를 오버레이하여 합성 이미지 생성
-  const createGiftCardImage = async (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        reject(new Error('Canvas context를 가져올 수 없습니다.'))
-        return
-      }
-
-      // 1080x1080 크기로 설정
-      const size = 1080
-      canvas.width = size
-      canvas.height = size
-
-      const cardImage = new Image()
-      cardImage.crossOrigin = 'anonymous'
-      
-      cardImage.onload = () => {
-        // 카드 이미지 그리기
-        ctx.drawImage(cardImage, 0, 0, size, size)
-
-        // 메시지가 있으면 텍스트 오버레이
-        if (giftData.message) {
-          // 카드 디자인별 메시지 스타일 가져오기
-          const getMessageStyle = (cardDesign: string) => {
-            const styles: Record<string, {
-              fontSize: number;
-              color: string;
-              fontFamily: string;
-              fontWeight: string;
-              lineHeight: number;
-            }> = {
-              'birthday-1': {
-                fontSize: 46, // 크게
-                color: '#000000',
-                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-                fontWeight: '500',
-                lineHeight: 1.6,
-              },
-              'thanks-1': {
-                fontSize: 46, // 카톡 이미지용으로 크게
-                color: '#000000',
-                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-                fontWeight: '500',
-                lineHeight: 1.7, // 위아래 간격 조금 좁힘
-              },
-              'thanks-2': {
-                fontSize: 42, // 크게
-                color: '#000000',
-                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-                fontWeight: '500',
-                lineHeight: 1.7,
-              },
-              'celebration-1': {
-                fontSize: 50, // 조금 더 크게
-                color: '#000000',
-                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-                fontWeight: '500',
-                lineHeight: 1.5,
-              },
-              'celebration-2': {
-                fontSize: 48, // 더 크게
-                color: '#000000',
-                fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-                fontWeight: '500',
-                lineHeight: 1.4, // 위아래 간격 줄임
-              },
-            }
-            return styles[cardDesign] || {
-              fontSize: 34, // 줄임
-              color: '#000000',
-              fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-              fontWeight: '500',
-              lineHeight: 1.7,
-            }
-          }
-
-          const messageStyle = getMessageStyle(giftData.cardDesign)
-          
-          // celebration-2는 왼쪽 정렬
-          const isCelebration2 = giftData.cardDesign === 'celebration-2'
-          const textAreaTop = isCelebration2 ? size * 0.39 : size * 0.37 // celebration-2는 아주 조금 더 아래로
-          
-          // 텍스트 스타일 설정
-          ctx.fillStyle = messageStyle.color
-          ctx.font = `${messageStyle.fontWeight} ${messageStyle.fontSize}px ${messageStyle.fontFamily}`
-          ctx.textAlign = 'left'
-          ctx.textBaseline = 'top'
-          const textAreaHeight = size * 0.5
-          // thanks-1, thanks-2, celebration-1, celebration-2, birthday-1 카드는 좌우 패딩을 더 넓게
-          let leftPadding: number
-          let rightPadding: number
-          if (giftData.cardDesign === 'thanks-2') {
-            leftPadding = size * 0.18
-            rightPadding = size * 0.15 // 오른쪽 패딩 조금 줄임
-          } else if (giftData.cardDesign === 'thanks-1' || giftData.cardDesign === 'celebration-1') {
-            leftPadding = size * 0.15
-            rightPadding = size * 0.15
-          } else if (giftData.cardDesign === 'birthday-1') {
-            leftPadding = size * 0.12 // 좌우 패딩 넓게
-            rightPadding = size * 0.12
-          } else if (isCelebration2) {
-            leftPadding = size * 0.14 // 좌우 패딩 아주 조금 줄임
-            rightPadding = size * 0.14
-          } else {
-            leftPadding = size * 0.1
-            rightPadding = size * 0.1
-          }
-          const maxWidth = size - leftPadding - rightPadding
-
-          // 텍스트 줄바꿈 처리 (한글 지원 개선)
-          const lines: string[] = []
-          
-          // 먼저 줄바꿈으로 분할하여 각 줄을 개별 처리
-          const messageLines = giftData.message.split('\n')
-          
-          for (const messageLine of messageLines) {
-            // 빈 줄인 경우 빈 문자열 추가 (한 줄 띄기)
-            if (!messageLine.trim()) {
-              lines.push('')
-              continue
-            }
-            
-            // 각 줄을 단어 단위로 분할하여 처리
-            let currentLine = ''
-            const words = messageLine.split(/(\s+)/)
-            
-            for (const word of words) {
-              if (!word.trim()) {
-                // 공백만 있는 경우 현재 라인에 추가
-                if (currentLine) {
-                  currentLine += word
-                }
-                continue
-              }
-              
-              // 단어나 문자 단위로 테스트
-              const testLine = currentLine ? `${currentLine}${word}` : word
-              const metrics = ctx.measureText(testLine)
-              
-              if (metrics.width > maxWidth) {
-                if (currentLine) {
-                  // 현재 라인 저장
-                  lines.push(currentLine.trim())
-                  currentLine = word
-                } else {
-                  // 한 단어가 너무 길면 문자 단위로 분할 (한글 대응)
-                  let charLine = ''
-                  for (const char of word) {
-                    const testCharLine = charLine + char
-                    const charMetrics = ctx.measureText(testCharLine)
-                    if (charMetrics.width > maxWidth && charLine) {
-                      lines.push(charLine)
-                      charLine = char
-                    } else {
-                      charLine = testCharLine
-                    }
-                  }
-                  if (charLine) {
-                    currentLine = charLine
-                  }
-                }
-              } else {
-                currentLine = testLine
-              }
-            }
-            
-            // 마지막 라인 추가
-            if (currentLine.trim()) {
-              lines.push(currentLine.trim())
-            }
-          }
-
-          // 텍스트 그리기
-          const lineHeight = messageStyle.fontSize * messageStyle.lineHeight
-          lines.forEach((line, index) => {
-            const y = textAreaTop + (index * lineHeight)
-            ctx.fillText(line, leftPadding, y)
-          })
-        }
-
-        // Canvas를 이미지로 변환
-        const dataUrl = canvas.toDataURL('image/png')
-        resolve(dataUrl)
-      }
-
-      cardImage.onerror = () => {
-        reject(new Error('카드 이미지를 로드할 수 없습니다.'))
-      }
-
-      // 카드 이미지 로드
-      const cardImageUrl = giftData.cardDesign 
-        ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
-        : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
-      
-      cardImage.src = cardImageUrl
-    })
-  }
-
-  const performKakaoShare = async (orderId: string, giftToken: string) => {
-    const giftLink = `${window.location.origin}/gift/receive/${giftToken}`
-    
-    // 카드 디자인에 따른 제목 설정
-    const getCardTitle = (cardDesign: string) => {
-      if (cardDesign.startsWith('birthday')) {
-        return '🎂 생일 축하 선물이 도착했습니다!'
-      } else if (cardDesign.startsWith('thanks')) {
-        return '🙏 감사 인사 선물이 도착했습니다!'
-      } else if (cardDesign.startsWith('celebration')) {
-        return '🎉 축하 선물이 도착했습니다!'
-      }
-      return '🎁 선물이 도착했습니다!'
-    }
-    
-    const title = getCardTitle(giftData.cardDesign)
-
-    try {
-      // 메시지가 있으면 합성 이미지 생성, 없으면 원본 이미지 사용
-      let cardImageUrl: string
-      if (giftData.message && giftData.cardDesign) {
-        try {
-          // 합성 이미지 생성
-          const dataUrl = await createGiftCardImage()
-          
-          // 서버에 업로드하여 공개 URL 생성
-          try {
-            const uploadResponse = await fetch('/api/gift/upload-card-image', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ imageData: dataUrl }),
-            })
-            
-            if (uploadResponse.ok) {
-              const uploadData = await uploadResponse.json()
-              cardImageUrl = uploadData.url
-            } else {
-              // 업로드 실패 시 원본 이미지 사용
-              cardImageUrl = giftData.cardDesign 
-                ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
-                : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
-            }
-          } catch (uploadError) {
-            // 업로드 에러 시 원본 이미지 사용
-            cardImageUrl = giftData.cardDesign 
-              ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
-              : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
-          }
-        } catch (imageError) {
-          // 이미지 생성 실패 시 원본 이미지 사용
-          console.error('이미지 생성 실패:', imageError)
-          cardImageUrl = giftData.cardDesign 
-            ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
-            : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
-        }
-      } else {
-        // 원본 카드 이미지 사용
-        cardImageUrl = giftData.cardDesign 
-          ? `${window.location.origin}/images/gift-cards/${giftData.cardDesign}.png`
-          : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
-      }
-
-      // 카카오톡 SDK 확인 및 초기화
-      if (!window.Kakao) {
-        throw new Error('카카오톡 SDK가 로드되지 않았습니다.')
-      }
-
-      if (!window.Kakao.isInitialized()) {
-        const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY || ''
-        if (!kakaoAppKey) {
-          throw new Error('카카오톡 앱 키가 설정되지 않았습니다.')
-        }
-        window.Kakao.init(kakaoAppKey)
-        await new Promise(resolve => setTimeout(resolve, 200))
-        
-        if (!window.Kakao.isInitialized()) {
-          throw new Error('카카오톡 SDK 초기화에 실패했습니다.')
-        }
-      }
-
-      if (!window.Kakao.Share) {
-        throw new Error('카카오톡 Share API를 사용할 수 없습니다.')
-      }
-
-      // 모바일 환경 확인
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-      
-      // PC 환경에서는 링크 복사
-      if (!isMobile) {
-        await navigator.clipboard.writeText(giftLink)
-        toast.success(
-          `PC에서는 카카오톡 공유가 불가능합니다.\n선물 링크가 클립보드에 복사되었습니다.\n모바일로 링크를 보내거나, 모바일에서 다시 시도해주세요.`,
-          {
-            icon: '📱',
-            duration: 8000,
-          }
-        )
-        return
-      }
-
-      // 카카오톡 공유 실행
-      window.Kakao.Share.sendDefault({
-        objectType: 'feed',
-        content: {
-          title: title,
-          description: giftData.message || '선물을 받아보세요!',
-          imageUrl: cardImageUrl,
-          link: {
-            mobileWebUrl: giftLink,
-            webUrl: giftLink,
-          },
-        },
-        buttons: [
-          {
-            title: '선물 받기',
-            link: {
-              mobileWebUrl: giftLink,
-              webUrl: giftLink,
-            },
-          },
-        ],
-        serverCallbackArgs: {
-          orderId: orderId,
-          giftToken: giftToken,
-        },
-      })
-    } catch (error: any) {
-      throw new Error(`카카오톡 공유 실패: ${error.message || '알 수 없는 오류'}`)
-    }
-  }
-
-  const handleSearchAddress = () => {
-    openDaumPostcode((data: AddressSearchResult) => {
-      setFormData(prev => ({
-        ...prev,
-        zipcode: data.zonecode,
-        address: data.address,
-      }))
-
-      const t = window.setTimeout(() => {
-        const detailInput = document.getElementById('checkout_address_detail')
-        if (detailInput) {
-          detailInput.focus()
-        }
-      }, 100)
-      timeoutsRef.current.push(t)
-    })
-  }
-
-  const getDeliveryFee = () => {
-    if (deliveryMethod === 'pickup') return 0
-    if (deliveryMethod === 'quick') return SHIPPING.QUICK_FEE
-    // 일반 택배
-    return getTotalPrice() >= SHIPPING.FREE_THRESHOLD ? 0 : SHIPPING.DEFAULT_FEE
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (items.length === 0) {
-      showError({ message: '주문할 상품이 없습니다.' }, { icon: '📦' })
-      router.push(isDirectPurchase ? '/products' : '/cart')
-      return
-    }
-
-    if (isGiftMode && currentStep < totalGiftSteps) {
-      showInfo('다음 단계를 진행해주세요.', { icon: '➡️' })
-      return
-    }
-
-    // 선물 모드일 때는 카카오톡 공유를 통해 주문이 이미 생성되었을 수 있음
-    // 세션에서 pending_gift_order_id 확인
-    const pendingGiftOrderId = sessionStorage.getItem('pending_gift_order_id')
-
-    // 선물 모드가 아닐 때만 배송 정보 검증
-    if (!isGiftMode) {
-      if (!formData.name || !formData.phone) {
-        showError({ message: '필수 항목을 모두 입력해주세요.' }, { icon: '⚠️' })
-        return
-      }
-
-      // 배송 방법별 유효성 검사
-      if (deliveryMethod === 'pickup' && !pickupTime) {
-        showError({ message: '픽업 시간을 선택해주세요.' }, { icon: '⏰' })
-        return
-      }
-
-      if (deliveryMethod === 'quick') {
-        if (!quickDeliveryArea) {
-          showError({ message: '배달 지역을 선택해주세요.' }, { icon: '📍' })
-          return
-        }
-        if (!formData.address) {
-          showError({ message: '상세 주소를 입력해주세요.' }, { icon: '📍' })
-          return
-        }
-        if (!quickDeliveryTime) {
-          showError({ message: '배달 시간을 선택해주세요.' }, { icon: '⏰' })
-          return
-        }
-      }
-
-      if (deliveryMethod === 'regular' && !formData.address) {
-        showError({ message: '배송 주소를 입력해주세요.' }, { icon: '📍' })
-        return
-      }
-    }
-
-    // 포인트 사용 유효성 검사
-    if (usedPoints > 0) {
-      if (usedPoints > userPoints) {
-        showError({ message: '보유 포인트보다 많이 사용할 수 없습니다.' }, { icon: '⚠️' })
-        return
-      }
-      if (usedPoints > afterCouponDiscount) {
-        showError({ message: '결제 금액보다 많은 포인트를 사용할 수 없습니다.' }, { icon: '⚠️' })
-        return
-      }
-    }
-
-    setFlags(prev => ({ ...prev, isProcessing: true }))
-
-    try {
-      // 로그인 확인
-      if (!user) {
-        showError({ message: '로그인이 필요합니다.' }, { icon: '🔒' })
-        router.push('/auth/login?next=/checkout')
-        return
-      }
-
-      // 주문 생성
-      // 선물 모드일 때는 배송 정보가 필요 없음 (받는 사람이 직접 입력)
-      const shippingAddress = isGiftMode 
-        ? '선물 수령 대기' 
-        : deliveryMethod === 'pickup'
-        ? '매장 픽업'
-        : deliveryMethod === 'quick'
-        ? `${formData.address}${formData.addressDetail ? ' ' + formData.addressDetail : ''}`
-        : `${formData.address}${formData.addressDetail ? ' ' + formData.addressDetail : ''}`
-      
-      // total_amount는 쿠폰 할인 전 금액 + 배송비 (API에서 쿠폰/포인트 처리)
-      const totalAmount = orderTotal
-
-      // 실제로는 여기서 결제 API를 호출합니다 (토스페이먼츠, 카카오페이 등)
-      // 데모를 위해 주문 정보만 저장하고 완료 페이지로 이동
-      
-      // 주문 저장 (API 통해서)
-      const deliveryTime = isGiftMode 
-        ? null 
-        : deliveryMethod === 'pickup' 
-        ? pickupTime 
-        : deliveryMethod === 'quick' 
-        ? quickDeliveryTime 
-        : null
-
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          total_amount: totalAmount,
-          delivery_type: isGiftMode ? 'regular' : deliveryMethod,
-          delivery_time: deliveryTime,
-          shipping_address: shippingAddress,
-          shipping_name: isGiftMode ? '선물 수령 대기' : formData.name,
-          shipping_phone: isGiftMode ? '' : formData.phone,
-          delivery_note: formData.message.trim() || null,
-          used_coupon_id: selectedCoupon?.id || null,
-          used_points: usedPoints,
-          is_gift: isGiftMode,
-          gift_message: isGiftMode ? giftData.message : null,
-          gift_card_design: isGiftMode ? giftData.cardDesign : null,
-          gift_recipient_name: null, // 받는 분이 직접 입력
-          gift_recipient_phone: null, // 받는 분이 직접 입력
-          items: items.map(item => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-          }))
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '주문 생성 실패')
-      }
-
-      const { order } = await response.json()
-
-      // 선물 모드이고 결제 완료된 경우 카카오톡 공유
-      if (isGiftMode && order.gift_token) {
-        await shareGiftToKakao(order.id, order.gift_token)
-      }
-
-      // 기본 배송지로 저장 체크 시 배송지 저장 (택배 또는 퀵배달)
-      if (saveAsDefaultAddress && (deliveryMethod === 'regular' || deliveryMethod === 'quick') && formData.address) {
-        try {
-          // 1) 동일 주소 확인 및 주소 개수 조회 (서버 API)
-          const checkRes = await fetch('/api/addresses/check', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              address: formData.address.trim(),
-              address_detail: (formData.addressDetail || '').trim() || null,
-            }),
-          })
-
-          const checkData = await checkRes.json()
-          const existing = checkData.existing
-          const addressCount = (checkData.addressCount || 0) + 1
-
-          if (existing) {
-            // 주소가 같으면 기본 배송지로만 설정하고 정보 업데이트 (서버 API)
-            // 기존 이름을 그대로 유지 (변경하지 않음)
-            await fetch(`/api/addresses/${existing.id}`, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                name: existing.name, // 기존 이름 그대로 유지
-                recipient_name: formData.name,
-                recipient_phone: formData.phone,
-                zipcode: formData.zipcode || null,
-                address: formData.address,
-                address_detail: formData.addressDetail || null,
-                delivery_note: formData.message || null,
-                is_default: true,
-              }),
-            })
-          } else {
-            // 새 주소 저장 (서버 API에서 기본 배송지 해제 처리)
-            const addressName = deliveryMethod === 'quick' 
-              ? `퀵배달 주소 ${addressCount}`
-              : addressCount === 1 
-                ? '기본 배송지'
-                : `배송지 ${addressCount}`
-            
-            // 서버 API로 주소 저장 (is_default: true로 설정하면 서버에서 기존 기본 배송지 자동 해제)
-            await fetch('/api/addresses', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                name: addressName,
-                recipient_name: formData.name,
-                recipient_phone: formData.phone,
-                zipcode: formData.zipcode || null,
-                address: formData.address,
-                address_detail: formData.addressDetail || null,
-                delivery_note: formData.message || null,
-                is_default: true,
-              }),
-            })
-          }
-        } catch (error) {
-          // 배송지 저장 실패해도 주문은 완료
-        }
-      }
-
-      // 바로구매면 세션 스토리지 비우기, 아니면 장바구니에서 결제된(선택된) 상품만 제거
-      if (isDirectPurchase) {
-        clearDirectPurchase()
-      } else {
-        // 주문에 사용된 항목들을 먼저 저장 (removeSelectedFromCart 호출 전)
-        const purchasedItems = [...items]
-        
-        // 로그인 상태라면 DB 장바구니에서 먼저 삭제
-        try {
-          if (user?.id) {
-            // 프로모션 그룹은 중복 삭제 방지를 위해 그룹 단위로 한 번만 처리
-            const handledGroups = new Set<string>()
-            for (const it of purchasedItems) {
-              const dbId = it.id
-              const groupId = it.promotion_group_id
-              if (groupId) {
-                if (!handledGroups.has(groupId)) {
-                  // DB ID가 있으면 전달, 없으면 groupId로 삭제
-                  const success = await removeFromCartDB(user.id, dbId || '', groupId)
-                  if (success) {
-                    handledGroups.add(groupId)
-                  }
-                }
-              } else if (dbId && !dbId.startsWith('cart-')) {
-                await removeFromCartDB(user.id, dbId)
-              }
-            }
-          }
-        } catch (err) {
-          // DB 삭제 실패해도 UI는 진행
-        }
-        
-        // DB 삭제 후 localStorage에서도 제거
-        removeSelectedFromCart()
-      }
-
-      // 주문 완료
-      if (isGiftMode && order.gift_token) {
-        showSuccess('주문이 완료되었습니다! 카카오톡으로 선물을 공유해주세요.', {
-          icon: '🎁',
-          duration: 3000,
-        })
-      } else {
-        showSuccess('주문이 완료되었습니다!', {
-          icon: '🎉',
-          duration: 3000,
-        })
-      }
-
-      // 주문 완료 페이지로 이동 (선물 모드는 카카오톡 공유 후 이동)
-      const t = window.setTimeout(() => {
-        if (isGiftMode && order.gift_token) {
-          // 선물 모드일 때 토큰 포함하여 이동
-          router.push(`/orders?giftToken=${order.gift_token}`)
-        } else {
-          router.push('/orders')
-        }
-      }, isGiftMode ? 2000 : 1500) // 선물 모드는 조금 더 기다림
-      timeoutsRef.current.push(t)
-
-    } catch (error) {
-      showError(error)
-    } finally {
-      setFlags(prev => ({ ...prev, isProcessing: false }))
-    }
-  }
-
-  useEffect(() => {
-    return () => {
-      timeoutsRef.current.forEach((id) => clearTimeout(id))
-      timeoutsRef.current = []
-    }
-  }, [])
-
-  // 쿠폰 할인 금액 계산
-  const calculateCouponDiscount = (subtotal: number): number => {
-    if (!selectedCoupon || !selectedCoupon.coupon) return 0
-
-    const coupon = selectedCoupon.coupon as Coupon
-    
-    // 최소 구매 금액 체크
-    if (coupon.min_purchase_amount && subtotal < coupon.min_purchase_amount) {
-      return 0
-    }
-
-    if (coupon.discount_type === 'percentage') {
-      const discount = Math.floor(subtotal * (coupon.discount_value / 100))
-      if (coupon.max_discount_amount) {
-        return Math.min(discount, coupon.max_discount_amount)
-      }
-      return discount
-    } else {
-      return coupon.discount_value
-    }
-  }
-
-  // 주문 금액 계산 (통합 유틸리티 사용)
-  const { originalTotal, discountAmount, shipping, discountedTotal, total: orderTotal } = calculateOrderTotal(items, deliveryMethod)
-  const subtotal = discountedTotal
-  
-  const couponDiscount = calculateCouponDiscount(subtotal)
-  const afterCouponDiscount = Math.max(0, subtotal - couponDiscount)
-  const finalTotal = Math.max(0, afterCouponDiscount - usedPoints)
+  // 모든 비즈니스 로직은 useCheckoutController에서 처리됨
 
   // 로딩 중
   if (loadingDefaultAddress) {
@@ -1096,55 +221,11 @@ function CheckoutPageContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* 주문/결제 전용 헤더 */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
-        <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
-          {/* 왼쪽: 뒤로가기 */}
-          <button
-            onClick={() => {
-              if (isGiftMode && currentStep > 1) {
-                setCurrentStep(prev => Math.max(prev - 1, 1))
-              } else {
-                router.back()
-              }
-            }}
-            aria-label="뒤로가기"
-            className="p-2 text-gray-700 hover:text-gray-900"
-          >
-            <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          
-          {/* 중앙: 제목 */}
-          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">
-              {isGiftMode ? '선물하기' : '주문/결제'}
-            </h1>
-          </div>
-
-          {isGiftMode && (
-            <div className="ml-auto mr-2 flex items-center gap-1.5">
-              {[1, 2, 3].map((step, index) => (
-                <Fragment key={step}>
-                  <div
-                    className={`w-2 h-2 rounded-full ${
-                      step <= currentStep ? 'bg-primary-800' : 'bg-gray-300'
-                    }`}
-                  ></div>
-                  {index < 2 && (
-                    <div
-                      className={`w-4 h-0.5 ${
-                        currentStep > step ? 'bg-primary-800' : 'bg-gray-300'
-                      }`}
-                    ></div>
-                  )}
-                </Fragment>
-              ))}
-            </div>
-          )}
-        </div>
-      </header>
+      <CheckoutHeader 
+        isGiftMode={isGiftMode}
+        currentStep={currentStep}
+        totalGiftSteps={totalGiftSteps}
+      />
       
       <main className={`flex-1 container mx-auto px-4 py-4 ${isGiftMode ? 'bg-gray-50' : ''}`}>
 
@@ -1153,778 +234,83 @@ function CheckoutPageContent() {
             {/* 주문 정보 입력 */}
             <div className={`space-y-3 ${isGiftFinalStep ? 'lg:col-span-2' : 'lg:col-span-1'}`}>
               {/* 선물할 상품 목록 - 선물 모드 1단계 */}
-              {isGiftMode && currentStep === 1 && (() => {
-                // 프로모션 그룹별로 상품 묶기
-                const groupedItems = items.reduce((acc, item) => {
-                  if (item.promotion_group_id) {
-                    if (!acc.groups[item.promotion_group_id]) {
-                      acc.groups[item.promotion_group_id] = []
-                    }
-                    acc.groups[item.promotion_group_id].push(item)
-                  } else {
-                    acc.standalone.push(item)
-                  }
-                  return acc
-                }, { groups: {} as { [key: string]: typeof items }, standalone: [] as typeof items })
-
-                // 같은 상품(productId)을 합치는 함수
-                const mergeSameProducts = (itemList: typeof items) => {
-                  type ItemType = typeof items[0]
-                  const merged = itemList.reduce((acc: { [key: string]: ItemType }, item: ItemType) => {
-                    const key = item.productId
-                    if (acc[key]) {
-                      acc[key].quantity += item.quantity
-                    } else {
-                      acc[key] = { ...item }
-                    }
-                    return acc
-                  }, {} as { [key: string]: ItemType })
-                  return Object.values(merged) as ItemType[]
-                }
-
-                return (
-                  <>
-                    <div className="bg-white rounded-lg shadow-md p-6">
-                      <h2 className="text-lg font-bold mb-4">선물요약</h2>
-                      <div className="space-y-3">
-                        {/* 프로모션 그룹 상품들 */}
-                        {Object.entries(groupedItems.groups).flatMap(([groupId, groupItems], groupIndex, groupsArray) => {
-                          const mergedGroupItems = mergeSameProducts(groupItems)
-                          return mergedGroupItems.map((item, itemIndex) => (
-                            <div 
-                              key={`${item.productId}-${itemIndex}`} 
-                              className="pb-3"
-                            >
-                              {/* 상품 정보 */}
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1 min-w-0">
-                                  {item.brand && (
-                                    <div className="text-base font-semibold text-gray-900 mb-0.5">{item.brand}</div>
-                                  )}
-                                  <h3 className="text-base font-semibold text-gray-900 line-clamp-2">{item.name}</h3>
-                                </div>
-                                <div className="text-base font-semibold text-gray-900 ml-4">x{item.quantity}</div>
-                              </div>
-                            </div>
-                          ))
-                        })}
-                        
-                        {/* 일반 상품들 */}
-                        {(() => {
-                          const mergedStandalone = mergeSameProducts(groupedItems.standalone)
-                          return mergedStandalone.map((item, index) => (
-                            <div 
-                              key={`${item.productId}-${index}`} 
-                              className="pb-3"
-                            >
-                              {/* 상품 정보 */}
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1 min-w-0">
-                                  {item.brand && (
-                                    <div className="text-base font-semibold text-gray-900 mb-0.5">{item.brand}</div>
-                                  )}
-                                  <h3 className="text-base font-semibold text-gray-900 line-clamp-2">{item.name}</h3>
-                                </div>
-                                <div className="text-base font-semibold text-gray-900 ml-4">x{item.quantity}</div>
-                              </div>
-                            </div>
-                          ))
-                        })()}
-                      </div>
-                      {/* 총가격 */}
-                      <div className="mt-6 pt-4 border-t border-gray-300 space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">상품 금액</span>
-                          <span className="font-semibold">{formatPrice(originalTotal)}원</span>
-                        </div>
-                        {discountAmount > 0 && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">즉시할인</span>
-                            <span className="font-semibold text-red-600">-{formatPrice(discountAmount)}원</span>
-                          </div>
-                        )}
-                        <div className="border-t pt-3">
-                          <div className="flex justify-between text-lg font-bold">
-                            <span>결제 예상 금액</span>
-                            <span className="text-primary-900">{formatPrice(finalTotal + shipping)}원</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )
-              })()}
+              {isGiftMode && currentStep === 1 && (
+                <GiftStep1Summary
+                  items={items}
+                  originalTotal={originalTotal}
+                  discountAmount={discountAmount}
+                  finalTotal={finalTotal}
+                  shipping={shipping}
+                />
+              )}
 
               {/* 보내는 분 정보 - 선물 모드 1단계일 때만 표시 */}
               {isGiftMode && currentStep === 1 && (
-                <>
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-bold">보내는 분</h2>
-                      {!isEditingOrderer && (
-                        <button
-                          type="button"
-                          onClick={() => setFlags(prev => ({ ...prev, isEditingOrderer: true }))}
-                          className="px-2 py-1.5 bg-white text-gray-700 text-xs font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition flex items-center gap-1"
-                        >
-                          <span>수정하기</span>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                    {!isEditingOrderer ? (
-                      /* 읽기 전용 표시 */
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="text-sm font-normal text-gray-500">이름</div>
-                          <div className="text-base font-semibold text-gray-900">{formData.name || '-'}</div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-sm font-normal text-gray-500">연락처</div>
-                          <div className="text-base font-semibold text-gray-900">
-                            {formData.phone ? (() => {
-                              const numbers = formData.phone.replace(/[^0-9]/g, '')
-                              if (numbers.length === 11) {
-                                return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`
-                              } else if (numbers.length === 10) {
-                                if (numbers.startsWith('02')) {
-                                  return `${numbers.slice(0, 2)}-${numbers.slice(2, 6)}-${numbers.slice(6)}`
-                                } else {
-                                  return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6)}`
-                                }
-                              }
-                              return formData.phone
-                            })() : '-'}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      /* 수정 폼 */
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">
-                            이름 <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleInputChange}
-                            required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">
-                            연락처 <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="tel"
-                            name="phone"
-                            value={formData.phone}
-                            onChange={(e) => {
-                              // 숫자만 추출 (하이픈 자동 제거)
-                              const numbers = e.target.value.replace(/[^0-9]/g, '')
-                              setFormData(prev => ({ ...prev, phone: numbers }))
-                            }}
-                            required
-                            placeholder="01012345678"
-                            maxLength={11}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setFlags(prev => ({ ...prev, isEditingOrderer: false }))}
-                            className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition text-sm"
-                          >
-                            취소
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
+                <GiftSenderInfo
+                  formData={formData}
+                  isEditingOrderer={isEditingOrderer}
+                  onEdit={() => setFlags(prev => ({ ...prev, isEditingOrderer: true }))}
+                  onCancel={() => setFlags(prev => ({ ...prev, isEditingOrderer: false }))}
+                  onSave={() => {
                               if (formData.name && formData.phone) {
                                 setFlags(prev => ({ ...prev, isEditingOrderer: false }))
                               }
                             }}
-                            className="flex-1 bg-primary-800 text-white py-2 rounded-lg font-semibold hover:bg-primary-900 transition text-sm"
-                          >
-                            저장
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                </>
+                  onInputChange={handleInputChange}
+                  onPhoneChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
+                />
               )}
 
               {/* 주문자 정보 - 선물 모드가 아닐 때만 표시 */}
               {!isGiftMode && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold">주문자</h2>
-                  {!isEditingOrderer && (
-                    <button
-                      type="button"
-                      onClick={() => setFlags(prev => ({ ...prev, isEditingOrderer: true }))}
-                      className="px-2 py-1.5 bg-white text-gray-700 text-xs font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition flex items-center gap-1"
-                    >
-                      <span>수정</span>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-                {!isEditingOrderer ? (
-                  /* 읽기 전용 표시 */
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="text-sm font-normal text-gray-500">이름</div>
-                      <div className="text-base font-semibold text-gray-900">{formData.name || '-'}</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-sm font-normal text-gray-500">연락처</div>
-                      <div className="text-base font-semibold text-gray-900">
-                        {formData.phone ? (() => {
-                          const numbers = formData.phone.replace(/[^0-9]/g, '')
-                          if (numbers.length === 11) {
-                            return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`
-                          } else if (numbers.length === 10) {
-                            if (numbers.startsWith('02')) {
-                              return `${numbers.slice(0, 2)}-${numbers.slice(2, 6)}-${numbers.slice(6)}`
-                            } else {
-                              return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6)}`
-                            }
-                          }
-                          return formData.phone
-                        })() : '-'}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* 수정 폼 */
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        이름 <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        연락처 <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={(e) => {
-                          // 숫자만 추출 (하이픈 자동 제거)
-                          const numbers = e.target.value.replace(/[^0-9]/g, '')
-                          setFormData(prev => ({ ...prev, phone: numbers }))
-                        }}
-                        required
-                        placeholder="01012345678"
-                        maxLength={11}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setFlags(prev => ({ ...prev, isEditingOrderer: false }))}
-                        className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition text-sm"
-                      >
-                        취소
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
+                <OrdererInfo
+                  formData={formData}
+                  isEditingOrderer={isEditingOrderer}
+                  onEdit={() => setFlags(prev => ({ ...prev, isEditingOrderer: true }))}
+                  onCancel={() => setFlags(prev => ({ ...prev, isEditingOrderer: false }))}
+                  onSave={() => {
                           if (formData.name && formData.phone) {
                             setFlags(prev => ({ ...prev, isEditingOrderer: false }))
                           }
                         }}
-                        className="flex-1 bg-primary-800 text-white py-2 rounded-lg font-semibold hover:bg-primary-900 transition text-sm"
-                      >
-                        저장
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  onInputChange={handleInputChange}
+                  onPhoneChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
+                />
               )}
 
               {/* 배송 정보 - 퀵배달일 때 표시 (선물 모드가 아닐 때만) */}
               {!isGiftMode && deliveryMethod === 'quick' && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-lg font-bold mb-4">배송 정보</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      우편번호
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        name="zipcode"
-                        value={formData.zipcode}
-                        readOnly
-                        className="flex-1 px-3 py-2 md:px-4 border border-gray-300 rounded-lg bg-gray-50 text-sm"
-                        placeholder="우편번호"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleSearchAddress}
-                        className="px-3 py-2 md:px-4 bg-red-600 text-white rounded-lg hover:bg-red-600 transition whitespace-nowrap flex-shrink-0 text-sm md:text-base"
-                      >
-                        주소찾기
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      주소 <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="address"
-                      value={formData.address}
-                      readOnly
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                      placeholder="주소찾기 버튼을 클릭하세요"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      상세 주소
-                    </label>
-                    <input
-                      type="text"
-                      id="quick_address_detail"
-                      name="addressDetail"
-                      value={formData.addressDetail}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="101동 101호"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      배송 요청사항
-                    </label>
-                    <textarea
-                      name="message"
-                      value={formData.message}
-                      onChange={handleInputChange}
-                      rows={3}
-                      maxLength={50}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                      placeholder="예: 공동현관 비밀번호 #1234, 전화주세요"
-                    />
-                    <p className="text-xs text-gray-500 mt-1 text-right">{formData.message.length}/50</p>
-                  </div>
-
-                  {/* 기본 배송지로 저장 체크박스 - 퀵배달 */}
-                  {!hasDefaultAddress && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-start">
-                        <input
-                          type="checkbox"
-                          id="save_as_default_quick"
-                          checked={saveAsDefaultAddress}
-                          onChange={(e) => setFlags(prev => ({ ...prev, saveAsDefaultAddress: e.target.checked }))}
-                          className="w-4 h-4 mt-0.5 text-primary-800 border-gray-300 rounded focus:ring-primary-500"
-                        />
-                        <label htmlFor="save_as_default_quick" className="ml-2 text-sm text-red-600">
-                          <span className="font-semibold">이 주소를 기본 배송지로 저장</span>
-                          <p className="text-xs text-blue-700 mt-1">
-                            다음 주문부터 자동으로 입력됩니다.
-                          </p>
-                        </label>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+                <DeliveryFormQuick
+                  formData={formData}
+                  hasDefaultAddress={hasDefaultAddress}
+                  saveAsDefaultAddress={saveAsDefaultAddress}
+                  onSearchAddress={handleSearchAddress}
+                  onInputChange={handleInputChange}
+                  onSaveAsDefaultChange={(checked) => setFlags(prev => ({ ...prev, saveAsDefaultAddress: checked }))}
+                />
               )}
 
               {/* 배송 정보 - 택배배송일 때만 표시 (선물 모드가 아닐 때만) */}
               {!isGiftMode && deliveryMethod === 'regular' && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-lg font-bold mb-4">배송 정보</h2>
-                
-                {/* 기본 배송지가 있으면 텍스트로 표시 */}
-                {defaultAddress ? (
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="text-base font-bold text-gray-900">{defaultAddress.name}</h3>
-                            <span className="text-xs bg-primary-100 text-primary-800 px-2 py-0.5 rounded">기본</span>
-                          </div>
-                          <p className="text-sm text-gray-700 mb-1">
-                            {defaultAddress.recipient_name} · {defaultAddress.recipient_phone}
-                          </p>
-                          <p className="text-sm text-gray-700">
-                            {defaultAddress.address}
-                            {defaultAddress.address_detail && ` ${defaultAddress.address_detail}`}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => router.push('/profile/addresses')}
-                          className="ml-4 px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition whitespace-nowrap"
-                        >
-                          배송지 변경
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        배송 요청사항
-                      </label>
-                      <textarea
-                        name="message"
-                        value={formData.message}
-                        onChange={handleInputChange}
-                        rows={3}
-                        maxLength={50}
-                        placeholder="예: 공동현관 비밀번호 #1234, 문 앞에 놓아주세요"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      />
-                      <p className="text-xs text-gray-500 mt-1 text-right">{formData.message.length}/50</p>
-                    </div>
-                  </div>
-                ) : (
-                  /* 기본 배송지가 없으면 입력 필드 표시 */
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        우편번호
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          name="zipcode"
-                          value={formData.zipcode}
-                          readOnly
-                          className="flex-1 px-3 py-2 md:px-4 border border-gray-300 rounded-lg bg-gray-50 text-sm"
-                          placeholder="우편번호"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleSearchAddress}
-                          className="px-3 py-2 md:px-4 bg-white text-red-600 border border-red-600 rounded-lg hover:bg-blue-50 transition whitespace-nowrap flex-shrink-0 text-sm md:text-base"
-                        >
-                          주소찾기
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        주소 <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="address"
-                        value={formData.address}
-                        readOnly
-                        required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                        placeholder="주소찾기 버튼을 클릭하세요"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        상세 주소
-                      </label>
-                      <input
-                        type="text"
-                        id="checkout_address_detail"
-                        name="addressDetail"
-                        value={formData.addressDetail}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="101동 101호"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        배송 요청사항
-                      </label>
-                      <textarea
-                        name="message"
-                        value={formData.message}
-                        onChange={handleInputChange}
-                        rows={3}
-                        maxLength={50}
-                        placeholder="예: 공동현관 비밀번호 #1234, 문 앞에 놓아주세요"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      />
-                      <p className="text-xs text-gray-500 mt-1 text-right">{formData.message.length}/50</p>
-                    </div>
-                    
-                    {/* 기본 배송지로 저장 체크박스 */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-start">
-                        <input
-                          type="checkbox"
-                          id="save_as_default"
-                          checked={saveAsDefaultAddress}
-                          onChange={(e) => setFlags(prev => ({ ...prev, saveAsDefaultAddress: e.target.checked }))}
-                          className="w-4 h-4 mt-0.5 text-primary-800 border-gray-300 rounded focus:ring-primary-500"
-                        />
-                        <label htmlFor="save_as_default" className="ml-2 text-sm text-red-600">
-                          <span className="font-semibold">이 주소를 기본 배송지로 저장</span>
-                          <p className="text-xs text-blue-700 mt-1">
-                            다음 주문부터 자동으로 입력됩니다.
-                          </p>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+                <DeliveryFormRegular
+                  formData={formData}
+                  defaultAddress={defaultAddress}
+                  hasDefaultAddress={hasDefaultAddress}
+                  saveAsDefaultAddress={saveAsDefaultAddress}
+                  onSearchAddress={handleSearchAddress}
+                  onInputChange={handleInputChange}
+                  onSaveAsDefaultChange={(checked) => setFlags(prev => ({ ...prev, saveAsDefaultAddress: checked }))}
+                />
               )}
 
               {/* 선물 옵션 - 선물 모드 2단계 */}
               {isGiftMode && currentStep === 2 && (
-                <div>
-                  <div className="mb-4">
-                    <h2 className="text-xl font-bold">메시지 카드 보내기</h2>
-                  </div>
-                  
-                  {/* 메시지 옵션 선택 */}
-                  <div className="flex gap-6 mb-6">
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="messageOption"
-                        checked={!giftData.withMessage}
-                        onChange={() => setGiftData(prev => ({ ...prev, withMessage: false }))}
-                        className="w-3 h-3 text-red-600 border-gray-300 focus:ring-red-500"
-                      />
-                      <span className="text-base">메시지 없이 보내기</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="messageOption"
-                        checked={giftData.withMessage}
-                        onChange={() => setGiftData(prev => ({ ...prev, withMessage: true }))}
-                        className="w-3 h-3 text-red-600 border-gray-300 focus:ring-red-500"
-                      />
-                      <span className="text-base">메시지 함께 보내기</span>
-                    </label>
-                    </div>
-
-                  {/* 선물 메시지 카드 - 메시지 함께 보내기 선택 시에만 표시 */}
-                  {giftData.withMessage && (
-                  <div className="space-y-4 mb-20">
-                    {/* 카드 디자인 선택 */}
-                    <div>
-                      <label className="block text-sm font-medium mb-3">
-                        카드 디자인 선택
-                      </label>
-                      <div className="overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
-                        <div className="flex gap-3 min-w-max">
-                          {[
-                            { value: 'birthday-1', label: '생일 축하', emoji: '🎂', color: 'from-pink-200 to-pink-300' },
-                            { value: 'thanks-1', label: '감사 인사 1', emoji: '🙏', color: 'from-blue-200 to-blue-300' },
-                            { value: 'thanks-2', label: '감사 인사 2', emoji: '🙏', color: 'from-blue-200 to-blue-300' },
-                            { value: 'celebration-1', label: '축하 1', emoji: '🎉', color: 'from-orange-200 to-orange-300' },
-                            { value: 'celebration-2', label: '축하 2', emoji: '🎉', color: 'from-orange-200 to-orange-300' },
-                          ].map((design) => (
-                            <button
-                              key={design.value}
-                              type="button"
-                              onClick={() => setGiftData(prev => ({ ...prev, cardDesign: design.value as any }))}
-                              className={`relative flex-shrink-0 w-32 rounded-lg border-2 transition-all ${
-                                giftData.cardDesign === design.value
-                                  ? 'border-primary-600 ring-2 ring-primary-300 shadow-md'
-                                  : 'border-gray-200 hover:border-gray-300'
-                              }`}
-                            >
-                              <div className="aspect-square relative overflow-hidden">
-                                <img
-                                  src={`/images/gift-cards/${design.value}.png`}
-                                  alt={design.label}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    target.style.display = 'none'
-                                    const parent = target.parentElement!
-                                    parent.innerHTML = `
-                                      <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-                                        <span class="text-gray-400 text-2xl">${design.emoji}</span>
-                                      </div>
-                                    `
-                                  }}
-                                />
-                                {giftData.cardDesign === design.value && (
-                                  <div className="absolute top-2 right-2 bg-primary-600 text-white rounded-full p-1">
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="p-2 bg-white">
-                                <p className="text-xs font-medium text-center text-gray-700">{design.label}</p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 카드 미리보기 */}
-                    {giftData.cardDesign && (
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2">
-                          카드 미리보기
-                        </label>
-                        <div className="relative rounded-lg overflow-hidden border-2 border-gray-200 shadow-md" style={{ aspectRatio: '1/1' }}>
-                          <img
-                            src={`/images/gift-cards/${giftData.cardDesign}.png`}
-                            alt="카드 디자인"
-                            className="w-full h-full object-cover"
-                            style={{ display: 'block' }}
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement
-                              target.style.display = 'none'
-                              const parent = target.parentElement!
-                              if (!parent.querySelector('.error-fallback')) {
-                                const errorDiv = document.createElement('div')
-                                errorDiv.className = 'error-fallback w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200'
-                                errorDiv.innerHTML = '<span class="text-gray-400">카드 이미지를 추가해주세요</span>'
-                                parent.appendChild(errorDiv)
-                              }
-                            }}
-                          />
-                          {/* 메시지 오버레이 (CSS로만 표시) */}
-                          {giftData.message && (() => {
-                            // 카드 디자인별 메시지 스타일 설정
-                            const getMessageStyle = (cardDesign: string) => {
-                              const styles: Record<string, {
-                                fontSize: string;
-                                color: string;
-                                fontFamily: string;
-                                fontWeight: string;
-                                textShadow: string;
-                                lineHeight: string;
-                              }> = {
-                                'birthday-1': {
-                                  fontSize: 'clamp(16px, 3vw, 22px)',
-                                  color: '#000000',
-                                  fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-                                  fontWeight: '500',
-                                  textShadow: 'none',
-                                  lineHeight: '1.5',
-                                },
-                                'thanks-1': {
-                                  fontSize: 'clamp(15px, 2.8vw, 20px)',
-                                  color: '#000000',
-                                  fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-                                  fontWeight: '500',
-                                  textShadow: 'none',
-                                  lineHeight: '1.7',
-                                },
-                                'thanks-2': {
-                                  fontSize: 'clamp(14px, 2.5vw, 19px)',
-                                  color: '#000000',
-                                  fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-                                  fontWeight: '500',
-                                  textShadow: 'none',
-                                  lineHeight: '1.6',
-                                },
-                                'celebration-1': {
-                                  fontSize: 'clamp(17px, 3.2vw, 24px)',
-                                  color: '#000000',
-                                  fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-                                  fontWeight: '500',
-                                  textShadow: 'none',
-                                  lineHeight: '1.4',
-                                },
-                                'celebration-2': {
-                                  fontSize: 'clamp(16px, 3vw, 21px)',
-                                  color: '#000000',
-                                  fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-                                  fontWeight: '500',
-                                  textShadow: 'none',
-                                  lineHeight: '1.5',
-                                },
-                              }
-                              return styles[cardDesign] || {
-                                fontSize: 'clamp(14px, 2.5vw, 18px)',
-                                color: '#000000',
-                                fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-                                fontWeight: '500',
-                                textShadow: 'none',
-                                lineHeight: '1.6',
-                              }
-                            }
-                            
-                            const messageStyle = getMessageStyle(giftData.cardDesign)
-                            const paddingClass = giftData.cardDesign === 'thanks-2' ? 'px-16' : 'px-12'
-                            
-                            return (
-                              <div className={`absolute left-0 right-0 ${paddingClass} pointer-events-none z-10`} style={{ 
-                                top: '40%',
-                                height: '50%',
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                justifyContent: 'flex-start',
-                              }}>
-                                <p className="text-left whitespace-pre-wrap break-words w-full" style={{ 
-                                  fontSize: messageStyle.fontSize,
-                                  color: messageStyle.color,
-                                  fontFamily: messageStyle.fontFamily,
-                                  fontWeight: messageStyle.fontWeight,
-                                  textShadow: messageStyle.textShadow,
-                                  lineHeight: messageStyle.lineHeight,
-                                }}>
-                                  {giftData.message}
-                                </p>
-                              </div>
-                            )
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        선물 메시지
-                      </label>
-                      <textarea
-                        value={giftData.message}
-                        onChange={(e) => setGiftData(prev => ({ ...prev, message: e.target.value }))}
-                        rows={4}
-                        maxLength={150}
-                        placeholder="받는 분께 전달할 메시지를 작성해주세요"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">{giftData.message.length}/150</p>
-                    </div>
-                  </div>
-                  )}
-                </div>
+                <GiftMessageCard
+                  giftData={giftData}
+                  onWithMessageChange={(withMessage) => setGiftData(prev => ({ ...prev, withMessage }))}
+                  onCardDesignChange={(design) => setGiftData(prev => ({ ...prev, cardDesign: design as any }))}
+                  onMessageChange={(message) => setGiftData(prev => ({ ...prev, message }))}
+                />
               )}
 
               {/* 쿠폰 선택 */}
@@ -2041,195 +427,34 @@ function CheckoutPageContent() {
 
               {/* 결제 방법 */}
               {(!isGiftMode || currentStep === 3) && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-bold mb-4">결제 방법</h2>
-                <div className="space-y-3">
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="payment" 
-                      value="easy" 
-                      checked={paymentMethod === 'easy'}
-                      onChange={() => setPaymentMethod('easy')}
-                      className="w-4 h-4" 
-                    />
-                    <span>카드 간편 결제</span>
-                  </label>
-                  {paymentMethod === 'easy' && (
-                    <div className="ml-7 mt-2 space-y-2">
-                      {loadingCards ? (
-                        <div className="text-sm text-gray-500">카드 불러오는 중...</div>
-                      ) : savedCards.length === 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => router.push('/profile/payment')}
-                          className="w-full px-8 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-900 transition"
-                        >
-                          카드 등록하기
-                        </button>
-                      ) : (
-                        savedCards.map((card) => (
-                          <label key={card.id} className="flex items-center space-x-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="selectedCard"
-                              value={card.id}
-                              checked={selectedCardId === card.id}
-                              onChange={() => setSelectedCardId(card.id)}
-                              className="w-4 h-4"
-                            />
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm">{card.card_number}</span>
-                              {card.is_default && (
-                                <span className="text-xs bg-primary-100 text-primary-800 px-2 py-0.5 rounded">
-                                  기본
-                                </span>
-                              )}
-                            </div>
-                          </label>
-                        ))
-                      )}
-                    </div>
-                  )}
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="payment" 
-                      value="card" 
-                      checked={paymentMethod === 'card'}
-                      onChange={() => setPaymentMethod('card')}
-                      className="w-4 h-4" 
-                    />
-                    <span>신용카드</span>
-                  </label>
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="payment" 
-                      value="naverpay" 
-                      checked={paymentMethod === 'naverpay'}
-                      onChange={() => setPaymentMethod('naverpay')}
-                      className="w-4 h-4" 
-                    />
-                    <span>네이버 페이</span>
-                  </label>
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="payment" 
-                      value="kakaopay" 
-                      checked={paymentMethod === 'kakaopay'}
-                      onChange={() => setPaymentMethod('kakaopay')}
-                      className="w-4 h-4" 
-                    />
-                    <span>카카오페이</span>
-                  </label>
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input 
-                      type="radio" 
-                      name="payment" 
-                      value="tosspay" 
-                      checked={paymentMethod === 'tosspay'}
-                      onChange={() => setPaymentMethod('tosspay')}
-                      className="w-4 h-4" 
-                    />
-                    <span>토스페이</span>
-                  </label>
-                </div>
-              </div>
+                <PaymentMethodSelector
+                  paymentMethod={paymentMethod}
+                  selectedCardId={selectedCardId}
+                  savedCards={savedCards}
+                  loadingCards={loadingCards}
+                  onPaymentMethodChange={setPaymentMethod}
+                  onCardSelect={setSelectedCardId}
+                />
               )}
             </div>
 
             {/* 주문 요약 */}
             {isGiftFinalStep && (
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow-md p-6 sticky top-24 mb-20">
-                <h2 className="text-xl font-bold mb-4">주문 요약</h2>
-                
-                {/* 배송 방법 표시 - 선물 모드가 아닐 때만 */}
-                {!isGiftMode && (
-                <div className="mb-2 pb-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">배송 방법</span>
-                    <span className="font-semibold">
-                      {deliveryMethod === 'pickup' && '픽업'}
-                      {deliveryMethod === 'quick' && '퀵배송'}
-                      {deliveryMethod === 'regular' && '택배배송'}
-                    </span>
-                  </div>
-                  {deliveryMethod === 'pickup' && pickupTime && (
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-gray-600">픽업 시간</span>
-                      <span className="font-semibold">{pickupTime}</span>
-                    </div>
-                  )}
-                  {deliveryMethod === 'quick' && (
-                    <>
-                      {quickDeliveryArea && (
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-gray-600">배달 지역</span>
-                          <span className="font-semibold">{quickDeliveryArea}</span>
-                        </div>
-                      )}
-                      {quickDeliveryTime && (
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-gray-600">배달 시간</span>
-                          <span className="font-semibold">{quickDeliveryTime}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-                )}
-
-                {mounted ? (
-                  <>
-                    <div className="border-t pt-4 space-y-3 mb-6">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">상품 금액</span>
-                        <span className="font-semibold">{formatPrice(originalTotal)}원</span>
-                      </div>
-                      {discountAmount > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">즉시할인</span>
-                          <span className="font-semibold text-red-600">-{formatPrice(discountAmount)}원</span>
-                        </div>
-                      )}
-                      {couponDiscount > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">쿠폰 할인</span>
-                          <span className="font-semibold text-red-600">-{formatPrice(couponDiscount)}원</span>
-                        </div>
-                      )}
-                      {usedPoints > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">포인트 사용</span>
-                          <span className="font-semibold text-red-600">-{formatPrice(usedPoints)}원</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">배송비</span>
-                        <span className="font-semibold">
-                          {shipping === 0 ? '무료' : `${formatPrice(shipping)}원`}
-                        </span>
-                      </div>
-                      <div className="border-t pt-3">
-                        <div className="flex justify-between text-lg font-bold">
-                          <span>{isGiftMode ? '선물 예상 금액' : '결제 예상 금액'}</span>
-                          <span className="text-primary-900">{formatPrice(finalTotal + shipping)}원</span>
-                        </div>
-                      </div>
-                    </div>
-
-                  </>
-                ) : (
-                  <div className="border-t pt-4 mb-6">
-                    <div className="flex justify-center py-8">
-                      <div className="animate-pulse text-gray-400">계산 중...</div>
-                    </div>
-                  </div>
-                )}
-              </div>
+                <OrderSummaryBox
+                  isGiftMode={isGiftMode}
+                  deliveryMethod={deliveryMethod}
+                  pickupTime={pickupTime}
+                  quickDeliveryArea={quickDeliveryArea}
+                  quickDeliveryTime={quickDeliveryTime}
+                  mounted={mounted}
+                  originalTotal={originalTotal}
+                  discountAmount={discountAmount}
+                  couponDiscount={couponDiscount}
+                  usedPoints={usedPoints}
+                  shipping={shipping}
+                  finalTotal={finalTotal}
+                />
             </div>
             )}
           </div>
@@ -2237,202 +462,27 @@ function CheckoutPageContent() {
 
         {/* 하단 고정 버튼 */}
         {mounted && (
-          <div className="fixed bottom-0 left-0 right-0 z-40" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
-            <div className="w-full flex justify-center">
-              <div className="w-full max-w-[480px] bg-white shadow-lg">
-                <div className={isGiftMode ? 'px-4 py-3' : 'px-0 pb-0'}>
-              {isGiftMode && currentStep < totalGiftSteps ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleNextStep(e)
-                  }}
-                  className="w-full text-lg font-bold bg-red-600 text-white hover:bg-red-600 py-3 flex items-center justify-center transition"
-                >
-                  다음
-                </button>
-              ) : (
-              <button
-                type="submit"
-                form="checkout-form"
-                disabled={isProcessing}
-                className={`w-full text-lg font-bold transition disabled:bg-gray-400 disabled:text-gray-500 flex items-center justify-center gap-2 ${
-                    isGiftMode && currentStep === totalGiftSteps
-                      ? 'bg-red-600 text-white hover:bg-red-600 py-3'
-                      : isGiftMode 
-                    ? 'bg-[#FEE500] text-[#000000] hover:bg-[#FDD835] shadow-md rounded-xl py-2.5' 
-                    : 'bg-red-600 text-white hover:bg-blue-950 py-3'
-                }`}
-              >
-                {isProcessing ? (
-                  <>
-                      <div className={`animate-spin rounded-full h-5 w-5 border-b-2 ${isGiftMode && currentStep === totalGiftSteps ? 'border-white' : isGiftMode ? 'border-[#000000]' : 'border-white'}`}></div>
-                    처리 중...
-                  </>
-                ) : (
-                  <>
-                      {isGiftMode && currentStep === totalGiftSteps ? (
-                        <span>{formatPrice(finalTotal + shipping)}원 결제하기</span>
-                      ) : isGiftMode ? (
-                      <>
-                        <svg 
-                          width="52" 
-                          height="36" 
-                          viewBox="0 0 60 40" 
-                          fill="none" 
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="flex-shrink-0"
-                        >
-                            {/* 말풍선 본체 */}
-                          <ellipse 
-                            cx="30" 
-                            cy="20" 
-                            rx="23" 
-                            ry="19" 
-                            fill="#3C1E1E"
-                          />
-                            {/* TALK 텍스트 */}
-                          <text 
-                            x="30" 
-                            y="21" 
-                            textAnchor="middle" 
-                            fontSize="13" 
-                            fontWeight="600" 
-                            fill="#FEE500"
-                            fontFamily="'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"
-                            letterSpacing="0.3"
-                            dominantBaseline="middle"
-                            transform="translate(30, 21) scale(1, 1.3) translate(-30, -21)"
-                          >
-                            TALK
-                          </text>
-                        </svg>
-                        <span className="font-bold">{formatPrice(finalTotal + shipping)}원 선물하기</span>
-                      </>
-                    ) : (
-                      <span>{formatPrice(finalTotal + shipping)}원 결제하기</span>
-                    )}
-                  </>
-                )}
-              </button>
-              )}
-                </div>
-              </div>
-            </div>
-          </div>
+          <CheckoutBottomBar
+            isGiftMode={isGiftMode}
+            currentStep={currentStep}
+            totalGiftSteps={totalGiftSteps}
+            isProcessing={isProcessing}
+            finalTotal={finalTotal}
+            shipping={shipping}
+            onNextStep={handleNextStep}
+          />
         )}
       </main>
 
-      {/* 쿠폰 선택 모달 */}
-      {showCouponModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold">쿠폰 선택</h2>
-              <button
-                onClick={() => setShowCouponModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-4">
-              {loadingCoupons ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-800 mx-auto"></div>
-                </div>
-              ) : availableCoupons.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  사용 가능한 쿠폰이 없습니다.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <button
-                    onClick={() => {
-                      setSelectedCoupon(null)
-                      setShowCouponModal(false)
-                    }}
-                    className={`w-full p-4 border-2 rounded-lg text-left transition ${
-                      !selectedCoupon
-                        ? 'border-primary-500 bg-primary-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="font-medium">쿠폰 미사용</div>
-                  </button>
-
-                  {availableCoupons.map((userCoupon) => {
-                    const coupon = userCoupon.coupon as Coupon
-                    const isSelected = selectedCoupon?.id === userCoupon.id
-                    const canUse = !coupon.min_purchase_amount || subtotal >= coupon.min_purchase_amount
-
-                    return (
-                      <button
-                        key={userCoupon.id}
-                        onClick={() => {
-                          if (canUse) {
-                            setSelectedCoupon(userCoupon)
-                            setShowCouponModal(false)
-                          }
-                        }}
-                        disabled={!canUse}
-                        className={`w-full p-4 border-2 rounded-lg text-left transition ${
-                          isSelected
-                            ? 'border-primary-500 bg-primary-50'
-                            : canUse
-                            ? 'border-gray-200 hover:border-gray-300'
-                            : 'border-gray-200 opacity-50 cursor-not-allowed'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex-1">
-                            <div className="font-bold text-gray-900 mb-1">{coupon.name}</div>
-                            {coupon.description && (
-                              <div className="text-sm text-gray-600 mb-2">{coupon.description}</div>
-                            )}
-                            <div className="text-sm text-gray-500">
-                              {coupon.discount_type === 'percentage' ? (
-                                <>
-                                  {coupon.discount_value}% 할인
-                                  {coupon.max_discount_amount && (
-                                    <span className="ml-1">
-                                      (최대 {formatPrice(coupon.max_discount_amount)}원)
-                                    </span>
-                                  )}
-                                </>
-                              ) : (
-                                `${formatPrice(coupon.discount_value)}원 할인`
-                              )}
-                              {coupon.min_purchase_amount && (
-                                <span className="ml-2">
-                                  (최소 {formatPrice(coupon.min_purchase_amount)}원 이상 구매)
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {isSelected && (
-                            <span className="text-primary-800 font-bold">✓</span>
-                          )}
-                        </div>
-                        {!canUse && (
-                          <div className="text-xs text-red-600 mt-2">
-                            최소 구매 금액 미달
-                          </div>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <CouponModal
+        isOpen={showCouponModal}
+        onClose={() => setShowCouponModal(false)}
+        availableCoupons={availableCoupons}
+        selectedCoupon={selectedCoupon}
+        onSelectCoupon={setSelectedCoupon}
+        loadingCoupons={loadingCoupons}
+        subtotal={subtotal}
+      />
 
     </div>
   )

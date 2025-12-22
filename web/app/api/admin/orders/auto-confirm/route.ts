@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseAdminClient } from '@/lib/supabase-server'
-import { addPoints } from '@/lib/points'
+import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { addPoints } from '@/lib/point/points'
 
 /**
  * 자동 구매확정 API (관리자 수동 실행)
@@ -12,7 +12,7 @@ import { addPoints } from '@/lib/points'
 export async function GET(request: NextRequest) {
   try {
     // 관리자 인증 확인
-    const { assertAdmin } = await import('@/lib/admin-auth')
+    const { assertAdmin } = await import('@/lib/auth/admin-auth')
     try {
       assertAdmin()
     } catch (e: any) {

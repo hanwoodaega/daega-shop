@@ -9,7 +9,7 @@ import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import { CollectionHeader } from '@/components/collections/CollectionHeader'
 import { CollectionProductGrid } from '@/components/collections/CollectionProductGrid'
-import { useCollectionProducts } from '@/lib/hooks/useCollectionProducts'
+import { useCollectionProducts } from '@/lib/collection/useCollectionProducts'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 
 function CollectionContent({ slug }: { slug: string }) {

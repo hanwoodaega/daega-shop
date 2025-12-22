@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { assertAdmin } from '@/lib/admin-auth'
-import { createSupabaseAdminClient } from '@/lib/supabase-server'
+import { assertAdmin } from '@/lib/auth/admin-auth'
+import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 
 // GET: 관리자가 모든 사용자의 포인트 정보 조회
 export async function GET(request: NextRequest) {

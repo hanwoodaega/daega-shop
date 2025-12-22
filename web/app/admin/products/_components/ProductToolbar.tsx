@@ -1,4 +1,4 @@
-import { ADMIN_CATEGORIES } from '@/lib/constants'
+import { ADMIN_CATEGORIES } from '@/lib/utils/constants'
 import { ProductListState } from '../_types'
 
 interface ProductToolbarProps {

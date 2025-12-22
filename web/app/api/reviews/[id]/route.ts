@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 
 // PATCH: 리뷰 수정
 export async function PATCH(

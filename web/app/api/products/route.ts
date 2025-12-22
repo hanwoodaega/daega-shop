@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { PRODUCT_SELECT_FIELDS } from '@/lib/product-queries'
-import { enrichProductsServer } from '@/lib/product-queries-server'
-import { getTimedealDiscountPercentMap } from '@/lib/timedeal-utils'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { PRODUCT_SELECT_FIELDS } from '@/lib/product/product-queries'
+import { enrichProductsServer } from '@/lib/product/product-queries-server'
+import { getTimedealDiscountPercentMap } from '@/lib/timedeal/timedeal-utils'
 
 // 동적 라우트로 설정 (searchParams 사용)
 export const dynamic = 'force-dynamic'

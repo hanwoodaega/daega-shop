@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import BottomNavbar from '@/components/BottomNavbar'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/auth/auth-context'
 import { useCartStore } from '@/lib/store'
 
 function ProfileEditContent() {

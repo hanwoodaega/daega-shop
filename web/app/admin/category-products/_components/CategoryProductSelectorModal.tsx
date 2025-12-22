@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice } from '@/lib/utils/utils'
 import { useDebounce } from '../../collections/_hooks/useDebounce'
 import type { Product } from '../_types'
 

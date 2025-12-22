@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseAdminClient } from '@/lib/supabase-server'
-import { getTrackingStatus, mapTrackingStatusToOrderStatus } from '@/lib/tracking-api'
+import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { getTrackingStatus, mapTrackingStatusToOrderStatus } from '@/lib/tracking/tracking-api'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'

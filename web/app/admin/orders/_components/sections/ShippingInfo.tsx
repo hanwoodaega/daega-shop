@@ -1,5 +1,5 @@
 import { Order } from '../../_types'
-import { formatPhoneNumber } from '@/lib/format-phone'
+import { formatPhoneNumber } from '@/lib/utils/format-phone'
 import toast from 'react-hot-toast'
 
 interface ShippingInfoProps {

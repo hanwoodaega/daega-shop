@@ -1,7 +1,7 @@
 import { CartItem } from '@/lib/store'
-import { calculateOrderTotal } from '@/lib/order-calc'
-import { formatPrice } from '@/lib/utils'
-import { GIFT_MIN_AMOUNT } from '@/lib/constants'
+import { calculateOrderTotal } from '@/lib/order/order-calc'
+import { formatPrice } from '@/lib/utils/utils'
+import { GIFT_MIN_AMOUNT } from '@/lib/utils/constants'
 
 export type DeliveryMethod = 'pickup' | 'quick' | 'regular'
 

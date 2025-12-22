@@ -1,4 +1,4 @@
-import { Product } from '@/lib/supabase'
+import { Product } from '@/lib/supabase/supabase'
 import { getTargetSlug, getBudgetSlug } from './categorySlug'
 import { fetchCategoryBySlug, updateProductPriority } from './fetchers'
 

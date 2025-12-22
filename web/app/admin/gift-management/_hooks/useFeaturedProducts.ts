@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { Product } from '@/lib/supabase'
+import { Product } from '@/lib/supabase/supabase'
 import { fetchCategoryBySlug, fetchCategoryProducts, normalizeCategoryProduct } from '../_utils/fetchers'
 
 export function useFeaturedProducts() {

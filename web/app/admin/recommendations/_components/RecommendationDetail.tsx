@@ -1,6 +1,6 @@
 'use client'
 
-import { formatPrice } from '@/lib/utils'
+import { formatPrice } from '@/lib/utils/utils'
 import type { RecommendationCategory, RecommendationProduct } from '../_types'
 
 interface RecommendationDetailProps {

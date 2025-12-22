@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 
 // UUID 형식인지 확인하는 함수
 function isUUID(str: string): boolean {

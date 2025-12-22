@@ -9,10 +9,10 @@ import ReviewItem from '@/components/review/ReviewItem'
 import ReviewWriteModal from '@/components/review/ReviewWriteModal'
 import StarIcons from '@/components/review/StarIcons'
 import ReviewItemSkeleton from '@/components/skeletons/ReviewItemSkeleton'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/lib/auth/auth-context'
 import toast from 'react-hot-toast'
 import { Review } from '@/lib/types/review'
-import { handleApiError, showSuccessMessage } from '@/lib/error-handler'
+import { handleApiError, showSuccessMessage } from '@/lib/utils/error-handler'
 
 export default function AllReviewsPage() {
   const params = useParams()

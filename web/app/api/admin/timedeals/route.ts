@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag, revalidatePath } from 'next/cache'
-import { supabaseAdmin } from '@/lib/supabase-admin'
-import { assertAdmin } from '@/lib/admin-auth'
-import { getNowUTCISO } from '@/lib/time-utils'
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
+import { assertAdmin } from '@/lib/auth/admin-auth'
+import { getNowUTCISO } from '@/lib/utils/time-utils'
 
 // GET: 타임딜 목록 조회 (관리자)
 // 새로운 timedeals 테이블 구조 사용

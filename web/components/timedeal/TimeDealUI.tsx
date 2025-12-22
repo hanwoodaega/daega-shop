@@ -3,7 +3,7 @@
 import { useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Product } from '@/lib/supabase'
+import { Product } from '@/lib/supabase/supabase'
 import TimeDealCountdown from './TimeDealCountdown'
 import ProductCard from '../ProductCard'
 

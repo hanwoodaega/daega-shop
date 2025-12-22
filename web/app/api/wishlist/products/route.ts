@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { enrichProductsServer } from '@/lib/product-queries-server'
-import { PRODUCT_SELECT_FIELDS } from '@/lib/product-queries'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { enrichProductsServer } from '@/lib/product/product-queries-server'
+import { PRODUCT_SELECT_FIELDS } from '@/lib/product/product-queries'
 
 // POST: 위시리스트 상품 목록 조회 (상품 정보 포함)
 export async function POST(request: NextRequest) {

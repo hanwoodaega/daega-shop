@@ -10,8 +10,8 @@ import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import { TimeDealUI } from '@/components/timedeal/TimeDealUI'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
-import { Product } from '@/lib/supabase'
-import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
+import { Product } from '@/lib/supabase/supabase'
+import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
 
 export default function SalePage() {
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])

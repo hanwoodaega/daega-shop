@@ -7,11 +7,11 @@ import ReviewStars from './ReviewStars'
 import StarIcons from './StarIcons'
 import ReviewWriteModal from './ReviewWriteModal'
 import ReviewItemSkeleton from '../skeletons/ReviewItemSkeleton'
-import { useAuth } from '@/lib/auth-context'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/auth-context'
+import { supabase } from '@/lib/supabase/supabase'
 import toast from 'react-hot-toast'
 import { Review, ReviewListProps } from '@/lib/types/review'
-import { handleApiError, showSuccessMessage } from '@/lib/error-handler'
+import { handleApiError, showSuccessMessage } from '@/lib/utils/error-handler'
 
 // 키보드 네비게이션 hook
 function useKeyboardNavigation(

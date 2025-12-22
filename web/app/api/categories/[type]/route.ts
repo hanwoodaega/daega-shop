@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { enrichProductsServer } from '@/lib/product-queries-server'
-import { getTimedealDiscountPercentMap } from '@/lib/timedeal-utils'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { enrichProductsServer } from '@/lib/product/product-queries-server'
+import { getTimedealDiscountPercentMap } from '@/lib/timedeal/timedeal-utils'
 
 export const dynamic = 'force-dynamic'
 

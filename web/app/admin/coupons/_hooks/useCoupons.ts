@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Coupon } from '@/lib/supabase'
+import { Coupon } from '@/lib/supabase/supabase'
 
 export function useCoupons() {
   const [coupons, setCoupons] = useState<Coupon[]>([])

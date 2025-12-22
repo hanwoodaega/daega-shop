@@ -46,8 +46,14 @@ export default async function Home() {
     }
   } catch (error: any) {
     // 빌드 시점 연결 실패는 무시 (정상적인 동작)
-    // 런타임 에러만 로깅
-    if (error?.code !== 'ECONNREFUSED' && error?.cause?.code !== 'ECONNREFUSED') {
+    // ECONNREFUSED 에러는 조용히 무시
+    const isConnectionRefused = 
+      error?.code === 'ECONNREFUSED' || 
+      error?.cause?.code === 'ECONNREFUSED' ||
+      error?.errno === -111 ||
+      error?.cause?.errno === -111
+    
+    if (!isConnectionRefused) {
       console.error('컬렉션 조회 실패:', error)
     }
     // 에러 시 빈 배열로 fallback

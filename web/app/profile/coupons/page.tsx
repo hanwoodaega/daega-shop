@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
-import { useAuth } from '@/lib/auth-context'
-import { getUserCoupons, isCouponValid, getCouponValidityPeriod } from '@/lib/coupons'
-import { UserCoupon, Coupon } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/auth-context'
+import { getUserCoupons, isCouponValid, getCouponValidityPeriod } from '@/lib/coupon/coupons'
+import { UserCoupon, Coupon } from '@/lib/supabase/supabase'
 import { useCartStore } from '@/lib/store'
 
 export default function CouponsPage() {
@@ -70,12 +70,11 @@ export default function CouponsPage() {
 
   const availableCoupons = coupons.filter(uc => !uc.is_used && checkCouponValid(uc))
   const usedCoupons = activeTab === 'used' 
-    ? coupons.filter(uc => uc.is_used)
-    : usedCouponsList
-  const expiredCoupons = coupons.filter(uc => !uc.is_used && !checkCouponValid(uc))
+    ? coupons.filter(uc => uc.is_used && checkCouponValid(uc))
+    : usedCouponsList.filter(uc => checkCouponValid(uc))
 
   const displayCoupons = activeTab === 'available' 
-    ? [...availableCoupons, ...expiredCoupons]
+    ? availableCoupons
     : usedCoupons
 
   if (authLoading || loading) {
@@ -198,16 +197,12 @@ export default function CouponsPage() {
           <div className="space-y-4">
             {displayCoupons.map((userCoupon) => {
               const coupon = userCoupon.coupon as Coupon
-              const isValid = isCouponValid(userCoupon, coupon)
-              const isExpired = !userCoupon.is_used && !isValid
 
               return (
                 <div
                   key={userCoupon.id}
                   className={`bg-white rounded-lg shadow-md p-4 border-2 ${
                     userCoupon.is_used
-                      ? 'border-gray-300 opacity-60'
-                      : isExpired
                       ? 'border-gray-300 opacity-60'
                       : 'border-primary-500'
                   }`}
@@ -224,11 +219,6 @@ export default function CouponsPage() {
                     {userCoupon.is_used && (
                       <span className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded">
                         사용 완료
-                      </span>
-                    )}
-                    {isExpired && (
-                      <span className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded">
-                        만료됨
                       </span>
                     )}
                   </div>

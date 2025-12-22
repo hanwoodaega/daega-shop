@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { CATEGORIES } from '@/lib/constants'
-import { getCategoryPath } from '@/lib/category-utils'
+import { CATEGORIES } from '@/lib/utils/constants'
+import { getCategoryPath } from '@/lib/category/category-utils'
 
 interface CategoryGridProps {
   selectedCategory?: string

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { getUserFromServer } from '@/lib/auth-server'
-import { usePoints } from '@/lib/points'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { getUserFromServer } from '@/lib/auth/auth-server'
+import { usePoints } from '@/lib/point/points'
 
 export const dynamic = 'force-dynamic'
 
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
 // POST: 주문 생성
 export async function POST(request: NextRequest) {
   try {
-    const { createSupabaseAdminClient } = await import('@/lib/supabase-server')
+    const { createSupabaseAdminClient } = await import('@/lib/supabase/supabase-server')
     const supabaseAdmin = createSupabaseAdminClient()
     
     const user = await getUserFromServer()

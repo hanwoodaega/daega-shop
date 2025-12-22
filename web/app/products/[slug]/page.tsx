@@ -3,18 +3,18 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Product } from '@/lib/supabase'
+import { Product } from '@/lib/supabase/supabase'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
-import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
-import { slugToCategory } from '@/lib/category-utils'
+import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
+import { slugToCategory } from '@/lib/category/category-utils'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
-import { CATEGORIES } from '@/lib/constants'
-import { getCategoryPath } from '@/lib/category-utils'
+import { CATEGORIES } from '@/lib/utils/constants'
+import { getCategoryPath } from '@/lib/category/category-utils'
 
 export default function CategoryPage() {
   const params = useParams()

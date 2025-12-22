@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { getUserFromServer } from '@/lib/auth-server'
-import { Coupon, UserCoupon } from '@/lib/supabase'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { getUserFromServer } from '@/lib/auth/auth-server'
+import { Coupon, UserCoupon } from '@/lib/supabase/supabase'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,24 +15,32 @@ function getKSTDateString(date: Date): string {
 
 /**
  * 쿠폰 유효기간 체크
- * 발급일(created_at)부터 validity_days만큼 유효한지 확인
+ * expires_at 필드를 우선 사용하고, 없으면 created_at + validity_days로 계산
+ * 이미 발급된 쿠폰은 is_active와 무관하게 만료일 기준으로 판단
  */
 function isCouponValid(userCoupon: UserCoupon, coupon: Coupon): boolean {
-  if (!coupon || !coupon.is_active) return false
+  if (!coupon) return false
+  if (userCoupon.is_used) return false
   
-  // 현재 날짜 (KST)
-  const todayStr = getKSTDateString(new Date())
+  const now = new Date()
   
-  // 발급일 (KST)
+  // expires_at이 있으면 그것을 사용 (서버에서 계산된 값)
+  if (userCoupon.expires_at) {
+    const expiresAt = new Date(userCoupon.expires_at)
+    return now <= expiresAt
+  }
+  
+  // 레거시: expires_at이 없으면 created_at + validity_days로 계산
+  // validity_days가 null이거나 0 이하면 유효하지 않음
+  if (!coupon.validity_days || coupon.validity_days <= 0) {
+    return false
+  }
+  
   const issuedAt = new Date(userCoupon.created_at)
-  const issuedAtKST = new Date(issuedAt.getTime() + 9 * 60 * 60 * 1000)
+  const validUntil = new Date(issuedAt)
+  validUntil.setDate(validUntil.getDate() + coupon.validity_days)
   
-  // 유효기간 종료일 계산
-  const validUntilKST = new Date(issuedAtKST)
-  validUntilKST.setUTCDate(validUntilKST.getUTCDate() + coupon.validity_days)
-  const validUntilStr = getKSTDateString(validUntilKST)
-  
-  return todayStr <= validUntilStr
+  return now <= validUntil
 }
 
 // GET: 마이페이지 전체 정보 조회 (이름, 주문 개수, 쿠폰 개수, 포인트)

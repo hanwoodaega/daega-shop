@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { cookies } from 'next/headers'
 
 // GET: 사용자의 알림 목록 조회

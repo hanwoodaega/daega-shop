@@ -1,4 +1,4 @@
-import { Product } from '@/lib/supabase'
+import { Product } from '@/lib/supabase/supabase'
 
 export const GIFT_TARGETS = ['아이', '부모님', '연인', '친구'] as const
 export type GiftTarget = typeof GIFT_TARGETS[number]

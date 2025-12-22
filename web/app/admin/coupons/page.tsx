@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Coupon } from '@/lib/supabase'
+import { Coupon } from '@/lib/supabase/supabase'
 import CouponTable from './_components/CouponTable'
 import CouponFormModal from './_components/CouponFormModal'
 import CouponIssueModal from './_components/CouponIssueModal'
@@ -91,8 +91,15 @@ export default function CouponsPage() {
   }
 
   const handleIssueWithConditionsClick = (coupon: Coupon) => {
+    setIssueConditions({
+      birthday_month: '',
+      min_purchase_amount: '',
+      purchase_period_start: '',
+      purchase_period_end: '',
+      min_purchase_count: '',
+      phone: '',
+    })
     setSelectedCoupon(coupon)
-    resetConditions()
     setShowIssueModal(true)
   }
 

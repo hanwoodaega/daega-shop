@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { ADMIN_CATEGORIES } from '@/lib/constants'
+import { ADMIN_CATEGORIES } from '@/lib/utils/constants'
 import { PRODUCT_LIST_LIMIT } from '../constants'
 import { Product, ProductFormData, ProductListState, ProductUIState } from '../_types'
 

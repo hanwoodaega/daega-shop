@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { enrichProductsServer } from '@/lib/product-queries-server'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { enrichProductsServer } from '@/lib/product/product-queries-server'
 
 // 동적 라우트로 처리 (cookies 사용)
 export const dynamic = 'force-dynamic'

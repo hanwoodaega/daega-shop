@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Product } from '@/lib/supabase'
+import { Product } from '@/lib/supabase/supabase'
 import { TabType, GiftTarget } from '../_types'
 import OrderButtons from './OrderButtons'
 import ProductActionButtons from './ProductActionButtons'

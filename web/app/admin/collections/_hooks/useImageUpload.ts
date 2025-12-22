@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import toast from 'react-hot-toast'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/supabase'
 
 interface UseImageUploadOptions {
   bucket: string

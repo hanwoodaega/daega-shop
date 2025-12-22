@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseAdminClient } from '@/lib/supabase-server'
+import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 
 // POST: 프로모션 삭제 시 장바구니에서 해당 상품 제거
 export async function POST(request: NextRequest) {

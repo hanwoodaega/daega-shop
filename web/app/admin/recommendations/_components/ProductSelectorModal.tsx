@@ -1,6 +1,6 @@
 'use client'
 
-import { formatPrice } from '@/lib/utils'
+import { formatPrice } from '@/lib/utils/utils'
 import type { Product, SelectedProduct } from '../_types'
 
 interface ProductSelectorModalProps {

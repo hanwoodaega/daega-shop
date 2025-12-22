@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Address } from '@/lib/hooks/useAddress'
+import { Address } from '@/lib/address/useAddress'
 
 interface AddressModalProps {
   show: boolean

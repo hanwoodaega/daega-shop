@@ -7,10 +7,10 @@ import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
-import { Product } from '@/lib/supabase'
+import { Product } from '@/lib/supabase/supabase'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
-import { DEFAULT_PAGE_SIZE } from '@/lib/constants'
+import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
 
 export default function BestPage() {
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])

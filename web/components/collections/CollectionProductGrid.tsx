@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Product } from '@/lib/supabase'
+import { Product } from '@/lib/supabase/supabase'
 import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 

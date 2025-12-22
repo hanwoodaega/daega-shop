@@ -1,6 +1,6 @@
 'use client'
 
-import { Coupon } from '@/lib/supabase'
+import { Coupon } from '@/lib/supabase/supabase'
 
 interface CouponTableProps {
   coupons: Coupon[]

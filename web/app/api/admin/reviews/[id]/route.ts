@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { assertAdmin } from '@/lib/admin-auth'
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server'
-import { addPoints } from '@/lib/points'
+import { assertAdmin } from '@/lib/auth/admin-auth'
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { addPoints } from '@/lib/point/points'
 
 // PATCH /api/admin/reviews/:id  { status: 'approved' | 'rejected' }
 export async function PATCH(

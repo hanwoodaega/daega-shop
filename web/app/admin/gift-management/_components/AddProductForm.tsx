@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Product } from '@/lib/supabase'
+import { Product } from '@/lib/supabase/supabase'
 import { TabType, GiftTarget, GIFT_TARGETS, BUDGET_CATEGORIES } from '../_types'
 import toast from 'react-hot-toast'
 import { fetchCategoryBySlug, addProductToCategory } from '../_utils/fetchers'

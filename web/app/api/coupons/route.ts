@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { getUserFromServer } from '@/lib/auth-server'
-import { Coupon, UserCoupon } from '@/lib/supabase'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { getUserFromServer } from '@/lib/auth/auth-server'
+import { Coupon, UserCoupon } from '@/lib/supabase/supabase'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,10 +24,9 @@ function devWarn(...args: any[]) {
  * 쿠폰 만료 여부 체크
  * 이미 발급된 쿠폰은 expires_at만으로 판단 (발급 시점에 정해진 만료일이 진짜 만료일)
  * 쿠폰 정책 변경(is_active 등)과 무관하게 유효해야 함
+ * 사용 완료된 쿠폰도 만료일이 지나면 만료로 간주
  */
 function isCouponExpired(userCoupon: UserCoupon, coupon: Coupon | null): boolean {
-  if (userCoupon.is_used) return false // 사용된 쿠폰은 만료 체크 불필요
-  
   const now = new Date()
   
   // expires_at이 있으면 그것을 사용 (서버에서 계산된 값)
@@ -123,8 +122,10 @@ export async function GET(request: NextRequest) {
         // 사용 가능한 쿠폰만 표시
         if (uc.is_used) return false
         if (isCouponExpired(uc, coupon)) return false
+      } else {
+        // includeUsed=true일 때도 만료된 쿠폰은 제외 (사용 완료된 쿠폰도 만료일 지나면 숨김)
+        if (isCouponExpired(uc, coupon)) return false
       }
-      // includeUsed=true면 모든 쿠폰 표시 (사용됨, 만료됨 포함)
       
       return true
     })

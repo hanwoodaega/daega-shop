@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
-import { useAuth } from '@/lib/auth-context'
-import { PointHistory } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/auth-context'
+import { PointHistory } from '@/lib/supabase/supabase'
 import { useCartStore } from '@/lib/store'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice } from '@/lib/utils/utils'
 
 export default function PointsPage() {
   const router = useRouter()
@@ -50,6 +50,7 @@ export default function PointsPage() {
       if (pointsData?.userPoints) {
         setTotalPoints(pointsData.userPoints.total_points || 0)
       }
+      
       setHistory(historyData?.history || [])
       
       if (pendingData) {

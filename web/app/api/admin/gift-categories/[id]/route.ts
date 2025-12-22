@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
-import { assertAdmin } from '@/lib/admin-auth'
-import { getProductMainImageUrlMap } from '@/lib/product-image-utils'
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
+import { assertAdmin } from '@/lib/auth/admin-auth'
+import { getProductMainImageUrlMap } from '@/lib/product/product-image-utils'
 import { normalizeCategoryProduct } from '@/app/admin/gift-management/_utils/fetchers'
 
 // GET: 선물 카테고리 상세 조회 (상품 목록 포함)

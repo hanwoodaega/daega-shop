@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { createScrollToTopHandler, scrollToTop } from '@/lib/utils'
+import { createScrollToTopHandler, scrollToTop } from '@/lib/utils/utils'
 
 interface ScrollToTopProps {
   threshold?: number

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server'
-import { handleOrderCancellationPoints } from '@/lib/points'
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { handleOrderCancellationPoints } from '@/lib/point/points'
 
 /**
  * 주문 취소 API

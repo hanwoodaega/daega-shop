@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
-import { assertAdmin } from '@/lib/admin-auth'
-import { getProductMainImageUrlMap } from '@/lib/product-image-utils'
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
+import { assertAdmin } from '@/lib/auth/admin-auth'
+import { getProductMainImageUrlMap } from '@/lib/product/product-image-utils'
 
 // GET: 프로모션 상세 조회
 export async function GET(

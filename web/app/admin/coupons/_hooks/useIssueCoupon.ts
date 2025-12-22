@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { Coupon } from '@/lib/supabase'
+import { Coupon } from '@/lib/supabase/supabase'
 import { IssueConditions } from '../_types'
 import { validateIssueConditions } from '../_utils/conditions'
 

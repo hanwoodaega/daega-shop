@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
-import { Product, isSupabaseConfigured } from '@/lib/supabase'
-import { isValidImageUrl } from '@/lib/product-utils'
-import { formatPrice } from '@/lib/utils'
+import { Product, isSupabaseConfigured } from '@/lib/supabase/supabase'
+import { isValidImageUrl } from '@/lib/product/product-utils'
+import { formatPrice } from '@/lib/utils/utils'
 import ProductCardSkeleton from './skeletons/ProductCardSkeleton'
 import { usePromotionModalStore } from '@/lib/store'
-import { useAuth } from '@/lib/auth-context'
-import { addCartItemWithDB } from '@/lib/cart-db'
+import { useAuth } from '@/lib/auth/auth-context'
+import { addCartItemWithDB } from '@/lib/cart/cart-db'
 
 const PRODUCTS_PER_PAGE = 3
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { assertAdmin } from '@/lib/admin-auth'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { assertAdmin } from '@/lib/auth/admin-auth'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 
 // GET /api/admin/reviews?status=pending|approved|rejected&page=&limit=
 export async function GET(request: NextRequest) {

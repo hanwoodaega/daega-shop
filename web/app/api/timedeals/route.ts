@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { getNowUTCISO } from '@/lib/time-utils'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { getNowUTCISO } from '@/lib/utils/time-utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
     })
 
     // 공통 유틸리티 함수로 상품 데이터 보강 (프로모션 정보 포함)
-    const { enrichProductsServer } = await import('@/lib/product-queries-server')
+    const { enrichProductsServer } = await import('@/lib/product/product-queries-server')
     const products = await enrichProductsServer(rawProducts, timedealDiscountMap)
 
     return NextResponse.json({

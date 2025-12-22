@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { enrichProductsServer } from '@/lib/product-queries-server'
-import { PRODUCT_SELECT_FIELDS } from '@/lib/product-queries'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { enrichProductsServer } from '@/lib/product/product-queries-server'
+import { PRODUCT_SELECT_FIELDS } from '@/lib/product/product-queries'
 
 // 동적 라우트로 처리 (cookies 사용)
 export const dynamic = 'force-dynamic'

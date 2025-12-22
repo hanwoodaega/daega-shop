@@ -1,4 +1,4 @@
-import { Product } from '@/lib/supabase'
+import { Product } from '@/lib/supabase/supabase'
 import { TabType } from '../_types'
 import ProductItem from './ProductItem'
 

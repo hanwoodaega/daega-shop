@@ -1,7 +1,7 @@
 'use client'
 
-import { formatPrice } from '@/lib/utils'
-import { SHIPPING } from '@/lib/constants'
+import { formatPrice } from '@/lib/utils/utils'
+import { SHIPPING } from '@/lib/utils/constants'
 import { useMemo } from 'react'
 
 interface FreeShippingProgressProps {

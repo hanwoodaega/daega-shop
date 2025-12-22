@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase-server'
-import { addPoints } from '@/lib/points'
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { addPoints } from '@/lib/point/points'
 
 /**
  * 구매확정 API

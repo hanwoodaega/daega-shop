@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Product, isSupabaseConfigured } from '@/lib/supabase'
+import { Product, isSupabaseConfigured } from '@/lib/supabase/supabase'
 import ProductCard from './ProductCard'
 import ProductCardSkeleton from './skeletons/ProductCardSkeleton'
 

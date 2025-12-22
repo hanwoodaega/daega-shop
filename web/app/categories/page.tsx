@@ -6,8 +6,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import BottomNavbar from '@/components/BottomNavbar'
 import { useSearchUIStore, useCartStore } from '@/lib/store'
-import { CATEGORIES } from '@/lib/constants'
-import { getCategoryPath } from '@/lib/category-utils'
+import { CATEGORIES } from '@/lib/utils/constants'
+import { getCategoryPath } from '@/lib/category/category-utils'
 
 // 카테고리별 SVG 파일 경로 매핑
 const CATEGORY_ICONS: { [key: string]: string } = {

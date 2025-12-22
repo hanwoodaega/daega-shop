@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 
 // 동적 라우트로 처리 (cookies 사용)
 export const dynamic = 'force-dynamic'

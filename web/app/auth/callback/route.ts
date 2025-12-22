@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
 
       if (session?.user) {
         try {
-          const { createSupabaseAdminClient } = await import('@/lib/supabase-server')
+          const { createSupabaseAdminClient } = await import('@/lib/supabase/supabase-server')
           const supabaseAdmin = createSupabaseAdminClient()
           
           await supabaseAdmin
