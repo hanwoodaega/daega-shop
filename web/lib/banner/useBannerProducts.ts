@@ -3,16 +3,7 @@ import toast from 'react-hot-toast'
 import { Product } from '@/lib/supabase/supabase'
 import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
 import { throttle } from '@/lib/utils/utils'
-
-interface Banner {
-  id: string
-  title?: string | null
-  slug?: string | null
-  subtitle_black?: string | null
-  subtitle_red?: string | null
-  description?: string | null
-  image_url?: string | null
-}
+import { Banner } from './banner-types'
 
 interface UseBannerProductsReturn {
   banner: Banner | null

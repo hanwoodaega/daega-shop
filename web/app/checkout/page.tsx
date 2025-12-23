@@ -7,18 +7,20 @@ import { formatPrice, canUseKakaoDeepLink } from '@/lib/utils/utils'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useDaumPostcodeScript } from '@/lib/postcode/useDaumPostcode'
 import { Coupon } from '@/lib/supabase/supabase'
-import { useCheckoutController } from '@/lib/checkout/useCheckoutController'
-import { CheckoutHeader } from '@/components/checkout/CheckoutHeader'
-import { CouponModal } from '@/components/checkout/CouponModal'
-import { GiftStep1Summary } from '@/components/checkout/GiftStep1Summary'
-import { GiftSenderInfo } from '@/components/checkout/GiftSenderInfo'
-import { OrdererInfo } from '@/components/checkout/OrdererInfo'
-import { DeliveryFormQuick } from '@/components/checkout/DeliveryFormQuick'
-import { DeliveryFormRegular } from '@/components/checkout/DeliveryFormRegular'
-import { GiftMessageCard } from '@/components/checkout/GiftMessageCard'
-import { PaymentMethodSelector } from '@/components/checkout/PaymentMethodSelector'
-import { OrderSummaryBox } from '@/components/checkout/OrderSummaryBox'
-import { CheckoutBottomBar } from '@/components/checkout/CheckoutBottomBar'
+import { useCheckoutController } from './_hooks/useCheckoutController'
+import {
+  CheckoutHeader,
+  CouponModal,
+  GiftStep1Summary,
+  GiftSenderInfo,
+  OrdererInfo,
+  DeliveryFormQuick,
+  DeliveryFormRegular,
+  GiftMessageCard,
+  PaymentMethodSelector,
+  OrderSummaryBox,
+  CheckoutBottomBar,
+} from './_components'
 
 function CheckoutPageContent() {
   const router = useRouter()
@@ -221,7 +223,7 @@ function CheckoutPageContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <CheckoutHeader 
+      <CheckoutHeader
         isGiftMode={isGiftMode}
         currentStep={currentStep}
         totalGiftSteps={totalGiftSteps}

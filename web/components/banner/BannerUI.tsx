@@ -70,8 +70,8 @@ export function BannerUI({ banners }: BannerUIProps) {
         )
 
         if (banner.slug) {
-          // slug가 /로 시작하면 절대 경로, 아니면 /banner/ 접두사 추가
-          const href = banner.slug.startsWith('/') ? banner.slug : `/banner/${banner.slug}`
+          // slug가 /로 시작하면 절대 경로, 아니면 /banners/ 접두사 추가
+          const href = banner.slug.startsWith('/') ? banner.slug : `/banners/${banner.slug}`
           return (
             <Link key={banner.id} href={href} className="block">
               {BannerContent}

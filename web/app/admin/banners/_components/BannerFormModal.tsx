@@ -286,7 +286,7 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
               placeholder="예: best, sale, new-arrivals"
               required
             />
-            <p className="text-xs text-gray-500 mt-1">배너 클릭 시 이동할 페이지 경로 (예: best 입력 시 /banner/best로 이동)</p>
+            <p className="text-xs text-gray-500 mt-1">배너 클릭 시 이동할 페이지 경로 (예: best 입력 시 /banners/best로 이동)</p>
           </div>
 
           <div>

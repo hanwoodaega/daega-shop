@@ -322,7 +322,7 @@
 ### `/api/banners/[slug]` (GET)
 - **용도**: 배너 상세 및 상품 목록 조회
 - **조회 테이블**: `banners`, `banner_products`, `products`
-- **사용 위치**: `web/app/banner/[slug]/page.tsx`
+- **사용 위치**: `web/app/banners/[slug]/page.tsx`
 
 ### `/api/hero` (GET)
 - **용도**: 히어로 슬라이더 정보 조회

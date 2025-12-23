@@ -15,7 +15,7 @@ interface TimeDealData {
     end_at?: string | null
   }
   products: Product[]
-  title: string
+  title?: string
 }
 
 interface TimeDealUIProps {
