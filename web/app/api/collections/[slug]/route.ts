@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
-import { enrichProductsServer } from '@/lib/product/product-queries-server'
+import { enrichProductsServer } from '@/lib/product/product.service'
 import { getTimedealDiscountPercentMap } from '@/lib/timedeal/timedeal-utils'
 
 // GET: 컬렉션별 상품 목록 조회 (공개 API)

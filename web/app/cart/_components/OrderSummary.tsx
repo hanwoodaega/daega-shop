@@ -3,8 +3,7 @@
 import { CartItem } from '@/lib/store'
 import { calculateOrderTotal } from '@/lib/order/order-calc'
 import { formatPrice } from '@/lib/utils/utils'
-
-type DeliveryMethod = 'pickup' | 'quick' | 'regular'
+import { DeliveryMethod } from '@/lib/cart'
 
 interface OrderSummaryProps {
   selectedItems: CartItem[]

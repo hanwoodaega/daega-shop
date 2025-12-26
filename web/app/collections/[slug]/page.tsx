@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
-import CollectionContent from './_components/CollectionContent'
+import CollectionPageClient from './CollectionPageClient'
 
 export default function CollectionPage({ params }: { params: { slug: string } }) {
   return (
@@ -28,7 +28,7 @@ export default function CollectionPage({ params }: { params: { slug: string } })
         <BottomNavbar />
       </div>
     }>
-      <CollectionContent slug={params.slug} />
+      <CollectionPageClient slug={params.slug} />
     </Suspense>
   )
 }

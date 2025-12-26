@@ -1,9 +1,15 @@
-import { TimeDealUI } from './TimeDealUI'
+import TimeDealSectionClient from './TimeDealSectionClient'
 
 interface TimeDealSectionProps {
   variant?: 'scroll' | 'grid' // 'scroll': 가로 스크롤 (기본), 'grid': 2열 그리드
 }
 
+/**
+ * Server Component: 타임딜 데이터 fetch 담당
+ * - 서버에서 타임딜 존재 여부 확인
+ * - 초기 HTML에 포함되어 SEO 최적화
+ * - 서버 캐시/ISR 활용 가능
+ */
 export default async function TimeDealSection({ variant = 'scroll' }: TimeDealSectionProps) {
   try {
     // grid 모드일 때는 더 많은 상품을 가져옴
@@ -28,7 +34,9 @@ export default async function TimeDealSection({ variant = 'scroll' }: TimeDealSe
       return null
     }
 
-    return <TimeDealUI data={data} variant={variant} />
+    // Client Component에 초기 데이터 전달
+    // Client Component가 실시간 업데이트 및 종료 감지 담당
+    return <TimeDealSectionClient initialData={data} variant={variant} />
   } catch (error: any) {
     // 빌드 시점 연결 실패는 무시 (정상적인 동작)
     // ECONNREFUSED 에러는 조용히 무시

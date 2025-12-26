@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
-import { enrichProductsServer } from '@/lib/product/product-queries-server'
+import { enrichProductsServer } from '@/lib/product/product.service'
 import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
 
 export async function GET(

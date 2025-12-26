@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
-import { PRODUCT_SELECT_FIELDS } from '@/lib/product/product-queries'
-import { enrichProductsServer } from '@/lib/product/product-queries-server'
+import { PRODUCT_SELECT_FIELDS, enrichProductsServer } from '@/lib/product/product.service'
 
 export async function GET(
   request: Request,

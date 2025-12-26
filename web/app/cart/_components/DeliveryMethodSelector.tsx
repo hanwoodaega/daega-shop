@@ -1,8 +1,7 @@
 'use client'
 
 import { PICKUP_TIME_SLOTS, QUICK_DELIVERY_AREAS, QUICK_DELIVERY_TIME_SLOTS } from '@/lib/utils/constants'
-
-type DeliveryMethod = 'pickup' | 'quick' | 'regular'
+import { DeliveryMethod } from '@/lib/cart'
 
 interface DeliveryMethodSelectorProps {
   deliveryMethod: DeliveryMethod

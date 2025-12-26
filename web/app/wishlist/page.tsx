@@ -9,7 +9,7 @@ import ProductCard from '@/components/ProductCard'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import { supabase, Product } from '@/lib/supabase/supabase'
 import { useWishlistStore, useCartStore } from '@/lib/store'
-import { PRODUCT_SELECT_FIELDS, enrichProducts } from '@/lib/product/product-queries'
+import { enrichProducts, PRODUCT_SELECT_FIELDS } from '@/lib/product/product-client'
 
 export default function WishlistPage() {
   const router = useRouter()

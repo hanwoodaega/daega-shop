@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase, Product, isSupabaseConfigured } from '@/lib/supabase/supabase'
 import { getRecentlyViewed } from '@/lib/recently-viewed/recently-viewed'
-import { enrichProducts } from '@/lib/product/product-queries'
+import { enrichProducts } from '@/lib/product/product-client'
 import ProductCardSkeleton from './skeletons/ProductCardSkeleton'
 import ProductCard from './ProductCard'
 

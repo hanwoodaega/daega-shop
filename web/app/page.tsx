@@ -4,11 +4,11 @@ import BottomNavbar from '@/components/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import CategoryGrid from '@/components/CategoryGrid'
-import CollectionSection from '@/components/collections/CollectionSection'
+import CollectionSectionContainer from './(home)/_components/CollectionSectionContainer'
 import RecommendationSection from '@/components/RecommendationSection'
 import TimeDealSection from '@/components/timedeal/TimeDealSection'
 import HeroSlider from '@/components/HeroSlider'
-import BannerSection from '@/components/banner/BannerSection'
+import BannerSectionContainer from './(home)/_components/BannerSectionContainer'
 
 interface ColorTheme {
   background?: string
@@ -76,12 +76,12 @@ export default async function Home() {
 
         {collections.length > 0 &&
           collections.map((collection) => (
-            <CollectionSection key={collection.id} collection={collection} />
+            <CollectionSectionContainer key={collection.id} collection={collection} />
           ))
         }
 
         <div className="mt-20 mb-20">
-          <BannerSection />
+          <BannerSectionContainer />
         </div>
 
         <RecommendationSection />

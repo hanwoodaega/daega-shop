@@ -1,6 +1,4 @@
-// Banner types
-export * from './banner-types'
-
-// Banner hooks
-export * from './useBannerProducts'
+export * from './banner.types'
+export * from './banner.service'
+export * from './banner.hooks'
 

@@ -20,10 +20,8 @@ export default function MainMenu() {
       <div className="container mx-auto px-3">
         <div className="flex items-center justify-between pt-2 pb-0.5 pl-1.5 pr-1.5">
           {MAIN_MENUS.map((menu) => {
-            // 홈 페이지 체크
-            let isActive = pathname === menu.href
-            
-            const isHanwooMenu = menu.name === '한우대가 NO.9'
+            // 활성 페이지 체크
+            const isActive = pathname === menu.href
             
             return (
               <Link
@@ -32,11 +30,8 @@ export default function MainMenu() {
                 className={`font-normal text-base sm:text-lg md:text-xl transition relative group pb-1 whitespace-nowrap ${
                   isActive 
                     ? 'text-red-600' 
-                    : isHanwooMenu
-                    ? 'hover:opacity-90'
                     : 'text-black hover:text-primary-800'
                 }`}
-                style={isHanwooMenu && !isActive ? { color: '#4a2c1a' } : undefined}
               >
                 <span>{menu.name}</span>
                 <span className={`absolute bottom-0 h-0.5 transition-all ${

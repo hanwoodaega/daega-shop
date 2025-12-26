@@ -3,7 +3,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import BottomNavbar from '@/components/BottomNavbar'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
-import TimeDealContent from './_components/TimeDealContent'
+import TimeDealPageClient from './TimeDealPageClient'
 
 export default function TimeDealPage() {
   return (
@@ -21,7 +21,7 @@ export default function TimeDealPage() {
         <BottomNavbar />
       </div>
     }>
-      <TimeDealContent />
+      <TimeDealPageClient />
     </Suspense>
   )
 }

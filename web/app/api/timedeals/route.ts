@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
     })
 
     // 공통 유틸리티 함수로 상품 데이터 보강 (프로모션 정보 포함)
-    const { enrichProductsServer } = await import('@/lib/product/product-queries-server')
+    const { enrichProductsServer } = await import('@/lib/product/product.service')
     const products = await enrichProductsServer(rawProducts, timedealDiscountMap)
 
     return NextResponse.json({
