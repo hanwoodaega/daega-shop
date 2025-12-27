@@ -51,10 +51,15 @@ export interface FetchBannersResponse {
 }
 
 export async function fetchBanners(): Promise<FetchBannersResponse> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  // 클라이언트 사이드에서는 상대 경로 사용 (CORS 방지)
+  // 서버 사이드에서는 절대 URL 사용 가능하지만, 클라이언트에서 호출될 수 있으므로 상대 경로 사용
+  const isServer = typeof window === 'undefined'
+  const url = isServer 
+    ? `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/banners`
+    : '/api/banners'
   
-  const res = await fetch(`${siteUrl}/api/banners`, {
-    next: { tags: ['banner'] },
+  const res = await fetch(url, {
+    ...(isServer ? { next: { tags: ['banner'] } } : { cache: 'no-store' }),
   })
   
   if (!res.ok) {

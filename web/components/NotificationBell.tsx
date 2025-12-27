@@ -18,15 +18,21 @@ export default function NotificationBell() {
 
     try {
       const res = await fetch('/api/notifications/unread-count')
+      
+      if (!res.ok) {
+        // 서버 에러는 조용히 처리 (4xx, 5xx 등)
+        return
+      }
+      
       const data = await res.json()
       
-      if (res.ok && typeof data.count === 'number') {
+      if (typeof data.count === 'number') {
         setUnreadCount(data.count)
       }
     } catch (error) {
-      console.error('알림 개수 조회 실패:', error)
-      // 오류 발생 시 0으로 설정하여 UI가 깨지지 않도록
-      setUnreadCount(0)
+      // 네트워크 에러 (연결 실패 등)는 조용히 처리
+      // 서버가 시작 중이거나 일시적으로 연결할 수 없는 상황은 정상적인 동작
+      // UI는 기존 값을 유지하거나 0으로 설정하지 않음
     }
   }
 

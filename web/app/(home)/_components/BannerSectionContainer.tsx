@@ -1,15 +1,4 @@
-'use client'
-
-import { useBanners } from '@/lib/banner'
-import BannerSectionUI from '@/components/banner/BannerSectionUI'
-
-export default function BannerSectionContainer() {
-  const { banners, loading } = useBanners()
-
-  if (loading) {
-    return null
-  }
-
-  return <BannerSectionUI banners={banners} />
-}
+// 이 파일은 더 이상 사용되지 않습니다.
+// components/banner/BannerSection.tsx를 사용하세요.
+export { default } from '@/components/banner/BannerSection'
 

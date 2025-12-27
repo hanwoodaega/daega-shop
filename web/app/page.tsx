@@ -8,7 +8,7 @@ import CollectionSectionContainer from './(home)/_components/CollectionSectionCo
 import RecommendationSection from '@/components/RecommendationSection'
 import TimeDealSection from '@/components/timedeal/TimeDealSection'
 import HeroSlider from '@/components/HeroSlider'
-import BannerSectionContainer from './(home)/_components/BannerSectionContainer'
+import BannerSection from '@/components/banner/BannerSection'
 
 interface ColorTheme {
   background?: string
@@ -81,7 +81,7 @@ export default async function Home() {
         }
 
         <div className="mt-20 mb-20">
-          <BannerSectionContainer />
+          <BannerSection />
         </div>
 
         <RecommendationSection />
