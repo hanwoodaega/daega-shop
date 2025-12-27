@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { AuthProvider } from '@/lib/auth/auth-context'
+import { useTimeDealPolling } from '@/lib/timedeal'
 
 export default function ClientLayout({
   children,
@@ -10,6 +11,9 @@ export default function ClientLayout({
 }) {
   const pathname = usePathname()
   const isAdminPage = pathname?.startsWith('/admin')
+  
+  // 타임딜 폴링 시작 (전역 단일 인스턴스)
+  useTimeDealPolling()
   
   if (isAdminPage) {
     return (

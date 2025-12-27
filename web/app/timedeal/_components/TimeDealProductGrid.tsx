@@ -16,14 +16,16 @@ export default function TimeDealProductGrid({ data }: TimeDealProductGridProps) 
 
   // TimeDealUI가 내부에서 products length 0이면 null 반환
   return (
-    <div className="container mx-auto px-4 py-4">
+    <>
       {data ? (
         <TimeDealUI data={data} variant="grid" />
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
-          {[...Array(8)].map((_, i) => (
-            <ProductCardSkeleton key={i} />
-          ))}
+        <div className="px-4 py-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
+            {[...Array(8)].map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </div>
         </div>
       )}
 
@@ -38,7 +40,7 @@ export default function TimeDealProductGrid({ data }: TimeDealProductGridProps) 
           </button>
         </Link>
       </div>
-    </div>
+    </>
   )
 }
 

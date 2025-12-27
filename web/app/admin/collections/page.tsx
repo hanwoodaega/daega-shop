@@ -45,7 +45,7 @@ async function getProducts(): Promise<Product[]> {
     }
 
     return data || []
-    } catch (error) {
+  } catch (error) {
     console.error('상품 조회 실패:', error)
     return []
   }
@@ -92,7 +92,7 @@ export default async function CollectionsPage() {
   // 서버 사이드 인증 체크
   try {
     assertAdmin()
-    } catch (error) {
+  } catch (error) {
     redirect('/admin/login?next=/admin/collections')
   }
 

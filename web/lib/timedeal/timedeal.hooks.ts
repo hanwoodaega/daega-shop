@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { fetchTimeDeal } from './timedeal.service'
 import { TimeDealData, TimeDealInfoForProducts } from './timedeal.types'
+import { useTimeDealStore } from './timedeal.store'
 
 interface UseTimeDealReturn {
   timedealData: TimeDealData | null
@@ -53,52 +54,31 @@ export function useTimeDeal(): UseTimeDealReturn {
 }
 
 export function useTimeDealInfo(filter: string | null): TimeDealInfoForProducts {
-  const [title, setTitle] = useState('오늘만 특가!')
-  const [description, setDescription] = useState<string | null>(null)
-  const [endTime, setEndTime] = useState<string | null>(null)
+  // store에서 타임딜 데이터 구독 (폴링 제거)
+  const timedealData = useTimeDealStore((state) => state.timedealData)
 
-  useEffect(() => {
-    if (filter !== 'flash-sale') {
-      setTitle('오늘만 특가!')
-      setDescription(null)
-      setEndTime(null)
-      return
+  if (filter !== 'flash-sale') {
+    return {
+      title: '오늘만 특가!',
+      description: null,
+      endTime: null,
     }
+  }
 
-    const fetchTimeDealInfo = async () => {
-      try {
-        const response = await fetch('/api/timedeals?limit=1')
-        if (response.ok) {
-          const data = await response.json()
-          if (data.timedeal) {
-            setTitle(data.timedeal.title || data.title || '오늘만 특가!')
-            setDescription(data.timedeal.description || null)
-            setEndTime(data.timedeal.end_at || null)
-          } else {
-            setTitle(data.title || '오늘만 특가!')
-            setDescription(null)
-            setEndTime(null)
-          }
-        }
-      } catch (error) {
-        console.error('타임딜 정보 조회 실패:', error)
-        setTitle('오늘만 특가!')
-        setDescription(null)
-        setEndTime(null)
-      }
+  // store의 타임딜 데이터를 사용
+  if (timedealData?.timedeal) {
+    return {
+      title: timedealData.timedeal.title || timedealData.title || '오늘만 특가!',
+      description: timedealData.timedeal.description || null,
+      endTime: timedealData.timedeal.end_at || null,
     }
+  }
 
-    fetchTimeDealInfo()
-    
-    // 1분마다 갱신
-    const interval = setInterval(fetchTimeDealInfo, 60000)
-    return () => clearInterval(interval)
-  }, [filter])
-
+  // 타임딜이 없으면 기본값
   return {
-    title,
-    description,
-    endTime,
+    title: '오늘만 특가!',
+    description: null,
+    endTime: null,
   }
 }
 

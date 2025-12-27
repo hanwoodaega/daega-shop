@@ -4,6 +4,7 @@ import { Product } from '@/lib/supabase/supabase'
 import { throttle } from '@/lib/utils/utils'
 import { Collection } from './collection.types'
 import { fetchCollection, fetchCollectionSection } from './collection.service'
+import { useTimeDealStore } from '@/lib/timedeal/timedeal.store'
 
 interface UseCollectionProductsReturn {
   collection: Collection | null
@@ -202,7 +203,7 @@ export function useCollectionProducts(slug: string): UseCollectionProductsReturn
   }
 }
 
-// 홈페이지용: 컬렉션 섹션 훅 (polling 포함)
+// 홈페이지용: 컬렉션 섹션 훅
 interface UseCollectionSectionReturn {
   products: Product[]
   loading: boolean
@@ -211,6 +212,9 @@ interface UseCollectionSectionReturn {
 export function useCollectionSection(collectionType: string): UseCollectionSectionReturn {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+
+  // 타임딜인 경우 store에서 데이터 구독 (폴링 제거)
+  const timedealData = useTimeDealStore((state) => state.timedealData)
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -228,14 +232,21 @@ export function useCollectionSection(collectionType: string): UseCollectionSecti
   }, [collectionType])
 
   useEffect(() => {
-    fetchProducts()
-    
-    // 타임딜은 1분마다 갱신
+    // 타임딜인 경우 store에서 데이터를 사용
     if (collectionType === 'timedeal') {
-      const interval = setInterval(fetchProducts, 60000)
-      return () => clearInterval(interval)
+      if (timedealData?.products) {
+        setProducts(timedealData.products)
+        setLoading(false)
+      } else {
+        setProducts([])
+        setLoading(false)
+      }
+      return
     }
-  }, [collectionType, fetchProducts])
+
+    // 타임딜이 아닌 경우 기존 로직 유지
+    fetchProducts()
+  }, [collectionType, fetchProducts, timedealData])
 
   return {
     products,

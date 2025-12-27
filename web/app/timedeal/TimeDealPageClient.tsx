@@ -7,12 +7,14 @@ import BottomNavbar from '@/components/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/PromotionModalWrapper'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
-import { useTimeDeal } from '@/lib/timedeal'
+import { useTimeDealStore } from '@/lib/timedeal/timedeal.store'
 import TimeDealHeader from './_components/TimeDealHeader'
 import TimeDealProductGrid from './_components/TimeDealProductGrid'
 
 export default function TimeDealPageClient() {
-  const { timedealData, loading } = useTimeDeal()
+  // store에서 타임딜 데이터 구독 (폴링은 전역에서 처리)
+  const timedealData = useTimeDealStore((state) => state.timedealData)
+  const loading = useTimeDealStore((state) => state.isLoading)
 
   if (loading) {
     return (

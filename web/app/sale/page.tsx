@@ -12,6 +12,7 @@ import ProductCard from '@/components/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import { Product } from '@/lib/supabase/supabase'
 import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
+import { useTimeDealStore } from '@/lib/timedeal/timedeal.store'
 
 export default function SalePage() {
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])
@@ -21,7 +22,9 @@ export default function SalePage() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const isFetchingRef = useRef(false)
-  const [timedealData, setTimedealData] = useState<any>(null)
+  
+  // 타임딜 데이터는 store에서 구독 (폴링 제거)
+  const timedealData = useTimeDealStore((state) => state.timedealData)
 
   const fetchCategoryProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
     if (isFetchingRef.current) return
@@ -111,34 +114,6 @@ export default function SalePage() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [loadingMore, hasMore])
-
-  // 타임딜 데이터 가져오기
-  useEffect(() => {
-    const fetchTimedeal = async () => {
-      try {
-        const response = await fetch('/api/timedeals?limit=100')
-        if (response.ok) {
-          const data = await response.json()
-          if (data.timedeal && data.products && data.products.length > 0) {
-            setTimedealData(data)
-          } else {
-            setTimedealData(null)
-          }
-        } else {
-          setTimedealData(null)
-        }
-      } catch (error) {
-        console.error('타임딜 확인 실패:', error)
-        setTimedealData(null)
-      }
-    }
-
-    fetchTimedeal()
-    
-    // 1분마다 갱신
-    const interval = setInterval(fetchTimedeal, 60000)
-    return () => clearInterval(interval)
-  }, [])
 
   return (
     <div className="min-h-screen flex flex-col">
