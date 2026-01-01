@@ -79,6 +79,7 @@ export default function BottomNavbar() {
             {/* 홈 */}
             <Link
               href="/"
+              prefetch={false}
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
                 pathname === '/' ? 'text-red-600' : 'text-black'
               }`}
@@ -92,6 +93,7 @@ export default function BottomNavbar() {
             {/* 검색 (카테고리 + 검색 통합) */}
             <Link
               href="/categories"
+              prefetch={false}
               className={`flex flex-col items-center justify-center flex-1 py-2 relative ${
                 pathname === '/categories' ? 'text-red-600' : 'text-black'
               }`}
@@ -118,6 +120,7 @@ export default function BottomNavbar() {
             {/* 선물 */}
             <Link
               href="/gift"
+              prefetch={false}
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
                 pathname?.startsWith('/gift') ? 'text-red-600' : 'text-black'
               }`}
@@ -131,6 +134,7 @@ export default function BottomNavbar() {
             {/* 찜 */}
             <Link
               href="/wishlist"
+              prefetch={false}
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
                 pathname === '/wishlist' ? 'text-red-600' : 'text-black'
               }`}
@@ -144,6 +148,7 @@ export default function BottomNavbar() {
             {/* 마이 */}
             <Link
               href="/profile"
+              prefetch={false}
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
                 pathname?.startsWith('/auth') || pathname?.startsWith('/profile') ? 'text-red-600' : 'text-black'
               }`}

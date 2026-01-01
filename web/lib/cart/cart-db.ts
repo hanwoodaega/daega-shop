@@ -135,6 +135,7 @@ export async function syncCartOnLogin(userId: string): Promise<void> {
   try {
     const localItems = useCartStore.getState().items
     const dbItems = await loadCartFromDB(userId)
+    let hasAddedItems = false
 
     // localStorage에만 있는 항목들을 DB에 추가
     for (const item of localItems) {
@@ -146,12 +147,19 @@ export async function syncCartOnLogin(userId: string): Promise<void> {
 
       if (!existsInDB) {
         await addToCartDB(userId, item)
+        hasAddedItems = true
       }
     }
 
-    // DB의 최신 데이터로 전체 동기화 (가격, 재고 등 최신 정보 반영)
-    const updatedItems = await loadCartFromDB(userId)
-    useCartStore.setState({ items: updatedItems })
+    // 항목이 추가되었을 때만 DB에서 다시 가져오기 (가격, 재고 등 최신 정보 반영)
+    // 항목이 추가되지 않았다면 첫 번째 호출 결과를 그대로 사용
+    if (hasAddedItems) {
+      const updatedItems = await loadCartFromDB(userId)
+      useCartStore.setState({ items: updatedItems })
+    } else {
+      // 추가되지 않았으면 첫 번째 호출 결과 사용
+      useCartStore.setState({ items: dbItems })
+    }
   } catch (error) {
     console.error('장바구니 동기화 실패:', error)
     // 동기화 실패해도 기존 localStorage 데이터는 유지
