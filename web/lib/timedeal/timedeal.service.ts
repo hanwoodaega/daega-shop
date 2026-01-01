@@ -6,7 +6,7 @@ export interface FetchTimeDealParams {
 }
 
 export async function fetchTimeDeal({
-  limit = 100,
+  limit = 30,
   signal,
 }: FetchTimeDealParams = {}): Promise<TimeDealData | null> {
   const res = await fetch(`/api/timedeals?limit=${limit}`, {

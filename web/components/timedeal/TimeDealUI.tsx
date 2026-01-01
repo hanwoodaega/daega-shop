@@ -116,7 +116,7 @@ export function TimeDealUI({ data, variant = 'scroll' }: TimeDealUIProps) {
             
             {/* 전체보기 버튼 */}
             <div className="mt-0 px-4 pb-4 bg-white">
-              <Link href="/timedeal" className="block">
+              <Link href="/timedeal" prefetch={false} className="block">
                 <button className="w-full px-2 py-2.5 rounded-lg font-semibold hover:opacity-90 transition flex items-center justify-center gap-2" style={{ backgroundColor: '#FFFFFF', color: '#000000', border: '1px solid #CCCCCC' }}>
                   <span>전체보기</span>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

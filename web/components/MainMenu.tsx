@@ -27,6 +27,7 @@ export default function MainMenu() {
               <Link
                 key={menu.name}
                 href={menu.href}
+                prefetch={false}
                 className={`font-normal text-base sm:text-lg md:text-xl transition relative group pb-1 whitespace-nowrap ${
                   isActive 
                     ? 'text-red-600' 

@@ -13,7 +13,7 @@ interface TimeDealSectionProps {
 export default async function TimeDealSection({ variant = 'scroll' }: TimeDealSectionProps) {
   try {
     // grid 모드일 때는 더 많은 상품을 가져옴
-    const limit = variant === 'grid' ? 100 : 5
+    const limit = variant === 'grid' ? 30 : 5
     
     // 서버 컴포넌트에서는 절대 URL 사용 권장 (Vercel, Edge, SSR 환경 대응)
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'

@@ -165,7 +165,7 @@ function ProductCard({ product }: ProductCardProps) {
   }, [product.id, userId, isWished])
 
   return (
-    <Link href={`/product/${product.slug || product.id}`}>
+    <Link href={`/product/${product.slug || product.id}`} prefetch={false}>
       <div className="bg-white transition">
         <div className="relative aspect-square bg-gray-200 overflow-hidden rounded-md">
           {/* 프로모션 배지 */}

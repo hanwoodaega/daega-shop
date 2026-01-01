@@ -161,6 +161,7 @@ export default function CategoriesPage() {
               <Link
                 key={category}
                 href={getCategoryPath(category)}
+                prefetch={false}
                 className="px-4 h-16 bg-white rounded-lg hover:bg-gray-50 transition shadow-sm flex items-center gap-3"
               >
                 {CATEGORY_ICONS[category] && (

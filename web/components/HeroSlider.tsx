@@ -99,6 +99,7 @@ export default function HeroSlider() {
               <Link
                 key={slide.id}
                 href={slide.link_url}
+                prefetch={false}
                 className="block absolute inset-0"
               >
                 {slideContent}

@@ -28,6 +28,7 @@ export default function CategoryGrid({ selectedCategory = '전체' }: CategoryGr
         <Link
           key={cat}
           href={getCategoryPath(cat)}
+          prefetch={false}
           className="flex flex-col items-center"
         >
           <div

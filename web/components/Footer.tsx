@@ -74,6 +74,7 @@ export default function Footer() {
                 <div key={link.href} className="flex items-center gap-2">
                   <Link 
                     href={link.href}
+                    prefetch={false}
                     className={`font-bold transition ${
                       pathname === link.href ? 'text-red-400' : 'text-gray-400 hover:text-gray-300'
                     }`}

@@ -52,7 +52,7 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
         <div className="relative z-10 container mx-auto pl-2 pr-4">
           <div className="flex items-center justify-start h-16 gap-4">
             {/* 로고 */}
-            <Link href="/" className="flex-shrink-0 z-20 flex items-center" aria-label="홈으로 이동">
+            <Link href="/" prefetch={false} className="flex-shrink-0 z-20 flex items-center" aria-label="홈으로 이동">
               <Image
                 src="/images/logo.png"
                 alt="대가정육마트 로고"
@@ -147,7 +147,7 @@ export default function Header({ hideMainMenu = false, showCartButton = false, s
         <div className={`relative ${sticky ? 'sticky top-0 z-50' : ''} bg-white border-b border-gray-200`}>
           <div className="relative z-10 container mx-auto pl-2 pr-4">
             <div className="flex items-center h-16 gap-4">
-              <Link href="/" className="flex-shrink-0 z-20" aria-label="홈으로 이동">
+              <Link href="/" prefetch={false} className="flex-shrink-0 z-20" aria-label="홈으로 이동">
                 <Image
                   src="/images/logo.png"
                   alt="대가정육마트 로고"

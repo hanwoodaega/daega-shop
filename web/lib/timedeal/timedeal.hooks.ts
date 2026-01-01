@@ -23,7 +23,7 @@ export function useTimeDeal(): UseTimeDealReturn {
 
     try {
       setLoading(true)
-      const data = await fetchTimeDeal({ limit: 100, signal: controller.signal })
+      const data = await fetchTimeDeal({ limit: 30, signal: controller.signal })
       setTimedealData(data)
     } catch (error) {
       if ((error as any)?.name !== 'AbortError') {

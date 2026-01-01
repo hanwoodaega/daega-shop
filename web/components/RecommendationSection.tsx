@@ -276,6 +276,7 @@ export default function RecommendationSection() {
               >
                 <Link
                   href={`/product/${product.slug || product.id}`}
+                  prefetch={false}
                   className="flex gap-4 p-3 transition hover:opacity-90"
                 >
                   <div className="relative w-24 h-24 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden">
