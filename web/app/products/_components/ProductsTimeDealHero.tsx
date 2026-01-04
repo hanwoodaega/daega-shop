@@ -32,7 +32,7 @@ export default function ProductsTimeDealHero({ title, description, endTime }: Pr
                     color: '#FFFFFF',
                     fontFamily: 'Pretendard, sans-serif',
                     fontWeight: 800,
-                    letterSpacing: '-0.5px',
+                    letterSpacing: '1.5px',
                     textShadow: '2px 2px 0px #000000, -2px -2px 0px #000000, 2px -2px 0px #000000, -2px 2px 0px #000000, 0px 2px 0px #000000, 2px 0px 0px #000000, 0px -2px 0px #000000, -2px 0px 0px #000000'
                   }}
                 >

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Product } from '@/lib/supabase/supabase'
 import TimeDealCountdown from './TimeDealCountdown'
-import ProductCard from '../ProductCard'
+import ProductCard from '@/components/product/ProductCard'
 
 interface TimeDealData {
   timedeal: {
@@ -58,7 +58,7 @@ export function TimeDealUI({ data, variant = 'scroll' }: TimeDealUIProps) {
                     color: '#FFFFFF',
                     fontFamily: 'Pretendard, sans-serif',
                     fontWeight: 800,
-                    letterSpacing: '-0.5px',
+                    letterSpacing: '1.5px',
                     textShadow: '2px 2px 0px #000000, -2px -2px 0px #000000, 2px -2px 0px #000000, -2px 2px 0px #000000, 0px 2px 0px #000000, 2px 0px 0px #000000, 0px -2px 0px #000000, -2px 0px 0px #000000'
                   }}
                 >

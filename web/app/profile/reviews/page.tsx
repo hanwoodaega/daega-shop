@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Footer from '@/components/Footer'
-import BottomNavbar from '@/components/BottomNavbar'
+import Footer from '@/components/layout/Footer'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 import ReviewWriteModal from '@/components/review/ReviewWriteModal'
 import ReviewStars from '@/components/review/ReviewStars'
 import { useAuth } from '@/lib/auth/auth-context'

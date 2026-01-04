@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/supabase'
-import BottomNavbar from '@/components/BottomNavbar'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useCartStore } from '@/lib/store'
 
 function LoginForm() {

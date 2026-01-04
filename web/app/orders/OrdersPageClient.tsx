@@ -2,8 +2,8 @@
 
 import { Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Footer from '@/components/Footer'
-import BottomNavbar from '@/components/BottomNavbar'
+import Footer from '@/components/layout/Footer'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useOrders } from '@/lib/order'
 import OrderHeader from './_components/OrderHeader'

@@ -1,8 +1,8 @@
 import { Suspense } from 'react'
 import ProductsPageClient from './ProductsPageClient'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
-import Footer from '@/components/Footer'
-import BottomNavbar from '@/components/BottomNavbar'
+import Footer from '@/components/layout/Footer'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 
 export default function ProductsPage() {
   return (

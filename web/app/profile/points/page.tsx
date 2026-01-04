@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Footer from '@/components/Footer'
-import BottomNavbar from '@/components/BottomNavbar'
+import Footer from '@/components/layout/Footer'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useAuth } from '@/lib/auth/auth-context'
 import { PointHistory } from '@/lib/supabase/supabase'
 import { useCartStore } from '@/lib/store'

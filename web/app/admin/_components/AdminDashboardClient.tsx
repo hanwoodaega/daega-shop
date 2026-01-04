@@ -31,6 +31,12 @@ const managementCards: AdminCard[] = [
     accent: 'bg-orange-100 text-orange-700',
   },
   {
+    title: '라이브 추첨 관리',
+    description: '매달 말 유튜브 생방송 추첨을 설정하고 관리하세요.',
+    href: '/admin/live-draw',
+    accent: 'bg-red-100 text-red-700',
+  },
+  {
     title: '주문 관리',
     description: '주문 상태 변경, 리뷰 모니터링, 고객 응대까지 한번에.',
     href: '/admin/orders',

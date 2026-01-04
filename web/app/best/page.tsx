@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
-import BottomNavbar from '@/components/BottomNavbar'
+import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
-import PromotionModalWrapper from '@/components/PromotionModalWrapper'
+import PromotionModalWrapper from '@/components/common/PromotionModalWrapper'
 import { Product } from '@/lib/supabase/supabase'
-import ProductCard from '@/components/ProductCard'
+import ProductCard from '@/components/product/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
 

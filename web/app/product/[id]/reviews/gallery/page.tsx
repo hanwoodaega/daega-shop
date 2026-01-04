@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
-import BottomNavbar from '@/components/BottomNavbar'
+import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 import { handleApiError } from '@/lib/utils/error-handler'
 
 export default function ReviewGalleryPage() {

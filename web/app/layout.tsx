@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import ClientLayout from '@/components/ClientLayout'
+import ClientLayout from '@/components/layout/ClientLayout'
 import { Toaster } from 'react-hot-toast'
 
 export const metadata: Metadata = {

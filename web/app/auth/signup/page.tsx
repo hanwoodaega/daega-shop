@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Footer from '@/components/Footer'
+import Footer from '@/components/layout/Footer'
 import { supabase } from '@/lib/supabase/supabase'
 
 export default function SignupPage() {

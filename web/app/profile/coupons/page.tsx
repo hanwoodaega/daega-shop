@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Footer from '@/components/Footer'
-import BottomNavbar from '@/components/BottomNavbar'
+import Footer from '@/components/layout/Footer'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useAuth } from '@/lib/auth/auth-context'
 import { getUserCoupons, isCouponValid, getCouponValidityPeriod } from '@/lib/coupon/coupons'
 import { UserCoupon, Coupon } from '@/lib/supabase/supabase'

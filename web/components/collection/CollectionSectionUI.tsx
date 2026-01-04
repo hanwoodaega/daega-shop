@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Product } from '@/lib/supabase/supabase'
-import ProductCard from '@/components/ProductCard'
+import ProductCard from '@/components/product/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import { Collection } from '@/lib/collection'
 

@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
-import Footer from '@/components/Footer'
-import BottomNavbar from '@/components/BottomNavbar'
+import Footer from '@/components/layout/Footer'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import CollectionPageClient from './CollectionPageClient'
 

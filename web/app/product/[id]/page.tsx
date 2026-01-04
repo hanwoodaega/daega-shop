@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import Footer from '@/components/Footer'
+import Footer from '@/components/layout/Footer'
 import ProductDetailPageClient from './ProductDetailPageClient'
 
 interface ProductDetailPageProps {

@@ -1,7 +1,7 @@
 'use client'
 
 import { Product } from '@/lib/supabase/supabase'
-import ProductCard from '@/components/ProductCard'
+import ProductCard from '@/components/product/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 
 interface ProductsGridProps {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import BottomNavbar from '@/components/BottomNavbar'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useCartStore } from '@/lib/store'
 

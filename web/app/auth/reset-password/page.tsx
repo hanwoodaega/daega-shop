@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/supabase'
-import BottomNavbar from '@/components/BottomNavbar'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 
 export default function ResetPasswordPage() {
   const router = useRouter()

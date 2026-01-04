@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import Footer from '@/components/Footer'
-import BottomNavbar from '@/components/BottomNavbar'
+import Footer from '@/components/layout/Footer'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
-import PromotionModalWrapper from '@/components/PromotionModalWrapper'
+import PromotionModalWrapper from '@/components/common/PromotionModalWrapper'
 import { useCollectionProducts } from '@/lib/collection'
 import CollectionHeader from './_components/CollectionHeader'
 import CollectionDescription from './_components/CollectionDescription'

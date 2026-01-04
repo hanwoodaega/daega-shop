@@ -1,7 +1,7 @@
 'use client'
 
-import Header from '@/components/Header'
-import BottomNavbar from '@/components/BottomNavbar'
+import Header from '@/components/layout/Header'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 
 export default function ReviewEventPage() {
   return (

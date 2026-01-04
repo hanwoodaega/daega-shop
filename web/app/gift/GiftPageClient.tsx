@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import Footer from '@/components/Footer'
-import BottomNavbar from '@/components/BottomNavbar'
+import Footer from '@/components/layout/Footer'
+import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useGift } from '@/lib/gift'
 import {
   GiftHeader,
