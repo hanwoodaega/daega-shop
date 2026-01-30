@@ -2,8 +2,9 @@
 
 import { Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Script from 'next/script'
 import toast from 'react-hot-toast'
-import { formatPrice, canUseKakaoDeepLink } from '@/lib/utils/utils'
+import { formatPrice } from '@/lib/utils/utils'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useDaumPostcodeScript } from '@/lib/postcode/useDaumPostcode'
 import { Coupon } from '@/lib/supabase/supabase'
@@ -31,13 +32,7 @@ function CheckoutPageContent() {
 
   useEffect(() => {
     if (!isGiftMode) return
-    if (canUseKakaoDeepLink()) return
-
-    toast.error('카카오톡 앱이 설치된 모바일 환경에서만 선물하기를 이용할 수 있어요.', {
-      icon: '📱',
-    })
-    router.replace('/cart')
-  }, [isGiftMode, router])
+  }, [isGiftMode])
   
   const { state, actions, derived } = useCheckout({ isGiftMode })
   
@@ -72,9 +67,9 @@ function CheckoutPageContent() {
     setUsedPoints,
     setUsedPointsInput,
     setPaymentMethod,
-    setSelectedCardId,
     setGiftData,
     setCurrentStep,
+    setSelectedCardId,
     handleSubmit,
     handleNextStep,
     handleSearchAddress,
@@ -189,13 +184,18 @@ function CheckoutPageContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <Script src="https://js.tosspayments.com/v1" strategy="afterInteractive" />
       <CheckoutHeader
         isGiftMode={isGiftMode}
         currentStep={currentStep}
         totalGiftSteps={totalGiftSteps}
       />
       
-      <main className={`flex-1 container mx-auto px-4 py-4 ${isGiftMode ? 'bg-gray-50' : ''}`}>
+      <main
+        className={`flex-1 container mx-auto px-4 py-4 ${
+          isGiftMode ? 'bg-gray-50' : ''
+        } ${isGiftMode && currentStep === 1 ? 'pb-24 md:pb-32' : ''}`}
+      >
         <form id="checkout-form" onSubmit={handleSubmit}>
           <div className={`grid grid-cols-1 ${gridColumnsClass} ${isGiftFinalStep ? 'gap-4' : 'gap-8'}`}>
             <div className={`space-y-3 ${isGiftFinalStep ? 'lg:col-span-2' : 'lg:col-span-1'}`}>

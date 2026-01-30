@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { Product, isSupabaseConfigured } from '@/lib/supabase/supabase'
 import { isValidImageUrl } from '@/lib/product/product-utils'
 import { formatPrice } from '@/lib/utils/utils'
+import { getFinalPricing } from '@/lib/product/product.pricing'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import { usePromotionModalStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -157,10 +158,6 @@ export default function RecommendationSection() {
     )
   }
 
-  if (products.length === 0) {
-    return null
-  }
-
   return (
       <section className="pt-8 overflow-x-hidden" style={{ backgroundColor: '#FAF7F2' }}>
         <div className="container mx-auto px-5">
@@ -215,51 +212,48 @@ export default function RecommendationSection() {
         </div>
 
         <div className="bg-white pt-2 pb-4 -mx-2 px-2 relative z-10">
-          <div 
-            className="space-y-4 px-2 bg-white overflow-hidden"
-            onTouchStart={(e) => setTouchStart(e.targetTouches[0].clientX)}
-            onTouchMove={(e) => setTouchEnd(e.targetTouches[0].clientX)}
-            onTouchEnd={() => {
-              if (!touchStart || !touchEnd) return
-              const distance = touchStart - touchEnd
-              const isLeftSwipe = distance > 50
-              const isRightSwipe = distance < -50
+          {products.length === 0 ? (
+            <div className="px-4 py-10 text-center text-sm text-gray-500">
+              해당 카테고리에 상품이 없습니다.
+            </div>
+          ) : (
+            <>
+              <div 
+                className="space-y-4 px-2 bg-white overflow-hidden"
+                onTouchStart={(e) => setTouchStart(e.targetTouches[0].clientX)}
+                onTouchMove={(e) => setTouchEnd(e.targetTouches[0].clientX)}
+                onTouchEnd={() => {
+                  if (!touchStart || !touchEnd) return
+                  const distance = touchStart - touchEnd
+                  const isLeftSwipe = distance > 50
+                  const isRightSwipe = distance < -50
 
-              if (isLeftSwipe && currentPage < totalPages - 1) {
-                setCurrentPage(currentPage + 1)
-              }
-              if (isRightSwipe && currentPage > 0) {
-                setCurrentPage(currentPage - 1)
-              }
+                  if (isLeftSwipe && currentPage < totalPages - 1) {
+                    setCurrentPage(currentPage + 1)
+                  }
+                  if (isRightSwipe && currentPage > 0) {
+                    setCurrentPage(currentPage - 1)
+                  }
 
-              setTouchStart(null)
-              setTouchEnd(null)
-            }}
-          >
-          {currentProducts.map((product) => {
+                  setTouchStart(null)
+                  setTouchEnd(null)
+                }}
+              >
+                {currentProducts.map((product) => {
             const hasValidImage = isValidImageUrl(product.image_url)
             const shouldRenderImage = hasValidImage && !product.image_url?.includes('via.placeholder.com')
 
-            // 타임딜 할인율 (우선순위 높음)
             const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
+            const pricing = getFinalPricing({
+              basePrice: product.price,
+              timedealDiscountPercent,
+              promotion: product.promotion,
+              weightGram: product.weight_gram,
+            })
 
-            // 프로모션 할인율 (percent 타입)
-            const promotionDiscountPercent = product.promotion?.type === 'percent' && product.promotion.discount_percent
-              ? product.promotion.discount_percent
-              : 0
-
-            // 최종 할인율 (타임딜 우선, 없으면 프로모션)
-            const finalDiscountPercent = timedealDiscountPercent > 0 ? timedealDiscountPercent : promotionDiscountPercent
-
-            // 최종 할인가 계산
-            const finalPrice = finalDiscountPercent > 0
-              ? Math.round(product.price * (1 - finalDiscountPercent / 100))
-              : product.price
-
-            // 100g당 가격 계산
-            const pricePer100g = product.weight_gram && product.weight_gram > 0
-              ? (finalPrice / product.weight_gram) * 100
-              : null
+            const finalDiscountPercent = pricing.discountPercent
+            const finalPrice = pricing.finalPrice
+            const pricePer100g = pricing.pricePer100g
 
             // 프로모션 배지 텍스트
             const promotionBadge = product.promotion?.type === 'bogo' && product.promotion.buy_qty
@@ -384,25 +378,27 @@ export default function RecommendationSection() {
                 </Link>
               </div>
             )
-          })}
-          </div>
-          
-          {/* 인디케이터 점 */}
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-2 mt-4 pb-2">
-              {Array.from({ length: totalPages }).map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentPage(index)}
-                  className={`w-2 h-2 rounded-full transition ${
-                    currentPage === index
-                      ? 'bg-gray-800'
-                      : 'bg-gray-300'
-                  }`}
-                  aria-label={`페이지 ${index + 1}`}
-                />
-              ))}
-            </div>
+                })}
+              </div>
+
+              {/* 인디케이터 점 */}
+              {totalPages > 1 && (
+                <div className="flex justify-center gap-2 mt-4 pb-2">
+                  {Array.from({ length: totalPages }).map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentPage(index)}
+                      className={`w-2 h-2 rounded-full transition ${
+                        currentPage === index
+                          ? 'bg-gray-800'
+                          : 'bg-gray-300'
+                      }`}
+                      aria-label={`페이지 ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
         <div className="bg-white h-8 -mt-4"></div>

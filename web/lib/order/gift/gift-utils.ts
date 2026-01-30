@@ -187,7 +187,7 @@ export async function createGiftCardImage(options: GiftCardImageOptions): Promis
 
     // 카드 이미지 로드
     const cardImageUrl = cardDesign 
-      ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
+      ? `${window.location.origin}/images/gift-cards/${cardDesign}.jpg`
       : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
     
     cardImage.src = cardImageUrl

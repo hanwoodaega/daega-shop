@@ -34,7 +34,7 @@ export default function PaymentMethodSelector({
             onChange={() => onPaymentMethodChange('easy')}
             className="w-4 h-4" 
           />
-          <span>카드 간편 결제</span>
+          <span>간편카드 결제</span>
         </label>
         {paymentMethod === 'easy' && (
           <div className="ml-7 mt-2 space-y-2">
@@ -60,7 +60,10 @@ export default function PaymentMethodSelector({
                     className="w-4 h-4"
                   />
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">{card.card_number}</span>
+                    <span className="text-sm">{card.card_number || '**** **** **** ****'}</span>
+                    {card.card_company && (
+                      <span className="text-xs text-gray-500">{card.card_company}</span>
+                    )}
                     {card.is_default && (
                       <span className="text-xs bg-primary-100 text-primary-800 px-2 py-0.5 rounded">
                         기본
@@ -81,7 +84,7 @@ export default function PaymentMethodSelector({
             onChange={() => onPaymentMethodChange('card')}
             className="w-4 h-4" 
           />
-          <span>신용카드</span>
+          <span>신용/체크카드</span>
         </label>
         <label className="flex items-center space-x-3 cursor-pointer">
           <input 
@@ -92,7 +95,7 @@ export default function PaymentMethodSelector({
             onChange={() => onPaymentMethodChange('naverpay')}
             className="w-4 h-4" 
           />
-          <span>네이버 페이</span>
+          <span>네이버페이(카드)</span>
         </label>
         <label className="flex items-center space-x-3 cursor-pointer">
           <input 
@@ -103,7 +106,7 @@ export default function PaymentMethodSelector({
             onChange={() => onPaymentMethodChange('kakaopay')}
             className="w-4 h-4" 
           />
-          <span>카카오페이</span>
+          <span>카카오페이(카드)</span>
         </label>
         <label className="flex items-center space-x-3 cursor-pointer">
           <input 
@@ -115,6 +118,17 @@ export default function PaymentMethodSelector({
             className="w-4 h-4" 
           />
           <span>토스페이</span>
+        </label>
+        <label className="flex items-center space-x-3 cursor-pointer">
+          <input 
+            type="radio" 
+            name="payment" 
+            value="samsungpay" 
+            checked={paymentMethod === 'samsungpay'}
+            onChange={() => onPaymentMethodChange('samsungpay')}
+            className="w-4 h-4" 
+          />
+          <span>삼성페이</span>
         </label>
       </div>
     </div>

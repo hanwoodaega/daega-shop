@@ -2,39 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Script from 'next/script'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useCartStore } from '@/lib/store'
-
-interface PaymentCard {
-  id: string
-  user_id: string
-  card_number: string
-  card_holder: string
-  expiry_month: string
-  expiry_year: string
-  is_default: boolean
-  created_at: string
-}
 
 export default function PaymentPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
   const cartCount = useCartStore((state) => state.getTotalItems())
-  
-  const [cards, setCards] = useState<PaymentCard[]>([])
+  const [cards, setCards] = useState<any[]>([])
   const [loadingCards, setLoadingCards] = useState(true)
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [saving, setSaving] = useState(false)
-  
-  const [formData, setFormData] = useState({
-    card_number: '',
-    card_holder: '',
-    expiry_month: '',
-    expiry_year: '',
-    cvv: '',
-    is_default: false,
-  })
+  const [registering, setRegistering] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -51,153 +30,54 @@ export default function PaymentPage() {
   const fetchCards = async () => {
     try {
       const res = await fetch('/api/payment-cards')
-      
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        console.error('결제 카드 조회 실패:', res.status, errorData)
         setCards([])
         return
       }
-
       const data = await res.json()
       setCards(data.cards || [])
     } catch (error) {
-      console.error('카드 조회 실패:', error)
       setCards([])
     } finally {
       setLoadingCards(false)
     }
   }
 
-  const handleAddCard = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
+  const handleRegisterCard = async () => {
+    if (!user?.id) return
+
+    const tossClientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY
+    if (!tossClientKey) {
+      alert('결제 설정이 없습니다.')
+      return
+    }
+
+    const tossFactory = (window as any)?.TossPayments
+    if (!tossFactory) {
+      alert('결제 모듈을 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
+      return
+    }
 
     try {
-      // 카드 번호에서 숫자만 추출 후 마지막 4자리만 가져오기
-      const numbersOnly = formData.card_number.replace(/[^0-9]/g, '')
-      
-      // 16자리가 아니면 에러
-      if (numbersOnly.length !== 16) {
-        alert('카드 번호는 16자리여야 합니다.')
-        setSaving(false)
-        return
-      }
-      
-      const last4 = numbersOnly.slice(-4)
-      // 정확히 4자리씩 띄어쓰기로 포맷팅하여 저장 (표시용)
-      // 형식: **** **** **** 1111 (총 19자: 4+1+4+1+4+1+4)
-      const maskedCardNumber = `**** **** **** ${last4}`
+      setRegistering(true)
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+      const successUrl = `${baseUrl}/profile/payment/toss/success`
+      const failUrl = `${baseUrl}/profile/payment/toss/fail`
+      const customerKey = user.id
 
-      const res = await fetch('/api/payment-cards', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          card_number: maskedCardNumber,
-          card_holder: formData.card_holder,
-          expiry_month: formData.expiry_month,
-          expiry_year: formData.expiry_year,
-          is_default: formData.is_default,
-        }),
+      const tossPayments = tossFactory(tossClientKey)
+      await tossPayments.requestBillingAuth('CARD', {
+        customerKey,
+        successUrl,
+        failUrl,
+        customerName: user.user_metadata?.name || user.email || '고객',
       })
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || '카드 등록에 실패했습니다.')
-      }
-
-      setShowAddModal(false)
-      setFormData({
-        card_number: '',
-        card_holder: '',
-        expiry_month: '',
-        expiry_year: '',
-        cvv: '',
-        is_default: false,
-      })
-      fetchCards()
     } catch (error: any) {
-      console.error('카드 등록 실패:', error)
-      alert(error.message || '카드 등록에 실패했습니다.')
+      console.error('카드 등록 요청 실패:', error)
+      alert(error?.message || '카드 등록 요청에 실패했습니다.')
     } finally {
-      setSaving(false)
+      setRegistering(false)
     }
-  }
-
-  const handleDeleteCard = async (cardId: string) => {
-    if (!confirm('카드를 삭제하시겠습니까?')) return
-
-    try {
-      const res = await fetch(`/api/payment-cards/${cardId}`, {
-        method: 'DELETE',
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || '카드 삭제에 실패했습니다.')
-      }
-
-      fetchCards()
-    } catch (error: any) {
-      console.error('카드 삭제 실패:', error)
-      alert(error.message || '카드 삭제에 실패했습니다.')
-    }
-  }
-
-  const handleSetDefault = async (cardId: string) => {
-    try {
-      const res = await fetch(`/api/payment-cards/${cardId}`, {
-        method: 'PUT',
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || '기본 카드 설정에 실패했습니다.')
-      }
-
-      fetchCards()
-    } catch (error: any) {
-      console.error('기본 카드 설정 실패:', error)
-      alert(error.message || '기본 카드 설정에 실패했습니다.')
-    }
-  }
-
-  const formatCardNumber = (cardNumber: string) => {
-    if (!cardNumber) return ''
-    
-    // 이미 올바르게 포맷팅되어 있으면 그대로 반환 (**** **** **** 1111 형식)
-    // 정규식: **** (공백) **** (공백) **** (공백) 1111
-    if (/^\*\*\*\* \*\*\*\* \*\*\*\* \d{4}$/.test(cardNumber.trim())) {
-      return cardNumber.trim()
-    }
-    
-    // 잘못된 포맷이 저장되어 있는 경우 수정
-    // 숫자와 *만 추출
-    const cleaned = cardNumber.replace(/[^0-9*]/g, '')
-    
-    // 16자리가 아니면 그대로 반환 (이상한 데이터)
-    if (cleaned.length !== 16) {
-      // 마지막 4자리가 숫자인지 확인
-      const last4 = cleaned.slice(-4)
-      if (/^\d{4}$/.test(last4)) {
-        return `**** **** **** ${last4}`
-      }
-      return cardNumber // 수정 불가능하면 원본 반환
-    }
-    
-    // 마지막 4자리 추출
-    const last4 = cleaned.slice(-4)
-    // 올바른 포맷으로 반환
-    return `**** **** **** ${last4}`
-  }
-
-  const formatCardNumberInput = (value: string) => {
-    // 숫자만 추출
-    const numbers = value.replace(/[^0-9]/g, '').slice(0, 16)
-    // 4자리씩 띄어쓰기
-    return numbers.replace(/(.{4})/g, '$1 ').trim()
   }
 
   if (loading || loadingCards) {
@@ -253,6 +133,7 @@ export default function PaymentPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <Script src="https://js.tosspayments.com/v1" strategy="afterInteractive" />
       {/* 간편 결제 관리 전용 헤더 */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
@@ -278,19 +159,19 @@ export default function PaymentPage() {
       </header>
 
       <main className="flex-1 container mx-auto px-4 py-4 pb-24">
-        {/* 카드 추가 버튼 */}
         <div className="mb-6">
           <button
-            onClick={() => setShowAddModal(true)}
-            className="w-full bg-primary-800 text-white py-3 rounded-lg font-semibold hover:bg-primary-900 transition"
+            type="button"
+            onClick={handleRegisterCard}
+            disabled={registering}
+            className="w-full bg-primary-800 text-white py-3 rounded-lg font-semibold hover:bg-primary-900 transition disabled:bg-gray-400"
           >
-            + 카드 등록
+            {registering ? '카드 등록 중...' : '+ 카드 등록'}
           </button>
         </div>
 
-        {/* 등록된 카드 목록 */}
         {cards.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
             <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
             </svg>
@@ -306,7 +187,7 @@ export default function PaymentPage() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-lg font-semibold text-gray-900">
-                      {formatCardNumber(card.card_number)}
+                      {card.card_number || '**** **** **** ****'}
                     </span>
                     {card.is_default && (
                       <span className="text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded">
@@ -315,7 +196,15 @@ export default function PaymentPage() {
                     )}
                   </div>
                   <button
-                    onClick={() => handleDeleteCard(card.id)}
+                    onClick={async () => {
+                      if (!confirm('카드를 삭제하시겠습니까?')) return
+                      const res = await fetch(`/api/payment-cards/${card.id}`, { method: 'DELETE' })
+                      if (res.ok) {
+                        fetchCards()
+                      } else {
+                        alert('카드 삭제에 실패했습니다.')
+                      }
+                    }}
                     className="text-gray-400 hover:text-red-600 transition"
                     aria-label="카드 삭제"
                   >
@@ -324,13 +213,21 @@ export default function PaymentPage() {
                     </svg>
                   </button>
                 </div>
-                <div className="text-sm text-gray-600 mb-2">
-                  <div>카드 소유자: {card.card_holder}</div>
-                  <div>유효기간: {card.expiry_month}/{card.expiry_year}</div>
-                </div>
+                {card.card_company && (
+                  <div className="text-sm text-gray-600 mb-2">
+                    카드사: {card.card_company}
+                  </div>
+                )}
                 {!card.is_default && (
                   <button
-                    onClick={() => handleSetDefault(card.id)}
+                    onClick={async () => {
+                      const res = await fetch(`/api/payment-cards/${card.id}`, { method: 'PUT' })
+                      if (res.ok) {
+                        fetchCards()
+                      } else {
+                        alert('기본 카드 설정에 실패했습니다.')
+                      }
+                    }}
                     className="text-sm text-primary-800 hover:text-primary-900 font-medium"
                   >
                     기본 카드로 설정
@@ -338,143 +235,6 @@ export default function PaymentPage() {
                 )}
               </div>
             ))}
-          </div>
-        )}
-
-        {/* 카드 등록 모달 */}
-        {showAddModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg w-full max-w-md p-6">
-              <h2 className="text-xl font-bold mb-4">카드 등록</h2>
-              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-xs text-yellow-800">
-                  ⚠️ <strong>주의:</strong> 현재는 실제 결제 기능이 없습니다. 테스트용 더미 카드 정보만 등록해주세요.
-                </p>
-              </div>
-              <form onSubmit={handleAddCard} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    카드 번호
-                  </label>
-                  <input
-                    type="text"
-                    value={formatCardNumberInput(formData.card_number)}
-                    onChange={(e) => {
-                      // 숫자만 추출하여 저장 (띄어쓰기 제거)
-                      const numbers = e.target.value.replace(/[^0-9]/g, '').slice(0, 16)
-                      setFormData({ ...formData, card_number: numbers })
-                    }}
-                    placeholder="1234 5678 9012 3456"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    카드 소유자
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.card_holder}
-                    onChange={(e) => setFormData({ ...formData, card_holder: e.target.value })}
-                    placeholder="홍길동"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      월
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.expiry_month}
-                      onChange={(e) => {
-                        const numbers = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
-                        setFormData({ ...formData, expiry_month: numbers })
-                      }}
-                      placeholder="MM"
-                      maxLength={2}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <div className="col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      년
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.expiry_year}
-                      onChange={(e) => {
-                        const numbers = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
-                        setFormData({ ...formData, expiry_year: numbers })
-                      }}
-                      placeholder="YY"
-                      maxLength={2}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <div className="col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      CVV
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.cvv}
-                      onChange={(e) => {
-                        const numbers = e.target.value.replace(/[^0-9]/g, '').slice(0, 3)
-                        setFormData({ ...formData, cvv: numbers })
-                      }}
-                      placeholder="123"
-                      maxLength={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="is_default"
-                    checked={formData.is_default}
-                    onChange={(e) => setFormData({ ...formData, is_default: e.target.checked })}
-                    className="w-4 h-4 text-primary-800 border-gray-300 rounded focus:ring-primary-500"
-                  />
-                  <label htmlFor="is_default" className="ml-2 text-sm text-gray-700">
-                    기본 카드로 설정
-                  </label>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddModal(false)
-                      setFormData({
-                        card_number: '',
-                        card_holder: '',
-                        expiry_month: '',
-                        expiry_year: '',
-                        cvv: '',
-                        is_default: false,
-                      })
-                    }}
-                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition"
-                  >
-                    취소
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="flex-1 bg-primary-800 text-white py-3 rounded-lg font-semibold hover:bg-primary-900 transition disabled:bg-gray-400"
-                  >
-                    {saving ? '등록 중...' : '등록하기'}
-                  </button>
-                </div>
-              </form>
-            </div>
           </div>
         )}
       </main>

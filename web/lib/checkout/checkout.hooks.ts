@@ -29,6 +29,7 @@ export function useCheckout(options: UseCheckoutOptions) {
   const router = useRouter()
   const { user } = useAuth()
   const timeoutsRef = useRef<number[]>([])
+  const pricingKeyRef = useRef<string | null>(null)
 
   // Cart & Direct Purchase
   const cartItems = useCartStore((state) => state.items)
@@ -84,6 +85,24 @@ export function useCheckout(options: UseCheckoutOptions) {
   const [savedCards, setSavedCards] = useState<any[]>([])
   const [loadingCards, setLoadingCards] = useState(false)
 
+  const [serverPricing, setServerPricing] = useState<{
+    originalTotal: number
+    discountedTotal: number
+    shipping: number
+    couponDiscount: number
+    appliedPoints: number
+    finalTotal: number
+  } | null>(null)
+  const [pricingLoading, setPricingLoading] = useState(false)
+  const itemsSignature = useMemo(
+    () =>
+      items
+        .map(item => `${item.productId}:${item.quantity}:${item.promotion_group_id || ''}`)
+        .sort()
+        .join('|'),
+    [items]
+  )
+
   const [giftData, setGiftData] = useState<GiftData>({
     message: '',
     cardDesign: 'birthday-1',
@@ -129,6 +148,16 @@ export function useCheckout(options: UseCheckoutOptions) {
   const couponDiscount = calculateCouponDiscount(subtotal)
   const afterCouponDiscount = Math.max(0, subtotal - couponDiscount)
   const finalTotal = Math.max(0, afterCouponDiscount - usedPoints)
+
+  const displayOriginalTotal = serverPricing?.originalTotal ?? originalTotal
+  const displayDiscountedTotal = serverPricing?.discountedTotal ?? discountedTotal
+  const displayDiscountAmount = Math.max(0, displayOriginalTotal - displayDiscountedTotal)
+  const displayCouponDiscount = serverPricing?.couponDiscount ?? couponDiscount
+  const displayUsedPoints = serverPricing?.appliedPoints ?? usedPoints
+  const displayShipping = serverPricing?.shipping ?? shipping
+  const displayAfterCouponDiscount = Math.max(0, displayDiscountedTotal - displayCouponDiscount)
+  const displayFinalTotal = Math.max(0, displayDiscountedTotal - displayCouponDiscount - displayUsedPoints)
+  const displayOrderTotal = displayFinalTotal + displayShipping
 
   // Memoized values
   const pickupTimeSlots = useMemo(() => [
@@ -219,35 +248,6 @@ export function useCheckout(options: UseCheckoutOptions) {
   }, [])
 
   // Actions
-  const loadSavedCards = useCallback(async () => {
-    if (!user?.id) return
-
-    setLoadingCards(true)
-    try {
-      const res = await fetch('/api/payment-cards')
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        console.error('결제 카드 조회 실패:', res.status, errorData)
-        setSavedCards([])
-        return
-      }
-
-      const data = await res.json()
-      setSavedCards(data.cards || [])
-      
-      const defaultCard = data.cards?.find((card: any) => card.is_default)
-      if (defaultCard) {
-        setSelectedCardId(defaultCard.id)
-      }
-    } catch (error) {
-      console.error('카드 조회 실패:', error)
-      setSavedCards([])
-    } finally {
-      setLoadingCards(false)
-    }
-  }, [user?.id])
-
   const loadUserPoints = useCallback(async () => {
     if (!user?.id) return
 
@@ -265,6 +265,192 @@ export function useCheckout(options: UseCheckoutOptions) {
       setLoadingPoints(false)
     }
   }, [user?.id])
+
+  const loadSavedCards = useCallback(async () => {
+    if (!user?.id) return
+
+    setLoadingCards(true)
+    try {
+      const res = await fetch('/api/payment-cards')
+      if (!res.ok) {
+        setSavedCards([])
+        return
+      }
+
+      const data = await res.json()
+      setSavedCards(data.cards || [])
+
+      const defaultCard = data.cards?.find((card: any) => card.is_default)
+      if (defaultCard) {
+        setSelectedCardId(defaultCard.id)
+      }
+    } catch (error) {
+      console.error('카드 조회 실패:', error)
+      setSavedCards([])
+    } finally {
+      setLoadingCards(false)
+    }
+  }, [user?.id])
+
+  const buildPricingInput = useCallback(() => {
+    const deliveryTime = isGiftMode
+      ? null
+      : deliveryMethod === 'pickup'
+      ? pickupTime
+      : deliveryMethod === 'quick'
+      ? quickDeliveryTime
+      : null
+
+    return {
+      delivery_type: isGiftMode ? 'regular' : deliveryMethod,
+      delivery_time: deliveryTime,
+      shipping_address: '',
+      shipping_name: '',
+      shipping_phone: '',
+      delivery_note: null,
+      used_coupon_id: selectedCoupon?.id || null,
+      used_points: usedPoints,
+      is_gift: isGiftMode,
+      gift_message: null,
+      gift_card_design: null,
+      items: items.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        promotion_group_id: item.promotion_group_id || null,
+      })),
+    }
+  }, [
+    isGiftMode,
+    deliveryMethod,
+    pickupTime,
+    quickDeliveryTime,
+    selectedCoupon?.id,
+    usedPoints,
+    items,
+  ])
+
+  const buildOrderInput = useCallback(() => {
+    const shippingAddress = isGiftMode
+      ? '선물 수령 대기'
+      : deliveryMethod === 'pickup'
+      ? '매장 픽업'
+      : deliveryMethod === 'quick'
+      ? `${formData.address}${formData.addressDetail ? ' ' + formData.addressDetail : ''}`
+      : `${formData.address}${formData.addressDetail ? ' ' + formData.addressDetail : ''}`
+
+    const deliveryTime = isGiftMode
+      ? null
+      : deliveryMethod === 'pickup'
+      ? pickupTime
+      : deliveryMethod === 'quick'
+      ? quickDeliveryTime
+      : null
+
+    return {
+      delivery_type: isGiftMode ? 'regular' : deliveryMethod,
+      delivery_time: deliveryTime,
+      shipping_address: shippingAddress,
+      shipping_name: isGiftMode ? '선물 수령 대기' : formData.name,
+      shipping_phone: isGiftMode ? '' : formData.phone,
+      delivery_note: formData.message.trim() || null,
+      used_coupon_id: selectedCoupon?.id || null,
+      used_points: usedPoints,
+      is_gift: isGiftMode,
+      gift_message: isGiftMode ? giftData.message : null,
+      gift_card_design: isGiftMode ? giftData.cardDesign : null,
+      payment_method: paymentMethod,
+      items: items.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        promotion_group_id: item.promotion_group_id || null,
+      })),
+    }
+  }, [
+    isGiftMode,
+    deliveryMethod,
+    pickupTime,
+    quickDeliveryTime,
+    formData.address,
+    formData.addressDetail,
+    formData.name,
+    formData.phone,
+    formData.message,
+    selectedCoupon?.id,
+    usedPoints,
+    giftData.message,
+    giftData.cardDesign,
+    paymentMethod,
+    items,
+  ])
+
+  useEffect(() => {
+    if (!user?.id || items.length === 0) {
+      pricingKeyRef.current = null
+      setServerPricing(null)
+      return
+    }
+
+    const pricingInput = buildPricingInput()
+    const nextKey = JSON.stringify(pricingInput)
+    if (pricingKeyRef.current === nextKey) {
+      return
+    }
+    pricingKeyRef.current = nextKey
+
+    let isActive = true
+    const controller = new AbortController()
+
+    const fetchPricing = async () => {
+      setPricingLoading(true)
+      try {
+        const res = await fetch('/api/payments/toss/prepare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderInput: pricingInput }),
+          signal: controller.signal,
+        })
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}))
+          throw new Error(errorData.error || '결제 금액 계산 실패')
+        }
+
+        const data = await res.json()
+        if (!isActive || pricingKeyRef.current !== nextKey) return
+
+        setServerPricing(data.pricing || null)
+
+        if (data?.pricing?.appliedPoints !== undefined && data.pricing.appliedPoints !== usedPoints) {
+          setUsedPoints(data.pricing.appliedPoints)
+          setUsedPointsInput(String(data.pricing.appliedPoints || ''))
+        }
+      } catch (error) {
+        if (!isActive || pricingKeyRef.current !== nextKey) return
+        console.error('결제 금액 계산 실패:', error)
+      } finally {
+        if (isActive) {
+          setPricingLoading(false)
+        }
+      }
+    }
+
+    fetchPricing()
+
+    return () => {
+      isActive = false
+      controller.abort()
+    }
+  }, [
+    user?.id,
+    itemsSignature,
+    selectedCoupon?.id,
+    usedPoints,
+    deliveryMethod,
+    pickupTime,
+    quickDeliveryTime,
+    isGiftMode,
+    buildPricingInput,
+  ])
 
   const loadAvailableCoupons = useCallback(async () => {
     if (!user?.id) return
@@ -314,7 +500,7 @@ export function useCheckout(options: UseCheckoutOptions) {
     
     if (!isGiftMode || currentStep >= TOTAL_GIFT_STEPS) return
 
-    const expectedAmount = finalTotal + shipping
+    const expectedAmount = displayFinalTotal + displayShipping
     
     if (expectedAmount < GIFT_MIN_AMOUNT) {
       toast.error(`선물하기는 결제 금액이 ${formatPrice(GIFT_MIN_AMOUNT)}원 이상이어야 합니다.`, { icon: '🎁' })
@@ -329,7 +515,7 @@ export function useCheckout(options: UseCheckoutOptions) {
     }
 
     setCurrentStep(prev => Math.min(prev + 1, TOTAL_GIFT_STEPS))
-  }, [isGiftMode, currentStep, finalTotal, shipping, formData.name, formData.phone])
+  }, [isGiftMode, currentStep, displayFinalTotal, displayShipping, formData.name, formData.phone])
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
@@ -383,7 +569,7 @@ export function useCheckout(options: UseCheckoutOptions) {
           showError({ message: '보유 포인트보다 많이 사용할 수 없습니다.' }, { icon: '⚠️' })
           return false
         }
-        if (usedPoints > afterCouponDiscount) {
+        if (usedPoints > displayAfterCouponDiscount) {
           showError({ message: '결제 금액보다 많은 포인트를 사용할 수 없습니다.' }, { icon: '⚠️' })
           return false
         }
@@ -398,63 +584,178 @@ export function useCheckout(options: UseCheckoutOptions) {
       return true
     }
 
-    const createOrder = async () => {
-      const shippingAddress = isGiftMode 
-        ? '선물 수령 대기' 
-        : deliveryMethod === 'pickup'
-        ? '매장 픽업'
-        : deliveryMethod === 'quick'
-        ? `${formData.address}${formData.addressDetail ? ' ' + formData.addressDetail : ''}`
-        : `${formData.address}${formData.addressDetail ? ' ' + formData.addressDetail : ''}`
-      
-      const deliveryTime = isGiftMode 
-        ? null 
-        : deliveryMethod === 'pickup' 
-        ? pickupTime 
-        : deliveryMethod === 'quick' 
-        ? quickDeliveryTime 
-        : null
+    const startTossPayment = async () => {
+      const tossClientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY
+      const shouldMockToss =
+        process.env.NEXT_PUBLIC_TOSS_MOCK === 'true' ||
+        (!tossClientKey && process.env.NODE_ENV !== 'production')
 
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          total_amount: orderTotal,
-          delivery_type: isGiftMode ? 'regular' : deliveryMethod,
-          delivery_time: deliveryTime,
-          shipping_address: shippingAddress,
-          shipping_name: isGiftMode ? '선물 수령 대기' : formData.name,
-          shipping_phone: isGiftMode ? '' : formData.phone,
-          delivery_note: formData.message.trim() || null,
-          used_coupon_id: selectedCoupon?.id || null,
-          used_points: usedPoints,
-          is_gift: isGiftMode,
-          gift_message: isGiftMode ? giftData.message : null,
-          gift_card_design: isGiftMode ? giftData.cardDesign : null,
-          gift_recipient_name: null,
-          gift_recipient_phone: null,
+      if (shouldMockToss) {
+        const orderId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+          ? crypto.randomUUID()
+          : `order-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+        const orderName = items.length > 1
+          ? `${items[0]?.name || '상품'} 외 ${items.length - 1}건`
+          : (items[0]?.name || '상품')
+
+        const orderInput = buildOrderInput()
+        const prepareRes = await fetch('/api/payments/toss/prepare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderInput }),
+        })
+
+        if (!prepareRes.ok) {
+          const errorData = await prepareRes.json().catch(() => ({}))
+          throw new Error(errorData.error || '결제 금액 계산에 실패했습니다.')
+        }
+
+        const prepareData = await prepareRes.json()
+        const amount = prepareData.amount
+        const meta = {
+          isDirectPurchase,
+          isGiftMode,
+          saveAsDefaultAddress,
+          deliveryMethod,
+          formData,
           items: items.map(item => ({
+            id: item.id,
             productId: item.productId,
             quantity: item.quantity,
             price: item.price,
-          }))
-        })
-      })
+            promotion_group_id: item.promotion_group_id,
+          })),
+          giftData,
+          orderInput,
+        }
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '주문 생성 실패')
+        sessionStorage.setItem(`toss_checkout_${orderId}`, JSON.stringify(meta))
+
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+        const mockSuccessUrl = `${baseUrl}/checkout/toss/success?paymentKey=MOCK_${orderId}&orderId=${orderId}&amount=${amount}&mock=1`
+        router.push(mockSuccessUrl)
+        return
       }
 
-      const { order } = await response.json()
-      return order
+      if (paymentMethod === 'easy') {
+        if (!selectedCardId) {
+          throw new Error('결제할 카드를 선택해주세요.')
+        }
+        await chargeSavedCard(selectedCardId)
+        return
+      }
+
+      if (!tossClientKey) {
+        throw new Error('결제 설정이 없습니다.')
+      }
+
+      const tossFactory = (window as any)?.TossPayments
+      if (!tossFactory) {
+        throw new Error('결제 모듈을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
+      }
+
+      const orderId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+        ? crypto.randomUUID()
+        : `order-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+      const orderName = items.length > 1
+        ? `${items[0]?.name || '상품'} 외 ${items.length - 1}건`
+        : (items[0]?.name || '상품')
+
+      const orderInput = buildOrderInput()
+      const prepareRes = await fetch('/api/payments/toss/prepare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderInput }),
+      })
+
+      if (!prepareRes.ok) {
+        const errorData = await prepareRes.json().catch(() => ({}))
+        throw new Error(errorData.error || '결제 금액 계산에 실패했습니다.')
+      }
+
+      const prepareData = await prepareRes.json()
+      const amount = prepareData.amount
+      const meta = {
+        isDirectPurchase,
+        isGiftMode,
+        saveAsDefaultAddress,
+        deliveryMethod,
+        formData,
+        items: items.map(item => ({
+          id: item.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          promotion_group_id: item.promotion_group_id,
+        })),
+        giftData,
+        orderInput,
+      }
+
+      sessionStorage.setItem(`toss_checkout_${orderId}`, JSON.stringify(meta))
+
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+      const successUrl = `${baseUrl}/checkout/toss/success`
+      const failUrl = `${baseUrl}/checkout/toss/fail`
+
+      const tossPayments = tossFactory(tossClientKey)
+      const paymentOptions: any = {
+        amount,
+        orderId,
+        orderName,
+        successUrl,
+        failUrl,
+        customerName: formData.name,
+        customerEmail: formData.email || undefined,
+        customerMobilePhone: formData.phone,
+      }
+
+      const methodMap: Record<string, { method: string; easyPay?: { provider: string } }> = {
+        card: { method: 'CARD' },
+        tosspay: { method: 'EASY_PAY', easyPay: { provider: 'TOSSPAY' } },
+        naverpay: { method: 'EASY_PAY', easyPay: { provider: 'NAVERPAY' } },
+        kakaopay: { method: 'EASY_PAY', easyPay: { provider: 'KAKAOPAY' } },
+        samsungpay: { method: 'EASY_PAY', easyPay: { provider: 'SAMSUNGPAY' } },
+      }
+
+      const methodConfig = methodMap[paymentMethod] || { method: 'CARD' }
+      if (methodConfig.easyPay) {
+        paymentOptions.easyPay = methodConfig.easyPay
+      }
+
+      await tossPayments.requestPayment(methodConfig.method, paymentOptions)
     }
 
-    const handleGiftShare = async (order: any) => {
-      if (isGiftMode && order.gift_token) {
+    const chargeSavedCard = async (cardId: string) => {
+      const orderInput = buildOrderInput()
+      const orderName = items.length > 1
+        ? `${items[0]?.name || '상품'} 외 ${items.length - 1}건`
+        : (items[0]?.name || '상품')
+
+      const res = await fetch('/api/payments/toss/billing/charge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cardId,
+          orderInput,
+          orderName,
+        }),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || '결제 승인에 실패했습니다.')
+      }
+
+      const data = await res.json()
+      const order = data?.order
+
+      if (isGiftMode && data?.gift_token) {
         await shareGiftToKakao({
-          orderId: order.id,
-          giftToken: order.gift_token,
+          orderId: order?.id,
+          giftToken: data.gift_token,
           cardDesign: giftData.cardDesign,
           message: giftData.message,
           items: items.map(item => ({
@@ -462,6 +763,10 @@ export function useCheckout(options: UseCheckoutOptions) {
           })),
         })
       }
+
+      await saveAddressIfNeeded()
+      await cleanupCart()
+      redirectAfterSuccess(order, data?.gift_token)
     }
 
     const saveAddressIfNeeded = async () => {
@@ -529,7 +834,7 @@ export function useCheckout(options: UseCheckoutOptions) {
         clearDirectPurchase()
       } else {
         const purchasedItems = [...items]
-        
+
         try {
           if (user?.id) {
             const handledGroups = new Set<string>()
@@ -551,13 +856,13 @@ export function useCheckout(options: UseCheckoutOptions) {
         } catch (err) {
           // DB 삭제 실패해도 UI는 진행
         }
-        
+
         removeSelectedFromCart()
       }
     }
 
-    const redirectAfterSuccess = (order: any) => {
-      if (isGiftMode && order.gift_token) {
+    const redirectAfterSuccess = (order: any, giftToken?: string | null) => {
+      if (isGiftMode && giftToken) {
         showSuccess('주문이 완료되었습니다! 카카오톡으로 선물을 공유해주세요.', {
           icon: '🎁',
           duration: 3000,
@@ -570,8 +875,8 @@ export function useCheckout(options: UseCheckoutOptions) {
       }
 
       const t = window.setTimeout(() => {
-        if (isGiftMode && order.gift_token) {
-          router.push(`/orders?giftToken=${order.gift_token}`)
+        if (isGiftMode && giftToken) {
+          router.push(`/orders?giftToken=${giftToken}`)
         } else {
           router.push('/orders')
         }
@@ -586,15 +891,15 @@ export function useCheckout(options: UseCheckoutOptions) {
     setFlags(prev => ({ ...prev, isProcessing: true }))
 
     try {
-      const order = await createOrder()
-      await handleGiftShare(order)
-      await saveAddressIfNeeded()
-      await cleanupCart()
-      redirectAfterSuccess(order)
+      await startTossPayment()
     } catch (error) {
       showError(error)
-    } finally {
       setFlags(prev => ({ ...prev, isProcessing: false }))
+    } finally {
+      if (paymentMethod === 'easy') {
+        setFlags(prev => ({ ...prev, isProcessing: false }))
+      }
+      // 카드 결제는 토스 결제창에서 페이지 이동이 발생합니다.
     }
   }, [
     items,
@@ -607,14 +912,18 @@ export function useCheckout(options: UseCheckoutOptions) {
     quickDeliveryTime,
     usedPoints,
     userPoints,
-    afterCouponDiscount,
+    displayAfterCouponDiscount,
     user,
     router,
     isDirectPurchase,
-    orderTotal,
+    displayFinalTotal,
+    displayShipping,
     selectedCoupon,
     giftData,
     saveAsDefaultAddress,
+    paymentMethod,
+    selectedCardId,
+    buildOrderInput,
     clearDirectPurchase,
     removeSelectedFromCart,
   ])
@@ -686,20 +995,21 @@ export function useCheckout(options: UseCheckoutOptions) {
       quickDeliveryArea,
       quickDeliveryTime,
       isProcessing,
+      pricingLoading,
       mounted,
       saveAsDefaultAddress,
       isEditingOrderer,
       isGiftFinalStep,
       gridColumnsClass,
-      originalTotal,
-      discountAmount,
-      shipping,
-      discountedTotal,
-      orderTotal,
-      subtotal,
-      couponDiscount,
-      afterCouponDiscount,
-      finalTotal,
+      originalTotal: displayOriginalTotal,
+      discountAmount: displayDiscountAmount,
+      shipping: displayShipping,
+      discountedTotal: displayDiscountedTotal,
+      orderTotal: displayOrderTotal,
+      subtotal: displayDiscountedTotal,
+      couponDiscount: displayCouponDiscount,
+      afterCouponDiscount: displayAfterCouponDiscount,
+      finalTotal: displayFinalTotal,
       pickupTimeSlots,
       quickDeliveryAreas,
       quickDeliveryTimeSlots,

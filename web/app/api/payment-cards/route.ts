@@ -5,17 +5,16 @@ import { getUserFromServer } from '@/lib/auth/auth-server'
 export const dynamic = 'force-dynamic'
 
 // GET: 저장된 결제 카드 목록 조회
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const supabase = createSupabaseServerClient()
-    
+
     // 서버에서 사용자 인증 확인
     const user = await getUserFromServer()
     if (!user) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }
 
-    // 결제 카드 조회
     const { data, error } = await supabase
       .from('payment_cards')
       .select('*')
@@ -33,7 +32,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '결제 카드 조회 실패' }, { status: 500 })
     }
 
-    return NextResponse.json({ cards: data || [] })
+    const cards = (data || []).map((card: any) => ({
+      id: card.id,
+      card_number: card.card_number || null,
+      card_company: card.card_company || null,
+      is_default: card.is_default || false,
+      created_at: card.created_at,
+    }))
+
+    return NextResponse.json({ cards })
   } catch (error: any) {
     console.error('결제 카드 조회 오류:', error)
     return NextResponse.json({ 
@@ -43,55 +50,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST: 결제 카드 추가
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = createSupabaseServerClient()
-    
-    // 서버에서 사용자 인증 확인
-    const user = await getUserFromServer()
-    if (!user) {
-      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
-    }
-
-    const body = await request.json()
-    const { card_number, card_holder, expiry_month, expiry_year, is_default } = body
-
-    // 기본 카드로 설정하는 경우, 기존 기본 카드 해제
-    if (is_default) {
-      await supabase
-        .from('payment_cards')
-        .update({ is_default: false })
-        .eq('user_id', user.id)
-        .eq('is_default', true)
-    }
-
-    // 결제 카드 추가
-    const { data, error } = await supabase
-      .from('payment_cards')
-      .insert({
-        user_id: user.id,
-        card_number,
-        card_holder,
-        expiry_month,
-        expiry_year,
-        is_default: is_default || false,
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('결제 카드 추가 실패:', error)
-      return NextResponse.json({ error: '결제 카드 추가 실패' }, { status: 500 })
-    }
-
-    return NextResponse.json({ card: data })
-  } catch (error: any) {
-    console.error('결제 카드 추가 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
-  }
+// POST: 결제 카드 추가 (직접 등록 금지)
+export async function POST(_request: NextRequest) {
+  return NextResponse.json(
+    { error: '카드 등록은 토스페이먼츠 인증 절차를 통해서만 가능합니다.' },
+    { status: 405 }
+  )
 }
 

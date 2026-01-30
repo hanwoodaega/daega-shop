@@ -3,7 +3,7 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { useCartStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth/auth-context'
-import { formatPrice, canUseKakaoDeepLink } from '@/lib/utils/utils'
+import { formatPrice } from '@/lib/utils/utils'
 import { useIsMobile } from '@/lib/device/useDevice'
 import { useDefaultAddress, useAddresses } from '@/lib/address/useAddress'
 import { useCartRealtimeSync } from '@/lib/cart/useCartRealtimeSync'
@@ -34,7 +34,7 @@ export function useCart() {
   const [pickupTime, setPickupTime] = useState('')
   const [quickDeliveryArea, setQuickDeliveryArea] = useState('')
   const [quickDeliveryTime, setQuickDeliveryTime] = useState('')
-  const [isKakaoGiftAvailable, setIsKakaoGiftAvailable] = useState(() => canUseKakaoDeepLink())
+  const [isKakaoGiftAvailable, setIsKakaoGiftAvailable] = useState(true)
 
   // Hooks
   const { address: defaultAddress, loading: loadingAddress, reload: reloadDefaultAddress } = useDefaultAddress(true)
@@ -52,7 +52,7 @@ export function useCart() {
     }
 
     const updateAvailability = () => {
-      setIsKakaoGiftAvailable(canUseKakaoDeepLink())
+      setIsKakaoGiftAvailable(true)
     }
     updateAvailability()
 
@@ -140,15 +140,8 @@ export function useCart() {
   }, [selectedAddressId, user, loadAllAddresses, reloadDefaultAddress])
 
   const ensureKakaoGiftAvailability = useCallback(() => {
-    const available = canUseKakaoDeepLink()
-    setIsKakaoGiftAvailable(available)
-
-    if (!available) {
-      toast.error('카카오톡 앱이 설치된 모바일 환경에서만 선물하기를 이용할 수 있어요.', {
-        icon: '📱',
-      })
-    }
-    return available
+    setIsKakaoGiftAvailable(true)
+    return true
   }, [])
 
   const handleCheckout = useCallback(() => {

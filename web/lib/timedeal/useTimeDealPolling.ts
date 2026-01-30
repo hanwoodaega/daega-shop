@@ -4,11 +4,12 @@ import { useEffect } from 'react'
 import { useTimeDealStore } from './timedeal.store'
 import { fetchTimeDeal } from './timedeal.service'
 
-// 전역 폴링 상태 관리 (단일 인스턴스 보장)
-let globalInterval: NodeJS.Timeout | null = null
+// 전역 상태 관리 (단일 인스턴스 보장)
+let globalTimeout: NodeJS.Timeout | null = null
 let isPollingActive = false
 let visibilityHandler: (() => void) | null = null
 let currentLimit: number = 10 // 현재 사용 중인 limit
+let pendingReload = false
 
 /**
  * 타임딜 폴링 훅
@@ -33,10 +34,9 @@ export function useTimeDealPolling(limit: number = 10) {
     const limitChanged = currentLimit !== limit
     if (limitChanged) {
       currentLimit = limit
-      // 기존 폴링이 있으면 중단하고 새로운 limit으로 재시작
-      if (globalInterval) {
-        clearInterval(globalInterval)
-        globalInterval = null
+      if (globalTimeout) {
+        clearTimeout(globalTimeout)
+        globalTimeout = null
       }
       isPollingActive = false
     }
@@ -56,12 +56,38 @@ export function useTimeDealPolling(limit: number = 10) {
         
         if (data) {
           updateTimedealData(data)
+          pendingReload = false
+
+          const endAt = data.timedeal?.end_at
+          if (endAt) {
+            const msUntilEnd = new Date(endAt).getTime() - Date.now()
+            if (globalTimeout) {
+              clearTimeout(globalTimeout)
+              globalTimeout = null
+            }
+
+            if (msUntilEnd <= 0) {
+              if (document.visibilityState === 'visible') {
+                window.location.reload()
+              } else {
+                pendingReload = true
+              }
+            } else {
+              globalTimeout = setTimeout(() => {
+                if (document.visibilityState === 'visible') {
+                  window.location.reload()
+                } else {
+                  pendingReload = true
+                }
+              }, msUntilEnd + 1000)
+            }
+          }
         } else {
           // 타임딜 종료됨 - 완전 중단
           updateTimedealData(null)
-          if (globalInterval) {
-            clearInterval(globalInterval)
-            globalInterval = null
+          if (globalTimeout) {
+            clearTimeout(globalTimeout)
+            globalTimeout = null
           }
           isPollingActive = false
         }
@@ -75,29 +101,24 @@ export function useTimeDealPolling(limit: number = 10) {
     }
 
     const startPolling = () => {
-      // 이미 실행 중이면 중지
-      if (globalInterval) {
-        clearInterval(globalInterval)
-      }
-      
-      // 즉시 한 번 체크 (페이지 활성화 시)
       checkTimedealStatus()
-      
-      // 그 다음부터 1분마다 체크
-      globalInterval = setInterval(checkTimedealStatus, 60000)
     }
 
     const stopPolling = () => {
-      if (globalInterval) {
-        clearInterval(globalInterval)
-        globalInterval = null
+      if (globalTimeout) {
+        clearTimeout(globalTimeout)
+        globalTimeout = null
       }
     }
 
     // 탭 활성화 상태에 따라 제어
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // 탭이 활성화되면 다시 시작
+        if (pendingReload) {
+          pendingReload = false
+          window.location.reload()
+          return
+        }
         startPolling()
       } else {
         // 탭이 비활성화되면 중단

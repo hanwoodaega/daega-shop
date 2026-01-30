@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
 import { assertAdmin } from '@/lib/auth/admin-auth'
 import { nameToSlug } from '@/lib/utils/utils'
+import { extractActivePromotion } from '@/lib/product/product.service'
 
 export async function GET(request: Request) {
   try { assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
@@ -13,7 +14,30 @@ export async function GET(request: Request) {
   const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit') || '20')))
   const from = (page - 1) * limit
   const to = from + limit - 1
-  const selectFields = 'id,slug,brand,name,price,category,average_rating,review_count,weight_gram,status,created_at,updated_at'
+  const selectFields = `
+    id,
+    slug,
+    brand,
+    name,
+    price,
+    category,
+    average_rating,
+    review_count,
+    weight_gram,
+    status,
+    created_at,
+    updated_at,
+    promotion_products (
+      promotion_id,
+      promotions (
+        id,
+        type,
+        buy_qty,
+        discount_percent,
+        is_active
+      )
+    )
+  `
   
   let query = supabaseAdmin
     .from('products')
@@ -30,7 +54,57 @@ export async function GET(request: Request) {
   }
   const { data, error, count } = await query.range(from, to)
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json({ items: data || [], page, limit, total: count ?? 0 })
+
+  const now = new Date().toISOString()
+  const { data: activeTimedeal } = await supabaseAdmin
+    .from('timedeals')
+    .select('id')
+    .lte('start_at', now)
+    .gte('end_at', now)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const timedealMap = new Map<string, number>()
+  if (activeTimedeal && data && data.length > 0) {
+    const productIds = data.map((product: any) => product.id)
+    const { data: timedealProducts } = await supabaseAdmin
+      .from('timedeal_products')
+      .select('product_id, discount_percent')
+      .eq('timedeal_id', activeTimedeal.id)
+      .in('product_id', productIds)
+
+    if (timedealProducts) {
+      timedealProducts.forEach((tp: any) => {
+        timedealMap.set(tp.product_id, tp.discount_percent || 0)
+      })
+    }
+  }
+
+  const items = (data || []).map((product: any) => {
+    const promotion = extractActivePromotion(product)
+    const timedealDiscount = timedealMap.get(product.id) || 0
+
+    let promotionLabel: string | null = null
+    if (timedealDiscount > 0) {
+      promotionLabel = `타임딜 ${timedealDiscount}%`
+    } else if (promotion?.is_active && promotion?.type === 'bogo' && promotion?.buy_qty) {
+      promotionLabel = `프로모션 ${promotion.buy_qty}+1`
+    } else if (promotion?.is_active && promotion?.type === 'percent' && promotion?.discount_percent) {
+      promotionLabel = `프로모션 ${promotion.discount_percent}%`
+    }
+
+    return {
+      ...product,
+      promotion_label: promotionLabel,
+      promotion_type: promotion?.type || null,
+      promotion_discount_percent: promotion?.discount_percent || null,
+      promotion_buy_qty: promotion?.buy_qty || null,
+      timedeal_discount_percent: timedealDiscount || null,
+    }
+  })
+
+  return NextResponse.json({ items, page, limit, total: count ?? 0 })
 }
 
 export async function POST(request: Request) {

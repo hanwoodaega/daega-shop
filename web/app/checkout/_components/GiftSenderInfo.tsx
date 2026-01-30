@@ -38,7 +38,7 @@ export default function GiftSenderInfo({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-white rounded-lg shadow-md p-6 mb-10">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold">보내는 분</h2>
         {!isEditingOrderer && (

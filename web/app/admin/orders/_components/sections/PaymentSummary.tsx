@@ -5,6 +5,22 @@ interface PaymentSummaryProps {
   order: Order
 }
 
+const paymentMethodLabels: Record<string, string> = {
+  toss_card: '카드결제',
+  toss_billing: '간편카드 결제',
+  tosspay: '토스페이',
+  naverpay: '네이버페이(카드)',
+  kakaopay: '카카오페이(카드)',
+  samsungpay: '삼성페이',
+  card: '카드결제',
+  easy: '간편카드 결제',
+}
+
+function getPaymentMethodLabel(method: string | null | undefined) {
+  if (!method) return '카드결제'
+  return paymentMethodLabels[method] || method
+}
+
 export default function PaymentSummary({ order }: PaymentSummaryProps) {
   const productTotal = order.order_items?.reduce((sum, item) => {
     const originalPrice = (item.product as any)?.price || item.price || 0
@@ -18,7 +34,7 @@ export default function PaymentSummary({ order }: PaymentSummaryProps) {
         <div className="flex justify-between items-center text-sm">
           <span className="text-gray-600">결제방식</span>
           <span className="font-medium text-gray-900">
-            {order.payment_method || '카드결제'}
+            {getPaymentMethodLabel(order.payment_method)}
           </span>
         </div>
       </div>

@@ -29,5 +29,10 @@ export interface Product {
   image_url: string
   brand: string | null
   category: string
+  promotion_label?: string | null
+  promotion_type?: string | null
+  promotion_discount_percent?: number | null
+  promotion_buy_qty?: number | null
+  timedeal_discount_percent?: number | null
 }
 

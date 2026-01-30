@@ -10,7 +10,8 @@ import { useAuth } from '@/lib/auth/auth-context'
 import { toggleWishlistDB } from '@/lib/wishlist/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart/cart-db'
 import { formatPrice } from '@/lib/utils/utils'
-import { isValidImageUrl, calculateDiscountPrice, isSoldOut } from '@/lib/product/product-utils'
+import { isValidImageUrl, isSoldOut } from '@/lib/product/product-utils'
+import { getFinalPricing } from '@/lib/product/product.pricing'
 import StarIcons from '@/components/review/StarIcons'
 
 interface ProductCardProps {
@@ -35,40 +36,23 @@ function ProductCard({ product }: ProductCardProps) {
     hasValidImage && !isPlaceholderHost,
     [hasValidImage, isPlaceholderHost]
   )
-  // 타임딜 할인율 (우선순위 높음)
   const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
+  const pricing = useMemo(
+    () =>
+      getFinalPricing({
+        basePrice: product.price,
+        timedealDiscountPercent,
+        promotion: product.promotion,
+        weightGram: product.weight_gram,
+      }),
+    [product.price, product.promotion, product.weight_gram, timedealDiscountPercent]
+  )
 
-  // 프로모션 할인가 계산 (타임딜 할인율 우선, 없으면 프로모션 할인율)
-  const discountPrice = useMemo(() => {
-    // 타임딜 할인율이 있으면 타임딜 할인가 사용
-    if (timedealDiscountPercent > 0) {
-      return calculateDiscountPrice(product.price, timedealDiscountPercent)
-    }
-    // 활성화된 percent 타입 프로모션이 있으면 프로모션 할인율 사용
-    if (product.promotion?.is_active && product.promotion?.type === 'percent' && product.promotion.discount_percent) {
-      return calculateDiscountPrice(product.price, product.promotion.discount_percent)
-    }
-    return product.price
-  }, [product.price, product.promotion, timedealDiscountPercent])
-
-  // 할인율 계산 (타임딜 할인율 우선)
-  const discountPercent = useMemo(() => {
-    if (timedealDiscountPercent > 0) {
-      return timedealDiscountPercent
-    }
-    if (product.promotion?.is_active && product.promotion?.type === 'percent' && product.promotion.discount_percent) {
-      return product.promotion.discount_percent
-    }
-    return 0
-  }, [product.promotion, timedealDiscountPercent])
+  const discountPrice = pricing.finalPrice
+  const discountPercent = pricing.discountPercent
 
   // 100g당 가격 계산 (weight_gram 기준)
-  const pricePer100g = useMemo(() => {
-    if (product.weight_gram && product.weight_gram > 0) {
-      return (discountPrice / product.weight_gram) * 100
-    }
-    return null
-  }, [discountPrice, product.weight_gram])
+  const pricePer100g = pricing.pricePer100g
 
   // 품절 여부 확인
   const soldOut = useMemo(() => isSoldOut(product.status), [product.status])

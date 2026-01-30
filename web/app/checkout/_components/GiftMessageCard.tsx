@@ -18,63 +18,18 @@ export default function GiftMessageCard({
   onMessageChange,
 }: GiftMessageCardProps) {
   const getMessageStyle = (cardDesign: string) => {
-    const styles: Record<string, {
-      fontSize: string;
-      color: string;
-      fontFamily: string;
-      fontWeight: string;
-      textShadow: string;
-      lineHeight: string;
-    }> = {
-      'birthday-1': {
-        fontSize: 'clamp(16px, 3vw, 22px)',
-        color: '#000000',
-        fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-        fontWeight: '500',
-        textShadow: 'none',
-        lineHeight: '1.5',
-      },
-      'thanks-1': {
-        fontSize: 'clamp(15px, 2.8vw, 20px)',
-        color: '#000000',
-        fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-        fontWeight: '500',
-        textShadow: 'none',
-        lineHeight: '1.7',
-      },
-      'thanks-2': {
-        fontSize: 'clamp(14px, 2.5vw, 19px)',
-        color: '#000000',
-        fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-        fontWeight: '500',
-        textShadow: 'none',
-        lineHeight: '1.6',
-      },
-      'celebration-1': {
-        fontSize: 'clamp(17px, 3.2vw, 24px)',
-        color: '#000000',
-        fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-        fontWeight: '500',
-        textShadow: 'none',
-        lineHeight: '1.4',
-      },
-      'celebration-2': {
-        fontSize: 'clamp(16px, 3vw, 21px)',
-        color: '#000000',
-        fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
-        fontWeight: '500',
-        textShadow: 'none',
-        lineHeight: '1.5',
-      },
-    }
-    return styles[cardDesign] || {
-      fontSize: 'clamp(14px, 2.5vw, 18px)',
+    const baseStyle = {
+      fontSize: 'clamp(16px, 3vw, 22px)',
       color: '#000000',
       fontFamily: "'S-CoreDream', 'S-Core Dream', 'Noto Sans KR', sans-serif",
       fontWeight: '500',
       textShadow: 'none',
       lineHeight: '1.6',
+      top: '58%',
+      height: '42%',
+      paddingInline: 'clamp(44px, 12vw, 104px)',
     }
+    return baseStyle
   }
 
   return (
@@ -133,7 +88,7 @@ export default function GiftMessageCard({
                   >
                     <div className="aspect-square relative overflow-hidden">
                       <img
-                        src={`/images/gift-cards/${design.value}.png`}
+                        src={`/images/gift-cards/${design.value}.jpg`}
                         alt={design.label}
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -171,7 +126,7 @@ export default function GiftMessageCard({
               </label>
               <div className="relative rounded-lg overflow-hidden border-2 border-gray-200 shadow-md" style={{ aspectRatio: '1/1' }}>
                 <img
-                  src={`/images/gift-cards/${giftData.cardDesign}.png`}
+                  src={`/images/gift-cards/${giftData.cardDesign}.jpg`}
                   alt="카드 디자인"
                   className="w-full h-full object-cover"
                   style={{ display: 'block' }}
@@ -189,16 +144,20 @@ export default function GiftMessageCard({
                 />
                 {giftData.message && (() => {
                   const messageStyle = getMessageStyle(giftData.cardDesign)
-                  const paddingClass = giftData.cardDesign === 'thanks-2' ? 'px-16' : 'px-12'
                   
                   return (
-                    <div className={`absolute left-0 right-0 ${paddingClass} pointer-events-none z-10`} style={{ 
-                      top: '40%',
-                      height: '50%',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      justifyContent: 'flex-start',
-                    }}>
+                    <div
+                      className="absolute left-0 right-0 pointer-events-none z-10"
+                      style={{ 
+                        top: messageStyle.top,
+                        height: messageStyle.height,
+                        paddingInline: messageStyle.paddingInline,
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'flex-start',
+                        transform: 'translateY(-50%)',
+                      }}
+                    >
                       <p className="text-left whitespace-pre-wrap break-words w-full" style={{ 
                         fontSize: messageStyle.fontSize,
                         color: messageStyle.color,

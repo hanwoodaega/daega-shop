@@ -51,26 +51,26 @@ export async function performKakaoShare(options: KakaoShareOptions): Promise<voi
           } else {
             // 업로드 실패 시 원본 이미지 사용
             cardImageUrl = cardDesign 
-              ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
+              ? `${window.location.origin}/images/gift-cards/${cardDesign}.jpg`
               : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
           }
         } catch (uploadError) {
           // 업로드 에러 시 원본 이미지 사용
           cardImageUrl = cardDesign 
-            ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
+            ? `${window.location.origin}/images/gift-cards/${cardDesign}.jpg`
             : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
         }
       } catch (imageError) {
         // 이미지 생성 실패 시 원본 이미지 사용
         console.error('이미지 생성 실패:', imageError)
         cardImageUrl = cardDesign 
-          ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
+          ? `${window.location.origin}/images/gift-cards/${cardDesign}.jpg`
           : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
       }
     } else {
       // 원본 카드 이미지 사용
       cardImageUrl = cardDesign 
-        ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
+        ? `${window.location.origin}/images/gift-cards/${cardDesign}.jpg`
         : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
     }
 

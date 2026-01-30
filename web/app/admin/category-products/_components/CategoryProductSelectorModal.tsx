@@ -151,6 +151,7 @@ export default function CategoryProductSelectorModal({
                 filteredProducts.map((product) => {
                   const isSelected = selectedProducts.has(product.id)
                   const isPromoted = promotedProductIds.has(product.id)
+                  const promotionLabel = product.promotion_label || (isPromoted ? '프로모션 적용중' : null)
 
                   return (
                     <div
@@ -171,9 +172,9 @@ export default function CategoryProductSelectorModal({
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium">{product.name}</p>
-                          {isPromoted && (
+                          {promotionLabel && (
                             <span className="px-2 py-0.5 bg-pink-100 text-pink-700 text-xs font-bold rounded">
-                              프로모션 적용중
+                              {promotionLabel}
                             </span>
                           )}
                         </div>

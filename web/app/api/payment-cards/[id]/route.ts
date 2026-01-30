@@ -6,19 +6,17 @@ export const dynamic = 'force-dynamic'
 
 // DELETE: 결제 카드 삭제
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const supabase = createSupabaseServerClient()
-    
-    // 서버에서 사용자 인증 확인
+
     const user = await getUserFromServer()
     if (!user) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }
 
-    // 결제 카드 삭제 (본인 카드만 삭제 가능)
     const { error } = await supabase
       .from('payment_cards')
       .delete()
@@ -42,13 +40,12 @@ export async function DELETE(
 
 // PUT: 결제 카드를 기본 카드로 설정
 export async function PUT(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const supabase = createSupabaseServerClient()
-    
-    // 서버에서 사용자 인증 확인
+
     const user = await getUserFromServer()
     if (!user) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })

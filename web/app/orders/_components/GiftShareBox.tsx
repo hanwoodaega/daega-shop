@@ -172,23 +172,23 @@ export default function GiftShareBox({ giftToken, giftOrder }: GiftShareBoxProps
               cardImageUrl = uploadData.url
             } else {
               cardImageUrl = cardDesign 
-                ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
+                ? `${window.location.origin}/images/gift-cards/${cardDesign}.jpg`
                 : `${window.location.origin}/images/gift-default.jpg`
             }
           } catch (uploadError) {
             cardImageUrl = cardDesign 
-              ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
+              ? `${window.location.origin}/images/gift-cards/${cardDesign}.jpg`
               : `${window.location.origin}/images/gift-default.jpg`
           }
         } catch (imageError) {
           console.error('이미지 생성 실패:', imageError)
           cardImageUrl = cardDesign 
-            ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
+            ? `${window.location.origin}/images/gift-cards/${cardDesign}.jpg`
             : `${window.location.origin}/images/gift-default.jpg`
         }
       } else {
         cardImageUrl = cardDesign 
-          ? `${window.location.origin}/images/gift-cards/${cardDesign}.png`
+          ? `${window.location.origin}/images/gift-cards/${cardDesign}.jpg`
           : `${window.location.origin}/images/gift-default.jpg`
       }
 
