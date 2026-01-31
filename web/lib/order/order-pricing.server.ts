@@ -73,6 +73,7 @@ export interface OrderItemSnapshot {
   product_id: string
   quantity: number
   price: number
+  final_unit_price: number
   promotion_group_id?: string | null
 }
 
@@ -185,6 +186,7 @@ export async function calculateOrderPricing({
       product_id: item.productId,
       quantity: item.quantity,
       price: product.price,
+      final_unit_price: pricing.finalPrice,
     })
   })
 
@@ -207,6 +209,7 @@ export async function calculateOrderPricing({
           product_id: item.productId,
           quantity: item.quantity,
           price: product.price,
+          final_unit_price: pricing.finalPrice,
           promotion_group_id: groupId,
         })
       })
@@ -235,11 +238,16 @@ export async function calculateOrderPricing({
       const product = productMap.get(item.productId)
       const freeForProduct = freeCountByProduct.get(item.productId) || 0
       const paidQty = Math.max(0, item.quantity - freeForProduct)
-      discountedTotal += paidQty * product.price
+      const paidTotal = paidQty * product.price
+      const finalUnitPrice = item.quantity > 0
+        ? Math.round(paidTotal / item.quantity)
+        : product.price
+      discountedTotal += paidTotal
       itemSnapshots.push({
         product_id: item.productId,
         quantity: item.quantity,
         price: product.price,
+        final_unit_price: finalUnitPrice,
         promotion_group_id: groupId,
       })
     })

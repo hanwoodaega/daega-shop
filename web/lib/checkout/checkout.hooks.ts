@@ -330,6 +330,7 @@ export function useCheckout(options: UseCheckoutOptions) {
   ])
 
   const buildOrderInput = useCallback(() => {
+    const normalizedPhone = (formData.phone || '').replace(/\D/g, '').slice(0, 13)
     const shippingAddress = isGiftMode
       ? '선물 수령 대기'
       : deliveryMethod === 'pickup'
@@ -351,7 +352,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       delivery_time: deliveryTime,
       shipping_address: shippingAddress,
       shipping_name: isGiftMode ? '선물 수령 대기' : formData.name,
-      shipping_phone: isGiftMode ? '' : formData.phone,
+      shipping_phone: isGiftMode ? '' : normalizedPhone,
       delivery_note: formData.message.trim() || null,
       used_coupon_id: selectedCoupon?.id || null,
       used_points: usedPoints,
@@ -595,9 +596,10 @@ export function useCheckout(options: UseCheckoutOptions) {
           ? crypto.randomUUID()
           : `order-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-        const orderName = items.length > 1
-          ? `${items[0]?.name || '상품'} 외 ${items.length - 1}건`
-          : (items[0]?.name || '상품')
+      const rawOrderName = items.length > 1
+        ? `${items[0]?.name || '상품'} 외 ${items.length - 1}건`
+        : (items[0]?.name || '상품')
+      const orderName = rawOrderName.length > 100 ? `${rawOrderName.slice(0, 97)}...` : rawOrderName
 
         const orderInput = buildOrderInput()
         const prepareRes = await fetch('/api/payments/toss/prepare', {
@@ -659,9 +661,10 @@ export function useCheckout(options: UseCheckoutOptions) {
         ? crypto.randomUUID()
         : `order-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-      const orderName = items.length > 1
+      const rawOrderName = items.length > 1
         ? `${items[0]?.name || '상품'} 외 ${items.length - 1}건`
         : (items[0]?.name || '상품')
+      const orderName = rawOrderName.length > 100 ? `${rawOrderName.slice(0, 97)}...` : rawOrderName
 
       const orderInput = buildOrderInput()
       const prepareRes = await fetch('/api/payments/toss/prepare', {
@@ -700,6 +703,11 @@ export function useCheckout(options: UseCheckoutOptions) {
       const successUrl = `${baseUrl}/checkout/toss/success`
       const failUrl = `${baseUrl}/checkout/toss/fail`
 
+      const sanitizedPhone = (formData.phone || '').replace(/\D/g, '')
+      if (sanitizedPhone.length < 10 || sanitizedPhone.length > 11) {
+        throw new Error('휴대폰 번호를 확인해주세요.')
+      }
+
       const tossPayments = tossFactory(tossClientKey)
       const paymentOptions: any = {
         amount,
@@ -707,9 +715,9 @@ export function useCheckout(options: UseCheckoutOptions) {
         orderName,
         successUrl,
         failUrl,
-        customerName: formData.name,
+        customerName: formData.name.trim(),
         customerEmail: formData.email || undefined,
-        customerMobilePhone: formData.phone,
+        customerMobilePhone: sanitizedPhone,
       }
 
       const methodMap: Record<string, { method: string; easyPay?: { provider: string } }> = {
@@ -730,9 +738,10 @@ export function useCheckout(options: UseCheckoutOptions) {
 
     const chargeSavedCard = async (cardId: string) => {
       const orderInput = buildOrderInput()
-      const orderName = items.length > 1
+      const rawOrderName = items.length > 1
         ? `${items[0]?.name || '상품'} 외 ${items.length - 1}건`
         : (items[0]?.name || '상품')
+      const orderName = rawOrderName.length > 100 ? `${rawOrderName.slice(0, 97)}...` : rawOrderName
 
       const res = await fetch('/api/payments/toss/billing/charge', {
         method: 'POST',

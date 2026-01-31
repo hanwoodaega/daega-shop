@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/supabase'
+import { usernameToEmail } from '@/lib/auth/otp-utils'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useCartStore } from '@/lib/store'
 
@@ -13,7 +14,7 @@ function LoginForm() {
   const nextPath = searchParams.get('next') || '/'
   const urlError = searchParams.get('error')
   const cartCount = useCartStore((state) => state.getTotalItems())
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(urlError || '')
@@ -24,9 +25,9 @@ function LoginForm() {
     setError('')
 
     try {
-      console.log('로그인 시도:', email)
+      console.log('로그인 시도:', username)
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: usernameToEmail(username.trim()),
         password,
       })
 
@@ -149,12 +150,13 @@ function LoginForm() {
             <form onSubmit={handleEmailLogin} className="space-y-4 mb-6">
               <div>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
-                  placeholder="아이디 (이메일)"
+                  placeholder="아이디"
+                  autoComplete="username"
                 />
               </div>
 

@@ -1,147 +1,181 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import BottomNavbar from '@/components/layout/BottomNavbar'
+import Footer from '@/components/layout/Footer'
+
+const RESEND_COOLDOWN_SECONDS = 60
 
 export default function FindIdPage() {
   const router = useRouter()
-  const [name, setName] = useState('')
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [phone, setPhone] = useState('')
+  const [code, setCode] = useState('')
+  const [maskedId, setMaskedId] = useState('')
+  const [cooldown, setCooldown] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [foundEmails, setFoundEmails] = useState<any[] | null>(null)
 
-  const handleFindId = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = window.setInterval(() => {
+      setCooldown((prev) => Math.max(0, prev - 1))
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [cooldown])
+
+  const sendCode = async () => {
     setError('')
-    setFoundEmails(null)
-
+    setLoading(true)
     try {
-      const res = await fetch('/api/auth/find-id', {
+      const res = await fetch('/api/auth/send-verification-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone }),
+        body: JSON.stringify({ phone, purpose: 'find_id' }),
       })
-
-      const data = await res.json()
-
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(data.error || '아이디 찾기에 실패했습니다.')
+        throw new Error(data?.error || '인증번호 발송에 실패했습니다.')
       }
-
-      setFoundEmails(data.users)
+      setCooldown(RESEND_COOLDOWN_SECONDS)
+      setStep(2)
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message || '인증번호 발송에 실패했습니다.')
     } finally {
       setLoading(false)
     }
   }
 
-  // 이메일 마스킹 처리 (ex: abcd***@naver.com)
-  const maskEmail = (email: string) => {
-    const [id, domain] = email.split('@')
-    if (id.length <= 3) return `${id[0]}**@${domain}`
-    return `${id.slice(0, 3)}${'*'.repeat(id.length - 3)}@${domain}`
+  const verifyAndFind = async () => {
+    setError('')
+    setLoading(true)
+    try {
+      const verifyRes = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, code, purpose: 'find_id' }),
+      })
+      const verifyData = await verifyRes.json().catch(() => ({}))
+      if (!verifyRes.ok) {
+        throw new Error(verifyData?.error || '인증에 실패했습니다.')
+      }
+
+      const findRes = await fetch('/api/auth/find-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone,
+          verificationToken: verifyData.verificationToken,
+        }),
+      })
+      const findData = await findRes.json().catch(() => ({}))
+      if (!findRes.ok) {
+        throw new Error(findData?.error || '아이디를 찾을 수 없습니다.')
+      }
+
+      const firstUser = findData?.users?.[0]
+      setMaskedId(firstUser?.username || '')
+      setStep(3)
+    } catch (err: any) {
+      setError(err.message || '인증에 실패했습니다.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
-        <div className="container mx-auto px-4 h-14 md:h-16 flex items-center">
-          <button onClick={() => router.back()} className="p-2 text-gray-700">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="min-h-screen flex flex-col">
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+        <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
+          <button
+            onClick={() => router.back()}
+            aria-label="뒤로가기"
+            className="p-2 text-gray-700 hover:text-gray-900"
+          >
+            <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h1 className="flex-1 text-center text-lg font-medium mr-10">아이디 찾기</h1>
+          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">아이디 찾기</h1>
+          </div>
         </div>
       </header>
 
-      <main className="flex-1 bg-white p-6 max-w-md mx-auto w-full mt-4 rounded-xl shadow-sm">
-        {!foundEmails ? (
-          <>
-            <p className="text-gray-600 text-sm mb-8">
-              가입 시 입력하신 이름과 휴대폰 번호를 입력해 주세요.
-            </p>
+      <main className="flex-1 bg-white flex items-start justify-center pt-10 pb-12 px-6">
+        <div className="max-w-md w-full space-y-6">
+          <h2 className="text-2xl font-bold text-center text-primary-900">아이디 찾기</h2>
 
-            <form onSubmit={handleFindId} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">이름</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  placeholder="이름을 입력하세요"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
-                />
-              </div>
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">휴대폰 번호</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                  placeholder="휴대폰 번호 (- 없이 입력)"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent outline-none"
-                />
-              </div>
-
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg">
-                  {error}
-                </div>
-              )}
-
+          {step === 1 && (
+            <div className="space-y-4">
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                placeholder="휴대폰 번호"
+              />
               <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-red-600 text-white py-4 rounded-lg font-bold hover:bg-red-700 transition disabled:bg-gray-400 mt-4"
+                type="button"
+                onClick={sendCode}
+                disabled={loading || cooldown > 0}
+                className="w-full bg-blue-900 text-white py-3 rounded-lg font-semibold"
               >
-                {loading ? '조회 중...' : '확인'}
+                {cooldown > 0 ? `재전송까지 ${cooldown}초` : '인증번호 받기'}
               </button>
-            </form>
-          </>
-        ) : (
-          <div className="text-center py-4">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
             </div>
-            <h2 className="text-xl font-bold mb-2">아이디를 찾았습니다.</h2>
-            <p className="text-gray-600 text-sm mb-8">
-              입력하신 정보와 일치하는 아이디 목록입니다.
-            </p>
+          )}
 
-            <div className="bg-gray-50 rounded-xl p-6 mb-8">
-              {foundEmails.map((user, idx) => (
-                <div key={idx} className="flex flex-col items-center py-2">
-                  <span className="text-lg font-semibold text-gray-900">{maskEmail(user.email)}</span>
-                  <span className="text-xs text-gray-500 mt-1">보안을 위해 일부 정보는 숨김 처리되었습니다.</span>
-                  <span className="text-xs text-gray-500 mt-1">가입일: {new Date(user.created_at).toLocaleDateString()}</span>
-                </div>
-              ))}
+          {step === 2 && (
+            <div className="space-y-4">
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                placeholder="인증번호 6자리"
+                maxLength={6}
+              />
+              <button
+                type="button"
+                onClick={verifyAndFind}
+                disabled={loading}
+                className="w-full bg-blue-900 text-white py-3 rounded-lg font-semibold"
+              >
+                확인
+              </button>
+              <button
+                type="button"
+                onClick={sendCode}
+                disabled={loading || cooldown > 0}
+                className="w-full border border-gray-300 text-gray-700 py-3 rounded-lg font-semibold"
+              >
+                {cooldown > 0 ? `재전송까지 ${cooldown}초` : '인증번호 재전송'}
+              </button>
             </div>
+          )}
 
-            <div className="space-y-3">
-              <Link href="/auth/login" className="block w-full bg-red-600 text-white py-4 rounded-lg font-bold hover:bg-red-700 transition">
-                로그인하러 가기
+          {step === 3 && (
+            <div className="space-y-4 text-center">
+              <p className="text-gray-700">아이디: <span className="font-semibold">{maskedId}</span></p>
+              <Link href="/auth/login" className="block w-full bg-blue-900 text-white py-3 rounded-lg font-semibold">
+                로그인하기
               </Link>
-              <Link href="/auth/find-password" title="비밀번호 찾기" className="block w-full border border-gray-300 text-gray-700 py-4 rounded-lg font-bold hover:bg-gray-50 transition">
-                비밀번호 찾기
+              <Link href="/auth/find-password" className="text-sm text-gray-600 underline">
+                비밀번호도 잊었나요?
               </Link>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </main>
-
-      <BottomNavbar />
+      <Footer />
     </div>
   )
 }

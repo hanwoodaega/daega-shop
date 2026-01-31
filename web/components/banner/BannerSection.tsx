@@ -1,4 +1,5 @@
 import BannerSectionUI from './BannerSectionUI'
+import { getServerBaseUrl } from '@/lib/utils/server-url'
 
 /**
  * Server Component: 배너 데이터 fetch 담당
@@ -8,9 +9,7 @@ import BannerSectionUI from './BannerSectionUI'
  */
 export default async function BannerSection() {
   try {
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+    const siteUrl = getServerBaseUrl()
     
     // 서버에서 fetch with tags: revalidateTag('banner')로 캐시 무효화 가능
     if (!siteUrl) {

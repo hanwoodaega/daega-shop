@@ -110,40 +110,21 @@ export async function GET(request: NextRequest) {
     const ordersWithDetails = await Promise.all(
       (orders || []).map(async (order: any) => {
         // 상품 원가 합계 계산
-        // 주문 생성 시 order_items.price에 저장되는 것은 원가입니다
-        // 할인된 가격은 별도로 계산해야 합니다
+        // order_items.price는 주문 시 적용된 단가입니다
         let productOriginalTotal = 0
         let productOrderedTotal = 0
         
         if (order.order_items && order.order_items.length > 0) {
           order.order_items.forEach((item: any) => {
-            // order_items.price는 주문 생성 시점의 원가입니다
-            const originalPrice = item.price || 0
-            
             // products 테이블의 현재 원가 (변경되었을 수 있음)
             const currentProductPrice = item.product?.price || 0
+            const orderedPrice = item.price || 0
             
-            // 원가: order_items.price 사용 (주문 시점의 원가)
-            productOriginalTotal += originalPrice * item.quantity
+            // 원가: 상품의 현재 가격 사용 (주문 시점과 다를 수 있음)
+            productOriginalTotal += currentProductPrice * item.quantity
             
-            // 할인된 가격 계산
-            // 프로모션 정보에서 할인율 확인
-            let discountPercent = 0
-            if (item.product?.promotion_products && item.product.promotion_products.length > 0) {
-              for (const pp of item.product.promotion_products) {
-                const promo = Array.isArray(pp.promotions) ? pp.promotions[0] : pp.promotions
-                if (promo && promo.is_active && promo.type === 'percent' && promo.discount_percent) {
-                  discountPercent = promo.discount_percent
-                  break
-                }
-              }
-            }
-            
-            const discountedPrice = discountPercent > 0
-              ? Math.round(originalPrice * (100 - discountPercent) / 100)
-              : originalPrice
-            
-            productOrderedTotal += discountedPrice * item.quantity
+            // 주문 시점 적용 단가 합계
+            productOrderedTotal += orderedPrice * item.quantity
           })
         }
 
@@ -204,7 +185,6 @@ export async function GET(request: NextRequest) {
         }
 
         // 즉시할인 금액 계산
-        // order_items.price는 원가이고, discount_percent로 할인가를 계산했습니다
         let immediateDiscount = Math.max(0, productOriginalTotal - productOrderedTotal)
         
         // 만약 discount_percent 정보가 없어서 즉시할인이 0이면, 총액 역산으로 계산

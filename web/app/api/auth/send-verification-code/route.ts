@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'crypto'
+import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { generateOtpCode, hashOtp, normalizePhone } from '@/lib/auth/otp-utils'
+
+const OTP_EXPIRES_MINUTES = 5
+const RESEND_COOLDOWN_SECONDS = 60
+const MAX_DAILY_SENDS = 5
+const LOCK_MINUTES = 10
 
 /**
  * 인증번호 발송 API (카카오 알림톡 + SMS fallback)
@@ -8,75 +14,151 @@ import crypto from 'crypto'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { phone } = body
+    const { phone, purpose, username } = body
 
-    if (!phone) {
-      return NextResponse.json({ error: '전화번호가 필요합니다.' }, { status: 400 })
+    if (!phone || !purpose) {
+      return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
     }
 
-    // 전화번호 형식 검증 (하이픈 제거 후 숫자만)
-    const phoneNumber = phone.replace(/[^0-9]/g, '')
+    if (!['signup', 'find_id', 'reset_pw'].includes(purpose)) {
+      return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 })
+    }
+
+    const phoneNumber = normalizePhone(phone)
     if (phoneNumber.length < 10 || phoneNumber.length > 11) {
       return NextResponse.json({ error: '올바른 전화번호 형식이 아닙니다.' }, { status: 400 })
     }
 
-    // 6자리 인증번호 생성
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString()
+    const supabaseAdmin = createSupabaseAdminClient()
 
-    // 인증번호를 세션/캐시에 저장 (5분 유효)
-    // 실제로는 Redis나 데이터베이스를 사용하는 것이 좋지만, 
-    // 여기서는 간단하게 메모리 기반으로 구현
-    // TODO: Redis 또는 데이터베이스로 변경 필요
+    if (purpose === 'signup') {
+      const { data: existingPhone } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('phone', phoneNumber)
+        .maybeSingle()
 
-    // 카카오 알림톡 발송 시도
+      if (existingPhone) {
+        return NextResponse.json(
+          {
+            error: '이미 가입된 휴대폰 번호입니다.',
+            code: 'PHONE_EXISTS',
+            actions: ['login', 'find-id', 'reset-password'],
+          },
+          { status: 409 }
+        )
+      }
+
+      if (username) {
+        const { data: existingUsername } = await supabaseAdmin
+          .from('users')
+          .select('id')
+          .eq('username', username.trim())
+          .maybeSingle()
+
+        if (existingUsername) {
+          return NextResponse.json(
+            { error: '이미 사용 중인 아이디입니다.', code: 'USERNAME_EXISTS' },
+            { status: 409 }
+          )
+        }
+      }
+    }
+
+    const now = new Date()
+    const { data: latestOtp } = await supabaseAdmin
+      .from('auth_otps')
+      .select('*')
+      .eq('phone', phoneNumber)
+      .eq('purpose', purpose)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (latestOtp?.locked_until && new Date(latestOtp.locked_until) > now) {
+      const remaining = Math.ceil((new Date(latestOtp.locked_until).getTime() - now.getTime()) / 1000)
+      return NextResponse.json(
+        { error: '잠시 후 다시 시도해주세요.', retryAfter: remaining },
+        { status: 429 }
+      )
+    }
+
+    if (latestOtp?.resend_available_at && new Date(latestOtp.resend_available_at) > now) {
+      const remaining = Math.ceil((new Date(latestOtp.resend_available_at).getTime() - now.getTime()) / 1000)
+      return NextResponse.json(
+        { error: '재전송 대기 시간이 남아있습니다.', retryAfter: remaining },
+        { status: 429 }
+      )
+    }
+
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const { count: dailyCount } = await supabaseAdmin
+      .from('auth_otps')
+      .select('id', { count: 'exact', head: true })
+      .eq('phone', phoneNumber)
+      .gte('created_at', since)
+
+    if ((dailyCount || 0) >= MAX_DAILY_SENDS) {
+      return NextResponse.json({ error: '하루 인증 시도 횟수를 초과했습니다.' }, { status: 429 })
+    }
+
+    const verificationCode = generateOtpCode()
+
     let sentVia = 'kakao'
     let sendSuccess = false
 
     try {
-      // 카카오 알림톡 발송
       sendSuccess = await sendKakaoAlimtalk(phoneNumber, verificationCode)
-      
       if (!sendSuccess) {
-        // 카카오 알림톡 실패 시 SMS로 fallback
         sentVia = 'sms'
         sendSuccess = await sendSMS(phoneNumber, verificationCode)
       }
     } catch (error) {
       console.error('알림톡 발송 실패, SMS로 fallback:', error)
-      // 카카오 알림톡 실패 시 SMS로 fallback
       sentVia = 'sms'
       try {
         sendSuccess = await sendSMS(phoneNumber, verificationCode)
       } catch (smsError) {
         console.error('SMS 발송도 실패:', smsError)
-        return NextResponse.json({ 
-          error: '인증번호 발송에 실패했습니다. 잠시 후 다시 시도해주세요.' 
-        }, { status: 500 })
+        return NextResponse.json(
+          { error: '인증번호 발송에 실패했습니다. 잠시 후 다시 시도해주세요.' },
+          { status: 500 }
+        )
       }
     }
 
     if (!sendSuccess) {
-      return NextResponse.json({ 
-        error: '인증번호 발송에 실패했습니다.' 
-      }, { status: 500 })
+      return NextResponse.json({ error: '인증번호 발송에 실패했습니다.' }, { status: 500 })
     }
 
-    // 인증번호를 임시로 저장 (실제로는 Redis나 DB 사용 권장)
-    // 여기서는 간단하게 쿠키나 세션에 저장
-    // TODO: Redis 또는 데이터베이스로 변경 필요
+    const expiresAt = new Date(Date.now() + OTP_EXPIRES_MINUTES * 60 * 1000).toISOString()
+    const resendAvailableAt = new Date(Date.now() + RESEND_COOLDOWN_SECONDS * 1000).toISOString()
 
-    return NextResponse.json({ 
-      success: true, 
+    const { error: insertError } = await supabaseAdmin
+      .from('auth_otps')
+      .insert({
+        phone: phoneNumber,
+        purpose,
+        code_hash: hashOtp(phoneNumber, verificationCode),
+        expires_at: expiresAt,
+        attempts: 0,
+        resend_available_at: resendAvailableAt,
+        locked_until: null,
+      })
+
+    if (insertError) {
+      return NextResponse.json({ error: '인증번호 저장에 실패했습니다.' }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      success: true,
       message: '인증번호가 발송되었습니다.',
       sentVia,
-      // 개발 환경에서만 인증번호 반환 (실제 운영에서는 제거)
-      ...(process.env.NODE_ENV === 'development' && { code: verificationCode })
+      ...(process.env.NODE_ENV === 'development' && { code: verificationCode }),
     })
   } catch (error: any) {
     console.error('인증번호 발송 오류:', error)
-    return NextResponse.json({ 
-      error: error.message || '서버 오류가 발생했습니다.' 
-    }, { status: 500 })
+    return NextResponse.json({ error: error.message || '서버 오류가 발생했습니다.' }, { status: 500 })
   }
 }
 

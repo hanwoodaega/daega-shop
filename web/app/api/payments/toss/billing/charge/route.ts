@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
     })
 
     const payload: OrderInput = orderInput
+    const normalizedPhone = String(payload.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
     const paymentAmount = pricing.finalTotal
 
     const tossOrderId = (typeof crypto.randomUUID === 'function')
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
       delivery_time: payload.delivery_time,
       shipping_address: payload.shipping_address,
       shipping_name: payload.shipping_name,
-      shipping_phone: payload.shipping_phone,
+      shipping_phone: payload.is_gift ? '' : normalizedPhone,
       delivery_note: payload.delivery_note,
       is_gift: payload.is_gift,
       gift_message: payload.gift_message,
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
       order_id: order.id,
       product_id: item.product_id,
       quantity: item.quantity,
-      price: item.price,
+      price: item.final_unit_price ?? item.price,
     }))
 
     if (orderItems.length > 0) {

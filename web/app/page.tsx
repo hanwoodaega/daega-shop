@@ -9,6 +9,7 @@ import RecommendationSection from '@/components/sections/RecommendationSection'
 import TimeDealSection from '@/components/timedeal/TimeDealSection'
 import HeroSlider from '@/components/sections/HeroSlider'
 import BannerSection from '@/components/banner/BannerSection'
+import { getServerBaseUrl } from '@/lib/utils/server-url'
 
 interface ColorTheme {
   background?: string
@@ -34,15 +35,13 @@ export default async function Home() {
   let collections: Collection[] = []
 
   try {
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+    const siteUrl = getServerBaseUrl()
 
     if (siteUrl) {
       const res = await fetch(`${siteUrl}/api/collections`, {
         next: { revalidate: 300 }, // 5분 캐시
       })
-    
+
       if (res.ok) {
         const data = await res.json()
         collections = data.collections || []

@@ -1,4 +1,5 @@
 import TimeDealSectionClient from './TimeDealSectionClient'
+import { getServerBaseUrl } from '@/lib/utils/server-url'
 
 interface TimeDealSectionProps {
   variant?: 'scroll' | 'grid' // 'scroll': 가로 스크롤 (기본), 'grid': 2열 그리드
@@ -16,9 +17,7 @@ export default async function TimeDealSection({ variant = 'scroll' }: TimeDealSe
     const limit = variant === 'grid' ? 30 : 5
     
     // 서버 컴포넌트에서는 절대 URL 사용 권장 (Vercel, Edge, SSR 환경 대응)
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+    const siteUrl = getServerBaseUrl()
     
     // 서버에서 fetch with tags: revalidateTag('timedeal')로 캐시 무효화 가능
     if (!siteUrl) {

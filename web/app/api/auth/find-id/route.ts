@@ -1,29 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { hashToken, maskUsername, normalizePhone } from '@/lib/auth/otp-utils'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/auth/find-id
- * 이름과 휴대폰 번호로 가입된 이메일(아이디) 찾기
+ * 휴대폰 OTP 확인 후 아이디(마스킹) 조회
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, phone } = body
+    const { phone, verificationToken } = body
 
-    if (!name || !phone) {
-      return NextResponse.json({ error: '이름과 휴대폰 번호를 입력해주세요.' }, { status: 400 })
+    if (!phone || !verificationToken) {
+      return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
     }
 
     const supabaseAdmin = createSupabaseAdminClient()
+    const phoneNumber = normalizePhone(phone)
 
-    // 이름과 휴대폰 번호로 사용자 조회
+    const { data: latestOtp } = await supabaseAdmin
+      .from('auth_otps')
+      .select('verification_token_hash, verification_expires_at')
+      .eq('phone', phoneNumber)
+      .eq('purpose', 'find_id')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (!latestOtp?.verification_token_hash) {
+      return NextResponse.json({ error: '인증 정보가 없습니다.' }, { status: 400 })
+    }
+
+    if (latestOtp.verification_expires_at && new Date(latestOtp.verification_expires_at) < new Date()) {
+      return NextResponse.json({ error: '인증 정보가 만료되었습니다.' }, { status: 400 })
+    }
+
+    if (latestOtp.verification_token_hash !== hashToken(verificationToken)) {
+      return NextResponse.json({ error: '인증 정보가 올바르지 않습니다.' }, { status: 400 })
+    }
+
+    // 휴대폰 번호로 사용자 조회
     const { data: users, error } = await supabaseAdmin
       .from('users')
-      .select('email, created_at')
-      .eq('name', name.trim())
-      .eq('phone', phone.replace(/[^0-9]/g, '')) // 숫자만 추출하여 비교
+      .select('username, created_at')
+      .eq('phone', phoneNumber)
 
     if (error) {
       console.error('Find ID error:', error)
@@ -34,11 +56,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '일치하는 사용자 정보가 없습니다.' }, { status: 404 })
     }
 
-    // 보안을 위해 이메일 일부를 마스킹 처리할 수 있지만, 일단은 그대로 제공하거나 마스킹 선택 가능
-    // 여기서는 전체를 보여주되, 가입일 등 추가 정보를 함께 제공
-    const foundUsers = users.map(user => ({
-      email: user.email,
-      created_at: user.created_at
+    const foundUsers = users.map((user) => ({
+      username: maskUsername(user.username),
+      created_at: user.created_at,
     }))
 
     return NextResponse.json({ users: foundUsers })
