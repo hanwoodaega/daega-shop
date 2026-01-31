@@ -54,9 +54,16 @@ export async function fetchBanners(): Promise<FetchBannersResponse> {
   // 클라이언트 사이드에서는 상대 경로 사용 (CORS 방지)
   // 서버 사이드에서는 절대 URL 사용 가능하지만, 클라이언트에서 호출될 수 있으므로 상대 경로 사용
   const isServer = typeof window === 'undefined'
-  const url = isServer 
-    ? `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/banners`
+  const serverBaseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+  const url = isServer
+    ? (serverBaseUrl ? `${serverBaseUrl}/api/banners` : null)
     : '/api/banners'
+
+  if (!url) {
+    return { banners: [] }
+  }
   
   const res = await fetch(url, {
     ...(isServer ? { next: { tags: ['banner'] } } : { cache: 'no-store' }),

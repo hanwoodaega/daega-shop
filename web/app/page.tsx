@@ -34,15 +34,19 @@ export default async function Home() {
   let collections: Collection[] = []
 
   try {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+
+    if (siteUrl) {
+      const res = await fetch(`${siteUrl}/api/collections`, {
+        next: { revalidate: 300 }, // 5분 캐시
+      })
     
-    const res = await fetch(`${siteUrl}/api/collections`, {
-      next: { revalidate: 300 }, // 5분 캐시
-    })
-    
-    if (res.ok) {
-      const data = await res.json()
-      collections = data.collections || []
+      if (res.ok) {
+        const data = await res.json()
+        collections = data.collections || []
+      }
     }
   } catch (error: any) {
     // 빌드 시점 연결 실패는 무시 (정상적인 동작)

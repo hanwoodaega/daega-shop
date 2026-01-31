@@ -91,14 +91,6 @@ app/
 │   ├── TimeDealPageClient.tsx
 │   └── _components/
 │
-├── live-draw/                         # 라이브 추첨 페이지
-│   ├── page.tsx
-│   ├── LiveDrawPageClient.tsx
-│   └── _components/
-│       ├── LiveDrawUpcoming.tsx
-│       ├── LiveDrawLive.tsx
-│       └── LiveDrawEnded.tsx
-│
 ├── cart/                              # 장바구니
 │   ├── page.tsx
 │   ├── CartPageClient.tsx
@@ -174,8 +166,6 @@ app/api/
 │   └── [slug]/route.ts
 │
 ├── timedeals/route.ts                  # 타임딜 API
-│
-├── live-draw/route.ts                  # 라이브 추첨 API
 │
 ├── cart/route.ts                       # 장바구니 API
 │
@@ -354,10 +344,6 @@ app/admin/
 │   ├── _hooks/
 │   └── _types.ts
 │
-└── live-draw/                           # 라이브 추첨 관리
-    ├── page.tsx
-    └── _components/
-        └── LiveDrawForm.tsx
 ```
 
 ### 관리자 API 라우트 (Admin API Routes)
@@ -403,8 +389,6 @@ app/api/admin/
 ├── points/route.ts                      # 포인트 관리 API
 │
 ├── notifications/route.ts                # 알림 관리 API
-│
-├── live-draw/route.ts                   # 라이브 추첨 관리 API
 │
 ├── categories/route.ts                  # 카테고리 관리 API
 │
@@ -581,9 +565,6 @@ lib/
 │   ├── notification.types.ts          # 알림 타입
 │   └── index.ts
 │
-├── livedraw/                             # 라이브 추첨 관련 로직
-│   ├── livedraw.service.ts             # 라이브 추첨 서비스
-│   ├── livedraw.types.ts               # 라이브 추첨 타입
 │   └── index.ts
 │
 ├── promotion/                            # 프로모션 관련 로직
@@ -736,7 +717,7 @@ migrations/
 - **훅**: camelCase with `.hooks.ts` (예: `product.hooks.ts`)
 
 ### 폴더명
-- **소문자 kebab-case** (예: `product-info/`, `live-draw/`)
+- **소문자 kebab-case** (예: `product-info/`)
 - **컴포넌트 폴더**: 기능별로 분리
 
 ### 컴포넌트 분류

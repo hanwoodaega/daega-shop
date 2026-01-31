@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function TossBillingSuccessPage() {
+function TossBillingSuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
@@ -53,5 +53,13 @@ export default function TossBillingSuccessPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function TossBillingSuccessPage() {
+  return (
+    <Suspense fallback={null}>
+      <TossBillingSuccessContent />
+    </Suspense>
   )
 }

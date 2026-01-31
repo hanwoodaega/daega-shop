@@ -9,6 +9,7 @@ import { loadCartFromDB } from '@/lib/cart/cart-db'
  */
 export function useCartRealtimeSync(userId: string | undefined, productIdsString: string) {
   const channelRef = useRef<any>(null)
+  const reloadTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (!userId) return
@@ -17,15 +18,32 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
       const dbItems = await loadCartFromDB(userId)
       useCartStore.setState({ items: dbItems })
     }
+
+    const scheduleLoadCart = (delayMs: number = 200) => {
+      if (reloadTimeoutRef.current) {
+        clearTimeout(reloadTimeoutRef.current)
+      }
+      reloadTimeoutRef.current = setTimeout(() => {
+        reloadTimeoutRef.current = null
+        loadCart()
+      }, delayMs)
+    }
     
     // 초기 로드
     loadCart()
     
     // 페이지 포커스 시 갱신 (다른 탭에서 돌아올 때)
     const handleFocus = () => {
-      loadCart()
+      scheduleLoadCart(0)
     }
     window.addEventListener('focus', handleFocus)
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        scheduleLoadCart(0)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     
     // Supabase Realtime 구독: 상품 가격/할인율 변경 시 장바구니 갱신
     // 최신 items를 스토어에서 가져오기 (클로저 문제 방지)
@@ -54,7 +72,7 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
             // 상품 가격이나 할인율이 변경되면 장바구니 갱신
             if (payload.new.price !== payload.old?.price || 
                 payload.new.discount_percent !== payload.old?.discount_percent) {
-              loadCart()
+              scheduleLoadCart()
             }
           }
         )
@@ -65,6 +83,11 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
 
     return () => {
       window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (reloadTimeoutRef.current) {
+        clearTimeout(reloadTimeoutRef.current)
+        reloadTimeoutRef.current = null
+      }
       // cleanup: 기존 channel 제거
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)

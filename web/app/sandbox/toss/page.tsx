@@ -75,7 +75,7 @@ export default function TossSandboxPage() {
         paymentOptions.easyPay = methodConfig.easyPay
       }
 
-      await tossPaymentsRef.current.requestPayment(methodConfig.method, paymentOptions)
+      await (tossPaymentsRef.current as any).requestPayment(methodConfig.method, paymentOptions)
     } catch (err: any) {
       setError(err?.message || '결제 요청에 실패했습니다.')
       setIsPaying(false)

@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/auth-context'
+import { supabase } from '@/lib/supabase/supabase'
 
 export default function NotificationBell() {
   const router = useRouter()
   const { user } = useAuth()
   const [unreadCount, setUnreadCount] = useState(0)
+  const channelRef = useRef<any>(null)
 
   // 읽지 않은 알림 개수 조회
   const fetchUnreadCount = async () => {
@@ -45,7 +47,7 @@ export default function NotificationBell() {
     router.push('/notifications')
   }
 
-  // 주기적으로 읽지 않은 개수 갱신
+  // 읽지 않은 개수 갱신 (포커스/가시성 + realtime)
   useEffect(() => {
     if (!user?.id) {
       setUnreadCount(0)
@@ -53,12 +55,51 @@ export default function NotificationBell() {
     }
 
     fetchUnreadCount()
-    
-    // 30초마다 갱신
-    const interval = setInterval(fetchUnreadCount, 30000)
+
+    const handleFocus = () => {
+      fetchUnreadCount()
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchUnreadCount()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // Supabase Realtime: 알림 변화 감지 시 재확인
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current)
+      channelRef.current = null
+    }
+
+    const channel = supabase
+      .channel(`notifications-unread-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchUnreadCount()
+        }
+      )
+      .subscribe()
+
+    channelRef.current = channel
 
     return () => {
-      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
     }
   }, [user?.id])
 

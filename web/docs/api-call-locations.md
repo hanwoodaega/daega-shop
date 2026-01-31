@@ -27,11 +27,6 @@
 |---------|---------|---------------|----------|
 | `GET /api/timedeals` | ✅ | ✅ | **서버**: `components/timedeal/TimeDealSection.tsx` (초기 렌더링/SEO용)<br>**클라이언트**: `lib/timedeal/timedeal.service.ts` (fetchTimeDeal), `lib/timedeal/useTimeDealPolling.ts` (실시간 업데이트/폴링용)<br>**⚠️ 주의**: 초기 진입 시 서버+클라이언트에서 중복 호출 발생 (의도된 중복 - 아래 위험 포인트 참고) |
 
-#### 라이브 추첨 관련
-| API 경로 | 서버 호출 | 클라이언트 호출 | 호출 위치 |
-|---------|---------|---------------|----------|
-| `GET /api/live-draw` | ❌ | ✅ | **클라이언트**: `lib/livedraw/livedraw.service.ts` (fetchLiveDraw), `app/live-draw/_components/LiveDrawLive.tsx` |
-
 #### 컬렉션 관련
 | API 경로 | 서버 호출 | 클라이언트 호출 | 호출 위치 |
 |---------|---------|---------------|----------|
@@ -201,12 +196,6 @@
 | `PUT /api/admin/timedeals/[id]` | ❌ | ✅ | **클라이언트**: `app/admin/timedeals/_hooks/useAdminTimeDeals.ts` |
 | `DELETE /api/admin/timedeals/[id]` | ❌ | ✅ | **클라이언트**: `app/admin/timedeals/_hooks/useAdminTimeDeals.ts` |
 
-#### 관리자 라이브 추첨 관리
-| API 경로 | 서버 호출 | 클라이언트 호출 | 호출 위치 |
-|---------|---------|---------------|----------|
-| `GET /api/admin/live-draw` | ❌ | ✅ | **클라이언트**: `app/admin/live-draw/page.tsx` |
-| `POST /api/admin/live-draw` | ❌ | ✅ | **클라이언트**: `app/admin/live-draw/page.tsx` |
-
 #### 관리자 쿠폰 관리
 | API 경로 | 서버 호출 | 클라이언트 호출 | 호출 위치 |
 |---------|---------|---------------|----------|
@@ -328,7 +317,6 @@
 | 서비스 함수 | 파일 경로 | 호출 위치 | API 호출 |
 |-----------|----------|----------|---------|
 | `fetchTimeDeal` | `lib/timedeal/timedeal.service.ts` | `lib/timedeal/useTimeDealPolling.ts` | `GET /api/timedeals` |
-| `fetchLiveDraw` | `lib/livedraw/livedraw.service.ts` | `app/live-draw/LiveDrawPageClient.tsx`, `app/live-draw/_components/LiveDrawLive.tsx` | `GET /api/live-draw` |
 | `fetchProducts` | `lib/product/product.service.ts` | `lib/product/product.hooks.ts` | `GET /api/products` |
 | `fetchBanners` | `lib/banner/banner.service.ts` | 사용되지 않음 (서버 컴포넌트에서 직접 호출) | `GET /api/banners` |
 | `fetchGift` | `lib/gift/gift.service.ts` | `app/gift/[token]/page.tsx` | `GET /api/gift/[token]` |

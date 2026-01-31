@@ -134,27 +134,33 @@ export async function GET() {
         const normalItem = normalItemByProductId.get(item.product_id)
         if (normalItem && normalItem.id !== item.id) {
           cleanupTasks.push(
-            supabase
-              .from('carts')
-              .update({ quantity: (normalItem.quantity || 0) + (item.quantity || 0) })
-              .eq('id', normalItem.id)
+            Promise.resolve(
+              supabase
+                .from('carts')
+                .update({ quantity: (normalItem.quantity || 0) + (item.quantity || 0) })
+                .eq('id', normalItem.id)
+            )
           )
           cleanupTasks.push(
-            supabase
-              .from('carts')
-              .delete()
-              .eq('id', item.id)
+            Promise.resolve(
+              supabase
+                .from('carts')
+                .delete()
+                .eq('id', item.id)
+            )
           )
         } else {
           cleanupTasks.push(
-            supabase
-              .from('carts')
-              .update({
-                promotion_group_id: null,
-                promotion_type: null,
-                discount_percent: null,
-              })
-              .eq('id', item.id)
+            Promise.resolve(
+              supabase
+                .from('carts')
+                .update({
+                  promotion_group_id: null,
+                  promotion_type: null,
+                  discount_percent: null,
+                })
+                .eq('id', item.id)
+            )
           )
         }
       }

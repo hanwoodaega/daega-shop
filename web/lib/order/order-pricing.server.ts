@@ -188,7 +188,7 @@ export async function calculateOrderPricing({
     })
   })
 
-  for (const [groupId, items] of groupedItems.entries()) {
+  groupedItems.forEach((items, groupId) => {
     const firstProduct = productMap.get(items[0].productId)
     const promotion = firstProduct?.promotion
     const isBogo = promotion?.type === 'bogo' && promotion?.buy_qty
@@ -210,7 +210,7 @@ export async function calculateOrderPricing({
           promotion_group_id: groupId,
         })
       })
-      continue
+      return
     }
 
     const buyQty = promotion.buy_qty || 1
@@ -243,7 +243,7 @@ export async function calculateOrderPricing({
         promotion_group_id: groupId,
       })
     })
-  }
+  })
 
   if (input.is_gift && discountedTotal < GIFT_MIN_AMOUNT) {
     throw new Error(`선물하기는 상품금액(할인 적용 후)이 ${GIFT_MIN_AMOUNT}원 이상이어야 합니다.`)

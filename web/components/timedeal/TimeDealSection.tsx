@@ -16,9 +16,15 @@ export default async function TimeDealSection({ variant = 'scroll' }: TimeDealSe
     const limit = variant === 'grid' ? 30 : 5
     
     // 서버 컴포넌트에서는 절대 URL 사용 권장 (Vercel, Edge, SSR 환경 대응)
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
     
     // 서버에서 fetch with tags: revalidateTag('timedeal')로 캐시 무효화 가능
+    if (!siteUrl) {
+      return null
+    }
+
     const res = await fetch(`${siteUrl}/api/timedeals?limit=${limit}`, {
       next: { tags: ['timedeal'] },
     })

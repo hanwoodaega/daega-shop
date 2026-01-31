@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
-export default function TossSandboxSuccessPage() {
+function TossSandboxSuccessContent() {
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
   const [message, setMessage] = useState('결제 승인 중입니다...')
@@ -112,5 +112,13 @@ export default function TossSandboxSuccessPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function TossSandboxSuccessPage() {
+  return (
+    <Suspense fallback={null}>
+      <TossSandboxSuccessContent />
+    </Suspense>
   )
 }

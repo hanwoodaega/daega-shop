@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
 import { removeFromCartDB } from '@/lib/cart/cart-db'
@@ -53,7 +53,7 @@ interface CheckoutMeta {
   }
 }
 
-export default function TossSuccessPage() {
+function TossSuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
@@ -281,5 +281,13 @@ export default function TossSuccessPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function TossSuccessPage() {
+  return (
+    <Suspense fallback={null}>
+      <TossSuccessContent />
+    </Suspense>
   )
 }

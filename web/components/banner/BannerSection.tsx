@@ -8,9 +8,15 @@ import BannerSectionUI from './BannerSectionUI'
  */
 export default async function BannerSection() {
   try {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
     
     // 서버에서 fetch with tags: revalidateTag('banner')로 캐시 무효화 가능
+    if (!siteUrl) {
+      return null
+    }
+
     const res = await fetch(`${siteUrl}/api/banners`, {
       next: { tags: ['banner'], revalidate: 60 }, // 1분 캐시
     })

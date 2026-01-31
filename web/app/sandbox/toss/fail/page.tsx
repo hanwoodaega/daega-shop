@@ -1,8 +1,9 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
-export default function TossSandboxFailPage() {
+function TossSandboxFailContent() {
   const searchParams = useSearchParams()
   const errorCode = searchParams.get('code')
   const errorMessage = searchParams.get('message')
@@ -59,5 +60,13 @@ export default function TossSandboxFailPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function TossSandboxFailPage() {
+  return (
+    <Suspense fallback={null}>
+      <TossSandboxFailContent />
+    </Suspense>
   )
 }
