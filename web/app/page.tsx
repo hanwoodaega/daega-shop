@@ -11,6 +11,8 @@ import HeroSlider from '@/components/sections/HeroSlider'
 import BannerSection from '@/components/banner/BannerSection'
 import { getServerBaseUrl } from '@/lib/utils/server-url'
 
+export const dynamic = 'force-dynamic'
+
 interface ColorTheme {
   background?: string
   accent?: string
