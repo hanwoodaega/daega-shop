@@ -77,7 +77,6 @@ function NaverCallbackContent() {
               name: user.name,
               provider: 'naver',
               naver_id: user.id,
-              profile_image: user.profile_image,
               phone: phoneNumber,
             },
             emailRedirectTo: `${window.location.origin}/`,

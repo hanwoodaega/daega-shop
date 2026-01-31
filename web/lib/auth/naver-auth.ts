@@ -23,7 +23,7 @@ export const getNaverUserInfo = async (accessToken: string) => {
     })
     
     const data = await response.json()
-    return data.response // { id, email, name, profile_image }
+    return data.response // { id, email, name }
   } catch (error) {
     console.error('네이버 사용자 정보 조회 실패:', error)
     return null

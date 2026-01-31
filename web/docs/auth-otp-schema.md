@@ -47,8 +47,15 @@ create index if not exists password_reset_tokens_token_hash_idx
 alter table users
   add column if not exists username text;
 
+alter table users
+  add column if not exists username_normalized text,
+  add column if not exists status text default 'active';
+
 create unique index if not exists users_username_unique
   on users (username);
+
+create unique index if not exists users_username_normalized_unique
+  on users (username_normalized);
 
 create unique index if not exists users_phone_unique
   on users (phone);

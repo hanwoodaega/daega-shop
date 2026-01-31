@@ -4,7 +4,6 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/supabase'
-import { usernameToEmail } from '@/lib/auth/otp-utils'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useCartStore } from '@/lib/store'
 
@@ -26,8 +25,19 @@ function LoginForm() {
 
     try {
       console.log('로그인 시도:', username)
+      const resolveRes = await fetch('/api/auth/resolve-username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username }),
+      })
+
+      const resolveData = await resolveRes.json().catch(() => ({}))
+      if (!resolveRes.ok) {
+        throw new Error(resolveData?.error || '로그인 정보를 찾을 수 없습니다.')
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: usernameToEmail(username.trim()),
+        email: resolveData.email,
         password,
       })
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { hashToken, normalizePhone, usernameToEmail } from '@/lib/auth/otp-utils'
+import { hashToken, normalizePhone, normalizeUsername, usernameToEmail } from '@/lib/auth/otp-utils'
 
 const MIN_PASSWORD_LENGTH = 8
 
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     const trimmedUsername = String(username).trim()
+    const normalizedUsername = normalizeUsername(trimmedUsername)
     if (trimmedUsername.length < 4) {
       return NextResponse.json({ error: '아이디는 최소 4자 이상이어야 합니다.' }, { status: 400 })
     }
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
     const { data: existingUsername } = await supabaseAdmin
       .from('users')
       .select('id')
-      .eq('username', trimmedUsername)
+      .eq('username_normalized', normalizedUsername)
       .maybeSingle()
 
     if (existingUsername) {
@@ -95,6 +96,8 @@ export async function POST(request: NextRequest) {
         name: name || null,
         phone: normalizedPhone,
         username: trimmedUsername,
+        username_normalized: normalizedUsername,
+        status: 'active',
       })
 
     if (profileError) {

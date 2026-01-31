@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { generateOtpCode, hashOtp, normalizePhone } from '@/lib/auth/otp-utils'
+import { generateOtpCode, hashOtp, normalizePhone, normalizeUsername } from '@/lib/auth/otp-utils'
 
 const OTP_EXPIRES_MINUTES = 5
 const RESEND_COOLDOWN_SECONDS = 60
@@ -50,10 +50,11 @@ export async function POST(request: NextRequest) {
       }
 
       if (username) {
+        const normalizedUsername = normalizeUsername(String(username))
         const { data: existingUsername } = await supabaseAdmin
           .from('users')
           .select('id')
-          .eq('username', username.trim())
+          .eq('username_normalized', normalizedUsername)
           .maybeSingle()
 
         if (existingUsername) {
