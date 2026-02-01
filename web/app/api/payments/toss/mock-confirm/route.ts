@@ -6,7 +6,9 @@ import crypto from 'crypto'
 import { calculateOrderPricing, OrderInput } from '@/lib/order/order-pricing.server'
 
 export async function POST(request: NextRequest) {
-  if (process.env.NODE_ENV === 'production') {
+  const allowMockInProd =
+    process.env.NEXT_PUBLIC_TOSS_MOCK === 'true' || process.env.TOSS_ALLOW_MOCK === 'true'
+  if (process.env.NODE_ENV === 'production' && !allowMockInProd) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
