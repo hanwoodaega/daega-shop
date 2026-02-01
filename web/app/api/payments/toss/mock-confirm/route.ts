@@ -39,20 +39,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '결제 금액이 일치하지 않습니다.' }, { status: 400 })
     }
 
-    const sanitizedOrderId = String(orderId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-    const orderSuffix = sanitizedOrderId.slice(0, 5) || crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 5)
     const today = new Date()
-    const orderNumber = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}${orderSuffix}`
+    const datePrefix = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
+    const sanitizedOrderId = String(orderId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+    const baseSuffix = sanitizedOrderId.slice(0, 6)
 
-    const { data: existingOrder } = await supabaseAdmin
-      .from('orders')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('order_number', orderNumber)
-      .maybeSingle()
+    if (baseSuffix) {
+      const baseOrderNumber = `${datePrefix}${baseSuffix.slice(0, 5)}`
+      const { data: existingOrder } = await supabaseAdmin
+        .from('orders')
+        .select('*')
+        .eq('order_number', baseOrderNumber)
+        .maybeSingle()
+      if (existingOrder) {
+        return NextResponse.json({ success: true, order: existingOrder })
+      }
+    }
 
-    if (existingOrder) {
-      return NextResponse.json({ success: true, order: existingOrder })
+    let orderNumber = ''
+    for (let i = 0; i < 5; i += 1) {
+      const suffix = crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 5)
+      const candidate = `${datePrefix}${suffix}`
+      const { data: exists } = await supabaseAdmin
+        .from('orders')
+        .select('id')
+        .eq('order_number', candidate)
+        .maybeSingle()
+      if (!exists) {
+        orderNumber = candidate
+        break
+      }
+    }
+    if (!orderNumber) {
+      return NextResponse.json({ error: '주문번호 생성에 실패했습니다.' }, { status: 500 })
     }
 
     const payload: OrderInput = orderInput

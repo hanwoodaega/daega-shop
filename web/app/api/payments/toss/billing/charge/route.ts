@@ -79,10 +79,46 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const sanitizedOrderId = String(tossOrderId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-    const orderSuffix = sanitizedOrderId.slice(0, 6) || crypto.randomBytes(3).toString('hex').toUpperCase()
     const today = new Date()
-    const orderNumber = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}-${orderSuffix}`
+    const datePrefix = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
+    const sanitizedOrderId = String(tossOrderId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+    const baseSuffix = sanitizedOrderId.slice(0, 5)
+
+    let orderNumber = ''
+    if (baseSuffix) {
+      orderNumber = `${datePrefix}${baseSuffix}`
+    }
+
+    if (orderNumber) {
+      const { data: existingOrder } = await supabaseAdmin
+        .from('orders')
+        .select('id')
+        .eq('order_number', orderNumber)
+        .maybeSingle()
+      if (existingOrder) {
+        orderNumber = ''
+      }
+    }
+
+    if (!orderNumber) {
+      for (let i = 0; i < 5; i += 1) {
+        const suffix = crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 5)
+        const candidate = `${datePrefix}${suffix}`
+        const { data: exists } = await supabaseAdmin
+          .from('orders')
+          .select('id')
+          .eq('order_number', candidate)
+          .maybeSingle()
+        if (!exists) {
+          orderNumber = candidate
+          break
+        }
+      }
+    }
+
+    if (!orderNumber) {
+      return NextResponse.json({ error: '주문번호 생성에 실패했습니다.' }, { status: 500 })
+    }
 
     const giftToken = payload.is_gift ? crypto.randomBytes(32).toString('hex') : null
     const giftExpiresAt = payload.is_gift ? new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString() : null
