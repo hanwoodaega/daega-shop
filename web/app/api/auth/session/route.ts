@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { getUserFromRequest } from '@/lib/auth/auth-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,12 +8,9 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const supabase = createSupabaseServerClient()
-    
-    // 보안을 위해 getUser() 사용 (서버 측 인증 확인)
-    // getSession()은 클라이언트 쿠키에서 직접 읽어오므로 위조 가능
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError || !user) {
+
+    const user = await getUserFromRequest(request)
+    if (!user) {
       // 사용자가 없거나 인증 실패 시
       return NextResponse.json({
         user: null,

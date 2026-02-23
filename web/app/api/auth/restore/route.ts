@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { getUserFromServer } from '@/lib/auth/auth-server'
+import { getUserFromRequest } from '@/lib/auth/auth-server'
 
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getUserFromServer()
+    const user = await getUserFromRequest(request)
     if (!user) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }

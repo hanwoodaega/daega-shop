@@ -50,7 +50,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 서버 API로 세션 확인
     const checkSession = async () => {
       try {
-        const res = await fetch('/api/auth/session')
+        const { data: localSession } = await supabase.auth.getSession()
+        const accessToken = localSession?.session?.access_token
+        const res = await fetch('/api/auth/session', {
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+        })
         const data = await res.json()
         
         if (initialGetUserTimeoutRef.current) {
@@ -63,10 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           let newUser: User | null = data?.user ?? null
 
           if (!newUser) {
-            if (status) {
-              await supabase.auth.signOut()
-            } else {
-              const { data: localSession } = await supabase.auth.getSession()
+            if (!status) {
               newUser = localSession?.session?.user ?? null
             }
           }
@@ -128,10 +129,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (newUser) {
         try {
-          const statusRes = await fetch('/api/auth/onboarding-status', { cache: 'no-store' })
+          const accessToken = session?.access_token
+          const statusRes = await fetch('/api/auth/onboarding-status', {
+            cache: 'no-store',
+            headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+          })
           const statusData = await statusRes.json().catch(() => ({}))
           if (statusRes.ok && statusData?.status !== 'active') {
-            await supabase.auth.signOut()
             newUser = null
           }
         } catch {

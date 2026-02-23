@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from '../supabase/supabase-server'
 import { User } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
 
 /**
  * 서버에서 사용자 인증 정보를 가져오는 헬퍼 함수
@@ -19,6 +20,27 @@ export async function getUserFromServer(): Promise<User | null> {
     return user
   } catch (error) {
     console.error('getUserFromServer 오류:', error)
+    return null
+  }
+}
+
+export async function getUserFromRequest(request: NextRequest): Promise<User | null> {
+  try {
+    const supabase = createSupabaseServerClient()
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+
+    const { data: { user }, error } = token
+      ? await supabase.auth.getUser(token)
+      : await supabase.auth.getUser()
+
+    if (error || !user) {
+      return null
+    }
+
+    return user
+  } catch (error) {
+    console.error('getUserFromRequest 오류:', error)
     return null
   }
 }

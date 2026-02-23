@@ -16,7 +16,12 @@ function RestoreAccountContent() {
   useEffect(() => {
     let isMounted = true
     const checkStatus = async () => {
-      const res = await fetch('/api/auth/onboarding-status', { cache: 'no-store' })
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token
+      const res = await fetch('/api/auth/onboarding-status', {
+        cache: 'no-store',
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      })
       const data = await res.json().catch(() => ({}))
       if (!isMounted) return
 
@@ -54,7 +59,12 @@ function RestoreAccountContent() {
     setError('')
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/restore', { method: 'POST' })
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token
+      const res = await fetch('/api/auth/restore', {
+        method: 'POST',
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         throw new Error(data?.error || '계정 복구에 실패했습니다.')

@@ -66,7 +66,12 @@ function LoginForm() {
         throw error
       }
 
-      const onboardingRes = await fetch('/api/auth/onboarding-status', { cache: 'no-store' })
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token
+      const onboardingRes = await fetch('/api/auth/onboarding-status', {
+        cache: 'no-store',
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      })
       const onboardingData = await onboardingRes.json().catch(() => ({}))
 
       const isDeleted = onboardingData?.status === 'deleted'

@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { supabase } from '@/lib/supabase/supabase'
 
 function OnboardingContent() {
   const router = useRouter()
@@ -12,7 +13,12 @@ function OnboardingContent() {
   useEffect(() => {
     let isMounted = true
     const run = async () => {
-      const res = await fetch('/api/auth/onboarding-status', { cache: 'no-store' })
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token
+      const res = await fetch('/api/auth/onboarding-status', {
+        cache: 'no-store',
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      })
       const data = await res.json().catch(() => ({}))
       if (!isMounted) return
       if (!res.ok) {
