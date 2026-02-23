@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { generateToken, hashToken, normalizePhone } from '@/lib/auth/otp-utils'
+import { generateToken, hashToken, normalizePhone, normalizeUsername } from '@/lib/auth/otp-utils'
 
 const RESET_TOKEN_MINUTES = 10
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { phone, verificationToken } = body
+    const { phone, verificationToken, username } = body
 
-    if (!phone || !verificationToken) {
+    if (!phone || !verificationToken || !username) {
       return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
     }
 
@@ -37,14 +37,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '인증 정보가 올바르지 않습니다.' }, { status: 400 })
     }
 
+    const normalizedUsername = normalizeUsername(String(username))
     const { data: userProfile } = await supabaseAdmin
       .from('users')
       .select('id')
       .eq('phone', phoneNumber)
+      .eq('username_normalized', normalizedUsername)
       .maybeSingle()
 
     if (!userProfile) {
-      return NextResponse.json({ error: '가입된 번호가 아닙니다.' }, { status: 404 })
+      return NextResponse.json({ error: '일치하는 계정이 없습니다.' }, { status: 404 })
     }
 
     const resetToken = generateToken()

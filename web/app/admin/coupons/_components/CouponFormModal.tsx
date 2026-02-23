@@ -147,17 +147,27 @@ export default function CouponFormModal({
             </p>
           </div>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="is_first_purchase_only"
-              checked={formData.is_first_purchase_only}
-              onChange={(e) => onFormDataChange({ ...formData, is_first_purchase_only: e.target.checked })}
-              className="mr-2"
-            />
-            <label htmlFor="is_first_purchase_only" className="text-sm font-medium text-gray-700">
-              첫구매 전용 쿠폰
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              발급 트리거 *
             </label>
+            <select
+              value={formData.issue_trigger}
+              onChange={(e) =>
+                onFormDataChange({
+                  ...formData,
+                  issue_trigger: e.target.value as 'PHONE_VERIFIED' | 'ADMIN' | 'ETC',
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="ADMIN">관리자 발급</option>
+              <option value="PHONE_VERIFIED">휴대폰 인증 자동 발급</option>
+              <option value="ETC">기타</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              휴대폰 인증 자동 발급은 사용자 인증 완료 시 1회 지급됩니다.
+            </p>
           </div>
         </div>
 

@@ -50,7 +50,9 @@ export default function ProfilePage() {
             const res = await fetch('/api/profile/info')
             
             if (!res.ok) {
-              console.error('마이페이지 정보 조회 실패:', res.status)
+              if (res.status !== 401 && res.status !== 403) {
+                console.error('마이페이지 정보 조회 실패:', res.status)
+              }
               return { 
                 name: null, 
                 orders_count: 0, 
@@ -96,7 +98,7 @@ export default function ProfilePage() {
           if (userName) {
             setUserName(userName)
           } else {
-            setUserName(currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || '사용자')
+            setUserName(currentUser.user_metadata?.name || '사용자')
           }
 
           // 주문 개수 설정
@@ -117,7 +119,7 @@ export default function ProfilePage() {
           console.error('사용자 정보 조회 실패:', error)
           if (!isMounted) return
           // 기본값 설정
-          setUserName(currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || '사용자')
+          setUserName(currentUser.user_metadata?.name || '사용자')
           setOrderCount(0)
           setPoints(0)
           setCouponCount(0)
@@ -423,7 +425,7 @@ export default function ProfilePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </Link>
-                <p className="text-sm text-black mt-3">회원가입하고 첫구매 쿠폰 받아가세요!</p>
+                <p className="text-sm text-black mt-3">회원가입하고 혜택 받아가세요!</p>
                 <Link
                   href="/auth/signup/terms"
                   className="w-full mt-2 px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-blue-950 transition flex items-center justify-between"

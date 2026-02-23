@@ -1,12 +1,32 @@
 // 네이버 로그인 처리
 
-export const handleNaverLogin = () => {
+export const handleNaverLogin = (nextPath: string = '/') => {
   const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
-  const redirectUri = `${window.location.origin}/auth/naver/callback`
+  const redirectUri = `${window.location.origin}/api/auth/naver`
   const state = Math.random().toString(36).substring(7)
   
-  // 상태값 저장 (CSRF 방지)
-  sessionStorage.setItem('naver_oauth_state', state)
+  const isSecure = window.location.protocol === 'https:'
+  const stateCookieParts = [
+    `naver_oauth_state=${encodeURIComponent(state)}`,
+    'Path=/',
+    'Max-Age=300',
+    'SameSite=Lax',
+  ]
+  if (isSecure) {
+    stateCookieParts.push('Secure')
+  }
+  document.cookie = stateCookieParts.join('; ')
+
+  const nextCookieParts = [
+    `naver_oauth_next=${encodeURIComponent(nextPath)}`,
+    'Path=/',
+    'Max-Age=300',
+    'SameSite=Lax',
+  ]
+  if (isSecure) {
+    nextCookieParts.push('Secure')
+  }
+  document.cookie = nextCookieParts.join('; ')
   
   // 네이버 로그인 URL로 리다이렉트
   const naverLoginUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`

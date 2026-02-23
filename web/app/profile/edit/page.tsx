@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useCartStore } from '@/lib/store'
+import { supabase } from '@/lib/supabase/supabase'
 
 function ProfileEditContent() {
   const router = useRouter()
@@ -66,16 +67,18 @@ function ProfileEditContent() {
     const appProvider = (user as any).app_metadata?.provider
     
     // provider 우선순위: user_metadata > app_metadata
-    const provider = metadataProvider || appProvider || 'email'
+    const provider = metadataProvider || appProvider || 'phone'
     
     switch (provider) {
       case 'kakao':
         return '카카오 계정 가입'
       case 'naver':
         return '네이버 계정 가입'
+      case 'phone':
+        return '휴대전화번호 가입'
       case 'email':
       default:
-        return '이메일 가입'
+        return '휴대전화번호 가입'
     }
   }
 
@@ -89,12 +92,15 @@ function ProfileEditContent() {
 
   // 탈퇴 처리
   const handleDeleteAccount = async () => {
-    if (confirm('정말 탈퇴하시겠습니까? 탈퇴 후에는 모든 데이터가 삭제되며 복구할 수 없습니다.')) {
+    if (confirm('정말 탈퇴하시겠습니까? 탈퇴 후 동일한 휴대폰 번호로 재가입 시 기존 계정이 복구됩니다.')) {
       try {
-        // TODO: 실제 탈퇴 API 구현 필요
-        // await supabase.auth.admin.deleteUser(user!.id)
-        // 또는 사용자 데이터 삭제 후 로그아웃
-        alert('탈퇴 기능은 준비 중입니다.')
+        const res = await fetch('/api/user/delete', { method: 'POST' })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data?.error || '탈퇴 처리에 실패했습니다.')
+        }
+        await signOut()
+        router.push('/')
       } catch (error) {
         console.error('탈퇴 실패:', error)
         alert('탈퇴 처리 중 오류가 발생했습니다.')
@@ -104,12 +110,23 @@ function ProfileEditContent() {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/auth/login?next=/profile/edit')
+      const checkLocalSession = async () => {
+        const { data } = await supabase.auth.getSession()
+        if (data?.session) {
+          setLoadingData(false)
+          return
+        }
+        router.push('/auth/login?next=/profile/edit')
+      }
+      checkLocalSession().catch(() => {
+        router.push('/auth/login?next=/profile/edit')
+      })
     }
   }, [user, loading, router])
 
   useEffect(() => {
     if (user?.id) {
+      setLoadingData(true)
       loadUserData()
     }
   }, [user?.id]) // ✅ user.id만 의존성으로 (무한 루프 방지)
@@ -260,7 +277,10 @@ function ProfileEditContent() {
       const response = await fetch('/api/auth/send-verification-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: newPhone.replace(/[^0-9]/g, '') }),
+        body: JSON.stringify({
+          phone: newPhone.replace(/[^0-9]/g, ''),
+          purpose: 'verify_phone',
+        }),
       })
 
       if (!response.ok) {
@@ -293,7 +313,7 @@ function ProfileEditContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           phone: newPhone.replace(/[^0-9]/g, ''),
-          code: verificationCode 
+          code: verificationCode,
         }),
       })
 
@@ -432,10 +452,6 @@ function ProfileEditContent() {
                   <div className="text-sm font-normal text-gray-500">전화번호</div>
                   <div className="text-base font-semibold text-gray-900">{formatPhoneNumber(phone)}</div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-sm font-normal text-gray-500">이메일</div>
-                  <div className="text-base font-semibold text-gray-900">{user.email || '-'}</div>
-                </div>
               </div>
 
               {/* 부가 정보 섹션 */}
@@ -475,7 +491,7 @@ function ProfileEditContent() {
                   <div className="flex items-center gap-3">
                     <div className="text-sm font-normal text-gray-500">가입 방식</div>
                     <div className="text-base font-semibold text-gray-900">
-                      {getSignupMethod() || '이메일 가입'}
+                      {getSignupMethod() || '휴대전화번호 가입'}
                     </div>
                   </div>
                 </div>
@@ -605,19 +621,6 @@ function ProfileEditContent() {
                   </>
                 )
               })()}
-            </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  이메일
-                </label>
-                <input
-                  type="email"
-                  value={user.email || ''}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
-                />
-                <p className="text-xs text-gray-500 mt-1">이메일은 변경할 수 없습니다.</p>
             </div>
 
             {/* 부가 정보 섹션 (수정 모드) */}

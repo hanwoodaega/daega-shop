@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { hashToken, normalizePhone, normalizeUsername, usernameToEmail } from '@/lib/auth/otp-utils'
+import { issuePhoneVerificationCoupon } from '@/lib/coupon/coupon-issue.server'
 
 const MIN_PASSWORD_LENGTH = 8
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { username, password, name, phone, verificationToken } = body
+    const { username, password, name, phone, verificationToken, terms } = body
 
-    if (!username || !password || !phone || !verificationToken) {
+    if (!username || !password || !name || !phone || !verificationToken) {
       return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
     }
 
@@ -47,8 +48,8 @@ export async function POST(request: NextRequest) {
 
     const trimmedUsername = String(username).trim()
     const normalizedUsername = normalizeUsername(trimmedUsername)
-    if (trimmedUsername.length < 4) {
-      return NextResponse.json({ error: '아이디는 최소 4자 이상이어야 합니다.' }, { status: 400 })
+    if (trimmedUsername.length < 6) {
+      return NextResponse.json({ error: '아이디는 최소 6자 이상이어야 합니다.' }, { status: 400 })
     }
 
     const { data: existingPhone } = await supabaseAdmin
@@ -78,8 +79,9 @@ export async function POST(request: NextRequest) {
       password,
       email_confirm: true,
       user_metadata: {
+        provider: 'phone',
         username: trimmedUsername,
-        name: name || null,
+        name,
         phone: normalizedPhone,
       },
     })
@@ -90,18 +92,59 @@ export async function POST(request: NextRequest) {
 
     const { error: profileError } = await supabaseAdmin
       .from('users')
-      .insert({
+      .upsert({
         id: createdUser.user.id,
-        email,
-        name: name || null,
+        name,
         phone: normalizedPhone,
         username: trimmedUsername,
         username_normalized: normalizedUsername,
         status: 'active',
-      })
+      }, { onConflict: 'id' })
 
     if (profileError) {
-      return NextResponse.json({ error: '회원정보 저장 실패' }, { status: 500 })
+      const message = String(profileError.message || '')
+      const code = String(profileError.code || '')
+      if (code === '23505' || message.includes('unique')) {
+        if (message.includes('users_phone_unique')) {
+          return NextResponse.json({ error: '이미 가입된 휴대폰 번호입니다.' }, { status: 409 })
+        }
+        if (message.includes('users_username_unique') || message.includes('users_username_normalized_unique')) {
+          return NextResponse.json({ error: '이미 사용 중인 아이디입니다.' }, { status: 409 })
+        }
+      }
+      const detail = process.env.NODE_ENV === 'development' && message
+        ? `회원정보 저장 실패 (${message})`
+        : '회원정보 저장 실패'
+      return NextResponse.json({ error: detail }, { status: 500 })
+    }
+
+    if (terms && typeof terms === 'object') {
+      const termsTypes = ['service', 'privacy', 'third_party', 'age14', 'marketing']
+      const now = new Date().toISOString()
+      const termsRecords = termsTypes.map((termsType) => {
+        const agreed = terms[termsType] === true
+        return {
+          user_id: createdUser.user.id,
+          terms_type: termsType,
+          agreed,
+          agreed_at: agreed ? now : null,
+        }
+      })
+
+      const { error: termsError } = await supabaseAdmin
+        .from('user_terms')
+        .upsert(termsRecords, { onConflict: 'user_id,terms_type' })
+
+      if (termsError) {
+        console.error('약관 동의 저장 실패:', termsError)
+        return NextResponse.json({ error: '약관 동의 저장에 실패했습니다.' }, { status: 500 })
+      }
+    }
+
+    try {
+      await issuePhoneVerificationCoupon({ userId: createdUser.user.id, phone: normalizedPhone })
+    } catch (couponError) {
+      console.error('휴대폰 인증 쿠폰 지급 실패:', couponError)
     }
 
     return NextResponse.json({ success: true })

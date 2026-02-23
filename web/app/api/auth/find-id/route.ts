@@ -56,12 +56,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '일치하는 사용자 정보가 없습니다.' }, { status: 404 })
     }
 
-    const foundUsers = users.map((user) => ({
-      username: maskUsername(user.username),
-      created_at: user.created_at,
-    }))
+    const sortedUsers = [...users].sort((a, b) => {
+      const aTime = new Date(a.created_at).getTime()
+      const bTime = new Date(b.created_at).getTime()
+      return bTime - aTime
+    })
+    const maskedUsername = maskUsername(sortedUsers[0]?.username || '')
 
-    return NextResponse.json({ users: foundUsers })
+    const SMS_SERVICE_URL = process.env.SMS_SERVICE_URL
+    const SMS_SERVICE_TOKEN = process.env.SMS_SERVICE_TOKEN
+    if (!SMS_SERVICE_URL || !SMS_SERVICE_TOKEN) {
+      return NextResponse.json({ error: '문자 발송 설정이 누락되었습니다.' }, { status: 500 })
+    }
+
+    const smsResponse = await fetch(`${SMS_SERVICE_URL}/sms/send`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${SMS_SERVICE_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: phoneNumber,
+        text: `[대가정육마트] 가입된 계정이 확인되었습니다.\n아이디: ${maskedUsername}`,
+      }),
+    })
+
+    if (!smsResponse.ok) {
+      const smsError = await smsResponse.json().catch(() => ({}))
+      console.error('Find ID SMS error:', smsError)
+      return NextResponse.json({ error: '문자 발송에 실패했습니다.' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('Find ID exception:', error)
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 })

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { getUserFromServer } from '@/lib/auth/auth-server'
+import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 import { usePoints } from '@/lib/point/points'
 import crypto from 'crypto'
 import { calculateOrderPricing, OrderInput } from '@/lib/order/order-pricing.server'
@@ -20,10 +20,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const user = await getUserFromServer()
-    if (!user) {
-      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+    const authResult = await requireActiveUserFromServer()
+    if ('error' in authResult) {
+      const status = authResult.error === 'unauthorized' ? 401 : 403
+      const errorMessage = authResult.error === 'unauthorized' ? '로그인이 필요합니다.' : '접근 권한이 없습니다.'
+      return NextResponse.json({ error: errorMessage }, { status })
     }
+    const user = authResult.user
 
     const { orderId, amount, orderInput } = await request.json()
     if (!orderId || !orderInput) {

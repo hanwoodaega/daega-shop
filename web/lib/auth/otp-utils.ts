@@ -33,12 +33,16 @@ export function hashToken(token: string) {
     .digest('hex')
 }
 
+
 export function maskUsername(username: string) {
   if (!username) return ''
-  if (username.length <= 3) {
-    return `${username[0]}**`
+  if (username.length <= 2) {
+    return `${username[0]}*`
   }
-  return `${username.slice(0, 3)}***`
+  if (username.length <= 4) {
+    return `${username[0]}${'*'.repeat(username.length - 2)}${username.slice(-1)}`
+  }
+  return `${username.slice(0, 3)}${'*'.repeat(username.length - 4)}${username.slice(-1)}`
 }
 
 export function usernameToEmail(username: string) {

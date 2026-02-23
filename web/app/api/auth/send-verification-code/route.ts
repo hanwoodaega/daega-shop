@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { getUserFromServer } from '@/lib/auth/auth-server'
 import { generateOtpCode, hashOtp, normalizePhone, normalizeUsername } from '@/lib/auth/otp-utils'
 
-const OTP_EXPIRES_MINUTES = 5
+const OTP_EXPIRES_MINUTES = 3
 const RESEND_COOLDOWN_SECONDS = 60
-const MAX_DAILY_SENDS = 5
+const MAX_DAILY_SENDS: Record<string, number> = {
+  find_id: 10,
+  reset_pw: 10,
+  signup: 100, //20
+  verify_phone: 100, //20
+}
 const LOCK_MINUTES = 10
+
+const SOCIAL_LOGIN_MESSAGE = '카카오/네이버 계정으로 가입되어 있습니다.\n카카오/네이버 로그인을 이용해 주세요.'
 
 /**
  * 인증번호 발송 API (카카오 알림톡 + SMS fallback)
@@ -14,13 +22,13 @@ const LOCK_MINUTES = 10
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { phone, purpose, username } = body
+    const { phone, purpose, username, allowMerge } = body
 
     if (!phone || !purpose) {
       return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
     }
 
-    if (!['signup', 'find_id', 'reset_pw'].includes(purpose)) {
+    if (!['signup', 'find_id', 'reset_pw', 'verify_phone'].includes(purpose)) {
       return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 })
     }
 
@@ -31,17 +39,32 @@ export async function POST(request: NextRequest) {
 
     const supabaseAdmin = createSupabaseAdminClient()
 
-    if (purpose === 'signup') {
+    if (purpose === 'signup' || purpose === 'verify_phone') {
+      let currentUserId: string | null = null
+      if (purpose === 'verify_phone') {
+        const user = await getUserFromServer()
+        if (!user) {
+          return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+        }
+        currentUserId = user.id
+      }
+
       const { data: existingPhone } = await supabaseAdmin
         .from('users')
-        .select('id')
+        .select('id, username_normalized')
         .eq('phone', phoneNumber)
         .maybeSingle()
 
-      if (existingPhone) {
+      if (existingPhone && existingPhone.id !== currentUserId && !allowMerge) {
+        if (!existingPhone.username_normalized) {
+          return NextResponse.json(
+            { error: SOCIAL_LOGIN_MESSAGE, code: 'PHONE_EXISTS' },
+            { status: 409 }
+          )
+        }
         return NextResponse.json(
           {
-            error: '이미 가입된 휴대폰 번호입니다.',
+            error: SOCIAL_LOGIN_MESSAGE,
             code: 'PHONE_EXISTS',
             actions: ['login', 'find-id', 'reset-password'],
           },
@@ -51,6 +74,9 @@ export async function POST(request: NextRequest) {
 
       if (username) {
         const normalizedUsername = normalizeUsername(String(username))
+        if (normalizedUsername.length < 6) {
+          return NextResponse.json({ error: '아이디는 최소 6자 이상이어야 합니다.' }, { status: 400 })
+        }
         const { data: existingUsername } = await supabaseAdmin
           .from('users')
           .select('id')
@@ -63,6 +89,52 @@ export async function POST(request: NextRequest) {
             { status: 409 }
           )
         }
+      }
+    }
+
+    if (purpose === 'find_id') {
+      const { data: existingUser } = await supabaseAdmin
+        .from('users')
+        .select('id, username_normalized')
+        .eq('phone', phoneNumber)
+        .maybeSingle()
+
+      if (!existingUser) {
+        return NextResponse.json({ error: '가입된 계정이 없습니다.' }, { status: 404 })
+      }
+
+      if (!existingUser.username_normalized) {
+        return NextResponse.json({ error: SOCIAL_LOGIN_MESSAGE }, { status: 409 })
+      }
+    }
+
+    if (purpose === 'reset_pw') {
+      if (!username) {
+        return NextResponse.json({ error: '아이디가 필요합니다.' }, { status: 400 })
+      }
+      const normalizedUsername = normalizeUsername(String(username))
+      if (normalizedUsername.length < 6) {
+        return NextResponse.json({ error: '아이디는 최소 6자 이상이어야 합니다.' }, { status: 400 })
+      }
+      const { data: phoneUser } = await supabaseAdmin
+        .from('users')
+        .select('id, username_normalized')
+        .eq('phone', phoneNumber)
+        .maybeSingle()
+
+      if (phoneUser && !phoneUser.username_normalized) {
+        return NextResponse.json({ error: SOCIAL_LOGIN_MESSAGE }, { status: 409 })
+      }
+
+      const { data: existingUser } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('phone', phoneNumber)
+        .eq('username_normalized', normalizedUsername)
+        .maybeSingle()
+
+      if (!existingUser) {
+        return NextResponse.json({ error: '일치하는 계정이 없습니다.' }, { status: 404 })
       }
     }
 
@@ -87,7 +159,7 @@ export async function POST(request: NextRequest) {
     if (latestOtp?.resend_available_at && new Date(latestOtp.resend_available_at) > now) {
       const remaining = Math.ceil((new Date(latestOtp.resend_available_at).getTime() - now.getTime()) / 1000)
       return NextResponse.json(
-        { error: '재전송 대기 시간이 남아있습니다.', retryAfter: remaining },
+        { error: '인증 요청 후 재요청까지 1분 소요됩니다.', retryAfter: remaining },
         { status: 429 }
       )
     }
@@ -97,39 +169,42 @@ export async function POST(request: NextRequest) {
       .from('auth_otps')
       .select('id', { count: 'exact', head: true })
       .eq('phone', phoneNumber)
+      .eq('purpose', purpose)
       .gte('created_at', since)
 
-    if ((dailyCount || 0) >= MAX_DAILY_SENDS) {
-      return NextResponse.json({ error: '하루 인증 시도 횟수를 초과했습니다.' }, { status: 429 })
+    const dailyLimit = MAX_DAILY_SENDS[purpose] ?? 20
+    if ((dailyCount || 0) >= dailyLimit) {
+      return NextResponse.json(
+        { error: '최근 24시간 내 인증 시도 횟수를 초과했습니다.' },
+        { status: 429 }
+      )
     }
 
     const verificationCode = generateOtpCode()
 
-    let sentVia = 'kakao'
     let sendSuccess = false
+    let sendDetail: string | null = null
 
     try {
-      sendSuccess = await sendKakaoAlimtalk(phoneNumber, verificationCode)
-      if (!sendSuccess) {
-        sentVia = 'sms'
-        sendSuccess = await sendSMS(phoneNumber, verificationCode)
-      }
-    } catch (error) {
-      console.error('알림톡 발송 실패, SMS로 fallback:', error)
-      sentVia = 'sms'
-      try {
-        sendSuccess = await sendSMS(phoneNumber, verificationCode)
-      } catch (smsError) {
-        console.error('SMS 발송도 실패:', smsError)
-        return NextResponse.json(
-          { error: '인증번호 발송에 실패했습니다. 잠시 후 다시 시도해주세요.' },
-          { status: 500 }
-        )
-      }
+      const result = await sendSMS(phoneNumber, verificationCode)
+      sendSuccess = result.success
+      sendDetail = result.detail || null
+    } catch (smsError: any) {
+      console.error('SMS 발송 실패:', smsError)
+      return NextResponse.json(
+        {
+          error: '인증번호 발송에 실패했습니다. 잠시 후 다시 시도해주세요.',
+          detail: smsError?.message || 'sms_exception',
+        },
+        { status: 500 }
+      )
     }
 
     if (!sendSuccess) {
-      return NextResponse.json({ error: '인증번호 발송에 실패했습니다.' }, { status: 500 })
+      return NextResponse.json(
+        { error: '인증번호 발송에 실패했습니다.', detail: sendDetail || 'sms_failed' },
+        { status: 500 }
+      )
     }
 
     const expiresAt = new Date(Date.now() + OTP_EXPIRES_MINUTES * 60 * 1000).toISOString()
@@ -154,7 +229,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: '인증번호가 발송되었습니다.',
-      sentVia,
+      sentVia: 'sms',
       ...(process.env.NODE_ENV === 'development' && { code: verificationCode }),
     })
   } catch (error: any) {
@@ -164,97 +239,46 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * 카카오 알림톡 발송
- */
-async function sendKakaoAlimtalk(phone: string, code: string): Promise<boolean> {
-  try {
-    // 카카오 비즈니스 메시지 API 설정
-    const KAKAO_API_KEY = process.env.KAKAO_BIZ_API_KEY
-    const KAKAO_TEMPLATE_ID = process.env.KAKAO_ALIMTALK_TEMPLATE_ID
-    const KAKAO_PLUS_FRIEND_ID = process.env.KAKAO_PLUS_FRIEND_ID
-
-    if (!KAKAO_API_KEY || !KAKAO_TEMPLATE_ID) {
-      console.warn('카카오 알림톡 API 설정이 없습니다. SMS로 fallback합니다.')
-      return false
-    }
-
-    // 카카오 비즈니스 메시지 API 호출
-    const response = await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${KAKAO_API_KEY}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        template_id: KAKAO_TEMPLATE_ID,
-        receiver_phone: phone,
-        // 템플릿 변수 (템플릿에 따라 조정 필요)
-        template_args: JSON.stringify({
-          '#{인증번호}': code,
-        }),
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.error('카카오 알림톡 발송 실패:', errorData)
-      return false
-    }
-
-    return true
-  } catch (error) {
-    console.error('카카오 알림톡 발송 오류:', error)
-    return false
-  }
-}
-
-/**
  * SMS 발송 (fallback)
  */
-async function sendSMS(phone: string, code: string): Promise<boolean> {
+async function sendSMS(
+  phone: string,
+  code: string
+): Promise<{ success: boolean; detail?: string }> {
   try {
-    // SMS 발송 서비스 설정 (예: 알리고, 카카오톡 비즈니스 메시지 등)
-    const SMS_API_KEY = process.env.SMS_API_KEY
-    const SMS_SENDER_ID = process.env.SMS_SENDER_ID || '대가정육마트'
+    const SMS_SERVICE_URL = process.env.SMS_SERVICE_URL
+    const SMS_SERVICE_TOKEN = process.env.SMS_SERVICE_TOKEN
 
-    if (!SMS_API_KEY) {
-      console.warn('SMS API 설정이 없습니다.')
-      return false
+    if (!SMS_SERVICE_URL || !SMS_SERVICE_TOKEN) {
+      console.warn('SMS 서비스 설정이 없습니다.')
+      return { success: false, detail: 'sms_config_missing' }
     }
 
-    // 알리고 API 예시 (실제 사용하는 SMS 서비스에 맞게 수정 필요)
-    const response = await fetch('https://apis.aligo.in/send/', {
+    const response = await fetch(`${SMS_SERVICE_URL}/sms/send-otp`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Bearer ${SMS_SERVICE_TOKEN}`,
+        'Content-Type': 'application/json',
       },
-      body: new URLSearchParams({
-        key: SMS_API_KEY,
-        user_id: process.env.SMS_USER_ID || '',
-        sender: SMS_SENDER_ID,
-        receiver: phone,
-        msg: `[대가정육마트] 인증번호는 ${code}입니다. 5분 내에 입력해주세요.`,
+      body: JSON.stringify({
+        to: phone,
+        text: `[대가정육마트] 인증번호 ${code}\n(타인에게 절대 공유하지 마세요)`,
       }),
     })
 
     if (!response.ok) {
-      const errorData = await response.text()
+      const errorData = await response.json().catch(() => ({}))
       console.error('SMS 발송 실패:', errorData)
-      return false
+      return {
+        success: false,
+        detail: errorData?.error || errorData?.message || `sms_http_${response.status}`,
+      }
     }
 
-    const result = await response.json()
-    
-    // 알리고 API 응답 확인
-    if (result.result_code !== '1') {
-      console.error('SMS 발송 실패:', result.message)
-      return false
-    }
-
-    return true
-  } catch (error) {
+    return { success: true }
+  } catch (error: any) {
     console.error('SMS 발송 오류:', error)
-    return false
+    return { success: false, detail: error?.message || 'sms_fetch_error' }
   }
 }
 

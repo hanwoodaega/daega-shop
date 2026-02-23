@@ -132,7 +132,7 @@ function CheckoutPageContent() {
         ...prev,
         name: prev.name || userProfile.name || '',
         phone: prev.phone || userProfile.phone || '',
-        email: prev.email || userProfile.email || user?.email || '',
+        email: prev.email || user?.email || '',
       }))
     }
   }, [userProfile, user?.email, setFormData])

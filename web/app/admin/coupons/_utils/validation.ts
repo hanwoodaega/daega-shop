@@ -9,7 +9,7 @@ export interface ValidatedCouponData {
   min_purchase_amount: number | null
   max_discount_amount: number | null
   validity_days: number
-  is_first_purchase_only: boolean
+  issue_trigger: 'PHONE_VERIFIED' | 'ADMIN' | 'ETC'
 }
 
 /**
@@ -69,7 +69,7 @@ export function validateCouponForm(formData: CouponFormData): {
       min_purchase_amount: finalMinPurchaseAmount,
       max_discount_amount: maxDiscountAmount,
       validity_days: validityDays,
-      is_first_purchase_only: formData.is_first_purchase_only,
+      issue_trigger: formData.issue_trigger,
     },
   }
 }

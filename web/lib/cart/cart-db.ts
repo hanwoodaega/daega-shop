@@ -10,6 +10,9 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
     const res = await fetch('/api/cart')
     
     if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        return []
+      }
       console.error('장바구니 조회 실패:', res.status)
       return []
     }

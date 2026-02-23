@@ -42,8 +42,10 @@ app/
 │   ├── find-id/page.tsx              # 아이디 찾기
 │   ├── find-password/page.tsx        # 비밀번호 찾기
 │   ├── login/page.tsx                # 로그인
+│   ├── kakao/callback/page.tsx       # 카카오 로그인 콜백
 │   ├── naver/callback/page.tsx       # 네이버 로그인 콜백
 │   ├── reset-password/page.tsx       # 비밀번호 재설정
+│   ├── verify-phone/page.tsx         # 휴대폰 인증
 │   └── signup/                        # 회원가입
 │       ├── page.tsx
 │       └── _components/
@@ -144,10 +146,12 @@ app/
 app/api/
 ├── auth/                              # 인증 API
 │   ├── find-id/route.ts
+│   ├── kakao/route.ts
 │   ├── naver/route.ts
 │   ├── send-verification-code/route.ts
 │   ├── session/route.ts
-│   └── verify-code/route.ts
+│   ├── verify-code/route.ts
+│   └── verify-phone/route.ts
 │
 ├── products/                           # 상품 API
 │   ├── route.ts
@@ -190,7 +194,6 @@ app/api/
 │
 ├── coupons/                            # 쿠폰 API
 │   ├── route.ts
-│   ├── first-purchase/route.ts
 │   ├── issue/route.ts
 │   └── use/route.ts
 │
@@ -232,7 +235,6 @@ app/api/
 ├── hero/route.ts                       # 히어로 슬라이더 API
 │
 ├── users/                              # 사용자 API
-│   ├── signup-coupon/route.ts
 │   └── terms/route.ts
 │
 ├── user/profile/route.ts               # 사용자 프로필 API

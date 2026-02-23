@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
@@ -17,6 +17,7 @@ export default function WishlistPage() {
   const cartCount = useCartStore((state) => state.getTotalItems())
   const [wishlistProducts, setWishlistProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const firstLoadRef = useRef(true)
 
   // 위시리스트 상품 불러오기
   useEffect(() => {
@@ -27,7 +28,12 @@ export default function WishlistPage() {
         return
       }
 
-      setLoading(true)
+      if (firstLoadRef.current) {
+        setLoading(true)
+      } else {
+        setLoading(false)
+        setWishlistProducts((prev) => prev.filter((p) => wishlistIds.includes(p.id)))
+      }
       try {
         // API 라우트를 통해 서버 사이드에서 조회
         const response = await fetch('/api/wishlist/products', {
@@ -50,6 +56,7 @@ export default function WishlistPage() {
         setWishlistProducts([])
       } finally {
         setLoading(false)
+        firstLoadRef.current = false
       }
     }
 

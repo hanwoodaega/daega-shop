@@ -9,6 +9,9 @@ export async function loadWishlistFromDB(userId: string): Promise<string[]> {
     const res = await fetch('/api/wishlist')
     
     if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        return []
+      }
       console.error('위시리스트 조회 실패:', res.status)
       return []
     }

@@ -1,17 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function SignupTermsPage() {
+function SignupTermsContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const nextPath = searchParams.get('next') || '/auth/signup'
+  const isSocialFlow = searchParams.get('social') === '1'
   const [allAgreed, setAllAgreed] = useState(false)
   const [termsAgreed, setTermsAgreed] = useState(false)
   const [privacyAgreed, setPrivacyAgreed] = useState(false)
   const [thirdPartyAgreed, setThirdPartyAgreed] = useState(false)
   const [ageAgreed, setAgeAgreed] = useState(false)
   const [marketingAgreed, setMarketingAgreed] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (termsAgreed && privacyAgreed && thirdPartyAgreed && ageAgreed && marketingAgreed) {
@@ -30,19 +35,46 @@ export default function SignupTermsPage() {
     setMarketingAgreed(checked)
   }
 
-  const handleNext = () => {
-    if (termsAgreed && privacyAgreed && thirdPartyAgreed && ageAgreed) {
-      // 약관 동의 정보를 세션 스토리지에 저장
-      const termsData = {
-        service: termsAgreed,
-        privacy: privacyAgreed,
-        third_party: thirdPartyAgreed,
-        age14: ageAgreed,
-        marketing: marketingAgreed,
-      }
-      sessionStorage.setItem('signup_terms', JSON.stringify(termsData))
-      router.push('/auth/signup')
+  const handleNext = async () => {
+    if (!(termsAgreed && privacyAgreed && thirdPartyAgreed && ageAgreed)) return
+
+    setSubmitError('')
+    setSubmitting(true)
+
+    const termsData = {
+      service: termsAgreed,
+      privacy: privacyAgreed,
+      third_party: thirdPartyAgreed,
+      age14: ageAgreed,
+      marketing: marketingAgreed,
     }
+
+    if (isSocialFlow) {
+      try {
+        const res = await fetch('/api/users/terms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ terms: termsData }),
+        })
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data?.error || '약관 동의 저장에 실패했습니다.')
+        }
+
+        router.push(nextPath)
+        return
+      } catch (error: any) {
+        setSubmitError(error.message || '약관 동의 저장에 실패했습니다.')
+      } finally {
+        setSubmitting(false)
+      }
+      return
+    }
+
+    sessionStorage.setItem('signup_terms', JSON.stringify(termsData))
+    router.push('/auth/signup')
+    setSubmitting(false)
   }
 
   const isNextEnabled = termsAgreed && privacyAgreed && thirdPartyAgreed && ageAgreed
@@ -72,6 +104,12 @@ export default function SignupTermsPage() {
       
       <main className="flex-1 bg-white flex items-start justify-center pt-6 pb-24 px-6">
         <div className="max-w-md w-full">
+          {submitError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+              {submitError}
+            </div>
+          )}
+
           <div className="space-y-3 mb-6">
             {/* 전체 동의 */}
             <div className="py-2">
@@ -267,15 +305,23 @@ export default function SignupTermsPage() {
           <div className="w-full max-w-[480px] bg-white border-t border-gray-200 px-6 py-4">
             <button
               onClick={handleNext}
-              disabled={!isNextEnabled}
+              disabled={!isNextEnabled || submitting}
               className="w-full bg-blue-900 text-white py-3 rounded-none font-semibold hover:bg-blue-950 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              다음
+              {submitting ? '처리 중...' : '다음'}
             </button>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignupTermsPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupTermsContent />
+    </Suspense>
   )
 }
 

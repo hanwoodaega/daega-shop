@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
-import { getUserFromServer } from '@/lib/auth/auth-server'
+import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 import { usePoints } from '@/lib/point/points'
 
 export const dynamic = 'force-dynamic'
@@ -11,10 +11,13 @@ export async function GET(request: NextRequest) {
     const supabase = createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
-    const user = await getUserFromServer()
-    if (!user) {
-      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+    const authResult = await requireActiveUserFromServer()
+    if ('error' in authResult) {
+      const status = authResult.error === 'unauthorized' ? 401 : 403
+      const errorMessage = authResult.error === 'unauthorized' ? '로그인이 필요합니다.' : '접근 권한이 없습니다.'
+      return NextResponse.json({ error: errorMessage }, { status })
     }
+    const user = authResult.user
 
     // 주문 목록 조회
     // 1. 먼저 주문 목록만 조회 (조인 없이)
@@ -167,10 +170,13 @@ export async function POST(request: NextRequest) {
     const { createSupabaseAdminClient } = await import('@/lib/supabase/supabase-server')
     const supabaseAdmin = createSupabaseAdminClient()
     
-    const user = await getUserFromServer()
-    if (!user) {
-      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+    const authResult = await requireActiveUserFromServer()
+    if ('error' in authResult) {
+      const status = authResult.error === 'unauthorized' ? 401 : 403
+      const errorMessage = authResult.error === 'unauthorized' ? '로그인이 필요합니다.' : '접근 권한이 없습니다.'
+      return NextResponse.json({ error: errorMessage }, { status })
     }
+    const user = authResult.user
 
     const body = await request.json()
     const {

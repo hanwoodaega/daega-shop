@@ -4,7 +4,7 @@ import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { OrderWithItems } from '@/lib/order/order-types'
 import { showSuccess } from '@/lib/utils/error-handler'
-import { initKakaoSDK } from '@/lib/order/gift/initKakao'
+import { shareGiftToKakao } from '@/lib/order/gift/kakaoShare'
 
 interface GiftShareBoxProps {
   giftToken: string
@@ -99,120 +99,14 @@ export default function GiftShareBox({ giftToken, giftOrder }: GiftShareBoxProps
         return
       }
 
-      // 카카오톡 SDK 초기화
-      initKakaoSDK()
-      
-      // SDK 로드 대기
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      if (!window.Kakao) {
-        throw new Error('카카오톡 SDK가 로드되지 않았습니다.')
-      }
-
-      if (!window.Kakao.isInitialized()) {
-        const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY || ''
-        if (!kakaoAppKey) {
-          throw new Error('카카오톡 앱 키가 설정되지 않았습니다.')
-        }
-        window.Kakao.init(kakaoAppKey)
-        await new Promise(resolve => setTimeout(resolve, 200))
-        
-        if (!window.Kakao.isInitialized()) {
-          throw new Error('카카오톡 SDK 초기화에 실패했습니다.')
-        }
-      }
-
-      if (!window.Kakao.Share) {
-        throw new Error('카카오톡 Share API를 사용할 수 없습니다.')
-      }
-
-      // 선물 카드 디자인과 메시지 가져오기
-      const cardDesign = giftOrder.gift_card_design || null
-      const giftMessage = giftOrder.gift_message || null
-
-      // 카드 디자인별 제목 설정
-      const getCardTitle = (design: string | null | undefined) => {
-        if (design?.startsWith('birthday')) {
-          return '🎂 생일 축하 선물이 도착했습니다!'
-        } else if (design?.startsWith('thanks')) {
-          return '🙏 감사 인사 선물이 도착했습니다!'
-        } else if (design?.startsWith('celebration')) {
-          return '🎉 축하 선물이 도착했습니다!'
-        }
-        return '🎁 선물이 도착했습니다!'
-      }
-
-      const title = getCardTitle(cardDesign)
-
-      // 메시지가 있으면 합성 이미지 생성, 없으면 원본 이미지 사용
-      let cardImageUrl: string
-      if (giftMessage && cardDesign) {
-        try {
-          const { createGiftCardImage } = await import('@/lib/order/gift/gift-utils')
-          const dataUrl = await createGiftCardImage({
-            message: giftMessage,
-            cardDesign: cardDesign,
-            items: giftOrder.order_items?.map(item => ({
-              imageUrl: item.product?.image_url || undefined,
-            })) || [],
-          })
-          
-          // 서버에 업로드하여 공개 URL 생성
-          try {
-            const uploadResponse = await fetch('/api/gift/upload-card-image', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ imageData: dataUrl }),
-            })
-            
-            if (uploadResponse.ok) {
-              const uploadData = await uploadResponse.json()
-              cardImageUrl = uploadData.url
-            } else {
-              cardImageUrl = cardDesign 
-                ? `${window.location.origin}/images/gift-cards/${cardDesign}.jpg`
-                : `${window.location.origin}/images/gift-default.jpg`
-            }
-          } catch (uploadError) {
-            cardImageUrl = cardDesign 
-              ? `${window.location.origin}/images/gift-cards/${cardDesign}.jpg`
-              : `${window.location.origin}/images/gift-default.jpg`
-          }
-        } catch (imageError) {
-          console.error('이미지 생성 실패:', imageError)
-          cardImageUrl = cardDesign 
-            ? `${window.location.origin}/images/gift-cards/${cardDesign}.jpg`
-            : `${window.location.origin}/images/gift-default.jpg`
-        }
-      } else {
-        cardImageUrl = cardDesign 
-          ? `${window.location.origin}/images/gift-cards/${cardDesign}.jpg`
-          : `${window.location.origin}/images/gift-default.jpg`
-      }
-
-      // 카카오톡 공유 실행
-      window.Kakao.Share.sendDefault({
-        objectType: 'feed',
-        content: {
-          title: title,
-          description: giftMessage || '선물을 받아보세요!',
-          imageUrl: cardImageUrl,
-          link: {
-            mobileWebUrl: giftLink,
-            webUrl: giftLink,
-          },
-        },
-        buttons: [
-          {
-            title: '선물 받기',
-            link: {
-              mobileWebUrl: giftLink,
-              webUrl: giftLink,
-            },
-          },
-        ],
+      await shareGiftToKakao({
+        orderId: giftOrder.id,
+        giftToken: giftOrder.gift_token || giftToken,
+        cardDesign: giftOrder.gift_card_design || 'birthday-1',
+        message: giftOrder.gift_message || '',
+        items: giftOrder.order_items?.map(item => ({
+          imageUrl: item.product?.image_url || undefined,
+        })) || [],
       })
     } catch (error: any) {
       // 카카오톡 공유 실패 시 링크 복사로 대체

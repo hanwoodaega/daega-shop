@@ -8,7 +8,7 @@ export interface CouponFormData {
   min_purchase_amount: number | string
   max_discount_amount: number | string
   validity_days: number | string
-  is_first_purchase_only: boolean
+  issue_trigger: 'PHONE_VERIFIED' | 'ADMIN' | 'ETC'
 }
 
 export interface IssueConditions {

@@ -60,8 +60,10 @@
 | API 경로 | 서버 호출 | 클라이언트 호출 | 호출 위치 |
 |---------|---------|---------------|----------|
 | `GET /api/auth/session` | ❌ | ✅ | **클라이언트**: `lib/auth/auth-context.tsx` |
-| `POST /api/auth/send-verification-code` | ❌ | ✅ | **클라이언트**: `app/auth/find-id/page.tsx`, `app/auth/reset-password/page.tsx` |
-| `POST /api/auth/verify-code` | ❌ | ✅ | **클라이언트**: `app/auth/find-id/page.tsx`, `app/auth/reset-password/page.tsx` |
+| `POST /api/auth/send-verification-code` | ❌ | ✅ | **클라이언트**: `app/auth/find-id/page.tsx`, `app/auth/reset-password/page.tsx`, `app/profile/edit/page.tsx` |
+| `POST /api/auth/verify-code` | ❌ | ✅ | **클라이언트**: `app/auth/find-id/page.tsx`, `app/auth/reset-password/page.tsx`, `app/auth/signup/page.tsx` |
+| `POST /api/auth/verify-phone` | ❌ | ✅ | **클라이언트**: `app/profile/edit/page.tsx` |
+| `GET /api/auth/kakao` | ❌ | ✅ | **클라이언트**: `app/auth/kakao/callback/page.tsx` |
 | `GET /api/auth/naver` | ❌ | ✅ | **클라이언트**: `app/auth/naver/callback/page.tsx` |
 
 ### 사용자 프로필 관련
@@ -100,8 +102,6 @@
 | `GET /api/coupons` | ❌ | ✅ | **클라이언트**: `lib/coupon/coupons.ts` |
 | `POST /api/coupons/use` | ❌ | ✅ | **클라이언트**: `lib/coupon/coupons.ts` |
 | `POST /api/coupons/issue` | ❌ | ✅ | **클라이언트**: `lib/coupon/coupons.ts` |
-| `POST /api/coupons/first-purchase` | ❌ | ✅ | **클라이언트**: `lib/coupon/coupons.ts` |
-| `GET /api/users/signup-coupon` | ❌ | ✅ | **클라이언트**: `app/auth/signup/page.tsx` |
 
 ### 포인트 관련
 | API 경로 | 서버 호출 | 클라이언트 호출 | 호출 위치 |

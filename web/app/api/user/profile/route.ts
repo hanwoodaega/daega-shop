@@ -15,10 +15,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }
 
+    const { data: statusRow, error: statusError } = await supabase
+      .from('users')
+      .select('status')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (statusError) {
+      return NextResponse.json({ error: '사용자 상태 조회 실패' }, { status: 500 })
+    }
+
+    if (statusRow?.status === 'deleted') {
+      return NextResponse.json({ error: '접근 권한이 없습니다.' }, { status: 403 })
+    }
+
     // 사용자 정보 조회
     const { data: profile, error } = await supabase
       .from('users')
-      .select('name, phone, email, birthday')
+      .select('name, phone, birthday')
       .eq('id', user.id)
       .single()
 
@@ -46,6 +60,20 @@ export async function PUT(request: NextRequest) {
     }
 
     const supabase = createSupabaseServerClient()
+    const { data: statusRow, error: statusError } = await supabase
+      .from('users')
+      .select('status')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (statusError) {
+      return NextResponse.json({ error: '사용자 상태 조회 실패' }, { status: 500 })
+    }
+
+    if (statusRow?.status === 'deleted') {
+      return NextResponse.json({ error: '접근 권한이 없습니다.' }, { status: 403 })
+    }
+
     const body = await request.json()
     const { name, phone, birthday } = body
 
@@ -94,12 +122,25 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createSupabaseServerClient()
+    const { data: statusRow, error: statusError } = await supabase
+      .from('users')
+      .select('status')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (statusError) {
+      return NextResponse.json({ error: '사용자 상태 조회 실패' }, { status: 500 })
+    }
+
+    if (statusRow?.status === 'deleted') {
+      return NextResponse.json({ error: '접근 권한이 없습니다.' }, { status: 403 })
+    }
+
     const body = await request.json()
-    const { email, name, phone, birthday } = body
+    const { name, phone, birthday } = body
 
     const upsertData: any = {
       id: user.id,
-      email: email || user.email,
       updated_at: new Date().toISOString(),
     }
 

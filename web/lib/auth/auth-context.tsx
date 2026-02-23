@@ -59,11 +59,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         if (isMounted) {
-          const newUser: User | null = data?.user ?? null
+          let newUser: User | null = data?.user ?? null
+          if (!newUser) {
+            const { data: localSession } = await supabase.auth.getSession()
+            newUser = localSession?.session?.user ?? null
+          }
           currentUserRef.current = newUser
           setUser(newUser)
           setLoading(false)
-          
+
           // 로그인 상태라면 DB에서 데이터 불러오기
           if (newUser && !hasSyncedRef.current) {
             hasSyncedRef.current = true
@@ -96,8 +100,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
       if (!isMounted) return
       
-      // INITIAL_SESSION은 무시 (서버 API로 이미 확인함)
+      // INITIAL_SESSION: 서버 세션이 없더라도 로컬 세션이 있으면 반영
       if (event === 'INITIAL_SESSION') {
+        if (!currentUserRef.current && session?.user) {
+          currentUserRef.current = session.user
+          setUser(session.user)
+          setLoading(false)
+        }
         return
       }
       

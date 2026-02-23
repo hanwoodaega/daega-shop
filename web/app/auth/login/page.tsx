@@ -1,22 +1,40 @@
 'use client'
 
-import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/supabase'
-import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useCartStore } from '@/lib/store'
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
   const nextPath = searchParams.get('next') || '/'
+  const redirectAfterLogin = '/'
   const urlError = searchParams.get('error')
   const cartCount = useCartStore((state) => state.getTotalItems())
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(urlError || '')
+
+  useEffect(() => {
+    let isMounted = true
+    const checkExistingSession = async () => {
+      const res = await fetch('/api/auth/session', { cache: 'no-store' })
+      const data = await res.json().catch(() => ({}))
+      if (!isMounted) return
+      if (data?.user) {
+        if (pathname === redirectAfterLogin) return
+        router.replace(redirectAfterLogin)
+      }
+    }
+    checkExistingSession().catch(() => {})
+    return () => {
+      isMounted = false
+    }
+  }, [nextPath, pathname, router])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,10 +66,22 @@ function LoginForm() {
         throw error
       }
 
-      console.log('로그인 성공, 리다이렉트:', nextPath)
+      const onboardingRes = await fetch('/api/auth/onboarding-status', { cache: 'no-store' })
+      const onboardingData = await onboardingRes.json().catch(() => ({}))
+
+      const isDeleted = onboardingData?.status === 'deleted'
+      const requiresPhoneVerification =
+        onboardingData?.status === 'deleted' || onboardingData?.requiresPhoneVerification
+      const targetPath = requiresPhoneVerification
+        ? isDeleted
+          ? `/auth/restore?next=${encodeURIComponent(redirectAfterLogin)}`
+          : `/auth/onboarding?next=${encodeURIComponent(redirectAfterLogin)}`
+        : redirectAfterLogin
+
+      console.log('로그인 성공, 리다이렉트:', targetPath)
       // 잠시 대기 후 리다이렉트 (인증 상태가 업데이트될 시간을 줌)
       await new Promise(resolve => setTimeout(resolve, 100))
-      router.push(nextPath)
+      router.push(targetPath)
       router.refresh()
     } catch (error: any) {
       console.error('로그인 실패:', error)
@@ -62,6 +92,10 @@ function LoginForm() {
 
   const handleSocialLogin = async (provider: 'kakao' | 'google' | 'naver') => {
     try {
+      if (provider === 'kakao') {
+        handleKakaoLogin()
+        return
+      }
       if (provider === 'naver') {
         // 네이버는 커스텀 OAuth 처리
         handleNaverLogin()
@@ -71,7 +105,7 @@ function LoginForm() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectAfterLogin)}`,
         },
       })
 
@@ -81,6 +115,48 @@ function LoginForm() {
     }
   }
   
+  const handleKakaoLogin = () => {
+    const clientId =
+      process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || process.env.NEXT_PUBLIC_KAKAO_APP_KEY
+
+    if (!clientId) {
+      setError('카카오 로그인이 설정되지 않았습니다.')
+      return
+    }
+
+    const redirectUri = `${window.location.origin}/api/auth/kakao`
+    const state = Math.random().toString(36).substring(7)
+
+    const isSecure = window.location.protocol === 'https:'
+    const stateCookieParts = [
+      `kakao_oauth_state=${encodeURIComponent(state)}`,
+      'Path=/',
+      'Max-Age=300',
+      'SameSite=Lax',
+    ]
+    if (isSecure) {
+      stateCookieParts.push('Secure')
+    }
+    document.cookie = stateCookieParts.join('; ')
+
+    const nextCookieParts = [
+      `kakao_oauth_next=${encodeURIComponent(redirectAfterLogin)}`,
+      'Path=/',
+      'Max-Age=300',
+      'SameSite=Lax',
+    ]
+    if (isSecure) {
+      nextCookieParts.push('Secure')
+    }
+    document.cookie = nextCookieParts.join('; ')
+
+    const kakaoLoginUrl =
+      `https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=${clientId}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`
+
+    window.location.href = kakaoLoginUrl
+  }
+
   const handleNaverLogin = () => {
     const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
     
@@ -89,10 +165,31 @@ function LoginForm() {
       return
     }
     
-    const redirectUri = `${window.location.origin}/auth/naver/callback`
+    const redirectUri = `${window.location.origin}/api/auth/naver`
     const state = Math.random().toString(36).substring(7)
     
-    sessionStorage.setItem('naver_oauth_state', state)
+    const isSecure = window.location.protocol === 'https:'
+    const stateCookieParts = [
+      `naver_oauth_state=${encodeURIComponent(state)}`,
+      'Path=/',
+      'Max-Age=300',
+      'SameSite=Lax',
+    ]
+    if (isSecure) {
+      stateCookieParts.push('Secure')
+    }
+    document.cookie = stateCookieParts.join('; ')
+
+    const nextCookieParts = [
+      `naver_oauth_next=${encodeURIComponent(redirectAfterLogin)}`,
+      'Path=/',
+      'Max-Age=300',
+      'SameSite=Lax',
+    ]
+    if (isSecure) {
+      nextCookieParts.push('Secure')
+    }
+    document.cookie = nextCookieParts.join('; ')
     
     const naverLoginUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`
     
@@ -241,7 +338,6 @@ function LoginForm() {
         </div>
       </main>
 
-      <BottomNavbar />
     </div>
   )
 }
@@ -264,7 +360,6 @@ export default function LoginPage() {
             <div className="animate-pulse">로딩 중...</div>
           </div>
         </main>
-        <BottomNavbar />
       </div>
     }>
       <LoginForm />

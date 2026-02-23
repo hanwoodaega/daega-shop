@@ -104,20 +104,6 @@ export async function issueCoupon(
 }
 
 /**
- * @deprecated 첫구매 쿠폰은 이제 DB Trigger로 자동 발급됩니다.
- * users 테이블에 INSERT가 발생하면 자동으로 첫구매 쿠폰이 발급됩니다.
- * 
- * 이 함수를 호출할 필요가 없습니다. 회원가입 시 자동으로 처리됩니다.
- * 
- * @see migrations/first_purchase_coupon_trigger.sql
- */
-export async function issueFirstPurchaseCoupon(): Promise<boolean> {
-  console.warn('issueFirstPurchaseCoupon() is deprecated. First purchase coupons are now issued automatically via DB trigger.')
-  // Trigger가 이미 처리했을 가능성이 높으므로 성공으로 반환
-  return true
-}
-
-/**
  * 쿠폰 사용 (서버 API 사용)
  * 서버 API가 JWT 기반으로 자동으로 현재 로그인한 사용자의 쿠폰만 사용할 수 있도록 처리합니다.
  */

@@ -23,3 +23,38 @@ export async function getUserFromServer(): Promise<User | null> {
   }
 }
 
+type ActiveUserResult =
+  | { user: User }
+  | { error: 'unauthorized' | 'forbidden' }
+
+export async function requireActiveUserFromServer(): Promise<ActiveUserResult> {
+  try {
+    const supabase = createSupabaseServerClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
+
+    if (error || !user) {
+      return { error: 'unauthorized' }
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('status')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error('사용자 상태 조회 실패:', profileError)
+      return { error: 'forbidden' }
+    }
+
+    if (!profile || profile.status !== 'active') {
+      return { error: 'forbidden' }
+    }
+
+    return { user }
+  } catch (error) {
+    console.error('requireActiveUserFromServer 오류:', error)
+    return { error: 'unauthorized' }
+  }
+}
+

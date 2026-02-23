@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { normalizeUsername } from '@/lib/auth/otp-utils'
+import { normalizeUsername, usernameToEmail } from '@/lib/auth/otp-utils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     const { data: user, error } = await supabaseAdmin
       .from('users')
-      .select('email, status')
+      .select('id, status')
       .eq('username_normalized', normalized)
       .maybeSingle()
 
@@ -24,11 +24,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '아이디 조회에 실패했습니다.' }, { status: 500 })
     }
 
-    if (!user || user.status !== 'active') {
+    if (!user) {
       return NextResponse.json({ error: '로그인 정보를 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    return NextResponse.json({ email: user.email })
+    if (user.status !== 'active' && user.status !== 'pending' && user.status !== 'deleted') {
+      return NextResponse.json({ error: '로그인 정보를 찾을 수 없습니다.' }, { status: 404 })
+    }
+
+    return NextResponse.json({ email: usernameToEmail(normalized), status: user.status })
   } catch (error: any) {
     return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
   }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { getUserFromServer } from '@/lib/auth/auth-server'
+import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,10 +8,13 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     // 서버에서 사용자 인증 확인
-    const user = await getUserFromServer()
-    if (!user) {
-      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+    const authResult = await requireActiveUserFromServer()
+    if ('error' in authResult) {
+      const status = authResult.error === 'unauthorized' ? 401 : 403
+      const errorMessage = authResult.error === 'unauthorized' ? '로그인이 필요합니다.' : '접근 권한이 없습니다.'
+      return NextResponse.json({ error: errorMessage }, { status })
     }
+    const user = authResult.user
 
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '50')

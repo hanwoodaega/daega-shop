@@ -1,6 +1,62 @@
 import toast from 'react-hot-toast'
 import { createGiftCardImage } from './gift-utils'
 
+async function ensureKakaoReady(): Promise<void> {
+  if (typeof window === 'undefined') {
+    throw new Error('브라우저 환경에서만 공유할 수 있습니다.')
+  }
+
+  const kakaoAppKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY || ''
+  if (!kakaoAppKey) {
+    throw new Error('카카오톡 앱 키가 설정되지 않았습니다.')
+  }
+
+  if (window.Kakao && window.Kakao.isInitialized()) {
+    return
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const initialize = () => {
+      if (!window.Kakao) {
+        reject(new Error('카카오톡 SDK가 로드되지 않았습니다.'))
+        return
+      }
+      try {
+        if (!window.Kakao.isInitialized()) {
+          window.Kakao.init(kakaoAppKey)
+        }
+        if (!window.Kakao.isInitialized()) {
+          reject(new Error('카카오톡 SDK 초기화에 실패했습니다.'))
+          return
+        }
+        resolve()
+      } catch (error: any) {
+        reject(error)
+      }
+    }
+
+    if (window.Kakao) {
+      initialize()
+      return
+    }
+
+    const existing = document.querySelector('script[data-kakao-sdk="true"]') as HTMLScriptElement | null
+    if (existing) {
+      existing.addEventListener('load', initialize, { once: true })
+      existing.addEventListener('error', () => reject(new Error('카카오톡 SDK 로드 실패')), { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = 'https://developers.kakao.com/sdk/js/kakao.js'
+    script.async = true
+    script.dataset.kakaoSdk = 'true'
+    script.onload = initialize
+    script.onerror = () => reject(new Error('카카오톡 SDK 로드 실패'))
+    document.head.appendChild(script)
+  })
+}
+
 export interface KakaoShareOptions {
   orderId: string
   giftToken: string
@@ -74,9 +130,7 @@ export async function performKakaoShare(options: KakaoShareOptions): Promise<voi
         : items[0]?.imageUrl || `${window.location.origin}/images/gift-default.jpg`
     }
 
-    if (!window.Kakao || !window.Kakao.isInitialized()) {
-      throw new Error('카카오 SDK가 초기화되지 않았습니다.')
-    }
+    await ensureKakaoReady()
 
     await window.Kakao.Share.sendDefault({
       objectType: 'feed',

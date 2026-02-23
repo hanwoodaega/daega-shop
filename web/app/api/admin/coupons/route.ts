@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       max_discount_amount,
       validity_days,
       is_active,
-      is_first_purchase_only,
+      issue_trigger,
     } = body
 
     // 서버 사이드 검증: validity_days는 1 이상이어야 함
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
         max_discount_amount: max_discount_amount > 0 ? max_discount_amount : null,
         validity_days,
         is_active: is_active !== false,
-        is_first_purchase_only: is_first_purchase_only || false,
+        issue_trigger: issue_trigger || 'ADMIN',
         is_deleted: false,  // 새로 생성되는 쿠폰은 삭제되지 않음
       })
       .select()

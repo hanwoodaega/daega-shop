@@ -29,7 +29,7 @@ export async function PUT(
       max_discount_amount,
       validity_days,
       is_active,
-      is_first_purchase_only,
+      issue_trigger,
     } = body
 
     // 서버 사이드 검증: validity_days는 1 이상이어야 함
@@ -54,20 +54,25 @@ export async function PUT(
     }
 
     // 쿠폰 수정
+    const updateData: Record<string, any> = {
+      name,
+      description: description || null,
+      discount_type,
+      discount_value,
+      min_purchase_amount: min_purchase_amount > 0 ? min_purchase_amount : null,
+      max_discount_amount: max_discount_amount > 0 ? max_discount_amount : null,
+      validity_days,
+      is_active,
+      updated_at: new Date().toISOString(),
+    }
+
+    if (issue_trigger !== undefined) {
+      updateData.issue_trigger = issue_trigger
+    }
+
     const { data, error } = await supabase
       .from('coupons')
-      .update({
-        name,
-        description: description || null,
-        discount_type,
-        discount_value,
-        min_purchase_amount: min_purchase_amount > 0 ? min_purchase_amount : null,
-        max_discount_amount: max_discount_amount > 0 ? max_discount_amount : null,
-        validity_days,
-        is_active,
-        is_first_purchase_only: is_first_purchase_only || false,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', params.id)
       .select()
       .single()

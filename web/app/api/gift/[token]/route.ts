@@ -59,7 +59,7 @@ export async function GET(
     if (orders.user_id) {
       const { data: userData, error: userError } = await supabaseAdmin
         .from('users')
-        .select('name, email')
+        .select('name')
         .eq('id', orders.user_id)
         .maybeSingle()
       

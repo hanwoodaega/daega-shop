@@ -1,62 +1,353 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+
+const PROVIDER = 'naver'
+const OAUTH_EMAIL_DOMAIN = 'provider.local'
+
+const buildOauthEmail = (providerUserId: string) => {
+  return `${PROVIDER}_${providerUserId}@${OAUTH_EMAIL_DOMAIN}`
+}
+
+const normalizePhone = (value?: string | null) => {
+  return value ? value.replace(/[^0-9]/g, '') : null
+}
+
+const buildBirthday = (birthday?: string | null, birthyear?: string | null) => {
+  if (birthday && birthyear) {
+    return `${birthyear}-${birthday}`
+  }
+  if (birthday) {
+    return `1900-${birthday}`
+  }
+  return null
+}
+
+const sanitizeNextPath = (raw?: string | null) => {
+  if (!raw || typeof raw !== 'string') return '/'
+  const trimmed = raw.trim()
+  if (!trimmed.startsWith('/')) return '/'
+  if (trimmed.startsWith('//')) return '/'
+  if (trimmed.includes('://')) return '/'
+  return trimmed
+}
+
+
+type NaverOAuthError = {
+  code: string
+  description: string
+}
+
+const createOAuthError = (code: string, description: string): NaverOAuthError => ({
+  code,
+  description,
+})
+
+async function processNaverOAuth(params: {
+  request: NextRequest
+  code?: string | null
+  state?: string | null
+  nextPath?: string | null
+}) {
+  const { request, code, state, nextPath } = params
+
+  if (!code || !state) {
+    throw createOAuthError('missing_code', '로그인 정보가 없습니다.')
+  }
+
+  const stateCookie = request.cookies.get('naver_oauth_state')?.value
+  if (!stateCookie || stateCookie !== state) {
+    throw createOAuthError('state_mismatch', '요청이 만료되었거나 유효하지 않습니다.')
+  }
+
+  const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
+  const clientSecret = process.env.NAVER_CLIENT_SECRET
+  const origin = new URL(request.url).origin
+  const redirectUri = `${origin}/api/auth/naver`
+
+  if (!clientId || !clientSecret) {
+    throw createOAuthError('token_exchange_failed', '네이버 로그인이 설정되지 않았습니다.')
+  }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw createOAuthError('supabase_user_failed', '서버 인증 설정이 누락되었습니다.')
+  }
+
+  const tokenResponse = await fetch('https://nid.naver.com/oauth2.0/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      state,
+      redirect_uri: redirectUri,
+    }),
+  })
+
+  const tokenData = await tokenResponse.json()
+
+  if (!tokenResponse.ok || !tokenData.access_token) {
+    throw createOAuthError(
+      'token_exchange_failed',
+      tokenData?.error_description || '액세스 토큰을 받지 못했습니다.'
+    )
+  }
+
+  const userResponse = await fetch('https://openapi.naver.com/v1/nid/me', {
+    headers: {
+      Authorization: `Bearer ${tokenData.access_token}`,
+    },
+  })
+
+  const userData = await userResponse.json()
+
+  if (!userResponse.ok || userData.resultcode !== '00') {
+    throw createOAuthError('naver_userinfo_failed', '사용자 정보를 가져오지 못했습니다.')
+  }
+
+  const providerUserId = userData?.response?.id
+  if (!providerUserId) {
+    throw createOAuthError('naver_userinfo_failed', '네이버 사용자 고유 ID를 찾을 수 없습니다.')
+  }
+
+  const naverEmail = userData?.response?.email?.trim()?.toLowerCase() || null
+  const name = userData?.response?.name || null
+  const avatarUrl = userData?.response?.profile_image || null
+  const phoneNumber = normalizePhone(userData?.response?.mobile)
+  const birthday = buildBirthday(userData?.response?.birthday, userData?.response?.birthyear)
+
+  const supabaseAdmin = createSupabaseAdminClient()
+
+  const { data: identity, error: identityError } = await supabaseAdmin
+    .from('oauth_identities')
+    .select('user_id, email')
+    .eq('provider', PROVIDER)
+    .eq('provider_user_id', providerUserId)
+    .maybeSingle()
+
+  if (identityError) {
+    throw createOAuthError('supabase_user_failed', '소셜 계정 매핑 조회에 실패했습니다. (identity_lookup)')
+  }
+
+  let userId = identity?.user_id
+  let linkedExisting = false
+
+  if (!userId && phoneNumber) {
+    const { data: phoneOwner } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('phone', phoneNumber)
+      .maybeSingle()
+    if (phoneOwner?.id) {
+      userId = phoneOwner.id
+      linkedExisting = true
+    }
+  }
+
+  // 이메일로는 자동 병합하지 않음 (휴대폰 인증 단계에서 병합)
+
+  if (!userId) {
+    const oauthEmail = buildOauthEmail(providerUserId)
+    const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: oauthEmail,
+      email_confirm: true,
+      user_metadata: {
+        provider: PROVIDER,
+        provider_user_id: providerUserId,
+        name,
+        avatar_url: avatarUrl,
+      },
+    })
+
+    if (createError || !createdUser?.user?.id) {
+      const createMessage = createError?.message || ''
+      const detail = process.env.NODE_ENV === 'development' && createMessage
+        ? ` (create_user: ${createMessage})`
+        : ' (create_user)'
+      throw createOAuthError('supabase_user_failed', `사용자 생성에 실패했습니다.${detail}`)
+    } else {
+      userId = createdUser.user.id
+    }
+  }
+
+  const updatePayload: {
+    user_metadata: Record<string, string | null>
+  } = {
+    user_metadata: {
+      provider: PROVIDER,
+      provider_user_id: providerUserId,
+      name,
+      avatar_url: avatarUrl,
+    },
+  }
+
+  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, updatePayload)
+  if (updateError) {
+    throw createOAuthError('supabase_user_failed', '사용자 정보 업데이트에 실패했습니다. (update_user)')
+  }
+
+  const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId)
+  const authEmail = authUser?.user?.email || null
+  if (!authEmail) {
+    throw createOAuthError('supabase_user_failed', '사용자 이메일 확인에 실패했습니다. (auth_email)')
+  }
+
+  const identityEmail = naverEmail || identity?.email || null
+  const { error: identityUpsertError } = await supabaseAdmin
+    .from('oauth_identities')
+    .upsert(
+      {
+        provider: PROVIDER,
+        provider_user_id: providerUserId,
+        user_id: userId,
+        email: identityEmail,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'provider,provider_user_id' }
+    )
+
+  if (identityUpsertError) {
+    throw createOAuthError('supabase_user_failed', '소셜 계정 매핑 저장에 실패했습니다. (identity_upsert)')
+  }
+
+  const { data: profileCheck } = await supabaseAdmin
+    .from('users')
+    .select('phone, phone_verified_at, status')
+    .eq('id', userId)
+    .maybeSingle()
+
+  const wasDeleted = profileCheck?.status === 'deleted'
+
+  const nowIso = new Date().toISOString()
+  const profileUpdate: Record<string, string | null> = {
+    id: userId,
+    updated_at: nowIso,
+  }
+  if (!wasDeleted && name !== null) profileUpdate.name = name
+  if (!wasDeleted) {
+    if (phoneNumber !== null) {
+      profileUpdate.phone = phoneNumber
+      profileUpdate.phone_verified_at = nowIso
+    }
+    if (birthday !== null) profileUpdate.birthday = birthday
+  }
+
+  const { error: profileError } = await supabaseAdmin
+    .from('users')
+    .upsert(profileUpdate, { onConflict: 'id' })
+
+  if (profileError) {
+    throw createOAuthError('supabase_user_failed', '사용자 프로필 저장에 실패했습니다. (profile_upsert)')
+  }
+
+  const safeNextPath = sanitizeNextPath(nextPath)
+  let finalNextPath = safeNextPath
+
+  if (wasDeleted) {
+    finalNextPath = `/auth/restore?next=${encodeURIComponent(safeNextPath)}`
+  } else {
+    const requiresPhoneVerification = !profileCheck?.phone || !profileCheck?.phone_verified_at
+    const statusValue = requiresPhoneVerification ? 'pending' : 'active'
+    await supabaseAdmin
+      .from('users')
+      .update({ status: statusValue })
+      .eq('id', userId)
+
+    if (requiresPhoneVerification || profileCheck?.status === 'pending') {
+      finalNextPath = `/auth/onboarding?next=${encodeURIComponent(safeNextPath)}`
+    }
+  }
+
+  const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+    type: 'magiclink',
+    email: authEmail,
+    options: {
+      redirectTo: `${origin}/auth/callback`,
+    },
+  })
+
+  if (linkError) {
+    throw createOAuthError('magiclink_failed', '로그인 링크 생성에 실패했습니다. (magiclink)')
+  }
+
+  const tokenHash = linkData?.properties?.hashed_token
+  if (!tokenHash) {
+    throw createOAuthError('magiclink_failed', '로그인 토큰 생성에 실패했습니다. (magiclink_token)')
+  }
+
+  return {
+    tokenHash,
+    nextPath: finalNextPath,
+    linkedExisting,
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const code = searchParams.get('code')
+  const state = searchParams.get('state')
+  const nextFromCookie = request.cookies.get('naver_oauth_next')?.value
+
+  try {
+    const { tokenHash, nextPath, linkedExisting } = await processNaverOAuth({
+      request,
+      code,
+      state,
+      nextPath: nextFromCookie,
+    })
+
+    const redirectUrl = new URL('/auth/naver/callback', request.url)
+    redirectUrl.searchParams.set('token_hash', tokenHash)
+    redirectUrl.searchParams.set('type', 'magiclink')
+    if (nextPath) {
+      redirectUrl.searchParams.set('next', nextPath)
+    }
+    if (linkedExisting) {
+      redirectUrl.searchParams.set('linked', '1')
+    }
+
+    const response = NextResponse.redirect(redirectUrl)
+    response.cookies.set('naver_oauth_state', '', { maxAge: 0, path: '/' })
+    response.cookies.set('naver_oauth_next', '', { maxAge: 0, path: '/' })
+    return response
+  } catch (error: any) {
+    const errorCode = error?.code || 'unknown_error'
+    const errorDescription = error?.description || '네이버 로그인 처리 실패'
+    const redirectUrl = new URL('/auth/naver/callback', request.url)
+    redirectUrl.searchParams.set('error', errorCode)
+    redirectUrl.searchParams.set('error_description', errorDescription)
+    const safeNext = sanitizeNextPath(nextFromCookie)
+    if (safeNext) {
+      redirectUrl.searchParams.set('next', safeNext)
+    }
+    const response = NextResponse.redirect(redirectUrl)
+    response.cookies.set('naver_oauth_state', '', { maxAge: 0, path: '/' })
+    response.cookies.set('naver_oauth_next', '', { maxAge: 0, path: '/' })
+    return response
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { code } = await request.json()
-
-    const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
-    const clientSecret = process.env.NAVER_CLIENT_SECRET
-    const redirectUri = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/naver/callback`
-
-    if (!clientId || !clientSecret) {
-      return NextResponse.json(
-        { error: '네이버 로그인이 설정되지 않았습니다.' },
-        { status: 500 }
-      )
-    }
-
-    // 액세스 토큰 요청
-    const tokenResponse = await fetch(
-      `https://nid.naver.com/oauth2.0/token?grant_type=authorization_code&client_id=${clientId}&client_secret=${clientSecret}&code=${code}&state=state`,
-      {
-        method: 'GET',
-      }
-    )
-
-    const tokenData = await tokenResponse.json()
-
-    if (!tokenData.access_token) {
-      throw new Error('액세스 토큰을 받지 못했습니다.')
-    }
-
-    // 사용자 정보 요청
-    const userResponse = await fetch('https://openapi.naver.com/v1/nid/me', {
-      headers: {
-        Authorization: `Bearer ${tokenData.access_token}`,
-      },
+    const body = await request.json().catch(() => ({}))
+    const { tokenHash } = await processNaverOAuth({
+      request,
+      code: body?.code,
+      state: body?.state,
+      nextPath: body?.next,
     })
 
-    const userData = await userResponse.json()
-
-    if (userData.resultcode !== '00') {
-      throw new Error('사용자 정보를 가져오지 못했습니다.')
-    }
-
-    // 사용자 정보 반환
     return NextResponse.json({
-      user: {
-        id: userData.response.id,
-        email: userData.response.email,
-        name: userData.response.name,
-        mobile: userData.response.mobile, // 전화번호 (선택적 동의 필요)
-        birthday: userData.response.birthday || null, // 생일 (YYYY-MM-DD 형식, 선택적 동의 필요)
-        birthyear: userData.response.birthyear || null, // 출생연도 (선택적 동의 필요)
-      },
+      token_hash: tokenHash,
+      type: 'magiclink',
     })
   } catch (error: any) {
-    console.error('네이버 OAuth 에러:', error)
+    const errorCode = error?.code || 'unknown_error'
+    const errorDescription = error?.description || '네이버 로그인 처리 실패'
     return NextResponse.json(
-      { error: error.message || '네이버 로그인 처리 실패' },
+      { error: errorCode, error_description: errorDescription },
       { status: 500 }
     )
   }

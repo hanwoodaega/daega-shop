@@ -12,7 +12,7 @@ const initialFormData: CouponFormData = {
   min_purchase_amount: '',
   max_discount_amount: '',
   validity_days: '',
-  is_first_purchase_only: false,
+  issue_trigger: 'ADMIN',
 }
 
 export function useCouponForm() {
@@ -34,7 +34,7 @@ export function useCouponForm() {
       min_purchase_amount: coupon.min_purchase_amount || '',
       max_discount_amount: coupon.max_discount_amount || '',
       validity_days: coupon.validity_days || '',
-      is_first_purchase_only: coupon.is_first_purchase_only,
+      issue_trigger: coupon.issue_trigger || 'ADMIN',
     })
   }
 

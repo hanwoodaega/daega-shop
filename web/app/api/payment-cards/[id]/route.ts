@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
-import { getUserFromServer } from '@/lib/auth/auth-server'
+import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,10 +12,13 @@ export async function DELETE(
   try {
     const supabase = createSupabaseServerClient()
 
-    const user = await getUserFromServer()
-    if (!user) {
-      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+    const authResult = await requireActiveUserFromServer()
+    if ('error' in authResult) {
+      const status = authResult.error === 'unauthorized' ? 401 : 403
+      const errorMessage = authResult.error === 'unauthorized' ? '로그인이 필요합니다.' : '접근 권한이 없습니다.'
+      return NextResponse.json({ error: errorMessage }, { status })
     }
+    const user = authResult.user
 
     const { error } = await supabase
       .from('payment_cards')
@@ -46,10 +49,13 @@ export async function PUT(
   try {
     const supabase = createSupabaseServerClient()
 
-    const user = await getUserFromServer()
-    if (!user) {
-      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+    const authResult = await requireActiveUserFromServer()
+    if ('error' in authResult) {
+      const status = authResult.error === 'unauthorized' ? 401 : 403
+      const errorMessage = authResult.error === 'unauthorized' ? '로그인이 필요합니다.' : '접근 권한이 없습니다.'
+      return NextResponse.json({ error: errorMessage }, { status })
     }
+    const user = authResult.user
 
     // 기존 기본 카드 해제
     await supabase
