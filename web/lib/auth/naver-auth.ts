@@ -2,7 +2,8 @@
 
 export const handleNaverLogin = (nextPath: string = '/') => {
   const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
-  const redirectUri = `${window.location.origin}/api/auth/naver`
+  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
+  const redirectUri = `${baseUrl}/api/auth/naver`
   const state = Math.random().toString(36).substring(7)
   
   const isSecure = window.location.protocol === 'https:'

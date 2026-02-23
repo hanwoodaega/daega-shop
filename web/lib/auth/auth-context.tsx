@@ -59,11 +59,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         if (isMounted) {
+          const status = data?.status
           let newUser: User | null = data?.user ?? null
+
           if (!newUser) {
-            const { data: localSession } = await supabase.auth.getSession()
-            newUser = localSession?.session?.user ?? null
+            if (status) {
+              await supabase.auth.signOut()
+            } else {
+              const { data: localSession } = await supabase.auth.getSession()
+              newUser = localSession?.session?.user ?? null
+            }
           }
+
           currentUserRef.current = newUser
           setUser(newUser)
           setLoading(false)
@@ -117,7 +124,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       // session에서 직접 사용자 정보 가져오기
-      const newUser: User | null = session?.user ?? null
+      let newUser: User | null = session?.user ?? null
+
+      if (newUser) {
+        try {
+          const statusRes = await fetch('/api/auth/onboarding-status', { cache: 'no-store' })
+          const statusData = await statusRes.json().catch(() => ({}))
+          if (statusRes.ok && statusData?.status !== 'active') {
+            await supabase.auth.signOut()
+            newUser = null
+          }
+        } catch {
+          // ignore status check failures to avoid blocking auth on network errors
+        }
+      }
       
       const prevUser = currentUserRef.current
       const wasLoggedOut = !!prevUser && !newUser

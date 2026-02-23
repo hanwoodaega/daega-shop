@@ -72,7 +72,8 @@ function KakaoCallbackContent() {
       }
 
       if (!tokenHash && code && state) {
-        const apiUrl = new URL('/api/auth/kakao', window.location.origin)
+        const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
+        const apiUrl = new URL('/api/auth/kakao', baseUrl)
         apiUrl.searchParams.set('code', code)
         apiUrl.searchParams.set('state', state)
         window.location.href = apiUrl.toString()

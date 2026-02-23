@@ -102,10 +102,11 @@ function LoginForm() {
         return
       }
       
+      const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectAfterLogin)}`,
+          redirectTo: `${baseUrl}/auth/callback?next=${encodeURIComponent(redirectAfterLogin)}`,
         },
       })
 
@@ -124,7 +125,8 @@ function LoginForm() {
       return
     }
 
-    const redirectUri = `${window.location.origin}/api/auth/kakao`
+    const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
+    const redirectUri = `${baseUrl}/api/auth/kakao`
     const state = Math.random().toString(36).substring(7)
 
     const isSecure = window.location.protocol === 'https:'
@@ -165,7 +167,8 @@ function LoginForm() {
       return
     }
     
-    const redirectUri = `${window.location.origin}/api/auth/naver`
+    const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
+    const redirectUri = `${baseUrl}/api/auth/naver`
     const state = Math.random().toString(36).substring(7)
     
     const isSecure = window.location.protocol === 'https:'

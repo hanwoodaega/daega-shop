@@ -61,7 +61,8 @@ async function processNaverOAuth(params: {
 
   const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
   const clientSecret = process.env.NAVER_CLIENT_SECRET
-  const origin = new URL(request.url).origin
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || new URL(request.url).origin
   const redirectUri = `${origin}/api/auth/naver`
 
   if (!clientId || !clientSecret) {

@@ -20,6 +20,28 @@ export async function GET(request: NextRequest) {
       })
     }
     
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('status')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (profileError) {
+      return NextResponse.json({
+        user: null,
+        session: null,
+        status: null,
+      })
+    }
+
+    if (profile?.status !== 'active') {
+      return NextResponse.json({
+        user: null,
+        session: null,
+        status: profile?.status || 'pending',
+      })
+    }
+
     // 사용자 정보가 있으면 세션 정보도 가져오기 (토큰 정보 필요 시)
     // getUser()로 인증된 사용자만 세션 정보 제공
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
@@ -29,13 +51,15 @@ export async function GET(request: NextRequest) {
       session: session ? {
         access_token: session.access_token,
         expires_at: session.expires_at,
-      } : null
+      } : null,
+      status: profile?.status || 'active',
     })
   } catch (error: any) {
     console.error('세션 확인 오류:', error)
     return NextResponse.json({ 
       user: null,
       session: null,
+      status: null,
       error: error?.message || '알 수 없는 오류'
     }, { status: 200 })
   }

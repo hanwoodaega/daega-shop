@@ -69,7 +69,8 @@ async function processKakaoOAuth(params: {
   const clientId =
     process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || process.env.NEXT_PUBLIC_KAKAO_APP_KEY
   const clientSecret = process.env.KAKAO_CLIENT_SECRET
-  const origin = new URL(request.url).origin
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || new URL(request.url).origin
   const redirectUri = `${origin}/api/auth/kakao`
 
   if (!clientId) {
