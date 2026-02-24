@@ -13,16 +13,6 @@ const normalizePhone = (value?: string | null) => {
   return value ? value.replace(/[^0-9]/g, '') : null
 }
 
-const buildBirthday = (birthday?: string | null, birthyear?: string | null) => {
-  if (birthday && birthyear) {
-    return `${birthyear}-${birthday}`
-  }
-  if (birthday) {
-    return `1900-${birthday}`
-  }
-  return null
-}
-
 const sanitizeNextPath = (raw?: string | null) => {
   if (!raw || typeof raw !== 'string') return '/'
   const trimmed = raw.trim()
@@ -36,6 +26,16 @@ const sanitizeNextPath = (raw?: string | null) => {
 type NaverOAuthError = {
   code: string
   description: string
+}
+
+type CreateOrGetUserFromOAuthResult = {
+  user_id: string
+  status: string
+  phone: string | null
+  phone_verified_at: string | null
+  was_deleted: boolean
+  linked_existing: boolean
+  should_refresh: boolean
 }
 
 const createOAuthError = (code: string, description: string): NaverOAuthError => ({
@@ -114,73 +114,108 @@ async function processNaverOAuth(params: {
     throw createOAuthError('naver_userinfo_failed', '네이버 사용자 고유 ID를 찾을 수 없습니다.')
   }
 
-  const naverEmail = userData?.response?.email?.trim()?.toLowerCase() || null
   const name = userData?.response?.name || null
-  const avatarUrl = userData?.response?.profile_image || null
   const phoneNumber = normalizePhone(userData?.response?.mobile)
-  const birthday = buildBirthday(userData?.response?.birthday, userData?.response?.birthyear)
 
   const supabaseAdmin = createSupabaseAdminClient()
-
-  const { data: identity, error: identityError } = await supabaseAdmin
-    .from('oauth_identities')
-    .select('user_id, email, profile_fetched_at')
-    .eq('provider', PROVIDER)
-    .eq('provider_user_id', providerUserId)
-    .maybeSingle()
-
-  if (identityError) {
-    throw createOAuthError('supabase_user_failed', '소셜 계정 매핑 조회에 실패했습니다. (identity_lookup)')
-  }
-
-  const hasIdentity = Boolean(identity?.user_id)
-  const lastFetchedAt = identity?.profile_fetched_at
-    ? new Date(identity.profile_fetched_at).getTime()
-    : 0
-  const shouldRefreshProfile = !hasIdentity || Date.now() - lastFetchedAt > PROFILE_REFRESH_TTL_MS
-  let userId = identity?.user_id
-  let linkedExisting = false
-
-  if (!userId && phoneNumber) {
-    const { data: phoneOwner } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('phone', phoneNumber)
-      .maybeSingle()
-    if (phoneOwner?.id) {
-      userId = phoneOwner.id
-      linkedExisting = true
+  const findExistingAuthUserId = async (email: string) => {
+    const adminAuth: any = supabaseAdmin.auth.admin as any
+    if (typeof adminAuth?.getUserByEmail === 'function') {
+      const existing = await adminAuth.getUserByEmail(email)
+      return existing?.data?.user?.id || null
     }
+    try {
+      const authQuery = (supabaseAdmin as any).schema?.('auth')?.from?.('users')
+      if (authQuery) {
+        const { data, error } = await authQuery.select('id').eq('email', email).maybeSingle()
+        if (!error && data?.id) return data.id
+      }
+    } catch (error) {
+      console.error('Auth users lookup failed:', error)
+    }
+    if (typeof adminAuth?.listUsers === 'function') {
+      const perPage = 1000
+      for (let page = 1; page <= 10; page += 1) {
+        const { data } = await adminAuth.listUsers({ page, perPage })
+        const found = data?.users?.find((user: any) => user.email === email)
+        if (found?.id) return found.id
+        if (!data?.users?.length || data.users.length < perPage) break
+      }
+    }
+    return null
   }
 
-  // 이메일로는 자동 병합하지 않음 (휴대폰 인증 단계에서 병합)
+  let userId: string | null = null
+  let linkedExisting = false
+  let wasDeleted = false
+  let requiresPhoneVerification = false
+  let shouldRefreshProfile = false
 
-  if (!userId) {
-    const oauthEmail = buildOauthEmail(providerUserId)
-    const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email: oauthEmail,
-      email_confirm: true,
-      user_metadata: {
-        provider: PROVIDER,
-        provider_user_id: providerUserId,
-        name,
-        avatar_url: avatarUrl,
-      },
-    })
+  const oauthEmail = buildOauthEmail(providerUserId)
+  let authUserId: string | null = null
+  let createdTempUserId: string | null = null
 
-    if (createError || !createdUser?.user?.id) {
+  const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    email: oauthEmail,
+    email_confirm: true,
+    user_metadata: {
+      provider: PROVIDER,
+      provider_user_id: providerUserId,
+      name,
+    },
+  })
+
+  if (createError || !createdUser?.user?.id) {
+    const existingAuthUserId = await findExistingAuthUserId(oauthEmail)
+    if (existingAuthUserId) {
+      authUserId = existingAuthUserId
+    } else {
       const createMessage = createError?.message || ''
       const detail = process.env.NODE_ENV === 'development' && createMessage
         ? ` (create_user: ${createMessage})`
         : ' (create_user)'
       throw createOAuthError('supabase_user_failed', `사용자 생성에 실패했습니다.${detail}`)
-    } else {
-      userId = createdUser.user.id
     }
+  } else {
+    authUserId = createdUser.user.id
+    createdTempUserId = createdUser.user.id
   }
 
-  const shouldUpdateAuthUser = shouldRefreshProfile
-  if (shouldUpdateAuthUser) {
+  const nowIso = new Date().toISOString()
+  const { data, error: rpcError } = await supabaseAdmin
+    .rpc('create_or_get_user_from_oauth', {
+      p_provider: PROVIDER,
+      p_provider_user_id: providerUserId,
+      p_auth_user_id: authUserId,
+      p_name: name,
+      p_phone: phoneNumber,
+      p_profile_fetched_at: nowIso,
+      p_refresh_ttl_seconds: Math.floor(PROFILE_REFRESH_TTL_MS / 1000),
+      p_now: nowIso,
+    })
+    .single()
+  const rpcData = data as CreateOrGetUserFromOAuthResult | null
+
+  if (rpcError || !rpcData?.user_id) {
+    const rpcMessage = rpcError?.message || ''
+    const detail = process.env.NODE_ENV === 'development' && rpcMessage
+      ? ` (rpc: ${rpcMessage})`
+      : ' (rpc)'
+    throw createOAuthError('supabase_user_failed', `소셜 계정 매핑 처리에 실패했습니다.${detail}`)
+  }
+
+  userId = rpcData.user_id
+  linkedExisting = Boolean(rpcData.linked_existing)
+  wasDeleted = Boolean(rpcData.was_deleted)
+  requiresPhoneVerification = !rpcData.phone || !rpcData.phone_verified_at
+  shouldRefreshProfile = Boolean(rpcData.should_refresh)
+
+  if (createdTempUserId && userId !== createdTempUserId) {
+    await supabaseAdmin.from('users').delete().eq('id', createdTempUserId)
+    await supabaseAdmin.auth.admin.deleteUser(createdTempUserId)
+  }
+
+  if (shouldRefreshProfile) {
     const updatePayload: {
       user_metadata: Record<string, string | null>
     } = {
@@ -188,7 +223,6 @@ async function processNaverOAuth(params: {
         provider: PROVIDER,
         provider_user_id: providerUserId,
         name,
-        avatar_url: avatarUrl,
       },
     }
 
@@ -204,80 +238,13 @@ async function processNaverOAuth(params: {
     throw createOAuthError('supabase_user_failed', '사용자 이메일 확인에 실패했습니다. (auth_email)')
   }
 
-  const shouldUpsertIdentity = !hasIdentity || identity?.user_id !== userId || shouldRefreshProfile
-  if (shouldUpsertIdentity) {
-    const identityEmail = naverEmail || identity?.email || null
-    const profileFetchedAt = shouldRefreshProfile
-      ? new Date().toISOString()
-      : identity?.profile_fetched_at || null
-    const { error: identityUpsertError } = await supabaseAdmin
-      .from('oauth_identities')
-      .upsert(
-        {
-          provider: PROVIDER,
-          provider_user_id: providerUserId,
-          user_id: userId,
-          email: identityEmail,
-          profile_fetched_at: profileFetchedAt,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'provider,provider_user_id' }
-      )
-
-    if (identityUpsertError) {
-      throw createOAuthError('supabase_user_failed', '소셜 계정 매핑 저장에 실패했습니다. (identity_upsert)')
-    }
-  }
-
-  const { data: profileCheck } = await supabaseAdmin
-    .from('users')
-    .select('phone, phone_verified_at, status')
-    .eq('id', userId)
-    .maybeSingle()
-
-  const wasDeleted = profileCheck?.status === 'deleted'
-
-  const shouldUpdateProfile = shouldRefreshProfile
-  if (shouldUpdateProfile) {
-    const nowIso = new Date().toISOString()
-    const profileUpdate: Record<string, string | null> = {
-      id: userId,
-      updated_at: nowIso,
-    }
-    if (!wasDeleted && name !== null) profileUpdate.name = name
-    if (!wasDeleted) {
-      if (phoneNumber !== null) {
-        profileUpdate.phone = phoneNumber
-        profileUpdate.phone_verified_at = nowIso
-      }
-      if (birthday !== null) profileUpdate.birthday = birthday
-    }
-
-    const { error: profileError } = await supabaseAdmin
-      .from('users')
-      .upsert(profileUpdate, { onConflict: 'id' })
-
-    if (profileError) {
-      throw createOAuthError('supabase_user_failed', '사용자 프로필 저장에 실패했습니다. (profile_upsert)')
-    }
-  }
-
   const safeNextPath = sanitizeNextPath(nextPath)
   let finalNextPath = safeNextPath
 
   if (wasDeleted) {
     finalNextPath = `/auth/restore?next=${encodeURIComponent(safeNextPath)}`
   } else {
-    const requiresPhoneVerification = !profileCheck?.phone || !profileCheck?.phone_verified_at
-    const statusValue = requiresPhoneVerification ? 'pending' : 'active'
-    if (profileCheck?.status !== statusValue) {
-      await supabaseAdmin
-        .from('users')
-        .update({ status: statusValue })
-        .eq('id', userId)
-    }
-
-    if (requiresPhoneVerification || profileCheck?.status === 'pending') {
+    if (requiresPhoneVerification) {
       finalNextPath = `/auth/onboarding?next=${encodeURIComponent(safeNextPath)}`
     }
   }
@@ -335,6 +302,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set('naver_oauth_next', '', { maxAge: 0, path: '/' })
     return response
   } catch (error: any) {
+    console.error('Naver OAuth error:', error)
     const errorCode = error?.code || 'unknown_error'
     const errorDescription = error?.description || '네이버 로그인 처리 실패'
     const redirectUrl = new URL('/auth/naver/callback', request.url)

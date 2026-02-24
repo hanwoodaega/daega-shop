@@ -55,7 +55,6 @@ export async function GET(request: Request) {
             .upsert({
               id: session.user.id,
               name: session.user.user_metadata?.name || null,
-              birthday: session.user.user_metadata?.birthday || null,
               updated_at: new Date().toISOString(),
             })
         } catch (e) {
