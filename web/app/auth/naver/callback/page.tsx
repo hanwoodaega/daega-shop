@@ -152,7 +152,7 @@ function NaverCallbackContent() {
         targetPath = `/auth/verify-phone?next=${encodeURIComponent(nextPath)}`
       }
 
-      router.push(targetPath)
+      router.replace(targetPath)
       router.refresh()
       
     } catch (error: any) {

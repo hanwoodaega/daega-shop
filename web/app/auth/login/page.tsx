@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/supabase'
 import { useCartStore } from '@/lib/store'
@@ -9,8 +9,6 @@ import { useCartStore } from '@/lib/store'
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const pathname = usePathname()
-  const nextPath = searchParams.get('next') || '/'
   const redirectAfterLogin = '/'
   const urlError = searchParams.get('error')
   const cartCount = useCartStore((state) => state.getTotalItems())
@@ -37,7 +35,6 @@ function LoginForm() {
       const data = await res.json().catch(() => ({}))
       if (!isMounted) return
       if (data?.user) {
-        if (pathname === redirectAfterLogin) return
         router.replace(redirectAfterLogin)
       }
     }
@@ -45,7 +42,7 @@ function LoginForm() {
     return () => {
       isMounted = false
     }
-  }, [nextPath, pathname, router])
+  }, [router])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,7 +50,6 @@ function LoginForm() {
     setError('')
 
     try {
-      console.log('로그인 시도:', username)
       const resolveRes = await fetch('/api/auth/resolve-username', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -94,7 +90,6 @@ function LoginForm() {
           : `/auth/onboarding?next=${encodeURIComponent(redirectAfterLogin)}`
         : redirectAfterLogin
 
-      console.log('로그인 성공, 리다이렉트:', targetPath)
       await waitForSession()
       router.push(targetPath)
       router.refresh()

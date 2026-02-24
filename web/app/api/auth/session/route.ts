@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     
     const { data: profile, error: profileError } = await supabase
       .from('users')
-      .select('status')
+      .select('status, phone, phone_verified_at')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    if (profile?.status !== 'active') {
+    const requiresPhoneVerification = !profile?.phone || !profile?.phone_verified_at
+    if (profile?.status !== 'active' || requiresPhoneVerification) {
       return NextResponse.json({
         user: null,
         session: null,
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     // 사용자 정보가 있으면 세션 정보도 가져오기 (토큰 정보 필요 시)
     // getUser()로 인증된 사용자만 세션 정보 제공
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { session } } = await supabase.auth.getSession()
     
     return NextResponse.json({
       user: user,

@@ -1,9 +1,23 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
 import { supabase, isSupabaseConfigured } from '../supabase/supabase'
 import { useCartStore, useWishlistStore } from '../store'
+
+const ONBOARDING_AUTH_PATHS = [
+  '/auth/login',
+  '/auth/onboarding',
+  '/auth/verify-phone',
+  '/auth/restore',
+  '/auth/naver/callback',
+  '/auth/kakao/callback',
+  '/auth/callback',
+  '/auth/find-id',
+  '/auth/find-password',
+  '/auth/signup',
+]
 
 interface AuthContextType {
   user: User | null
@@ -22,11 +36,14 @@ export const useAuth = () => {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const pathnameRef = useRef(pathname)
+  pathnameRef.current = pathname
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const hasSyncedRef = useRef(false)
   const currentUserRef = useRef<User | null>(null)
-  const timeoutsRef = useRef<number[]>([])
   const initialGetUserTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const runPostLoginBootstrap = async (session: { user?: User | null; access_token?: string | null }) => {
@@ -34,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const accessToken = typeof session?.access_token === 'string' ? session.access_token : ''
       const isValidToken = accessToken.length > 10 && accessToken.includes('.')
       if (!isValidToken || !session?.user) {
-        return { user: null, sync: null }
+        return { user: null, sync: null, onboarding: null }
       }
 
       const localCartItems = useCartStore.getState().items
@@ -61,17 +78,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json().catch(() => ({}))
 
       if (!res.ok) {
-        return { user: null, sync: null }
+        return { user: null, sync: null, onboarding: null }
       }
 
-      if (data?.user?.status !== 'active') {
-        return { user: null, sync: data?.sync ?? null }
+      const onboarding = data?.onboarding ?? null
+      const requiresPhoneVerification = Boolean(onboarding?.requiresPhoneVerification)
+      const isActive = data?.user?.status === 'active'
+
+      if (!isActive || requiresPhoneVerification) {
+        return { user: null, sync: data?.sync ?? null, onboarding }
       }
 
-      return { user: session.user, sync: data?.sync ?? null }
+      return { user: session.user, sync: data?.sync ?? null, onboarding }
     } catch {
-      return { user: null, sync: null }
+      return { user: null, sync: null, onboarding: null }
     }
+  }
+
+  const shouldRedirectToOnboarding = (pathname: string | null) => {
+    if (!pathname) return false
+    return ONBOARDING_AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
   }
 
   useEffect(() => {
@@ -112,6 +138,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           currentUserRef.current = newUser
           setUser(newUser)
           setLoading(false)
+
+          if (!newUser && bootstrap.onboarding?.requiresPhoneVerification && !shouldRedirectToOnboarding(pathnameRef.current)) {
+            router.replace('/auth/login')
+          }
 
           if (newUser && bootstrap.sync && !hasSyncedRef.current) {
             const cartItems = bootstrap.sync?.cart?.items
@@ -158,6 +188,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(bootstrap.user ?? null)
           setLoading(false)
 
+          if (!bootstrap.user && bootstrap.onboarding?.requiresPhoneVerification && !shouldRedirectToOnboarding(pathnameRef.current)) {
+            router.replace('/auth/login')
+          }
+
           if (bootstrap.user && bootstrap.sync && !hasSyncedRef.current) {
             const cartItems = bootstrap.sync?.cart?.items
             const wishlistItems = bootstrap.sync?.wishlist?.items
@@ -193,6 +227,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(newUser)
       setLoading(false)
 
+      if (!newUser && bootstrap.onboarding?.requiresPhoneVerification && !shouldRedirectToOnboarding(pathnameRef.current)) {
+        router.replace('/auth/login')
+      }
+
       if (justLoggedIn && newUser && bootstrap.sync && !hasSyncedRef.current) {
         const cartItems = bootstrap.sync?.cart?.items
         const wishlistItems = bootstrap.sync?.wishlist?.items
@@ -219,8 +257,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(initialGetUserTimeoutRef.current)
         initialGetUserTimeoutRef.current = null
       }
-      timeoutsRef.current.forEach((id) => clearTimeout(id))
-      timeoutsRef.current = []
     }
   }, [])
 
