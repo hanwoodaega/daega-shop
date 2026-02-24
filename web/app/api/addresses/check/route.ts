@@ -20,15 +20,19 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { address, address_detail } = body
+    const normalizedDetail = ((address_detail ?? '').trim() || null) as string | null
 
-    // 동일 주소 확인
-    const { data: existing, error: findError } = await supabase
+    // 동일 주소 확인 (address_detail은 DB에 '' 또는 null로 저장될 수 있으므로 둘 다 매칭)
+    const { data: rows, error: findError } = await supabase
       .from('addresses')
-      .select('id')
+      .select('id, name, address_detail')
       .eq('user_id', user.id)
-      .eq('address', address.trim())
-      .eq('address_detail', (address_detail || '').trim() || null)
-      .maybeSingle()
+      .eq('address', (address ?? '').trim())
+
+    const matched = !findError && rows?.length
+      ? rows.find((r) => (r.address_detail || '') === (normalizedDetail || ''))
+      : null
+    const existing = matched ? { id: matched.id, name: matched.name } : null
 
     // 주소 개수 조회
     const { count, error: countError } = await supabase

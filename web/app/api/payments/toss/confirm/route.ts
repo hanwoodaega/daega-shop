@@ -64,32 +64,37 @@ export async function POST(request: NextRequest) {
     const today = new Date()
     const datePrefix = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
     const sanitizedOrderId = String(orderId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-    const baseSuffix = sanitizedOrderId.slice(0, 6)
+    // 동일 orderId로 재요청 시 기존 주문 반환 (중복 주문 방지)
+    const idempotencySuffix = sanitizedOrderId.slice(0, 12)
+    const idempotentOrderNumber = idempotencySuffix ? `${datePrefix}-${idempotencySuffix}` : null
 
-    if (baseSuffix) {
-      const baseOrderNumber = `${datePrefix}${baseSuffix.slice(0, 5)}`
+    if (idempotentOrderNumber) {
       const { data: existingOrder } = await supabaseAdmin
         .from('orders')
         .select('*')
-        .eq('order_number', baseOrderNumber)
+        .eq('order_number', idempotentOrderNumber)
+        .eq('user_id', user.id)
         .maybeSingle()
       if (existingOrder) {
-        return NextResponse.json({ success: true, order: existingOrder })
+        const giftToken = existingOrder.gift_token ?? null
+        return NextResponse.json({ success: true, order: existingOrder, gift_token: giftToken })
       }
     }
 
-    let orderNumber = ''
-    for (let i = 0; i < 5; i += 1) {
-      const suffix = crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 5)
-      const candidate = `${datePrefix}${suffix}`
-      const { data: exists } = await supabaseAdmin
-        .from('orders')
-        .select('id')
-        .eq('order_number', candidate)
-        .maybeSingle()
-      if (!exists) {
-        orderNumber = candidate
-        break
+    let orderNumber = idempotentOrderNumber ?? ''
+    if (!orderNumber) {
+      for (let i = 0; i < 5; i += 1) {
+        const suffix = crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 5)
+        const candidate = `${datePrefix}-${suffix}`
+        const { data: exists } = await supabaseAdmin
+          .from('orders')
+          .select('id')
+          .eq('order_number', candidate)
+          .maybeSingle()
+        if (!exists) {
+          orderNumber = candidate
+          break
+        }
       }
     }
     if (!orderNumber) {

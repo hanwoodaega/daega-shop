@@ -21,7 +21,7 @@ export default function LoginPromptModal({ show, onClose }: LoginPromptModalProp
         <div className="grid grid-cols-2 gap-3">
           <button onClick={onClose} className="py-3 rounded-lg border">취소</button>
           <button 
-            onClick={() => router.push(`/auth/login?next=${encodeURIComponent('/checkout')}`)} 
+            onClick={() => router.push(`/auth/login?next=${encodeURIComponent('/cart')}`)} 
             className="py-3 rounded-lg bg-primary-800 text-white font-semibold"
           >
             로그인

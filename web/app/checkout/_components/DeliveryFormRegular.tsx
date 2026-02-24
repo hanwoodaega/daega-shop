@@ -81,19 +81,19 @@ export default function DeliveryFormRegular({
             <label className="block text-sm font-medium mb-2">
               우편번호
             </label>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-[1fr_auto] gap-2 min-w-0">
               <input
                 type="text"
                 name="zipcode"
                 value={formData.zipcode}
                 readOnly
-                className="flex-1 px-3 py-2 md:px-4 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+                className="w-full min-w-0 px-3 py-2 md:px-4 border border-gray-300 rounded-lg bg-gray-50 text-sm"
                 placeholder="우편번호"
               />
               <button
                 type="button"
                 onClick={onSearchAddress}
-                className="px-3 py-2 md:px-4 bg-white text-red-600 border border-red-600 rounded-lg hover:bg-blue-50 transition whitespace-nowrap flex-shrink-0 text-sm md:text-base"
+                className="px-3 py-2 md:px-4 bg-white text-red-600 border border-red-600 rounded-lg hover:bg-blue-50 transition whitespace-nowrap text-sm md:text-base"
               >
                 주소찾기
               </button>

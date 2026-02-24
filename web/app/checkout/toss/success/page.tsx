@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
 import { removeFromCartDB } from '@/lib/cart/cart-db'
@@ -61,6 +61,7 @@ function TossSuccessContent() {
   const clearDirectPurchase = useDirectPurchaseStore((state) => state.clearItems)
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
   const [message, setMessage] = useState('결제 승인 중입니다...')
+  const confirmStartedRef = useRef(false)
 
   useEffect(() => {
     const paymentKey = searchParams.get('paymentKey')
@@ -81,6 +82,9 @@ function TossSuccessContent() {
       setMessage('결제 정보를 찾을 수 없습니다. 다시 시도해주세요.')
       return
     }
+
+    if (confirmStartedRef.current) return
+    confirmStartedRef.current = true
 
     const meta: CheckoutMeta = JSON.parse(rawMeta)
 
