@@ -139,10 +139,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(newUser)
           setLoading(false)
 
-          if (!newUser && bootstrap.onboarding?.requiresPhoneVerification && !shouldRedirectToOnboarding(pathnameRef.current)) {
-            router.replace('/auth/login')
-          }
-
           if (newUser && bootstrap.sync && !hasSyncedRef.current) {
             const cartItems = bootstrap.sync?.cart?.items
             const wishlistItems = bootstrap.sync?.wishlist?.items
@@ -188,10 +184,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(bootstrap.user ?? null)
           setLoading(false)
 
-          if (!bootstrap.user && bootstrap.onboarding?.requiresPhoneVerification && !shouldRedirectToOnboarding(pathnameRef.current)) {
-            router.replace('/auth/login')
-          }
-
           if (bootstrap.user && bootstrap.sync && !hasSyncedRef.current) {
             const cartItems = bootstrap.sync?.cart?.items
             const wishlistItems = bootstrap.sync?.wishlist?.items
@@ -226,10 +218,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       currentUserRef.current = newUser
       setUser(newUser)
       setLoading(false)
-
-      if (!newUser && bootstrap.onboarding?.requiresPhoneVerification && !shouldRedirectToOnboarding(pathnameRef.current)) {
-        router.replace('/auth/login')
-      }
 
       if (justLoggedIn && newUser && bootstrap.sync && !hasSyncedRef.current) {
         const cartItems = bootstrap.sync?.cart?.items

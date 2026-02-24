@@ -158,14 +158,28 @@ async function processKakaoOAuth(params: {
     })
 
     if (createError || !createdUser?.user?.id) {
-      const createMessage = createError?.message || ''
-      const detail = process.env.NODE_ENV === 'development' && createMessage
-        ? ` (create_user: ${createMessage})`
-        : ' (create_user)'
-      throw createOAuthError('supabase_user_failed', `사용자 생성에 실패했습니다.${detail}`)
+      const isAlreadyRegistered =
+        createError?.message?.toLowerCase().includes('already been registered') ||
+        createError?.message?.toLowerCase().includes('already exists')
+      if (isAlreadyRegistered) {
+        const { data: listData } = await supabaseAdmin.auth.admin.listUsers({
+          page: 1,
+          perPage: 1000,
+        })
+        const existingAuth = listData?.users?.find((u) => u.email === oauthEmail)
+        if (existingAuth?.id) authUserId = existingAuth.id
+      }
+      if (!authUserId) {
+        const createMessage = createError?.message || ''
+        const detail = process.env.NODE_ENV === 'development' && createMessage
+          ? ` (create_user: ${createMessage})`
+          : ' (create_user)'
+        throw createOAuthError('supabase_user_failed', `사용자 생성에 실패했습니다.${detail}`)
+      }
+    } else {
+      authUserId = createdUser.user.id
+      createdTempUserId = createdUser.user.id
     }
-    authUserId = createdUser.user.id
-    createdTempUserId = createdUser.user.id
   }
 
   const nowIso = new Date().toISOString()
@@ -221,7 +235,11 @@ async function processKakaoOAuth(params: {
     }
   }
 
-  const authEmail = oauthEmail
+  const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId)
+  const authEmail = authUser?.user?.email ?? oauthEmail
+  if (!authEmail) {
+    throw createOAuthError('magiclink_failed', '로그인할 계정 정보를 찾을 수 없습니다.')
+  }
 
   const safeNextPath = sanitizeNextPath(nextPath)
   let finalNextPath = safeNextPath

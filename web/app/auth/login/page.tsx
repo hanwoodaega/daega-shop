@@ -36,6 +36,23 @@ function LoginForm() {
       if (!isMounted) return
       if (data?.user) {
         router.replace(redirectAfterLogin)
+        return
+      }
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (sessionData?.session?.access_token) {
+        try {
+          const statusRes = await fetch('/api/auth/onboarding-status', {
+            cache: 'no-store',
+            headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
+          })
+          const statusData = await statusRes.json().catch(() => ({}))
+          if (!isMounted) return
+          if (statusRes.ok && statusData?.requiresPhoneVerification) {
+            router.replace(`/auth/verify-phone?next=${encodeURIComponent(redirectAfterLogin)}`)
+          }
+        } catch {
+          // 세션은 있지만 온보딩 상태 확인 실패 시 로그인 화면 유지
+        }
       }
     }
     checkExistingSession().catch(() => {})

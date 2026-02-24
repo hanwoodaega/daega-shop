@@ -64,13 +64,13 @@ function NaverCallbackContent() {
       const errorDesc = searchParams.get('error_description')
       const linked = searchParams.get('linked') === '1'
 
-      const { data: existingSession } = await supabase.auth.getSession()
-      if (existingSession?.session) {
-        router.replace(nextPath)
-        return
-      }
-
       if (!tokenHash) {
+        const { data: existingSession } = await supabase.auth.getSession()
+        if (existingSession?.session) {
+          const goPath = nextPath.startsWith('/auth/login') ? '/' : nextPath
+          router.replace(goPath)
+          return
+        }
         router.replace('/auth/login')
         return
       }
@@ -145,15 +145,18 @@ function NaverCallbackContent() {
 
       const isDeleted = bootstrapData?.user?.status === 'deleted'
       const requiresPhone = Boolean(bootstrapData?.onboarding?.requiresPhoneVerification)
-      let targetPath = nextPath
+      const safeNext = nextPath.startsWith('/auth/login') ? '/' : nextPath
+      let targetPath: string
       if (isDeleted) {
-        targetPath = `/auth/restore?next=${encodeURIComponent(nextPath)}`
+        targetPath = `/auth/restore?next=${encodeURIComponent(safeNext)}`
       } else if (requiresPhone) {
-        targetPath = `/auth/verify-phone?next=${encodeURIComponent(nextPath)}`
+        targetPath = `/auth/verify-phone?next=${encodeURIComponent(safeNext)}`
+      } else {
+        targetPath = safeNext
       }
 
-      router.replace(targetPath)
-      router.refresh()
+      await new Promise((r) => setTimeout(r, 200))
+      window.location.href = targetPath
       
     } catch (error: any) {
       const fallbackCode = 'verify_failed'
@@ -163,10 +166,6 @@ function NaverCallbackContent() {
     }
   }
 
-  if (status === 'loading') {
-    return null
-  }
-
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -174,6 +173,12 @@ function NaverCallbackContent() {
       <main className="flex-1 bg-gray-50 flex items-center justify-center py-12 px-4">
         <div className="max-w-md w-full">
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            {status === 'loading' && (
+              <>
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#03C75A] mx-auto mb-4" />
+                <p className="text-gray-700">{message}</p>
+              </>
+            )}
             {status === 'error' && (
               <>
                 <div className="text-6xl mb-4">❌</div>

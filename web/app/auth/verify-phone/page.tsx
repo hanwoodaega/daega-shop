@@ -48,25 +48,24 @@ function VerifyPhoneContent() {
   useEffect(() => {
     let isMounted = true
     const loadProfile = async () => {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const sessionName = sessionData?.session?.user?.user_metadata?.name?.trim() || ''
       try {
         const res = await fetch('/api/user/profile')
         if (!res.ok) {
           if (!isMounted) return
-          const { data: sessionData } = await supabase.auth.getSession()
-          const sessionName = sessionData?.session?.user?.user_metadata?.name || ''
           setName(sessionName)
           setRequireName(!sessionName)
           return
         }
         const data = await res.json().catch(() => ({}))
         if (!isMounted) return
-        const currentName = data?.profile?.name || ''
-        setName(currentName)
-        setRequireName(!currentName)
+        const profileName = (data?.profile?.name || '').trim()
+        const displayName = profileName || sessionName
+        setName(displayName)
+        setRequireName(!displayName)
       } catch {
         if (!isMounted) return
-        const { data: sessionData } = await supabase.auth.getSession()
-        const sessionName = sessionData?.session?.user?.user_metadata?.name || ''
         setName(sessionName)
         setRequireName(!sessionName)
       }
@@ -148,7 +147,7 @@ function VerifyPhoneContent() {
         throw new Error(data?.error || '인증에 실패했습니다.')
       }
 
-      if (data?.token_hash) {
+      if (data?.merged && data?.token_hash) {
         const { error: verifyError } = await supabase.auth.verifyOtp({
           token_hash: data.token_hash,
           type: data.type || 'magiclink',
@@ -158,9 +157,8 @@ function VerifyPhoneContent() {
         }
       }
 
-      await supabase.auth.signOut()
-      const redirectTarget = encodeURIComponent(nextPath)
-      router.push(`/auth/login?next=${redirectTarget}`)
+      router.replace(nextPath)
+      router.refresh()
     } catch (err: any) {
       setError(err.message || '인증에 실패했습니다.')
     } finally {
