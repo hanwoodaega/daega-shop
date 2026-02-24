@@ -1,5 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // 꼬인 캐시로 인한 404 / ENOENT 방지 (개발 시에만 비활성화해도 됨)
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.cache = false
+    }
+    return config
+  },
   images: {
     remotePatterns: [
       {

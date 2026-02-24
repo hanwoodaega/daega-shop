@@ -126,32 +126,6 @@ async function processKakaoOAuth(params: {
   const phoneNumber = normalizePhone(kakaoAccount?.phone_number)
 
   const supabaseAdmin = createSupabaseAdminClient()
-  const findExistingAuthUserId = async (email: string) => {
-    const adminAuth: any = supabaseAdmin.auth.admin as any
-    if (typeof adminAuth?.getUserByEmail === 'function') {
-      const existing = await adminAuth.getUserByEmail(email)
-      return existing?.data?.user?.id || null
-    }
-    try {
-      const authQuery = (supabaseAdmin as any).schema?.('auth')?.from?.('users')
-      if (authQuery) {
-        const { data, error } = await authQuery.select('id').eq('email', email).maybeSingle()
-        if (!error && data?.id) return data.id
-      }
-    } catch (error) {
-      console.error('Auth users lookup failed:', error)
-    }
-    if (typeof adminAuth?.listUsers === 'function') {
-      const perPage = 1000
-      for (let page = 1; page <= 10; page += 1) {
-        const { data } = await adminAuth.listUsers({ page, perPage })
-        const found = data?.users?.find((user: any) => user.email === email)
-        if (found?.id) return found.id
-        if (!data?.users?.length || data.users.length < perPage) break
-      }
-    }
-    return null
-  }
 
   let userId: string | null = null
   let linkedExisting = false
@@ -163,28 +137,33 @@ async function processKakaoOAuth(params: {
   let authUserId: string | null = null
   let createdTempUserId: string | null = null
 
-  const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-    email: oauthEmail,
-    email_confirm: true,
-    user_metadata: {
-      provider: PROVIDER,
-      provider_user_id: providerUserId,
-      name,
-    },
-  })
+  const { data: existingIdentity } = await supabaseAdmin
+    .from('oauth_identities')
+    .select('user_id')
+    .eq('provider', PROVIDER)
+    .eq('provider_user_id', providerUserId)
+    .maybeSingle()
 
-  if (createError || !createdUser?.user?.id) {
-    const existingAuthUserId = await findExistingAuthUserId(oauthEmail)
-    if (existingAuthUserId) {
-      authUserId = existingAuthUserId
-    } else {
+  if (existingIdentity?.user_id) {
+    authUserId = existingIdentity.user_id
+  } else {
+    const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: oauthEmail,
+      email_confirm: true,
+      user_metadata: {
+        provider: PROVIDER,
+        provider_user_id: providerUserId,
+        name,
+      },
+    })
+
+    if (createError || !createdUser?.user?.id) {
       const createMessage = createError?.message || ''
       const detail = process.env.NODE_ENV === 'development' && createMessage
         ? ` (create_user: ${createMessage})`
         : ' (create_user)'
       throw createOAuthError('supabase_user_failed', `사용자 생성에 실패했습니다.${detail}`)
     }
-  } else {
     authUserId = createdUser.user.id
     createdTempUserId = createdUser.user.id
   }
@@ -219,8 +198,10 @@ async function processKakaoOAuth(params: {
   shouldRefreshProfile = Boolean(rpcData.should_refresh)
 
   if (createdTempUserId && userId !== createdTempUserId) {
-    await supabaseAdmin.from('users').delete().eq('id', createdTempUserId)
-    await supabaseAdmin.auth.admin.deleteUser(createdTempUserId)
+    await Promise.all([
+      supabaseAdmin.from('users').delete().eq('id', createdTempUserId),
+      supabaseAdmin.auth.admin.deleteUser(createdTempUserId),
+    ])
   }
 
   if (shouldRefreshProfile) {
@@ -240,11 +221,7 @@ async function processKakaoOAuth(params: {
     }
   }
 
-  const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId)
-  const authEmail = authUser?.user?.email || null
-  if (!authEmail) {
-    throw createOAuthError('supabase_user_failed', '사용자 이메일 확인에 실패했습니다. (auth_email)')
-  }
+  const authEmail = oauthEmail
 
   const safeNextPath = sanitizeNextPath(nextPath)
   let finalNextPath = safeNextPath
@@ -261,7 +238,7 @@ async function processKakaoOAuth(params: {
     type: 'magiclink',
     email: authEmail,
     options: {
-      redirectTo: `${origin}/auth/callback`,
+      redirectTo: `${origin}/auth/kakao/callback`,
     },
   })
 
