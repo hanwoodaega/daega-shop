@@ -255,13 +255,16 @@ function TossSuccessContent() {
           const groupId = it.promotion_group_id
           if (groupId) {
             if (!handledGroups.has(groupId)) {
-              const success = await removeFromCartDB(user.id, dbId || '', groupId)
+              const success = await removeFromCartDB(user.id, {
+                cartId: dbId || undefined,
+                promotionGroupId: groupId,
+              })
               if (success) {
                 handledGroups.add(groupId)
               }
             }
           } else if (dbId && !dbId.startsWith('cart-')) {
-            await removeFromCartDB(user.id, dbId)
+            await removeFromCartDB(user.id, { cartId: dbId })
           }
         }
       }

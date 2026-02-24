@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
 import { supabase, isSupabaseConfigured } from '../supabase/supabase'
 import { useCartStore, useWishlistStore } from '../store'
+import { clearCartSyncFlag, setCartItems } from '../cart/cart-db'
+import { setCartStorageUserId } from '../cart/cart-storage-key'
 
 const ONBOARDING_AUTH_PATHS = [
   '/auth/login',
@@ -43,10 +45,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const hasSyncedRef = useRef(false)
+  /** 세션당 cart/wishlist merge는 1회만. checkSession과 onAuthStateChange가 동시에 돌아가도 한 쪽만 보내도록 */
+  const bootstrapCartSentRef = useRef(false)
+  /** bootstrap 중복 호출 시 "가장 마지막에 시작한 응답"만 setCartItems/setUser 반영. 응답 순서 비결정성 제거 */
+  const bootstrapCallIdRef = useRef(0)
+  /** 적용한 bootstrap callId. hasSyncedRef(boolean)만 쓰면 먼저 도착한 응답이 true를 세워 최신 응답 적용이 막힘 → callId 비교로 "더 최신면 적용" */
+  const lastAppliedBootstrapIdRef = useRef(0)
   const currentUserRef = useRef<User | null>(null)
   const initialGetUserTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const runPostLoginBootstrap = async (session: { user?: User | null; access_token?: string | null }) => {
+  const runPostLoginBootstrap = async (
+    session: { user?: User | null; access_token?: string | null },
+    options?: { includeCartForMerge?: boolean }
+  ) => {
     try {
       const accessToken = typeof session?.access_token === 'string' ? session.access_token : ''
       const isValidToken = accessToken.length > 10 && accessToken.includes('.')
@@ -54,8 +65,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { user: null, sync: null, onboarding: null }
       }
 
-      const localCartItems = useCartStore.getState().items
-      const localWishlistItems = useWishlistStore.getState().items
+      const requestedMerge = options?.includeCartForMerge !== false
+      const includeCartForMerge = requestedMerge && !bootstrapCartSentRef.current
+      if (includeCartForMerge) bootstrapCartSentRef.current = true
+      const localWishlistItems = includeCartForMerge ? useWishlistStore.getState().items : []
+      const localCartItems =
+        includeCartForMerge
+          ? useCartStore.getState().items.filter((item) => item.id?.startsWith('cart-'))
+          : []
 
       const res = await fetch('/api/auth/bootstrap?includeSync=1', {
         method: 'POST',
@@ -65,13 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          cart: localCartItems.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            promotion_group_id: item.promotion_group_id,
-            promotion_type: item.promotion_type,
-            discount_percent: item.discount_percent,
-          })),
+          cart: localCartItems,
           wishlist: localWishlistItems,
         }),
       })
@@ -111,6 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 타임아웃 설정 (3초 후 강제로 loading 해제)
     initialGetUserTimeoutRef.current = setTimeout(() => {
       if (isMounted) {
+        setCartStorageUserId(null)
         setUser(null)
         currentUserRef.current = null
         setLoading(false)
@@ -120,36 +132,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 서버 API로 세션 확인 (온보딩 상태까지 함께 확인)
     const checkSession = async () => {
       try {
+        const myCallId = ++bootstrapCallIdRef.current
         const { data: localSession } = await supabase.auth.getSession()
         const session = localSession?.session
-        const bootstrap = await runPostLoginBootstrap({
-          user: session?.user ?? null,
-          access_token: session?.access_token ?? null,
-        })
+        const bootstrap = await runPostLoginBootstrap(
+          { user: session?.user ?? null, access_token: session?.access_token ?? null },
+          { includeCartForMerge: !hasSyncedRef.current }
+        )
         
         if (initialGetUserTimeoutRef.current) {
           clearTimeout(initialGetUserTimeoutRef.current)
           initialGetUserTimeoutRef.current = null
         }
         
-        if (isMounted) {
-          const newUser = bootstrap.user ?? null
+        if (!isMounted) return
+        if (myCallId !== bootstrapCallIdRef.current) return
 
-          currentUserRef.current = newUser
-          setUser(newUser)
-          setLoading(false)
+        const newUser = bootstrap.user ?? null
+        currentUserRef.current = newUser
+        setCartStorageUserId(newUser?.id ?? null)
+        setUser(newUser)
+        setLoading(false)
 
-          if (newUser && bootstrap.sync && !hasSyncedRef.current) {
-            const cartItems = bootstrap.sync?.cart?.items
-            const wishlistItems = bootstrap.sync?.wishlist?.items
-            if (bootstrap.sync?.cart?.done && Array.isArray(cartItems)) {
-              useCartStore.setState({ items: cartItems })
-            }
-            if (bootstrap.sync?.wishlist?.done && Array.isArray(wishlistItems)) {
-              useWishlistStore.setState({ items: wishlistItems })
-            }
-            hasSyncedRef.current = true
+        if (newUser && bootstrap.sync && myCallId > lastAppliedBootstrapIdRef.current) {
+          const cartItems = bootstrap.sync?.cart?.items
+          const wishlistItems = bootstrap.sync?.wishlist?.items
+          if (bootstrap.sync?.cart?.done && Array.isArray(cartItems)) {
+            setCartItems(cartItems, 'bootstrap')
           }
+          if (bootstrap.sync?.wishlist?.done && Array.isArray(wishlistItems)) {
+            useWishlistStore.setState({ items: wishlistItems })
+          }
+          lastAppliedBootstrapIdRef.current = myCallId
+          hasSyncedRef.current = true
         }
       } catch (error) {
         console.error('서버 API 세션 확인 예외:', error)
@@ -158,6 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           initialGetUserTimeoutRef.current = null
         }
         if (isMounted) {
+          setCartStorageUserId(null)
           setUser(null)
           currentUserRef.current = null
           setLoading(false)
@@ -176,23 +192,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // INITIAL_SESSION: 서버 세션이 없더라도 로컬 세션이 있으면 반영
       if (event === 'INITIAL_SESSION') {
         if (!currentUserRef.current && session?.user) {
-          const bootstrap = await runPostLoginBootstrap({
-            user: session?.user ?? null,
-            access_token: session?.access_token ?? null,
-          })
+          const myCallId = ++bootstrapCallIdRef.current
+          const bootstrap = await runPostLoginBootstrap(
+            { user: session?.user ?? null, access_token: session?.access_token ?? null },
+            { includeCartForMerge: !hasSyncedRef.current }
+          )
+          if (myCallId !== bootstrapCallIdRef.current) return
           currentUserRef.current = bootstrap.user ?? null
+          setCartStorageUserId(bootstrap.user?.id ?? null)
           setUser(bootstrap.user ?? null)
           setLoading(false)
 
-          if (bootstrap.user && bootstrap.sync && !hasSyncedRef.current) {
+          if (bootstrap.user && bootstrap.sync && myCallId > lastAppliedBootstrapIdRef.current) {
             const cartItems = bootstrap.sync?.cart?.items
             const wishlistItems = bootstrap.sync?.wishlist?.items
             if (bootstrap.sync?.cart?.done && Array.isArray(cartItems)) {
-              useCartStore.setState({ items: cartItems })
+              setCartItems(cartItems, 'bootstrap')
             }
             if (bootstrap.sync?.wishlist?.done && Array.isArray(wishlistItems)) {
               useWishlistStore.setState({ items: wishlistItems })
             }
+            lastAppliedBootstrapIdRef.current = myCallId
             hasSyncedRef.current = true
           }
         }
@@ -204,36 +224,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(initialGetUserTimeoutRef.current)
         initialGetUserTimeoutRef.current = null
       }
+
+      // 토큰/프로필만 갱신되고 같은 유저·이미 동기화됐으면 bootstrap 스킵 → 서버 6회 호출 방지
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (session?.user?.id === currentUserRef.current?.id && hasSyncedRef.current) {
+          setUser(session?.user ?? null)
+          setLoading(false)
+          return
+        }
+      }
       
-      const bootstrap = await runPostLoginBootstrap({
-        user: session?.user ?? null,
-        access_token: session?.access_token ?? null,
-      })
+      const myCallId = ++bootstrapCallIdRef.current
+      const bootstrap = await runPostLoginBootstrap(
+        { user: session?.user ?? null, access_token: session?.access_token ?? null },
+        { includeCartForMerge: !hasSyncedRef.current }
+      )
+      if (myCallId !== bootstrapCallIdRef.current) return
+
       let newUser: User | null = bootstrap.user ?? null
-      
       const prevUser = currentUserRef.current
       const wasLoggedOut = !!prevUser && !newUser
       const justLoggedIn = !prevUser && !!newUser
       
       currentUserRef.current = newUser
+      setCartStorageUserId(newUser?.id ?? null)
       setUser(newUser)
       setLoading(false)
 
-      if (justLoggedIn && newUser && bootstrap.sync && !hasSyncedRef.current) {
+      if (newUser && bootstrap.sync && myCallId > lastAppliedBootstrapIdRef.current) {
         const cartItems = bootstrap.sync?.cart?.items
         const wishlistItems = bootstrap.sync?.wishlist?.items
         if (bootstrap.sync?.cart?.done && Array.isArray(cartItems)) {
-          useCartStore.setState({ items: cartItems })
+          setCartItems(cartItems, 'bootstrap')
         }
         if (bootstrap.sync?.wishlist?.done && Array.isArray(wishlistItems)) {
           useWishlistStore.setState({ items: wishlistItems })
         }
+        lastAppliedBootstrapIdRef.current = myCallId
         hasSyncedRef.current = true
       }
       
-      // 로그아웃 시: 동기화 플래그 리셋
       if (wasLoggedOut) {
         hasSyncedRef.current = false
+        bootstrapCartSentRef.current = false
+        lastAppliedBootstrapIdRef.current = 0
       }
     })
 
@@ -251,7 +285,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     if (!isSupabaseConfigured) return
     await supabase.auth.signOut()
+    setCartStorageUserId(null)
     setUser(null)
+    setCartItems([], 'signOut')
+    clearCartSyncFlag()
   }
 
   const value = {

@@ -41,7 +41,7 @@ export default function RootLayout({
               border: '1px solid #e5e7eb',
             },
             success: {
-              duration: 2500,
+              duration: 1500,
               style: {
                 background: '#fff',
                 color: '#059669',

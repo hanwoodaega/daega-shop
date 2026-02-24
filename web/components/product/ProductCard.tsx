@@ -90,9 +90,7 @@ function ProductCard({ product }: ProductCardProps) {
     // DB 연동 장바구니 추가
     addCartItemWithDB(userId || null, cartItem)
 
-    toast.success('장바구니에 추가되었습니다!', {
-      icon: '🛒',
-    })
+    toast.success('장바구니에 추가되었습니다!', { icon: '🛒', id: 'toast-cart-added' })
     
     if (product.promotion?.is_active && product.promotion?.type === 'bogo') {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
@@ -133,13 +131,9 @@ function ProductCard({ product }: ProductCardProps) {
     
     if (success) {
       if (isWished) {
-        toast.success('찜 목록에서 제거되었습니다', {
-          icon: '💔',
-        })
+        toast.success('찜 목록에서 제거되었습니다', { icon: '💔', id: 'toast-wishlist-removed' })
       } else {
-        toast.success('찜 목록에 추가되었습니다!', {
-          icon: '❤️',
-        })
+        toast.success('찜 목록에 추가되었습니다!', { icon: '❤️', id: 'toast-wishlist-added' })
       }
     } else {
       toast.error('오류가 발생했습니다. 다시 시도해주세요.', {

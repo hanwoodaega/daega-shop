@@ -124,7 +124,7 @@ export default function ProductDetailPageClient({ productId }: ProductDetailPage
     }
     
     addCartItemWithDB(user?.id || null, cartItem)
-    toast.success('장바구니에 추가되었습니다!', { icon: '🛒' })
+    toast.success('장바구니에 추가되었습니다!', { icon: '🛒', id: 'toast-cart-added' })
   }, [product, quantity, user, soldOut, getDiscountPercent])
   
   // 찜하기 토글
@@ -135,9 +135,9 @@ export default function ProductDetailPageClient({ productId }: ProductDetailPage
     
     if (success) {
       if (isWished) {
-        toast.success('찜 목록에서 제거되었습니다', { icon: '💔' })
+        toast.success('찜 목록에서 제거되었습니다', { icon: '💔', id: 'toast-wishlist-removed' })
       } else {
-        toast.success('찜 목록에 추가되었습니다!', { icon: '❤️' })
+        toast.success('찜 목록에 추가되었습니다!', { icon: '❤️', id: 'toast-wishlist-added' })
       }
     } else {
       toast.error('오류가 발생했습니다. 다시 시도해주세요.', { icon: '❌' })

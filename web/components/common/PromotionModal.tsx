@@ -178,9 +178,7 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
     onClose()
     setPromoQuantities({})
     
-    toast.success('장바구니에 추가되었습니다!', {
-      icon: '🛒',
-    })
+    toast.success('장바구니에 추가되었습니다!', { icon: '🛒', id: 'toast-cart-added' })
   }, [product, promotionProducts, promoQuantities, user, onClose])
 
   if (!isOpen || !product) return null

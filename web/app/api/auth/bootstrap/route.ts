@@ -109,9 +109,18 @@ export async function POST(request: NextRequest) {
           const key = `${productId}::${promotionGroupId || ''}`
           const existing = existingByKey.get(key)
 
-          if (existing) continue
-          if (promotionGroupId) {
+          if (existing) {
+            const newQty = (existing.quantity || 0) + quantity
             await supabase
+              .from('carts')
+              .update({
+                quantity: newQty,
+                discount_percent: item?.discount_percent ?? existing.discount_percent ?? null,
+              })
+              .eq('id', existing.id)
+            existingByKey.set(key, { ...existing, quantity: newQty })
+          } else if (promotionGroupId) {
+            const { data: inserted } = await supabase
               .from('carts')
               .insert({
                 user_id: user.id,
@@ -121,8 +130,11 @@ export async function POST(request: NextRequest) {
                 promotion_type: item?.promotion_type || null,
                 discount_percent: item?.discount_percent ?? null,
               })
+              .select('id, product_id, quantity, promotion_group_id')
+              .single()
+            if (inserted) existingByKey.set(key, inserted)
           } else {
-            await supabase
+            const { data: inserted } = await supabase
               .from('carts')
               .insert({
                 user_id: user.id,
@@ -130,6 +142,9 @@ export async function POST(request: NextRequest) {
                 quantity,
                 discount_percent: item?.discount_percent ?? null,
               })
+              .select('id, product_id, quantity, promotion_group_id')
+              .single()
+            if (inserted) existingByKey.set(key, inserted)
           }
         }
       }
@@ -156,10 +171,16 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({
-      ...baseResponse,
-      sync: syncResult,
-    })
+    return NextResponse.json(
+      { ...baseResponse, sync: syncResult },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    )
   } catch (error: any) {
     console.error('부트스트랩 처리 오류:', error)
     return NextResponse.json({ error: error?.message || '서버 오류' }, { status: 500 })

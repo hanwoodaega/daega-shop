@@ -11,8 +11,13 @@ import { useWishlistStore, useSearchUIStore, useCartStore } from '@/lib/store'
 function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = false }: { hideMainMenu?: boolean, showCartButton?: boolean, sticky?: boolean }) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
+  const [mounted, setMounted] = useState(false)
   const { isSearchOpen, closeSearch } = useSearchUIStore()
   const cartCount = useCartStore((state) => state.getTotalItems())
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const performSearch = useCallback(() => {
     const query = searchQuery.trim()
@@ -113,12 +118,12 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
                     </svg>
                     <span
                       className={`absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
-                        cartCount > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-0 pointer-events-none'
+                        mounted && cartCount > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-0 pointer-events-none'
                       }`}
                       suppressHydrationWarning
                       aria-hidden={cartCount <= 0}
                     >
-                      {cartCount > 99 ? '99+' : cartCount}
+                      {mounted ? (cartCount > 99 ? '99+' : cartCount) : ''}
                     </span>
                   </button>
                 </div>

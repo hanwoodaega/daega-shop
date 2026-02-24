@@ -21,10 +21,16 @@ export async function GET() {
 
     const items = await fetchCartItemsForUser(supabase, user.id)
 
-    return NextResponse.json({ 
-      success: true, 
-      items
-    })
+    // 캐시되면 삭제 후 새로고침 시 예전 개수가 다시 보임 → 반드시 no-cache
+    const noCacheHeaders = {
+      'Cache-Control': 'no-store, max-age=0',
+      Pragma: 'no-cache',
+      Expires: '0',
+    }
+    return NextResponse.json(
+      { success: true, items },
+      { headers: noCacheHeaders }
+    )
   } catch (error) {
     console.error('장바구니 조회 에러:', error)
     return NextResponse.json({ error: '서버 오류' }, { status: 500 })
@@ -192,11 +198,11 @@ export async function PATCH(request: Request) {
 }
 
 // DELETE: 장바구니에서 상품 제거
+// 본문이 일부 환경에서 무시될 수 있으므로 URL 쿼리 우선 사용
 export async function DELETE(request: Request) {
   try {
     const supabase = createSupabaseServerClient()
     
-    // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()
     if ('error' in authResult) {
       const status = authResult.error === 'unauthorized' ? 401 : 403
@@ -205,14 +211,49 @@ export async function DELETE(request: Request) {
     }
     const user = authResult.user
 
-    const { id, promotion_group_id } = await request.json()
+    const url = new URL(request.url)
+    let id = url.searchParams.get('id') ?? undefined
+    let product_id: string | null | undefined = url.searchParams.get('product_id') ?? undefined
+    let promotion_group_id: string | null | undefined = url.searchParams.get('promotion_group_id') ?? undefined
 
-    if (!id && !promotion_group_id) {
-      return NextResponse.json({ error: '삭제할 항목의 ID가 필요합니다.' }, { status: 400 })
+    try {
+      const body = await request.json()
+      if (body && typeof body === 'object') {
+        if (id == null && body.id != null) id = body.id
+        if (product_id == null && body.product_id != null) product_id = body.product_id
+        if (promotion_group_id == null && body.promotion_group_id != null) promotion_group_id = body.promotion_group_id
+      }
+    } catch {
+      // body 없음 또는 JSON 아님 → 쿼리만 사용
     }
 
-    // 프로모션 그룹이 있으면 같은 그룹의 모든 상품 삭제
-    if (promotion_group_id) {
+    const hasProductId = product_id !== undefined && product_id !== null && product_id !== ''
+    if (!id && !hasProductId && (promotion_group_id === undefined || promotion_group_id === null || promotion_group_id === '')) {
+      return NextResponse.json({ error: '삭제할 항목 정보가 필요합니다.' }, { status: 400 })
+    }
+
+    // product_id 기준 삭제: 같은 상품이 중복 행으로 있으면 전부 삭제
+    if (hasProductId) {
+      let query = supabase
+        .from('carts')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('product_id', product_id!)
+      if (promotion_group_id != null && promotion_group_id !== '') {
+        query = query.eq('promotion_group_id', promotion_group_id)
+      } else {
+        query = query.is('promotion_group_id', null)
+      }
+      const { error } = await query
+      if (error) {
+        console.error('장바구니 제거 실패:', error)
+        return NextResponse.json({ error: '장바구니 제거 실패' }, { status: 500 })
+      }
+      return NextResponse.json({ success: true, message: '장바구니에서 제거되었습니다.' })
+    }
+
+    // 프로모션 그룹 전체 삭제
+    if (promotion_group_id != null && promotion_group_id !== '') {
       const { error } = await supabase
         .from('carts')
         .delete()
@@ -224,7 +265,7 @@ export async function DELETE(request: Request) {
         return NextResponse.json({ error: '장바구니 제거 실패' }, { status: 500 })
       }
     } else {
-      // 일반 상품 제거
+      // id 한 건만 삭제 (하위 호환)
       const { error } = await supabase
         .from('carts')
         .delete()

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from './supabase/supabase'
+import { getCartStorageKey } from './cart/cart-storage-key'
 
 export interface CartItem {
   id?: string  // 장바구니 아이템 고유 ID
@@ -155,7 +156,6 @@ export const useCartStore = create<CartStore>()(
     {
       name: 'cart-storage',
       storage: createJSONStorage(() => {
-        // 서버 사이드에서는 localStorage가 없으므로 체크
         if (typeof window === 'undefined') {
           return {
             getItem: () => null,
@@ -163,7 +163,11 @@ export const useCartStore = create<CartStore>()(
             removeItem: () => {},
           }
         }
-        return localStorage
+        return {
+          getItem: (name: string) => localStorage.getItem(getCartStorageKey()),
+          setItem: (name: string, value: string) => localStorage.setItem(getCartStorageKey(), value),
+          removeItem: (name: string) => localStorage.removeItem(getCartStorageKey()),
+        }
       }),
     }
   )

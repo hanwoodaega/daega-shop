@@ -153,8 +153,25 @@ export async function fetchCartItemsForUser(supabase: any, userId: string) {
     }
   }
 
+  const filtered = (data || []).filter((item: any) => {
+    const product = Array.isArray(item.products) ? item.products[0] : item.products
+    return product && product.status !== 'deleted'
+  })
+
+  const byKey = new Map<string, any>()
+  for (const item of filtered) {
+    const key = `${item.product_id}::${item.promotion_group_id ?? ''}`
+    const existing = byKey.get(key)
+    if (existing) {
+      existing.quantity = (existing.quantity || 0) + (item.quantity || 0)
+    } else {
+      byKey.set(key, { ...item })
+    }
+  }
+  const mergedRows = Array.from(byKey.values())
+
   const bogoFreeCountByGroup = new Map<string, Map<string, number>>()
-  for (const item of data || []) {
+  for (const item of mergedRows) {
     if (!item.promotion_group_id) continue
     const product = Array.isArray(item.products) ? item.products[0] : item.products
     const promotion = extractActivePromotion(product)
@@ -163,7 +180,7 @@ export async function fetchCartItemsForUser(supabase: any, userId: string) {
 
     const groupId = item.promotion_group_id
     if (!bogoFreeCountByGroup.has(groupId)) {
-      const groupItems = (data || []).filter((row: any) => row.promotion_group_id === groupId)
+      const groupItems = mergedRows.filter((row: any) => row.promotion_group_id === groupId)
       const unitEntries: Array<{ productId: string; price: number }> = []
       groupItems.forEach((row: any) => {
         const rowProduct = Array.isArray(row.products) ? row.products[0] : row.products
@@ -188,12 +205,7 @@ export async function fetchCartItemsForUser(supabase: any, userId: string) {
     }
   }
 
-  const items = (data || [])
-    .filter((item: any) => {
-      const product = Array.isArray(item.products) ? item.products[0] : item.products
-      return product && product.status !== 'deleted'
-    })
-    .map((item: any) => {
+  const items = mergedRows.map((item: any) => {
       const product = Array.isArray(item.products) ? item.products[0] : item.products
       const promotion = extractActivePromotion(product)
 

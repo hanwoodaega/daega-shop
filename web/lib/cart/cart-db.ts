@@ -1,14 +1,18 @@
 // 장바구니 서버 API 호출 (클라이언트)
 import { useCartStore, CartItem } from '../store'
+import { getCartStorageKey } from './cart-storage-key'
 import toast from 'react-hot-toast'
-import { debugLog } from '../utils/debug'
 
-// 서버 API에서 장바구니 불러오기
-export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
+// 서버 API에서 장바구니 불러오기 (캐시 금지: ?t= + cache: 'no-store' 필수)
+// signal: 삭제 시 진행 중인 GET을 취소해 늦게 도착한 응답이 0을 덮어쓰지 않도록 함
+export async function loadCartFromDB(userId: string, signal?: AbortSignal): Promise<CartItem[]> {
   try {
-    // 서버 API로 장바구니 조회
-    const res = await fetch('/api/cart')
-    
+    const res = await fetch(`/api/cart?t=${Date.now()}`, {
+      cache: 'no-store',
+      credentials: 'include',
+      signal,
+    })
+
     if (!res.ok) {
       if (res.status === 401 || res.status === 403) {
         return []
@@ -31,10 +35,9 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
         selected: existingItem?.selected ?? true
       }
     })
-    
-    debugLog.log('[loadCartFromDB] 서버 API에서 장바구니 로드 완료:', items.length)
     return items
   } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
     console.error('장바구니 조회 에러:', error)
     return []
   }
@@ -42,8 +45,6 @@ export async function loadCartFromDB(userId: string): Promise<CartItem[]> {
 
 // 서버 API로 장바구니에 추가
 export async function addToCartDB(userId: string, item: CartItem): Promise<string | null> {
-  debugLog.log('[addToCartDB] 시작:', { userId, item })
-  
   try {
     // 서버 API로 장바구니 추가
     const res = await fetch('/api/cart', {
@@ -67,7 +68,6 @@ export async function addToCartDB(userId: string, item: CartItem): Promise<strin
     }
     
     const data = await res.json()
-    debugLog.log('[addToCartDB] 장바구니 추가 성공:', data.data?.id)
     return data.data?.id || null
   } catch (error) {
     console.error('[addToCartDB] 장바구니 추가 에러:', error)
@@ -102,26 +102,29 @@ export async function updateCartQuantityDB(userId: string, cartId: string, quant
   }
 }
 
-// 서버 API로 장바구니에서 제거
-export async function removeFromCartDB(userId: string, cartId: string, promotionGroupId?: string): Promise<boolean> {
+// 서버 API로 장바구니에서 제거 (product_id로 삭제 시 같은 상품 중복 행 전부 삭제)
+// DELETE 본문이 일부 환경에서 무시될 수 있어 URL 쿼리로 전달
+export async function removeFromCartDB(
+  userId: string,
+  options: { cartId?: string; productId?: string; promotionGroupId?: string }
+): Promise<boolean> {
   try {
-    // 서버 API로 장바구니에서 제거
-    const res = await fetch('/api/cart', {
+    const params = new URLSearchParams()
+    if (options.productId != null) {
+      params.set('product_id', options.productId)
+      if (options.promotionGroupId != null) params.set('promotion_group_id', options.promotionGroupId)
+    } else if (options.cartId) {
+      params.set('id', options.cartId)
+      if (options.promotionGroupId != null) params.set('promotion_group_id', options.promotionGroupId)
+    }
+    const res = await fetch(`/api/cart?${params.toString()}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: cartId,
-        promotion_group_id: promotionGroupId
-      }),
+      credentials: 'include',
     })
-    
     if (!res.ok) {
       console.error('장바구니 제거 실패:', res.status)
       return false
     }
-    
     return true
   } catch (error) {
     console.error('장바구니 제거 에러:', error)
@@ -129,43 +132,72 @@ export async function removeFromCartDB(userId: string, cartId: string, promotion
   }
 }
 
-/**
- * 로그인 시 장바구니 동기화
- * - localStorage의 항목을 DB에 병합
- * - DB의 최신 데이터로 전체 동기화
- */
-export async function syncCartOnLogin(userId: string): Promise<void> {
+const CART_LAST_SYNCED_USER_KEY = 'cart_last_synced_user_id'
+
+/** 이번 세션에서 bootstrap이 이미 장바구니를 세팅했으면 true. syncCartOnLogin 건너뛸 때 사용 */
+let bootstrapHasSetCartThisSession = false
+
+/** 삭제/비우기 시작 시 진행 중인 GET 장바구니 요청을 취소하기 위한 콜백 (레이스 방지: 늦게 도착한 GET이 0을 덮어쓰지 않도록) */
+let onAbortLoadCart: (() => void) | null = null
+export function registerAbortLoadCart(fn: () => void): void {
+  onAbortLoadCart = fn
+}
+
+export function getBootstrapHasSetCartThisSession(): boolean {
+  return bootstrapHasSetCartThisSession
+}
+
+/** persist와 동일한 키·포맷({ state, version })으로 즉시 저장. store.ts cart persist의 version과 맞출 것. */
+const CART_PERSIST_VERSION = 0
+
+function flushCartPersist(items: CartItem[]): void {
+  if (typeof window === 'undefined') return
   try {
-    const localItems = useCartStore.getState().items
-    const dbItems = await loadCartFromDB(userId)
-    let hasAddedItems = false
+    const key = getCartStorageKey()
+    const value = JSON.stringify({ state: { items }, version: CART_PERSIST_VERSION })
+    window.localStorage.setItem(key, value)
+  } catch {
+    // ignore
+  }
+}
 
-    // localStorage에만 있는 항목들을 DB에 추가
-    for (const item of localItems) {
-      // DB에 이미 있는지 확인 (일반 상품은 productId만, 프로모션은 group_id도 확인)
-      const existsInDB = dbItems.some(dbItem => 
-        dbItem.productId === item.productId && 
-        dbItem.promotion_group_id === item.promotion_group_id
-      )
+/**
+ * 스토어만 업데이트. 저장은 Zustand persist에만 맡김 (이중 저장 금지).
+ */
+export function setCartItems(items: CartItem[], source: string): void {
+  if (source === 'bootstrap') bootstrapHasSetCartThisSession = true
+  if (source === 'signOut') bootstrapHasSetCartThisSession = false
+  useCartStore.setState({ items })
+}
 
-      if (!existsInDB) {
-        await addToCartDB(userId, item)
-        hasAddedItems = true
-      }
-    }
+export function getCartLastSyncedUserId(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(CART_LAST_SYNCED_USER_KEY)
+}
 
-    // 항목이 추가되었을 때만 DB에서 다시 가져오기 (가격, 재고 등 최신 정보 반영)
-    // 항목이 추가되지 않았다면 첫 번째 호출 결과를 그대로 사용
-    if (hasAddedItems) {
-      const updatedItems = await loadCartFromDB(userId)
-      useCartStore.setState({ items: updatedItems })
-    } else {
-      // 추가되지 않았으면 첫 번째 호출 결과 사용
-      useCartStore.setState({ items: dbItems })
-    }
+export function setCartLastSyncedUserId(userId: string): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(CART_LAST_SYNCED_USER_KEY, userId)
+}
+
+export function clearCartSyncFlag(): void {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem(CART_LAST_SYNCED_USER_KEY)
+}
+
+/**
+ * 로그인 후 서버 장바구니로 덮어쓰기만 수행. merge는 bootstrap 한 곳에서만.
+ * (규칙 B: 동기화는 로그인 순간 merge 1회, 그 외에는 서버 → 클라 덮어쓰기만)
+ * signal: 삭제 시 진행 중인 동기화 GET 취소용
+ */
+export async function syncCartOnLogin(userId: string, signal?: AbortSignal): Promise<void> {
+  try {
+    setCartLastSyncedUserId(userId)
+    const items = await loadCartFromDB(userId, signal)
+    setCartItems(items, 'syncCartOnLogin')
   } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') return
     console.error('장바구니 동기화 실패:', error)
-    // 동기화 실패해도 기존 localStorage 데이터는 유지
   }
 }
 
@@ -215,35 +247,45 @@ export async function addCartItemWithDB(userId: string | null, item: CartItem): 
 
 /**
  * 장바구니 제거 (Optimistic Update + DB 삭제)
- * - 즉시 UI 업데이트 후 DB에서 삭제
- * - 실패 시 자동 롤백
+ * - productId로 삭제해 같은 상품 중복 행 전부 제거
  */
 export async function removeCartItemWithDB(
-  userId: string | null, 
-  itemId: string, 
-  promotionGroupId?: string
+  userId: string | null,
+  itemId: string,
+  promotionGroupId?: string,
+  productId?: string
 ): Promise<void> {
+  onAbortLoadCart?.()
   const store = useCartStore.getState()
   const previousItems = store.items
-  
-  // 1. Optimistic update: 즉시 UI 업데이트
+  const item = store.items.find((i) => i.id === itemId)
+  const pid = productId ?? item?.productId
+
   store.removeItem(itemId)
 
-  // 2. DB 삭제 (로그인 시, DB ID인 경우만)
-  if (userId && itemId && !itemId.startsWith('cart-')) {
+  if (userId && pid) {
     try {
-      const success = await removeFromCartDB(userId, itemId, promotionGroupId)
+      const success = await removeFromCartDB(userId, {
+        productId: pid,
+        promotionGroupId: promotionGroupId ?? item?.promotion_group_id ?? undefined,
+      })
       if (!success) {
-        // DB 삭제 실패 시 롤백
         useCartStore.setState({ items: previousItems })
         toast.error('장바구니에서 제거하는데 실패했습니다.')
+      } else {
+        const nextItems = useCartStore.getState().items
+        setCartItems(nextItems, 'deleteSuccess')
+        flushCartPersist(nextItems)
       }
     } catch (error) {
-      // 에러 발생 시 롤백
       useCartStore.setState({ items: previousItems })
       console.error('장바구니 제거 실패:', error)
       toast.error('장바구니에서 제거하는데 실패했습니다.')
     }
+  } else {
+    const nextItems = useCartStore.getState().items
+    setCartItems(nextItems, 'deleteSuccess')
+    flushCartPersist(nextItems)
   }
 }
 
@@ -286,26 +328,30 @@ export async function updateCartQuantityWithDB(
  * - localStorage와 DB 모두에서 삭제
  */
 export async function clearCartWithDB(userId: string | null): Promise<void> {
+  onAbortLoadCart?.()
   const store = useCartStore.getState()
   const previousItems = store.items
-  
+
   // 1. Optimistic update: 즉시 UI 업데이트
   store.clearCart()
   
-  // 2. DB 삭제 (로그인 시)
+  // 2. DB 삭제 (로그인 시) - product_id 기준으로 삭제해 중복 행 전부 제거
   if (userId) {
     try {
-      // 모든 장바구니 항목 삭제 (각 항목마다 DELETE 호출)
-      // 또는 별도의 clear API를 만들 수도 있지만, 현재는 각 항목 삭제
-      const itemsToDelete = previousItems.filter(item => item.id && !item.id.startsWith('cart-'))
-      
-      // 병렬로 모든 항목 삭제
+      const byKey = new Map<string, { productId: string; promotionGroupId?: string }>()
+      for (const item of previousItems) {
+        if (!item.productId) continue
+        const key = `${item.productId}::${item.promotion_group_id ?? ''}`
+        if (!byKey.has(key)) byKey.set(key, { productId: item.productId, promotionGroupId: item.promotion_group_id })
+      }
       await Promise.all(
-        itemsToDelete.map(item => 
-          removeFromCartDB(userId, item.id!, item.promotion_group_id)
+        Array.from(byKey.values()).map(({ productId, promotionGroupId }) =>
+          removeFromCartDB(userId, { productId, promotionGroupId })
         )
       )
-      
+      const nextItems = useCartStore.getState().items
+      setCartItems(nextItems, 'clearSuccess')
+      flushCartPersist(nextItems)
       toast.success('장바구니가 비워졌습니다.')
     } catch (error) {
       // 에러 발생 시 롤백
@@ -314,7 +360,9 @@ export async function clearCartWithDB(userId: string | null): Promise<void> {
       toast.error('장바구니 비우기에 실패했습니다.')
     }
   } else {
-    // 비로그인 사용자는 localStorage만 비우기
+    const nextItems = useCartStore.getState().items
+    setCartItems(nextItems, 'clearSuccess')
+    flushCartPersist(nextItems)
     toast.success('장바구니가 비워졌습니다.')
   }
 }
