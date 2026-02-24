@@ -105,11 +105,14 @@ export function handleNetworkError(error: any): AppError {
  */
 export function showError(error: unknown, options?: { duration?: number; icon?: string }) {
   let appError: AppError
-  
+
   if (error instanceof AppError) {
     appError = error
   } else if (error instanceof Error) {
     appError = handleNetworkError(error)
+  } else if (error && typeof error === 'object' && 'message' in error && typeof (error as { message?: unknown }).message === 'string') {
+    const msg = (error as { message: string }).message
+    appError = new AppError(ErrorCode.UNKNOWN_ERROR, msg, msg, 400)
   } else {
     appError = new AppError(
       ErrorCode.UNKNOWN_ERROR,

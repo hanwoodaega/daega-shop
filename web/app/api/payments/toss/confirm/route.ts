@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
     const today = new Date()
     const datePrefix = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
     const sanitizedOrderId = String(orderId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-    // 동일 orderId로 재요청 시 기존 주문 반환 (중복 주문 방지)
-    const idempotencySuffix = sanitizedOrderId.slice(0, 12)
+    // order_number 컬럼이 varchar(13) → YYYYMMDD-XXXX (8+1+4=13자). 동일 orderId로 재요청 시 기존 주문 반환
+    const idempotencySuffix = sanitizedOrderId.slice(0, 4)
     const idempotentOrderNumber = idempotencySuffix ? `${datePrefix}-${idempotencySuffix}` : null
 
     if (idempotentOrderNumber) {
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     let orderNumber = idempotentOrderNumber ?? ''
     if (!orderNumber) {
       for (let i = 0; i < 5; i += 1) {
-        const suffix = crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 5)
+        const suffix = crypto.randomBytes(2).toString('hex').toUpperCase().slice(0, 4)
         const candidate = `${datePrefix}-${suffix}`
         const { data: exists } = await supabaseAdmin
           .from('orders')
