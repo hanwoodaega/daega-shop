@@ -90,12 +90,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: createError?.message || '회원가입에 실패했습니다.' }, { status: 500 })
     }
 
+    const nowIso = new Date().toISOString()
     const { error: profileError } = await supabaseAdmin
       .from('users')
       .upsert({
         id: createdUser.user.id,
         name,
         phone: normalizedPhone,
+        phone_verified_at: nowIso,
         username: trimmedUsername,
         username_normalized: normalizedUsername,
         status: 'active',

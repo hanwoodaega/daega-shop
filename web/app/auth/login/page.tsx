@@ -9,13 +9,15 @@ import { useCartStore } from '@/lib/store'
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectAfterLogin = '/'
+  const redirectAfterLogin = searchParams.get('next') || '/'
   const urlError = searchParams.get('error')
+  const fromSignup = searchParams.get('signup') === '1'
   const cartCount = useCartStore((state) => state.getTotalItems())
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(urlError || '')
+  const [showSignupSuccess, setShowSignupSuccess] = useState(fromSignup)
 
   const waitForSession = async () => {
     for (let i = 0; i < 6; i += 1) {
@@ -27,6 +29,15 @@ function LoginForm() {
     }
     return false
   }
+
+  useEffect(() => {
+    if (!fromSignup) return
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('signup')
+    const cleanSearch = params.toString()
+    const replaceUrl = cleanSearch ? `?${cleanSearch}` : window.location.pathname
+    window.history.replaceState(null, '', replaceUrl)
+  }, [fromSignup, searchParams])
 
   useEffect(() => {
     let isMounted = true
@@ -282,6 +293,24 @@ function LoginForm() {
       <main className="flex-1 bg-white flex items-start justify-center pt-12 pb-12 px-6">
         <div className="max-w-md w-full">
           <h2 className="text-3xl font-bold text-center mb-8 text-primary-900">로그인</h2>
+
+            {showSignupSuccess && (
+              <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg text-sm flex items-start gap-2">
+                <span className="flex-shrink-0 mt-0.5" aria-hidden>✓</span>
+                <div className="flex-1">
+                  <p className="font-medium">회원가입이 완료되었습니다.</p>
+                  <p className="mt-1 text-green-700">아래에서 로그인해 주세요.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSignupSuccess(false)}
+                  className="flex-shrink-0 p-1 text-green-600 hover:text-green-800 rounded"
+                  aria-label="닫기"
+                >
+                  ×
+                </button>
+              </div>
+            )}
 
             {(error || urlError) && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">

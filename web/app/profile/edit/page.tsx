@@ -566,7 +566,7 @@ function ProfileEditContent() {
                 
                 return (
                   <>
-                    <div className="flex gap-2 mb-2">
+                    <div className="flex flex-col sm:flex-row gap-2 mb-2">
                       <input
                         type="tel"
                         value={newPhone || phone}
@@ -579,7 +579,7 @@ function ProfileEditContent() {
                             setVerificationCode('')
                           }
                         }}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="flex-1 min-w-0 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         placeholder="01012345678"
                         maxLength={11}
                         disabled={isVerifyingPhone}
@@ -590,14 +590,14 @@ function ProfileEditContent() {
                           type="button"
                           onClick={handleSendVerificationCode}
                           disabled={isSendingCode || !newPhone || newPhone.replace(/[^0-9]/g, '').length < 10}
-                          className="px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-900 transition disabled:bg-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
+                          className="w-full sm:w-auto flex-shrink-0 px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-900 transition disabled:bg-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
                         >
                           {isSendingCode ? '발송중...' : '인증번호 발송'}
                         </button>
                       )}
                     </div>
                     {isVerifyingPhone && (
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                         <input
                           type="text"
                           value={verificationCode}
@@ -605,7 +605,7 @@ function ProfileEditContent() {
                             const code = e.target.value.replace(/[^0-9]/g, '').slice(0, 6)
                             setVerificationCode(code)
                           }}
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          className="flex-1 min-w-0 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="인증번호 6자리"
                           maxLength={6}
                         />
@@ -613,7 +613,7 @@ function ProfileEditContent() {
                           type="button"
                           onClick={handleVerifyCode}
                           disabled={verificationCode.length !== 6}
-                          className="px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-900 transition disabled:bg-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
+                          className="w-full sm:w-auto flex-shrink-0 px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-900 transition disabled:bg-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
                         >
                           인증확인
                         </button>

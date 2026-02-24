@@ -227,12 +227,12 @@ function VerifyPhoneContent() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 휴대폰 번호
               </label>
-              <div className="flex gap-2 items-center">
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
-                  className="flex-1 px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
+                  className="flex-1 min-w-0 w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
                   placeholder="01012345678"
                   maxLength={13}
                   required
@@ -241,7 +241,7 @@ function VerifyPhoneContent() {
                   type="button"
                   onClick={handleSendCode}
                   disabled={loading || cooldown > 0 || phone.length < 10}
-                  className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
+                  className="w-full sm:w-auto flex-shrink-0 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
                 >
                   인증 요청
                 </button>

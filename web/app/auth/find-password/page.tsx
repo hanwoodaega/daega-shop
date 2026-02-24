@@ -180,12 +180,12 @@ export default function FindPasswordPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">휴대폰 번호</label>
-                <div className="flex gap-2 items-center">
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
-                    className="flex-1 px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
+                    className="flex-1 min-w-0 w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
                     placeholder="휴대폰 번호"
                     maxLength={13}
                   />
@@ -193,7 +193,7 @@ export default function FindPasswordPage() {
                     type="button"
                     onClick={sendCode}
                     disabled={loading || username.trim().length < 6 || phone.length < 10}
-                    className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
+                    className="w-full sm:w-auto flex-shrink-0 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
                   >
                     인증 요청
                   </button>
@@ -211,12 +211,12 @@ export default function FindPasswordPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">휴대폰 번호</label>
-                <div className="flex gap-2 items-center">
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
-                    className="flex-1 px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
+                    className="flex-1 min-w-0 w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
                     placeholder="휴대폰 번호"
                     maxLength={13}
                   />
@@ -224,7 +224,7 @@ export default function FindPasswordPage() {
                     type="button"
                     onClick={sendCode}
                     disabled={loading || username.trim().length < 6 || phone.length < 10}
-                    className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
+                    className="w-full sm:w-auto flex-shrink-0 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
                   >
                     인증 요청
                   </button>

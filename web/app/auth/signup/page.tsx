@@ -194,7 +194,7 @@ export default function SignupPage() {
       }
 
       await supabase.auth.signOut()
-      router.push('/auth/login?next=/')
+      router.push('/auth/login?signup=1&next=/')
     } catch (err: any) {
       setError(err.message || '회원가입에 실패했습니다.')
     } finally {
@@ -292,21 +292,21 @@ export default function SignupPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">휴대폰 번호</label>
-                <div className="flex gap-2 items-center">
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
                     required
                     autoComplete="tel"
-                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-900"
+                    className="flex-1 min-w-0 w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-900"
                     placeholder="01012345678"
                   />
                   <button
                     type="button"
                     onClick={handleSendCode}
                     disabled={loading || username.trim().length < 6}
-                    className="px-3 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
+                    className="w-full sm:w-auto flex-shrink-0 px-3 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
                   >
                     인증 요청
                   </button>
@@ -346,18 +346,18 @@ export default function SignupPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">휴대폰 번호</label>
-                <div className="flex gap-2 items-center">
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                   <input
                     type="tel"
                     value={phone}
                     readOnly
-                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-700"
+                    className="flex-1 min-w-0 w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-700"
                   />
                   <button
                     type="button"
                     onClick={handleSendCode}
                     disabled={loading}
-                    className="px-3 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
+                    className="w-full sm:w-auto flex-shrink-0 px-3 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
                   >
                     인증 요청
                   </button>
