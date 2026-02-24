@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Footer from '@/components/layout/Footer'
+import { supabase } from '@/lib/supabase/supabase'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -192,6 +193,7 @@ export default function SignupPage() {
         sessionStorage.removeItem('signup_terms')
       }
 
+      await supabase.auth.signOut()
       router.push('/auth/login?next=/')
     } catch (err: any) {
       setError(err.message || '회원가입에 실패했습니다.')

@@ -3,8 +3,7 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase, isSupabaseConfigured } from '../supabase/supabase'
-import { syncWishlistOnLogin } from '../wishlist/wishlist-db'
-import { syncCartOnLogin } from '../cart/cart-db'
+import { useCartStore, useWishlistStore } from '../store'
 
 interface AuthContextType {
   user: User | null
@@ -30,6 +29,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const timeoutsRef = useRef<number[]>([])
   const initialGetUserTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  const runPostLoginBootstrap = async (session: { user?: User | null; access_token?: string | null }) => {
+    try {
+      const accessToken = typeof session?.access_token === 'string' ? session.access_token : ''
+      const isValidToken = accessToken.length > 10 && accessToken.includes('.')
+      if (!isValidToken || !session?.user) {
+        return { user: null, sync: null }
+      }
+
+      const localCartItems = useCartStore.getState().items
+      const localWishlistItems = useWishlistStore.getState().items
+
+      const res = await fetch('/api/auth/bootstrap?includeSync=1', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          cart: localCartItems.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            promotion_group_id: item.promotion_group_id,
+            promotion_type: item.promotion_type,
+            discount_percent: item.discount_percent,
+          })),
+          wishlist: localWishlistItems,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        return { user: null, sync: null }
+      }
+
+      if (data?.user?.status !== 'active') {
+        return { user: null, sync: data?.sync ?? null }
+      }
+
+      return { user: session.user, sync: data?.sync ?? null }
+    } catch {
+      return { user: null, sync: null }
+    }
+  }
+
   useEffect(() => {
     if (!isSupabaseConfigured) {
       setLoading(false)
@@ -47,15 +91,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }, 3000)
     
-    // 서버 API로 세션 확인
+    // 서버 API로 세션 확인 (온보딩 상태까지 함께 확인)
     const checkSession = async () => {
       try {
         const { data: localSession } = await supabase.auth.getSession()
-        const accessToken = localSession?.session?.access_token
-        const res = await fetch('/api/auth/session', {
-          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+        const session = localSession?.session
+        const bootstrap = await runPostLoginBootstrap({
+          user: session?.user ?? null,
+          access_token: session?.access_token ?? null,
         })
-        const data = await res.json()
         
         if (initialGetUserTimeoutRef.current) {
           clearTimeout(initialGetUserTimeoutRef.current)
@@ -63,27 +107,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         if (isMounted) {
-          const status = data?.status
-          let newUser: User | null = data?.user ?? null
-
-          if (!newUser) {
-            if (!status) {
-              newUser = localSession?.session?.user ?? null
-            }
-          }
+          const newUser = bootstrap.user ?? null
 
           currentUserRef.current = newUser
           setUser(newUser)
           setLoading(false)
 
-          // 로그인 상태라면 DB에서 데이터 불러오기
-          if (newUser && !hasSyncedRef.current) {
+          if (newUser && bootstrap.sync && !hasSyncedRef.current) {
+            const cartItems = bootstrap.sync?.cart?.items
+            const wishlistItems = bootstrap.sync?.wishlist?.items
+            if (bootstrap.sync?.cart?.done && Array.isArray(cartItems)) {
+              useCartStore.setState({ items: cartItems })
+            }
+            if (bootstrap.sync?.wishlist?.done && Array.isArray(wishlistItems)) {
+              useWishlistStore.setState({ items: wishlistItems })
+            }
             hasSyncedRef.current = true
-            const t = window.setTimeout(() => {
-              syncWishlistOnLogin(newUser.id)
-              syncCartOnLogin(newUser.id)
-            }, 100)
-            timeoutsRef.current.push(t)
           }
         }
       } catch (error) {
@@ -102,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     checkSession()
     
-    // 인증 상태 변경 감지 (로그인/로그아웃 이벤트만 처리)
+    // 인증 상태 변경 감지
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
@@ -111,9 +150,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // INITIAL_SESSION: 서버 세션이 없더라도 로컬 세션이 있으면 반영
       if (event === 'INITIAL_SESSION') {
         if (!currentUserRef.current && session?.user) {
-          currentUserRef.current = session.user
-          setUser(session.user)
+          const bootstrap = await runPostLoginBootstrap({
+            user: session?.user ?? null,
+            access_token: session?.access_token ?? null,
+          })
+          currentUserRef.current = bootstrap.user ?? null
+          setUser(bootstrap.user ?? null)
           setLoading(false)
+
+          if (bootstrap.user && bootstrap.sync && !hasSyncedRef.current) {
+            const cartItems = bootstrap.sync?.cart?.items
+            const wishlistItems = bootstrap.sync?.wishlist?.items
+            if (bootstrap.sync?.cart?.done && Array.isArray(cartItems)) {
+              useCartStore.setState({ items: cartItems })
+            }
+            if (bootstrap.sync?.wishlist?.done && Array.isArray(wishlistItems)) {
+              useWishlistStore.setState({ items: wishlistItems })
+            }
+            hasSyncedRef.current = true
+          }
         }
         return
       }
@@ -124,24 +179,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         initialGetUserTimeoutRef.current = null
       }
       
-      // session에서 직접 사용자 정보 가져오기
-      let newUser: User | null = session?.user ?? null
-
-      if (newUser) {
-        try {
-          const accessToken = session?.access_token
-          const statusRes = await fetch('/api/auth/onboarding-status', {
-            cache: 'no-store',
-            headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-          })
-          const statusData = await statusRes.json().catch(() => ({}))
-          if (statusRes.ok && statusData?.status !== 'active') {
-            newUser = null
-          }
-        } catch {
-          // ignore status check failures to avoid blocking auth on network errors
-        }
-      }
+      const bootstrap = await runPostLoginBootstrap({
+        user: session?.user ?? null,
+        access_token: session?.access_token ?? null,
+      })
+      let newUser: User | null = bootstrap.user ?? null
       
       const prevUser = currentUserRef.current
       const wasLoggedOut = !!prevUser && !newUser
@@ -151,18 +193,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(newUser)
       setLoading(false)
 
-      // 로그인 시: localStorage → DB 마이그레이션 + DB에서 불러오기
-      if (justLoggedIn && newUser && !hasSyncedRef.current) {
+      if (justLoggedIn && newUser && bootstrap.sync && !hasSyncedRef.current) {
+        const cartItems = bootstrap.sync?.cart?.items
+        const wishlistItems = bootstrap.sync?.wishlist?.items
+        if (bootstrap.sync?.cart?.done && Array.isArray(cartItems)) {
+          useCartStore.setState({ items: cartItems })
+        }
+        if (bootstrap.sync?.wishlist?.done && Array.isArray(wishlistItems)) {
+          useWishlistStore.setState({ items: wishlistItems })
+        }
         hasSyncedRef.current = true
-        const t = window.setTimeout(async () => {
-          try {
-            await syncWishlistOnLogin(newUser.id)
-            await syncCartOnLogin(newUser.id)
-          } catch (error) {
-            // 마이그레이션 실패는 무시
-          }
-        }, 100)
-        timeoutsRef.current.push(t)
       }
       
       // 로그아웃 시: 동기화 플래그 리셋

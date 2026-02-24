@@ -8,7 +8,12 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getUserFromRequest(request)
     if (!user) {
-      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+      return NextResponse.json({
+        authenticated: false,
+        requiresPhoneVerification: false,
+        nameMissing: false,
+        status: null,
+      })
     }
 
     const supabase = createSupabaseServerClient()
@@ -21,6 +26,7 @@ export async function GET(request: NextRequest) {
     const requiresPhoneVerification = !profile?.phone || !profile?.phone_verified_at
 
     return NextResponse.json({
+      authenticated: true,
       requiresPhoneVerification,
       nameMissing: !profile?.name,
       status: profile?.status || 'pending',

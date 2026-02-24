@@ -15,6 +15,17 @@ function NaverCallbackContent() {
   const [errorDescription, setErrorDescription] = useState<string | null>(null)
   const handledRef = useRef(false)
 
+  const waitForSession = async () => {
+    for (let i = 0; i < 6; i += 1) {
+      const { data } = await supabase.auth.getSession()
+      if (data?.session?.access_token) {
+        return true
+      }
+      await new Promise(resolve => setTimeout(resolve, 200))
+    }
+    return false
+  }
+
   useEffect(() => {
     if (handledRef.current) return
     handledRef.current = true
@@ -78,7 +89,7 @@ function NaverCallbackContent() {
         setMessage('이미 가입된 계정이 있어 연결 중입니다...')
       }
 
-      const { error: verifyError } = await supabase.auth.verifyOtp({
+      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
         token_hash: tokenHash,
         type,
       })
@@ -95,11 +106,54 @@ function NaverCallbackContent() {
       
       setStatus('loading')
       setMessage('로그인 중...')
-      
-      setTimeout(() => {
-        router.push(nextPath)
-        router.refresh()
-      }, 1500)
+
+      const initialToken = verifyData?.session?.access_token || null
+      const initialRefreshToken = verifyData?.session?.refresh_token || null
+      if (initialToken && initialRefreshToken) {
+        await supabase.auth.setSession({
+          access_token: initialToken,
+          refresh_token: initialRefreshToken,
+        })
+      }
+
+      await waitForSession()
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token || initialToken
+
+      if (!accessToken) {
+        setErrorCode('verify_failed')
+        setStatus('error')
+        setMessage(mapErrorMessage('verify_failed'))
+        return
+      }
+
+      const bootstrapRes = await fetch('/api/auth/bootstrap?includeSync=0', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({}),
+      })
+      const bootstrapData = await bootstrapRes.json().catch(() => ({}))
+      if (!bootstrapRes.ok || bootstrapData?.authenticated === false) {
+        setErrorCode('verify_failed')
+        setStatus('error')
+        setMessage(mapErrorMessage('verify_failed'))
+        return
+      }
+
+      const isDeleted = bootstrapData?.user?.status === 'deleted'
+      const requiresPhone = Boolean(bootstrapData?.onboarding?.requiresPhoneVerification)
+      let targetPath = nextPath
+      if (isDeleted) {
+        targetPath = `/auth/restore?next=${encodeURIComponent(nextPath)}`
+      } else if (requiresPhone) {
+        targetPath = `/auth/verify-phone?next=${encodeURIComponent(nextPath)}`
+      }
+
+      router.push(targetPath)
+      router.refresh()
       
     } catch (error: any) {
       const fallbackCode = 'verify_failed'

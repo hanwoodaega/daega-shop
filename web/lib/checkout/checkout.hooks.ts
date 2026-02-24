@@ -12,7 +12,6 @@ import { SHIPPING, GIFT_MIN_AMOUNT } from '@/lib/utils/constants'
 import { getUserCoupons, isCouponValid } from '@/lib/coupon/coupons'
 import { UserCoupon, Coupon } from '@/lib/supabase/supabase'
 import { removeFromCartDB } from '@/lib/cart/cart-db'
-import { shareGiftToKakao } from '@/lib/order/gift/kakaoShare'
 import { initKakaoSDK } from '@/lib/order/gift/initKakao'
 import { showError, showSuccess, showInfo } from '@/lib/utils/error-handler'
 import { formatPrice } from '@/lib/utils/utils'
@@ -81,9 +80,6 @@ export function useCheckout(options: UseCheckoutOptions) {
   const [usedPointsInput, setUsedPointsInput] = useState('')
 
   const [paymentMethod, setPaymentMethod] = useState('card')
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
-  const [savedCards, setSavedCards] = useState<any[]>([])
-  const [loadingCards, setLoadingCards] = useState(false)
 
   const [serverPricing, setServerPricing] = useState<{
     originalTotal: number
@@ -232,7 +228,6 @@ export function useCheckout(options: UseCheckoutOptions) {
     if (user?.id) {
       loadAvailableCoupons()
       loadUserPoints()
-      loadSavedCards()
     }
   }, [user?.id])
 
@@ -263,32 +258,6 @@ export function useCheckout(options: UseCheckoutOptions) {
       console.error('포인트 조회 실패:', error)
     } finally {
       setLoadingPoints(false)
-    }
-  }, [user?.id])
-
-  const loadSavedCards = useCallback(async () => {
-    if (!user?.id) return
-
-    setLoadingCards(true)
-    try {
-      const res = await fetch('/api/payment-cards')
-      if (!res.ok) {
-        setSavedCards([])
-        return
-      }
-
-      const data = await res.json()
-      setSavedCards(data.cards || [])
-
-      const defaultCard = data.cards?.find((card: any) => card.is_default)
-      if (defaultCard) {
-        setSelectedCardId(defaultCard.id)
-      }
-    } catch (error) {
-      console.error('카드 조회 실패:', error)
-      setSavedCards([])
-    } finally {
-      setLoadingCards(false)
     }
   }, [user?.id])
 
@@ -640,14 +609,6 @@ export function useCheckout(options: UseCheckoutOptions) {
         return
       }
 
-      if (paymentMethod === 'easy') {
-        if (!selectedCardId) {
-          throw new Error('결제할 카드를 선택해주세요.')
-        }
-        await chargeSavedCard(selectedCardId)
-        return
-      }
-
       if (!tossClientKey) {
         throw new Error('결제 설정이 없습니다.')
       }
@@ -734,48 +695,6 @@ export function useCheckout(options: UseCheckoutOptions) {
       }
 
       await tossPayments.requestPayment(methodConfig.method, paymentOptions)
-    }
-
-    const chargeSavedCard = async (cardId: string) => {
-      const orderInput = buildOrderInput()
-      const rawOrderName = items.length > 1
-        ? `${items[0]?.name || '상품'} 외 ${items.length - 1}건`
-        : (items[0]?.name || '상품')
-      const orderName = rawOrderName.length > 100 ? `${rawOrderName.slice(0, 97)}...` : rawOrderName
-
-      const res = await fetch('/api/payments/toss/billing/charge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cardId,
-          orderInput,
-          orderName,
-        }),
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || '결제 승인에 실패했습니다.')
-      }
-
-      const data = await res.json()
-      const order = data?.order
-
-      if (isGiftMode && data?.gift_token) {
-        await shareGiftToKakao({
-          orderId: order?.id,
-          giftToken: data.gift_token,
-          cardDesign: giftData.cardDesign,
-          message: giftData.message,
-          items: items.map(item => ({
-            imageUrl: item.imageUrl || undefined,
-          })),
-        })
-      }
-
-      await saveAddressIfNeeded()
-      await cleanupCart()
-      redirectAfterSuccess(order, data?.gift_token)
     }
 
     const saveAddressIfNeeded = async () => {
@@ -904,11 +823,6 @@ export function useCheckout(options: UseCheckoutOptions) {
     } catch (error) {
       showError(error)
       setFlags(prev => ({ ...prev, isProcessing: false }))
-    } finally {
-      if (paymentMethod === 'easy') {
-        setFlags(prev => ({ ...prev, isProcessing: false }))
-      }
-      // 카드 결제는 토스 결제창에서 페이지 이동이 발생합니다.
     }
   }, [
     items,
@@ -931,7 +845,6 @@ export function useCheckout(options: UseCheckoutOptions) {
     giftData,
     saveAsDefaultAddress,
     paymentMethod,
-    selectedCardId,
     buildOrderInput,
     clearDirectPurchase,
     removeSelectedFromCart,
@@ -969,9 +882,6 @@ export function useCheckout(options: UseCheckoutOptions) {
       loadingPoints,
       usedPointsInput,
       paymentMethod,
-      selectedCardId,
-      savedCards,
-      loadingCards,
       giftData,
       currentStep,
       items,
@@ -986,7 +896,6 @@ export function useCheckout(options: UseCheckoutOptions) {
       setUsedPoints,
       setUsedPointsInput,
       setPaymentMethod,
-      setSelectedCardId,
       setGiftData,
       setCurrentStep,
       handleSubmit,
@@ -994,7 +903,6 @@ export function useCheckout(options: UseCheckoutOptions) {
       handleSearchAddress,
       loadAvailableCoupons,
       loadUserPoints,
-      loadSavedCards,
       applyAddress,
       handleInputChange,
     },

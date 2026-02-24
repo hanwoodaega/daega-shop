@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 
 const PROVIDER = 'kakao'
 const OAUTH_EMAIL_DOMAIN = 'provider.local'
+const PROFILE_REFRESH_TTL_MS = 24 * 60 * 60 * 1000
 
 const buildOauthEmail = (providerUserId: string) => {
   return `${PROVIDER}_${providerUserId}@${OAUTH_EMAIL_DOMAIN}`
@@ -133,7 +134,7 @@ async function processKakaoOAuth(params: {
 
   const { data: identity, error: identityError } = await supabaseAdmin
     .from('oauth_identities')
-    .select('user_id, email')
+    .select('user_id, email, profile_fetched_at')
     .eq('provider', PROVIDER)
     .eq('provider_user_id', providerUserId)
     .maybeSingle()
@@ -142,6 +143,11 @@ async function processKakaoOAuth(params: {
     throw createOAuthError('supabase_user_failed', '소셜 계정 매핑 조회에 실패했습니다. (identity_lookup)')
   }
 
+  const hasIdentity = Boolean(identity?.user_id)
+  const lastFetchedAt = identity?.profile_fetched_at
+    ? new Date(identity.profile_fetched_at).getTime()
+    : 0
+  const shouldRefreshProfile = !hasIdentity || Date.now() - lastFetchedAt > PROFILE_REFRESH_TTL_MS
   let userId = identity?.user_id
   let linkedExisting = false
 
@@ -183,20 +189,23 @@ async function processKakaoOAuth(params: {
     }
   }
 
-  const updatePayload: {
-    user_metadata: Record<string, string | null>
-  } = {
-    user_metadata: {
-      provider: PROVIDER,
-      provider_user_id: providerUserId,
-      name,
-      avatar_url: avatarUrl,
-    },
-  }
+  const shouldUpdateAuthUser = shouldRefreshProfile
+  if (shouldUpdateAuthUser) {
+    const updatePayload: {
+      user_metadata: Record<string, string | null>
+    } = {
+      user_metadata: {
+        provider: PROVIDER,
+        provider_user_id: providerUserId,
+        name,
+        avatar_url: avatarUrl,
+      },
+    }
 
-  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, updatePayload)
-  if (updateError) {
-    throw createOAuthError('supabase_user_failed', '사용자 정보 업데이트에 실패했습니다. (update_user)')
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, updatePayload)
+    if (updateError) {
+      throw createOAuthError('supabase_user_failed', '사용자 정보 업데이트에 실패했습니다. (update_user)')
+    }
   }
 
   const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId)
@@ -205,22 +214,29 @@ async function processKakaoOAuth(params: {
     throw createOAuthError('supabase_user_failed', '사용자 이메일 확인에 실패했습니다. (auth_email)')
   }
 
-  const identityEmail = kakaoEmail || identity?.email || null
-  const { error: identityUpsertError } = await supabaseAdmin
-    .from('oauth_identities')
-    .upsert(
-      {
-        provider: PROVIDER,
-        provider_user_id: providerUserId,
-        user_id: userId,
-        email: identityEmail,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'provider,provider_user_id' }
-    )
+  const shouldUpsertIdentity = !hasIdentity || identity?.user_id !== userId || shouldRefreshProfile
+  if (shouldUpsertIdentity) {
+    const identityEmail = kakaoEmail || identity?.email || null
+    const profileFetchedAt = shouldRefreshProfile
+      ? new Date().toISOString()
+      : identity?.profile_fetched_at || null
+    const { error: identityUpsertError } = await supabaseAdmin
+      .from('oauth_identities')
+      .upsert(
+        {
+          provider: PROVIDER,
+          provider_user_id: providerUserId,
+          user_id: userId,
+          email: identityEmail,
+          profile_fetched_at: profileFetchedAt,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'provider,provider_user_id' }
+      )
 
-  if (identityUpsertError) {
-    throw createOAuthError('supabase_user_failed', '소셜 계정 매핑 저장에 실패했습니다. (identity_upsert)')
+    if (identityUpsertError) {
+      throw createOAuthError('supabase_user_failed', '소셜 계정 매핑 저장에 실패했습니다. (identity_upsert)')
+    }
   }
 
   const { data: profileCheck } = await supabaseAdmin
@@ -231,26 +247,29 @@ async function processKakaoOAuth(params: {
 
   const wasDeleted = profileCheck?.status === 'deleted'
 
-  const nowIso = new Date().toISOString()
-  const profileUpdate: Record<string, string | null> = {
-    id: userId,
-    updated_at: nowIso,
-  }
-  if (!wasDeleted) {
-    if (name !== null) profileUpdate.name = name
-    if (phoneNumber !== null) {
-      profileUpdate.phone = phoneNumber
-      profileUpdate.phone_verified_at = nowIso
+  const shouldUpdateProfile = shouldRefreshProfile
+  if (shouldUpdateProfile) {
+    const nowIso = new Date().toISOString()
+    const profileUpdate: Record<string, string | null> = {
+      id: userId,
+      updated_at: nowIso,
     }
-    if (birthday !== null) profileUpdate.birthday = birthday
-  }
+    if (!wasDeleted) {
+      if (name !== null) profileUpdate.name = name
+      if (phoneNumber !== null) {
+        profileUpdate.phone = phoneNumber
+        profileUpdate.phone_verified_at = nowIso
+      }
+      if (birthday !== null) profileUpdate.birthday = birthday
+    }
 
-  const { error: profileError } = await supabaseAdmin
-    .from('users')
-    .upsert(profileUpdate, { onConflict: 'id' })
+    const { error: profileError } = await supabaseAdmin
+      .from('users')
+      .upsert(profileUpdate, { onConflict: 'id' })
 
-  if (profileError) {
-    throw createOAuthError('supabase_user_failed', '사용자 프로필 저장에 실패했습니다. (profile_upsert)')
+    if (profileError) {
+      throw createOAuthError('supabase_user_failed', '사용자 프로필 저장에 실패했습니다. (profile_upsert)')
+    }
   }
 
   const safeNextPath = sanitizeNextPath(nextPath)
@@ -260,11 +279,13 @@ async function processKakaoOAuth(params: {
     finalNextPath = `/auth/restore?next=${encodeURIComponent(safeNextPath)}`
   } else {
     const requiresPhoneVerification = !profileCheck?.phone || !profileCheck?.phone_verified_at
-    const statusValue = requiresPhoneVerification ? 'pending' : 'active'
+  const statusValue = requiresPhoneVerification ? 'pending' : 'active'
+  if (profileCheck?.status !== statusValue) {
     await supabaseAdmin
       .from('users')
       .update({ status: statusValue })
       .eq('id', userId)
+  }
 
     if (requiresPhoneVerification || profileCheck?.status === 'pending') {
       finalNextPath = `/auth/onboarding?next=${encodeURIComponent(safeNextPath)}`

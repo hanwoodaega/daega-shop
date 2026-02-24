@@ -19,6 +19,17 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(urlError || '')
 
+  const waitForSession = async () => {
+    for (let i = 0; i < 6; i += 1) {
+      const { data } = await supabase.auth.getSession()
+      if (data?.session?.access_token) {
+        return true
+      }
+      await new Promise(resolve => setTimeout(resolve, 200))
+    }
+    return false
+  }
+
   useEffect(() => {
     let isMounted = true
     const checkExistingSession = async () => {
@@ -84,8 +95,7 @@ function LoginForm() {
         : redirectAfterLogin
 
       console.log('로그인 성공, 리다이렉트:', targetPath)
-      // 잠시 대기 후 리다이렉트 (인증 상태가 업데이트될 시간을 줌)
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await waitForSession()
       router.push(targetPath)
       router.refresh()
     } catch (error: any) {
@@ -121,7 +131,7 @@ function LoginForm() {
     }
   }
   
-  const handleKakaoLogin = () => {
+  const handleKakaoLogin = async () => {
     const clientId =
       process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || process.env.NEXT_PUBLIC_KAKAO_APP_KEY
 
@@ -129,6 +139,9 @@ function LoginForm() {
       setError('카카오 로그인이 설정되지 않았습니다.')
       return
     }
+
+    // 기존 세션이 남아있으면 콜백에서 갱신이 스킵됨
+    await supabase.auth.signOut()
 
     const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
     const redirectUri = `${baseUrl}/api/auth/kakao`
@@ -164,13 +177,16 @@ function LoginForm() {
     window.location.href = kakaoLoginUrl
   }
 
-  const handleNaverLogin = () => {
+  const handleNaverLogin = async () => {
     const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
     
     if (!clientId) {
       setError('네이버 로그인이 설정되지 않았습니다.')
       return
     }
+
+    // 기존 세션이 남아있으면 콜백에서 갱신이 스킵됨
+    await supabase.auth.signOut()
     
     const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
     const redirectUri = `${baseUrl}/api/auth/naver`

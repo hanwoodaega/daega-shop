@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/auth-context'
 import { supabase } from '@/lib/supabase/supabase'
 
 export default function NotificationBell() {
   const router = useRouter()
+  const pathname = usePathname()
   const { user } = useAuth()
   const [unreadCount, setUnreadCount] = useState(0)
   const channelRef = useRef<any>(null)
@@ -41,7 +42,8 @@ export default function NotificationBell() {
   // 알림 페이지로 이동
   const handleClick = () => {
     if (!user) {
-      router.push('/auth/login')
+      const next = encodeURIComponent(pathname || '/')
+      router.push(`/auth/login?next=${next}`)
       return
     }
     router.push('/notifications')

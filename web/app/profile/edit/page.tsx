@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -12,6 +12,7 @@ function ProfileEditContent() {
   const searchParams = useSearchParams()
   const { user, loading, signOut } = useAuth()
   const cartCount = useCartStore((state) => state.getTotalItems())
+  const isSigningOutRef = useRef(false)
   
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -85,8 +86,9 @@ function ProfileEditContent() {
   // 로그아웃 처리
   const handleSignOut = async () => {
     if (confirm('로그아웃 하시겠습니까?')) {
+      isSigningOutRef.current = true
       await signOut()
-      router.push('/')
+      router.push('/auth/login')
     }
   }
 
@@ -99,6 +101,7 @@ function ProfileEditContent() {
           const data = await res.json().catch(() => ({}))
           throw new Error(data?.error || '탈퇴 처리에 실패했습니다.')
         }
+        isSigningOutRef.current = true
         await signOut()
         router.push('/')
       } catch (error) {
@@ -110,6 +113,7 @@ function ProfileEditContent() {
 
   useEffect(() => {
     if (!loading && !user) {
+      if (isSigningOutRef.current) return
       const checkLocalSession = async () => {
         const { data } = await supabase.auth.getSession()
         if (data?.session) {

@@ -49,9 +49,6 @@ function CheckoutPageContent() {
     loadingPoints,
     usedPointsInput,
     paymentMethod,
-    selectedCardId,
-    savedCards,
-    loadingCards,
     giftData,
     currentStep,
     items,
@@ -69,13 +66,11 @@ function CheckoutPageContent() {
     setPaymentMethod,
     setGiftData,
     setCurrentStep,
-    setSelectedCardId,
     handleSubmit,
     handleNextStep,
     handleSearchAddress,
     loadAvailableCoupons,
     loadUserPoints,
-    loadSavedCards,
     applyAddress,
     handleInputChange,
   } = actions
@@ -385,11 +380,7 @@ function CheckoutPageContent() {
               {(!isGiftMode || currentStep === 3) && (
                 <PaymentMethodSelector
                   paymentMethod={paymentMethod}
-                  selectedCardId={selectedCardId}
-                  savedCards={savedCards}
-                  loadingCards={loadingCards}
                   onPaymentMethodChange={setPaymentMethod}
-                  onCardSelect={setSelectedCardId}
                 />
               )}
             </div>

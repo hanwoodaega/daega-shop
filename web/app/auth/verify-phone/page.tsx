@@ -158,8 +158,9 @@ function VerifyPhoneContent() {
         }
       }
 
-      router.push(nextPath)
-      router.refresh()
+      await supabase.auth.signOut()
+      const redirectTarget = encodeURIComponent(nextPath)
+      router.push(`/auth/login?next=${redirectTarget}`)
     } catch (err: any) {
       setError(err.message || '인증에 실패했습니다.')
     } finally {

@@ -128,7 +128,6 @@ app/
 │   ├── coupons/page.tsx               # 쿠폰
 │   ├── points/page.tsx                 # 포인트
 │   ├── reviews/page.tsx                # 내 리뷰
-│   ├── payment/page.tsx                # 결제 수단
 │   └── edit/page.tsx                  # 프로필 수정
 │
 ├── terms/page.tsx                     # 이용약관
@@ -215,10 +214,6 @@ app/api/
 │   ├── [id]/route.ts
 │   ├── check/route.ts
 │   └── default/route.ts
-│
-├── payment-cards/                       # 결제 수단 API
-│   ├── route.ts
-│   └── [id]/route.ts
 │
 ├── gift/                               # 선물하기 API
 │   ├── [token]/route.ts

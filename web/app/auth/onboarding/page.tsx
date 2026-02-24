@@ -15,14 +15,22 @@ function OnboardingContent() {
     const run = async () => {
       const { data: sessionData } = await supabase.auth.getSession()
       const accessToken = sessionData?.session?.access_token
+      if (!accessToken) {
+        router.replace('/auth/login')
+        return
+      }
       const res = await fetch('/api/auth/onboarding-status', {
         cache: 'no-store',
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+        headers: { Authorization: `Bearer ${accessToken}` },
       })
       const data = await res.json().catch(() => ({}))
       if (!isMounted) return
       if (!res.ok) {
         setError(data?.error || '온보딩 정보를 확인할 수 없습니다.')
+        return
+      }
+      if (data?.authenticated === false) {
+        router.replace('/auth/login')
         return
       }
 

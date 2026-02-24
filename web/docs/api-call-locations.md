@@ -150,13 +150,6 @@
 | `POST /api/gift/create-pending` | ❌ | ✅ | **클라이언트**: `lib/checkout/checkout.service.ts` |
 | `POST /api/gift/upload-card-image` | ❌ | ✅ | **클라이언트**: `lib/gift/gift.service.ts` |
 
-### 결제 카드 관련
-| API 경로 | 서버 호출 | 클라이언트 호출 | 호출 위치 |
-|---------|---------|---------------|----------|
-| `GET /api/payment-cards` | ❌ | ✅ | **클라이언트**: `app/profile/payment/page.tsx` |
-| `POST /api/payment-cards` | ❌ | ✅ | **클라이언트**: `app/profile/payment/page.tsx` |
-| `DELETE /api/payment-cards/[id]` | ❌ | ✅ | **클라이언트**: `app/profile/payment/page.tsx` |
-
 ### 약관 관련
 | API 경로 | 서버 호출 | 클라이언트 호출 | 호출 위치 |
 |---------|---------|---------------|----------|
