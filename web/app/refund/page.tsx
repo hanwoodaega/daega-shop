@@ -27,7 +27,7 @@ export default function RefundPage() {
         <div className="prose prose-slate max-w-none space-y-8">
           <section className="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-500">
             <p className="text-gray-700 leading-relaxed">
-              (주)대가는 신선식품의 특성상 상품 수령 후 즉시 확인하시어 문제가 있을 경우 
+              (주)한우대가는 신선식품의 특성상 상품 수령 후 즉시 확인하시어 문제가 있을 경우 
               빠른 시일 내에 연락 주시기 바랍니다.
             </p>
           </section>
@@ -182,7 +182,7 @@ export default function RefundPage() {
 
           <section className="bg-gray-50 p-6 rounded-lg">
             <p className="text-sm text-gray-600">
-              본 정책은 2025년 12월 1일부터 시행됩니다.
+              본 정책은 2026년 4월 1일부터 시행됩니다.
             </p>
           </section>
         </div>

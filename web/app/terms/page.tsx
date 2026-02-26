@@ -28,7 +28,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">제1조 (목적)</h2>
             <p className="text-gray-700 leading-relaxed">
-              본 약관은 (주)대가(이하 "회사")가 운영하는 온라인 쇼핑몰에서 제공하는 
+              본 약관은 (주)한우대가(이하 "회사")가 운영하는 온라인 쇼핑몰에서 제공하는 
               전자상거래 관련 서비스(이하 "서비스")를 이용함에 있어 회사와 이용자의 권리, 의무 
               및 책임사항을 규정함을 목적으로 합니다.
             </p>
@@ -37,7 +37,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">제2조 (정의)</h2>
             <ul className="list-disc list-inside space-y-2 text-gray-700">
-              <li>"회사"라 함은 (주)대가를 운영하는 사업자를 말합니다.</li>
+              <li>"회사"라 함은 (주)한우대가를 운영하는 사업자를 말합니다.</li>
               <li>"이용자"라 함은 회사의 서비스에 접속하여 이 약관에 따라 회사가 제공하는 서비스를 받는 회원 및 비회원을 말합니다.</li>
               <li>"회원"이라 함은 회사에 개인정보를 제공하여 회원등록을 한 자로서, 회사의 정보를 지속적으로 제공받으며, 회사가 제공하는 서비스를 계속적으로 이용할 수 있는 자를 말합니다.</li>
               <li>"비회원"이라 함은 회원에 가입하지 않고 회사가 제공하는 서비스를 이용하는 자를 말합니다.</li>
@@ -91,7 +91,7 @@ export default function TermsPage() {
 
           <section className="bg-gray-50 p-6 rounded-lg">
             <p className="text-sm text-gray-600">
-              본 약관은 2025년 12월 1일부터 시행됩니다.
+              본 약관은 2026년 4월 1일부터 시행됩니다.
             </p>
           </section>
         </div>

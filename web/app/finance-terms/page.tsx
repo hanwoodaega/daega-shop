@@ -28,7 +28,7 @@ export default function FinanceTermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">제1조 (목적)</h2>
             <p className="text-gray-700 leading-relaxed">
-              본 약관은 (주)대가(이하 "회사")가 제공하는 전자지급결제대행서비스 및 
+              본 약관은 (주)한우대가(이하 "회사")가 제공하는 전자지급결제대행서비스 및 
               결제대금예치서비스를 이용자가 이용함에 있어 회사와 이용자 사이의 전자금융거래에 
               관한 기본적인 사항을 정함을 목적으로 합니다.
             </p>
@@ -144,7 +144,7 @@ export default function FinanceTermsPage() {
 
           <section className="bg-gray-50 p-6 rounded-lg">
             <p className="text-sm text-gray-600">
-              본 약관은 2025년 12월 1일부터 시행됩니다.
+              본 약관은 2026년 4월 1일부터 시행됩니다.
             </p>
           </section>
         </div>

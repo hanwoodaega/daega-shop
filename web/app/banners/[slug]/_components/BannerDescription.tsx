@@ -17,12 +17,12 @@ export default function BannerDescription({
     <div className="mb-6">
       <div className="mb-3">
         {subtitle_black && (
-          <h2 className="text-2xl md:text-3xl font-bold text-black mb-1 whitespace-pre-line tracking-tight leading-tight">
+          <h2 className="text-xl md:text-2xl font-bold text-black mb-1 whitespace-pre-line tracking-tight leading-tight">
             {subtitle_black}
           </h2>
         )}
         {subtitle_red && (
-          <h2 className="text-2xl md:text-3xl font-bold text-red-600 mb-0 whitespace-pre-line tracking-tight leading-tight">
+          <h2 className="text-xl md:text-2xl font-bold text-red-600 mb-0 whitespace-pre-line tracking-tight leading-tight">
             {subtitle_red}
           </h2>
         )}

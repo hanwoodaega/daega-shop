@@ -79,4 +79,3 @@ export async function requireActiveUserFromServer(): Promise<ActiveUserResult> {
     return { error: 'unauthorized' }
   }
 }
-

@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const CUSTOMER_SERVICE_BUTTONS = [
-  { href: 'tel:010-3941-1223', label: '전화걸기', external: false },
-  { href: 'http://pf.kakao.com/_your_channel_id', label: '1:1 카톡', external: true },
+  { href: 'tel:061-724-1223', label: '전화걸기', external: false },
+  { href: 'http://pf.kakao.com/_xaDQAX/chat', label: '1:1 카톡', external: true },
 ]
 
 const FOOTER_LINKS = [
@@ -16,8 +16,8 @@ const FOOTER_LINKS = [
 ]
 
 const COMPANY_INFO = [
-  { value: '(주)대가', bold: true },
-  { value: '대표자: 김영락 | 사업자등록번호: 000-00-00000' },
+  { value: '(주)한우대가', bold: true },
+  { value: '대표자: 김영락 | 사업자등록번호: 174-86-03355' },
   { value: '통신판매업신고: 제0000-서울-0000호' },
   { value: '개인정보보호책임자: 김다민 | 주소: 전남 순천시 연향상가 7길 7' },
 ]
@@ -32,7 +32,7 @@ export default function Footer() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col space-y-4">
             <div className="flex items-center justify-between">
-              <h4 className="font-semibold text-base">(주)대가 고객센터</h4>
+              <h4 className="font-semibold text-base">(주)한우대가 고객센터</h4>
               <div className="flex">
                 {CUSTOMER_SERVICE_BUTTONS.map((button, index) => (
                   <a 
@@ -88,7 +88,7 @@ export default function Footer() {
               ))}
             </div>
             <p className="text-xs text-gray-500 mb-4">
-              &copy; (주)대가. All rights reserved.
+              &copy; (주)한우대가. All rights reserved.
             </p>
           </div>
         </div>

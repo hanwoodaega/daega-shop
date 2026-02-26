@@ -24,12 +24,12 @@ export default function BannerSectionUI({ banners }: BannerSectionUIProps) {
                 {/* 부제목 영역 */}
                 <div className="mb-3">
                   {banner.subtitle_black && (
-                    <h2 className="text-2xl md:text-3xl font-bold text-black mb-0 whitespace-pre-line tracking-tight leading-tight">
+                    <h2 className="text-xl md:text-2xl font-bold text-black mb-0 whitespace-pre-line tracking-tight leading-tight">
                       {banner.subtitle_black}
                     </h2>
                   )}
                   {banner.subtitle_red && (
-                    <h2 className="text-2xl md:text-3xl font-bold text-red-600 whitespace-pre-line tracking-tight leading-tight">
+                    <h2 className="text-xl md:text-2xl font-bold text-red-600 whitespace-pre-line tracking-tight leading-tight">
                       {banner.subtitle_red}
                     </h2>
                   )}

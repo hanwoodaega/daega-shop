@@ -27,7 +27,7 @@ export default function PrivacyPage() {
         <div className="prose prose-slate max-w-none space-y-8">
           <section>
             <p className="text-gray-700 leading-relaxed mb-6">
-              (주)대가(이하 "회사")는 개인정보보호법에 따라 이용자의 개인정보 보호 및 권익을 
+              (주)한우대가(이하 "회사")는 개인정보보호법에 따라 이용자의 개인정보 보호 및 권익을 
               보호하고 개인정보와 관련한 이용자의 고충을 원활하게 처리할 수 있도록 다음과 같은 
               처리방침을 두고 있습니다.
             </p>
@@ -131,7 +131,7 @@ export default function PrivacyPage() {
 
           <section className="bg-gray-50 p-6 rounded-lg">
             <p className="text-sm text-gray-600">
-              본 방침은 2025년 12월 1일부터 시행됩니다.
+              본 방침은 2026년 4월 1일부터 시행됩니다.
             </p>
           </section>
         </div>
