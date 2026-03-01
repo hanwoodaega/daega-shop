@@ -23,7 +23,7 @@ const CATEGORY_IMAGES: { [key: string]: string } = {
 
 export default function CategoryGrid({ selectedCategory = '전체' }: CategoryGridProps) {
   return (
-    <div className="grid grid-cols-5 gap-4">
+    <div className="grid grid-cols-5 lg:grid-cols-9 gap-4">
       {CATEGORIES.map((cat, idx) => (
         <Link
           key={cat}

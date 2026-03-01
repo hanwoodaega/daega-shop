@@ -10,6 +10,7 @@ import FreeShippingProgress from '@/components/common/FreeShippingProgress'
 import PromotionModalWrapper from '@/components/common/PromotionModalWrapper'
 import { isSoldOut } from '@/lib/product/product-utils'
 import { useCart } from '@/lib/cart'
+import { formatPhoneNumber } from '@/lib/utils/format-phone'
 import CartHeader from './_components/CartHeader'
 import DeliveryMethodSelector from './_components/DeliveryMethodSelector'
 import CartItemList from './_components/CartItemList'
@@ -73,7 +74,9 @@ function CartPageContent() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-base font-bold text-gray-900">{defaultAddress.name}</h3>
+                    <h3 className="text-base font-bold text-gray-900">
+                      {defaultAddress.address.split('(')[0].trim()}
+                    </h3>
                     {defaultAddress.is_default && (
                       <span className="text-xs bg-primary-100 text-primary-800 px-2 py-0.5 rounded">기본</span>
                     )}
@@ -81,6 +84,9 @@ function CartPageContent() {
                   <p className="text-sm text-gray-700">
                     {defaultAddress.address}
                     {defaultAddress.address_detail && ` ${defaultAddress.address_detail}`}
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-gray-900">
+                    {defaultAddress.recipient_name} | {formatPhoneNumber(defaultAddress.recipient_phone)}
                   </p>
                 </div>
                 <button

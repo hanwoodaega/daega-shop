@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -15,6 +15,18 @@ export default function HeroSlider() {
   const [slides, setSlides] = useState<HeroSlide[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [isDesktop, setIsDesktop] = useState(false)
+
+  // 화면 크기 기준으로 데스크톱 여부 판별 (lg 기준)
+  useEffect(() => {
+    const updateIsDesktop = () => {
+      if (typeof window === 'undefined') return
+      setIsDesktop(window.innerWidth >= 1024)
+    }
+    updateIsDesktop()
+    window.addEventListener('resize', updateIsDesktop)
+    return () => window.removeEventListener('resize', updateIsDesktop)
+  }, [])
 
   useEffect(() => {
     const fetchSlides = async () => {
@@ -34,96 +46,149 @@ export default function HeroSlider() {
     fetchSlides()
   }, [])
 
-  // 자동 슬라이드 전환
+  const slideCount = slides.length
+
+  // 현재 인덱스를 기준으로, 모바일/탭은 1장, PC는 4장을 보여줌
+  const visibleSlides = useMemo(() => {
+    if (slideCount === 0) return [] as HeroSlide[]
+
+    if (!isDesktop) {
+      return [slides[currentIndex]]
+    }
+
+    const group: HeroSlide[] = []
+    const maxTiles = Math.min(4, slideCount)
+    for (let offset = 0; offset < maxTiles; offset++) {
+      const idx = (currentIndex + offset) % slideCount
+      group.push(slides[idx])
+    }
+    return group
+  }, [slides, slideCount, isDesktop, currentIndex])
+
+  // 자동 슬라이드 전환 (4초마다 한 장씩)
   useEffect(() => {
-    if (slides.length <= 1) return
+    if (slideCount <= 1) return
 
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % slides.length)
-    }, 5000) // 5초마다 전환
+      setCurrentIndex((prev) => (prev + 1) % slideCount)
+    }, 4000)
 
     return () => clearInterval(interval)
-  }, [slides.length])
+  }, [slideCount])
 
-  if (loading) {
-    return (
-      <section className="relative bg-black text-white overflow-hidden">
-        <div className="relative w-full" style={{ aspectRatio: '3 / 2' }}>
-          <div className="absolute inset-0 bg-gray-200 animate-pulse" />
-        </div>
-      </section>
-    )
+  const handlePrev = () => {
+    if (slideCount <= 1) return
+    setCurrentIndex((prev) => (prev - 1 + slideCount) % slideCount)
   }
 
-  // 슬라이드가 없으면 기본 이미지 표시
-  if (slides.length === 0) {
+  const handleNext = () => {
+    if (slideCount <= 1) return
+    setCurrentIndex((prev) => (prev + 1) % slideCount)
+  }
+
+  const renderTile = (slide: HeroSlide, key: string) => {
+    const image = (
+      <Image
+        src={slide.image_url}
+        alt="프로모션 배너"
+        fill
+        className="object-cover"
+        // PC에서는 가운데 2장(각 480px), 모바일/탭에서는 전체 너비 사용
+        sizes="(min-width: 1024px) 480px, 100vw"
+        priority
+      />
+    )
+
+    if (slide.link_url) {
+      return (
+        <Link
+          key={key}
+          href={slide.link_url}
+          prefetch={false}
+          className="relative block w-full h-full overflow-hidden"
+        >
+          {image}
+        </Link>
+      )
+    }
+
     return (
-      <section className="relative bg-black text-white overflow-hidden">
-        <div className="relative w-full" style={{ aspectRatio: '3 / 2' }}>
-          <Image
-            src="/images/hero.jpg"
-            alt="히어로 이미지"
-            fill
-            className="object-cover"
-            sizes="100vw"
-            priority
-          />
-        </div>
-      </section>
+      <div key={key} className="relative w-full h-full overflow-hidden">
+        {image}
+      </div>
     )
   }
 
   return (
-    <section className="relative bg-black text-white overflow-hidden">
-      <div className="relative w-full" style={{ aspectRatio: '3 / 2' }}>
-        {slides.map((slide, index) => {
-          const slideContent = (
-            <div
-              className={`absolute inset-0 transition-opacity duration-1000 ${
-                index === currentIndex ? 'opacity-100' : 'opacity-0'
-              }`}
-            >
-              <Image
-                src={slide.image_url}
-                alt={`히어로 이미지 ${index + 1}`}
-                fill
-                className="object-cover"
-                sizes="100vw"
-                priority={index === 0}
-              />
-            </div>
-          )
-
-          if (slide.link_url) {
-            return (
-              <Link
-                key={slide.id}
-                href={slide.link_url}
-                prefetch={false}
-                className="block absolute inset-0"
-              >
-                {slideContent}
-              </Link>
-            )
-          }
-
-          return <div key={slide.id}>{slideContent}</div>
-        })}
-        
-        {/* 인디케이터 */}
-        {slides.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
-            {slides.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  index === currentIndex ? 'bg-white w-6' : 'bg-white/50'
-                }`}
-                aria-label={`슬라이드 ${index + 1}로 이동`}
-              />
-            ))}
+    <section className="relative overflow-hidden">
+      <div className="w-full relative">
+        {/* 모바일/태블릿: 3:2 배너 1장 */}
+        {visibleSlides[0] && (
+          <div className="relative w-full aspect-[3/2] lg:hidden">
+            {renderTile(visibleSlides[0], visibleSlides[0].id)}
           </div>
+        )}
+
+        {/* PC: 가운데 2장은 960px 고정, 양옆은 화면 여유에 따라 노출 */}
+        <div className="hidden lg:block px-2 py-2">
+          <div className="relative max-w-[960px] mx-auto h-[320px] overflow-visible">
+            {visibleSlides.map((slide, idx) => {
+              const offset = idx - 1 // -1,0,1,2
+              return (
+                <div
+                  key={slide.id}
+                  className="absolute top-0 w-[480px] h-[320px] transition-transform duration-700"
+                  style={{
+                    left: `calc(${offset} * (480px + 16px))`,
+                    transitionDelay: `${idx * 120}ms`,
+                  }}
+                >
+                  {renderTile(slide, `${slide.id}-${idx}`)}
+                  {idx === 2 && slideCount > 1 && (
+                    <div className="absolute bottom-2 right-2 px-2 py-1 rounded-full bg-black/60 text-white text-xs font-medium">
+                      {currentIndex + 1}/{slideCount}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+            {/* 좌/우 화살표 (960px 영역 양옆) */}
+            {slideCount > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  aria-label="이전 슬라이드"
+                  className="absolute left-0 top-1/2 -translate-x-10 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white transition"
+                >
+                  <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  aria-label="다음 슬라이드"
+                  className="absolute right-0 top-1/2 translate-x-10 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white transition"
+                >
+                  <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* 인디케이터: 현재 이미지 / 전체 이미지 (모바일/탭: 오른쪽 하단, PC: 3번째 타일) */}
+        {slideCount > 1 && (
+          <>
+            {/* 모바일/탭 */}
+            <div className="absolute bottom-2 right-3 px-2 py-1 rounded-full bg-black/60 text-white text-xs font-medium lg:hidden">
+              {currentIndex + 1}/{slideCount}
+            </div>
+          </>
         )}
       </div>
     </section>

@@ -105,6 +105,8 @@ export async function POST(request: NextRequest) {
       gift_card_design: payload.gift_card_design,
       payment_method: payload.payment_method || 'toss_card',
     }
+    orderInsertData.toss_order_id = orderId
+    orderInsertData.toss_payment_key = `MOCK_${orderId}`
 
     if (payload.is_gift) {
       orderInsertData.gift_token = giftToken

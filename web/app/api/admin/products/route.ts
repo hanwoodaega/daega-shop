@@ -9,6 +9,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const category = searchParams.get('category')
   const tag = searchParams.get('tag')
+  const status = searchParams.get('status')
   const q = searchParams.get('q') || ''
   const page = Math.max(1, Number(searchParams.get('page') || '1'))
   const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit') || '20')))
@@ -42,8 +43,12 @@ export async function GET(request: Request) {
   let query = supabaseAdmin
     .from('products')
     .select(selectFields, { count: 'exact' })
-    .neq('status', 'deleted') // deleted 상태 제외
     .order('created_at', { ascending: false })
+  if (status && status !== 'all') {
+    query = query.eq('status', status)
+  } else {
+    query = query.neq('status', 'deleted') // 기본은 deleted 제외
+  }
   if (category && category !== '전체') {
     query = query.eq('category', category)
   }
@@ -55,40 +60,11 @@ export async function GET(request: Request) {
   const { data, error, count } = await query.range(from, to)
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
-  const now = new Date().toISOString()
-  const { data: activeTimedeal } = await supabaseAdmin
-    .from('timedeals')
-    .select('id')
-    .lte('start_at', now)
-    .gte('end_at', now)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  const timedealMap = new Map<string, number>()
-  if (activeTimedeal && data && data.length > 0) {
-    const productIds = data.map((product: any) => product.id)
-    const { data: timedealProducts } = await supabaseAdmin
-      .from('timedeal_products')
-      .select('product_id, discount_percent')
-      .eq('timedeal_id', activeTimedeal.id)
-      .in('product_id', productIds)
-
-    if (timedealProducts) {
-      timedealProducts.forEach((tp: any) => {
-        timedealMap.set(tp.product_id, tp.discount_percent || 0)
-      })
-    }
-  }
-
   const items = (data || []).map((product: any) => {
     const promotion = extractActivePromotion(product)
-    const timedealDiscount = timedealMap.get(product.id) || 0
 
     let promotionLabel: string | null = null
-    if (timedealDiscount > 0) {
-      promotionLabel = `타임딜 ${timedealDiscount}%`
-    } else if (promotion?.is_active && promotion?.type === 'bogo' && promotion?.buy_qty) {
+    if (promotion?.is_active && promotion?.type === 'bogo' && promotion?.buy_qty) {
       promotionLabel = `프로모션 ${promotion.buy_qty}+1`
     } else if (promotion?.is_active && promotion?.type === 'percent' && promotion?.discount_percent) {
       promotionLabel = `프로모션 ${promotion.discount_percent}%`
@@ -100,7 +76,6 @@ export async function GET(request: Request) {
       promotion_type: promotion?.type || null,
       promotion_discount_percent: promotion?.discount_percent || null,
       promotion_buy_qty: promotion?.buy_qty || null,
-      timedeal_discount_percent: timedealDiscount || null,
     }
   })
 

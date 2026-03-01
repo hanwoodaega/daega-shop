@@ -25,12 +25,6 @@ const managementCards: AdminCard[] = [
     accent: 'bg-fuchsia-100 text-fuchsia-700',
   },
   {
-    title: '타임딜 관리',
-    description: '한정 재고, 초특가 프로모션을 빠르게 세팅하세요.',
-    href: '/admin/timedeals',
-    accent: 'bg-orange-100 text-orange-700',
-  },
-  {
     title: '주문 관리',
     description: '주문 상태 변경, 리뷰 모니터링, 고객 응대까지 한번에.',
     href: '/admin/orders',

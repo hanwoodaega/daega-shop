@@ -32,6 +32,7 @@ export function useAdminProducts() {
     items: [],
     filterCategory: '전체',
     search: '',
+    filterStatus: 'all',
     page: 1,
     total: 0,
   })
@@ -49,6 +50,9 @@ export function useAdminProducts() {
       const params = new URLSearchParams()
       if (listState.filterCategory && listState.filterCategory !== '전체') {
         params.set('category', listState.filterCategory)
+      }
+      if (listState.filterStatus && listState.filterStatus !== 'all') {
+        params.set('status', listState.filterStatus)
       }
       if (listState.search.trim()) {
         params.set('q', listState.search.trim())
@@ -75,14 +79,14 @@ export function useAdminProducts() {
     } finally {
       setUIState(prev => ({ ...prev, loadingList: false }))
     }
-  }, [listState.filterCategory, listState.search, listState.page])
+  }, [listState.filterCategory, listState.filterStatus, listState.search, listState.page])
 
   // page / category 변경 시 자동 조회
   // search는 엔터/버튼으로만 조회 (자동 X)
   useEffect(() => {
     fetchList()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listState.page, listState.filterCategory])
+  }, [listState.page, listState.filterCategory, listState.filterStatus])
 
   const updateFormField = useCallback(<K extends keyof ProductFormData>(
     field: K,
@@ -167,7 +171,8 @@ export function useAdminProducts() {
   const toggleSoldOut = useCallback(async (productId: string, currentStatus: string) => {
     setTogglingSoldOut(productId)
     try {
-      const newStatus = currentStatus === 'soldout' ? 'active' : 'soldout'
+      const newStatus =
+        currentStatus === 'soldout' || currentStatus === 'deleted' ? 'active' : 'soldout'
       const res = await fetch(`/api/admin/products/${productId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

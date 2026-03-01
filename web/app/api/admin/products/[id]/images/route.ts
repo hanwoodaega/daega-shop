@@ -62,6 +62,7 @@ export async function POST(
         .select('priority')
         .eq('product_id', id)
         .order('priority', { ascending: false })
+        .order('created_at', { ascending: true })
         .limit(1)
       
       finalPriority = existingImages && existingImages.length > 0

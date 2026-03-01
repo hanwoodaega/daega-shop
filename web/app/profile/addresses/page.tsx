@@ -22,7 +22,6 @@ export default function AddressesPage() {
   const [editingAddress, setEditingAddress] = useState<Address | null>(null)
   
   const [formData, setFormData] = useState({
-    name: '',
     recipient_name: '',
     recipient_phone: '',
     zipcode: '',
@@ -70,7 +69,6 @@ export default function AddressesPage() {
   const handleOpenAddModal = () => {
     setEditingAddress(null)
     setFormData({
-      name: '',
       recipient_name: '',
       recipient_phone: '',
       zipcode: '',
@@ -85,7 +83,6 @@ export default function AddressesPage() {
   const handleEditAddress = (address: Address) => {
     setEditingAddress(address)
     setFormData({
-      name: address.name,
       recipient_name: address.recipient_name,
       recipient_phone: address.recipient_phone,
       zipcode: address.zipcode || '',
@@ -102,9 +99,10 @@ export default function AddressesPage() {
     setSaving(true)
 
     try {
-      // 배송지명이 없으면 기본값 설정
-      const addressName = formData.name.trim() || 
-        (formData.is_default ? '기본 배송지' : `배송지 ${addresses.length + 1}`)
+      // 저장 시 배송지명 자동 생성: 수정 시 기존 유지, 추가 시 기본 배송지 또는 배송지 N
+      const addressName = editingAddress
+        ? editingAddress.name
+        : (formData.is_default ? '기본 배송지' : `배송지 ${addresses.length + 1}`)
 
       const addressData = {
         name: addressName,
@@ -170,7 +168,7 @@ export default function AddressesPage() {
       }
 
       await fetchAddresses()
-      toast.success('배송지가 삭제되었습니다.')
+      toast.success('배송지가 삭제되었습니다.', { id: 'address-delete' })
     } catch (error: any) {
       console.error('배송지 삭제 실패:', error)
       toast.error(error.message || '배송지 삭제에 실패했습니다.')
@@ -294,13 +292,14 @@ export default function AddressesPage() {
       
       <main className="flex-1 container mx-auto px-4 py-4 pb-24">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center">
+          <div className="flex items-center text-base font-semibold text-gray-900">
+            배송지 목록
           </div>
           <button
             onClick={handleOpenAddModal}
-            className="bg-white text-red-600 border border-red-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-50 transition"
+            className="bg-white text-red-600 border border-red-600 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-blue-50 transition"
           >
-            + 배송지 추가
+            + 배송지추가
           </button>
         </div>
 
@@ -322,10 +321,12 @@ export default function AddressesPage() {
               <div key={address.id} className="bg-white rounded-lg shadow-md p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-gray-900">{address.name}</h3>
+                    <h3 className="text-base font-bold text-gray-900">
+                      {address.address.split('(')[0].trim()}
+                    </h3>
                     {address.is_default && (
                       <span className="bg-primary-800 text-white text-xs px-2 py-0.5 rounded">
-                        기본배송지
+                        기본
                       </span>
                     )}
                   </div>
@@ -336,28 +337,28 @@ export default function AddressesPage() {
                     >
                       수정
                     </button>
-                    <button
-                      onClick={() => handleDeleteAddress(address.id)}
-                      className="text-sm text-red-600 hover:underline"
-                    >
-                      삭제
-                    </button>
+                    {!address.is_default && (
+                      <button
+                        onClick={() => handleDeleteAddress(address.id)}
+                        className="text-sm text-red-600 hover:underline"
+                      >
+                        삭제
+                      </button>
+                    )}
                   </div>
                 </div>
                 
                 <div className="space-y-1 text-sm text-gray-700">
-                  <p className="font-medium">{address.recipient_name} | {formatPhoneNumber(address.recipient_phone)}</p>
                   <p className="text-gray-600">
                     {address.zipcode && `(${address.zipcode}) `}
                     {address.address}
                     {address.address_detail && `, ${address.address_detail}`}
                   </p>
-                  {address.delivery_note && (
-                    <p className="text-gray-500 text-xs mt-1">
-                      💬 {address.delivery_note}
-                    </p>
-                  )}
                 </div>
+
+                <p className="mt-2 text-sm font-medium text-gray-900">
+                  {address.recipient_name} | {formatPhoneNumber(address.recipient_phone)}
+                </p>
 
                 {!address.is_default && (
                   <button
@@ -385,28 +386,21 @@ export default function AddressesPage() {
             <form onSubmit={handleSaveAddress} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  배송지명
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  placeholder="예: 집, 회사, 친척집 (선택사항)"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  수령인 *
+                  받는 분 *
                 </label>
                 <input
                   type="text"
                   value={formData.recipient_name}
-                  onChange={(e) => setFormData({ ...formData, recipient_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      recipient_name: e.target.value.slice(0, 10),
+                    })
+                  }
                   required
+                  maxLength={10}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  placeholder="홍길동"
+                  placeholder="최대 10자 이내"
                 />
               </div>
 
@@ -419,18 +413,28 @@ export default function AddressesPage() {
                   value={formData.recipient_phone}
                   onChange={(e) => {
                     const numbers = e.target.value.replace(/[^0-9]/g, '')
-                    setFormData({ ...formData, recipient_phone: numbers })
+                    let formatted = numbers
+
+                    if (numbers.length > 3 && numbers.length <= 7) {
+                      // 0101234 -> 010-1234
+                      formatted = `${numbers.slice(0, 3)}-${numbers.slice(3)}`
+                    } else if (numbers.length > 7) {
+                      // 01012345678 -> 010-1234-5678
+                      formatted = `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`
+                    }
+
+                    setFormData({ ...formData, recipient_phone: formatted })
                   }}
                   required
-                  maxLength={11}
+                  maxLength={13}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   placeholder="01012345678"
                 />
               </div>
 
-              <div>
+              <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  우편번호
+                  주소 *
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -438,7 +442,7 @@ export default function AddressesPage() {
                     value={formData.zipcode}
                     readOnly
                     className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                    placeholder="우편번호"
+                    placeholder=""
                   />
                   <button
                     type="button"
@@ -448,33 +452,30 @@ export default function AddressesPage() {
                     주소찾기
                   </button>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  주소 *
-                </label>
                 <input
                   type="text"
                   value={formData.address}
                   readOnly
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                  placeholder="주소찾기 버튼을 클릭하세요"
+                  placeholder=""
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  상세주소
-                </label>
                 <input
                   type="text"
                   id="address_detail"
                   value={formData.address_detail}
-                  onChange={(e) => setFormData({ ...formData, address_detail: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      address_detail: e.target.value.slice(0, 15),
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  placeholder="101동 101호"
+                  placeholder="상세주소를 입력해주세요"
+                  maxLength={15}
                 />
               </div>
 
@@ -484,10 +485,16 @@ export default function AddressesPage() {
                 </label>
                 <textarea
                   value={formData.delivery_note}
-                  onChange={(e) => setFormData({ ...formData, delivery_note: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      delivery_note: e.target.value.slice(0, 50),
+                    })
+                  }
                   rows={2}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  placeholder="예: 공동현관 비밀번호 #1234, 문 앞에 놓아주세요"
+                  placeholder="예: 공동현관 비밀번호 #1234"
+                  maxLength={50}
                 />
               </div>
 

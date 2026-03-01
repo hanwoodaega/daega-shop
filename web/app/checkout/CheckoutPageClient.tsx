@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Script from 'next/script'
 import toast from 'react-hot-toast'
 import { formatPrice } from '@/lib/utils/utils'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -18,7 +17,7 @@ import {
   DeliveryFormQuick,
   DeliveryFormRegular,
   GiftMessageCard,
-  PaymentMethodSelector,
+  TossPaymentWidget,
   OrderSummaryBox,
   CheckoutBottomBar,
 } from './_components'
@@ -48,7 +47,6 @@ function CheckoutPageContent() {
     usedPoints,
     loadingPoints,
     usedPointsInput,
-    paymentMethod,
     giftData,
     currentStep,
     items,
@@ -63,7 +61,6 @@ function CheckoutPageContent() {
     setShowCouponModal,
     setUsedPoints,
     setUsedPointsInput,
-    setPaymentMethod,
     setGiftData,
     setCurrentStep,
     handleSubmit,
@@ -106,6 +103,7 @@ function CheckoutPageContent() {
   } = derived
 
   const totalGiftSteps = 3
+  const isPaymentStepVisible = !isGiftMode || currentStep === 3
 
   useEffect(() => {
     setCurrentStep(1)
@@ -127,10 +125,9 @@ function CheckoutPageContent() {
         ...prev,
         name: prev.name || userProfile.name || '',
         phone: prev.phone || userProfile.phone || '',
-        email: prev.email || user?.email || '',
       }))
     }
-  }, [userProfile, user?.email, setFormData])
+  }, [userProfile, setFormData])
 
   if (loadingDefaultAddress) {
     return (
@@ -179,7 +176,6 @@ function CheckoutPageContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Script src="https://js.tosspayments.com/v1" strategy="afterInteractive" />
       <CheckoutHeader
         isGiftMode={isGiftMode}
         currentStep={currentStep}
@@ -377,10 +373,11 @@ function CheckoutPageContent() {
               </div>
               )}
 
-              {(!isGiftMode || currentStep === 3) && (
-                <PaymentMethodSelector
-                  paymentMethod={paymentMethod}
-                  onPaymentMethodChange={setPaymentMethod}
+              {isPaymentStepVisible && user?.id && (
+                <TossPaymentWidget
+                  amount={orderTotal}
+                  customerKey={user.id}
+                  onWidgetsReady={actions.setTossWidgets}
                 />
               )}
             </div>

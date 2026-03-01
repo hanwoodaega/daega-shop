@@ -80,6 +80,9 @@ export default function HeroModal({
         <div className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">이미지 *</label>
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+              가로로 넓은 이미지를 사용해 주세요 (권장: 1920×720 이상). 모바일에서는 3:2, PC에서는 4:1로 잘려 표시되므로, 중요한 요소는 가운데에 두는 것을 권장합니다.
+            </p>
             <input
               ref={imageFileInputRef}
               type="file"

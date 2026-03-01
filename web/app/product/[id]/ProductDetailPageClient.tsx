@@ -96,7 +96,6 @@ export default function ProductDetailPageClient({ productId }: ProductDetailPage
     if (!product) return 0
     const pricing = getFinalPricing({
       basePrice: product.price,
-      timedealDiscountPercent: (product as any).timedeal_discount_percent || 0,
       promotion: product.promotion,
     })
     return pricing.discountPercent
@@ -228,10 +227,7 @@ export default function ProductDetailPageClient({ productId }: ProductDetailPage
             onReviewClick={handleReviewClick}
           />
           
-          <ProductPrice
-            product={product}
-            timedealDiscountPercent={(product as any).timedeal_discount_percent || 0}
-          />
+          <ProductPrice product={product} />
         </div>
       </main>
       

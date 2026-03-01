@@ -87,35 +87,8 @@ export async function GET(
       })
       .filter((p: any) => p && p.id && p.status !== 'deleted')
 
-    // 타임딜 할인율 맵 조회
-    const now = new Date().toISOString()
-    const { data: activeTimedeal } = await supabase
-      .from('timedeals')
-      .select('id')
-      .lte('start_at', now)
-      .gte('end_at', now)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    const timedealDiscountMap = new Map<string, number>()
-    if (activeTimedeal && rawProducts.length > 0) {
-      const productIds = rawProducts.map((p: any) => p.id)
-      const { data: timedealProducts } = await supabase
-        .from('timedeal_products')
-        .select('product_id, discount_percent')
-        .eq('timedeal_id', activeTimedeal.id)
-        .in('product_id', productIds)
-
-      if (timedealProducts) {
-        timedealProducts.forEach((tp: any) => {
-          timedealDiscountMap.set(tp.product_id, tp.discount_percent || 0)
-        })
-      }
-    }
-
     // 상품 데이터 보강
-    let products = await enrichProductsServer(rawProducts, timedealDiscountMap)
+    let products = await enrichProductsServer(rawProducts)
 
     // 가격 정렬 (클라이언트 사이드에서 처리 - Supabase의 join 정렬 제한)
     if (sort === 'price_asc') {

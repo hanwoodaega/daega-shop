@@ -78,44 +78,74 @@ export default function CollectionSectionUI({
   }
 
   return (
-    <section className="pt-6 overflow-x-hidden" style={{ backgroundColor: theme.background || '#F3E9D7' }}>
+    <section className="pt-6 lg:pt-3 overflow-x-hidden" style={{ backgroundColor: theme.background || '#F3E9D7' }}>
       <div className="container mx-auto px-2">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex flex-col gap-1 w-[96%] mx-auto">
-              {collection.description && (
-                <div className="flex items-center justify-between">
-                  <p 
-                    className="md:text-[26px] text-[22px] flex-1" 
-                    style={{ 
-                      color: theme.description_color || '#7A6F62',
-                      fontFamily: 'Pretendard, sans-serif',
-                      fontWeight: 700,
-                      lineHeight: '1.5',
-                      letterSpacing: '-0.5px',
-                      whiteSpace: 'pre-line'
-                    }}
-                  >
-                    {collection.description}
-                  </p>
-                  <Link href={getViewAllLink()} prefetch={false}>
-                    <button className="flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 hover:opacity-80 transition flex-shrink-0" style={{ color: theme.description_color || '#7A6F62' }}>
-                      <span>전체보기</span>
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  </Link>
-                </div>
-              )}
+        <div className="mb-6 lg:mb-0 lg:pb-0">
+          <div className="w-[96%] mx-auto">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex-1 text-left lg:py-1">
+                {collection.title && (
+                  <div className="hidden lg:flex items-center">
+                    <h2
+                      className="text-[22px] lg:text-[28px]"
+                      style={{
+                        color: theme.title_color || '#2A2A2A',
+                        fontFamily: 'Pretendard, sans-serif',
+                        fontWeight: 700,
+                        lineHeight: '1.4',
+                        letterSpacing: '-0.5px',
+                        whiteSpace: 'pre-line',
+                      }}
+                    >
+                      {collection.title}
+                    </h2>
+                    <Link href={getViewAllLink()} prefetch={false} aria-label="전체보기" className="ml-2">
+                      <button
+                        className="flex items-center px-1.5 py-0.5 hover:opacity-80 transition"
+                        style={{ color: theme.description_color || '#7A6F62' }}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </Link>
+                  </div>
+                )}
+                {collection.description && (
+                  <div className="mt-0.5 lg:mt-1 flex items-center justify-between gap-3 lg:flex-col lg:items-start">
+                    <p
+                      className="text-[20px] lg:text-[21px] flex-1 whitespace-pre-line lg:whitespace-normal"
+                      style={{
+                        color: theme.description_color || '#7A6F62',
+                        fontFamily: 'Pretendard, sans-serif',
+                        fontWeight: 600,
+                        lineHeight: '1.6',
+                        letterSpacing: '-0.3px',
+                      }}
+                    >
+                      {collection.description}
+                    </p>
+                    <Link href={getViewAllLink()} prefetch={false} aria-label="전체보기" className="lg:hidden">
+                      <button
+                        className="flex items-center px-1.5 py-0.5 hover:opacity-80 transition flex-shrink-0"
+                        style={{ color: theme.description_color || '#7A6F62' }}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </Link>
+                  </div>
+                )}
+              </div>
               {collection.image_url && (
-                <div className="mt-2 mb-0 relative w-full" style={{ aspectRatio: '16 / 9' }}>
+                <div className="relative w-full lg:w-[38%]" style={{ aspectRatio: '16 / 9' }}>
                   <Image
                     src={collection.image_url}
                     alt={collection.title || collection.description || '컬렉션 이미지'}
                     fill
                     className="object-cover rounded-sm"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 100vw, 100vw"
+                    sizes="(max-width: 1024px) 100vw, 46vw"
                   />
                 </div>
               )}
@@ -124,10 +154,12 @@ export default function CollectionSectionUI({
         </div>
       </div>
 
-      <div className="bg-white pt-6 pb-4 -mx-2 px-3 relative z-10">
-        <div className="grid grid-cols-2 gap-3 px-3 bg-white">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+      <div className="bg-white pt-6 pb-4 -mx-2 px-3 relative z-10 lg:mt-3">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 px-3 bg-white">
+          {products.map((product, index) => (
+            <div key={product.id} className={index >= 5 ? 'lg:hidden' : undefined}>
+              <ProductCard product={product} />
+            </div>
           ))}
         </div>
         

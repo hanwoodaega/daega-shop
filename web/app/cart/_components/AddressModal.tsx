@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Address } from '@/lib/address/useAddress'
+import { formatPhoneNumber } from '@/lib/utils/format-phone'
 
 interface AddressModalProps {
   show: boolean
@@ -68,7 +69,10 @@ export default function AddressModal({
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-bold text-gray-900">{address.name}</h4>
+                    <h4 className="font-bold text-gray-900">
+                      {address.recipient_name}
+                      {address.recipient_phone && ` | ${formatPhoneNumber(address.recipient_phone)}`}
+                    </h4>
                     {address.is_default && (
                       <span className="text-xs bg-primary-800 text-white px-2 py-0.5 rounded">기본</span>
                     )}
@@ -80,11 +84,6 @@ export default function AddressModal({
                     {address.address}
                     {address.address_detail && ` ${address.address_detail}`}
                   </p>
-                  {address.recipient_phone && (
-                    <p className="text-sm text-gray-600">
-                      {address.recipient_name} · {address.recipient_phone}
-                    </p>
-                  )}
                 </div>
               ))}
             </div>

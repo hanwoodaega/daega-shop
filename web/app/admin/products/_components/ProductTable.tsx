@@ -46,25 +46,29 @@ export default function ProductTable({
                 </button>
                 <button
                   onClick={() => onToggleSoldOut(product.id, product.status || 'active')}
-                  disabled={togglingSoldOut === product.id || product.status === 'deleted'}
+                  disabled={togglingSoldOut === product.id}
                   className={`text-xs hover:underline ${
-                    product.status === 'soldout'
+                    product.status === 'soldout' || product.status === 'deleted'
                       ? 'text-orange-600'
                       : 'text-gray-600'
-                  } ${product.status === 'deleted' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  }`}
                 >
                   {togglingSoldOut === product.id
                     ? '처리중...'
                     : product.status === 'soldout'
+                    ? '품절취소'
+                    : product.status === 'deleted'
                     ? '판매재개'
                     : '품절처리'}
                 </button>
-                <button
-                  onClick={() => onRemove(product.id)}
-                  className="text-xs text-red-600 hover:underline"
-                >
-                  삭제
-                </button>
+                {product.status !== 'deleted' && (
+                  <button
+                    onClick={() => onRemove(product.id)}
+                    className="text-xs text-red-600 hover:underline"
+                  >
+                    삭제
+                  </button>
+                )}
               </td>
             </tr>
           ))}

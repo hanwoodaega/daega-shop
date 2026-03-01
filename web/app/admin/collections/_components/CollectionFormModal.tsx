@@ -98,11 +98,6 @@ export default function CollectionFormModal({
       return
     }
 
-    if (!formData.image_url || formData.image_url.trim() === '') {
-      toast.error('대표 이미지가 필요합니다')
-      return
-    }
-
     try {
       if (editingCollection) {
         await apiCall('PUT', `/api/admin/collections/${editingCollection.id}`, formData)
@@ -148,7 +143,7 @@ export default function CollectionFormModal({
               value={formData.type}
               onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
               className="w-full px-3 py-2 border rounded-lg"
-              placeholder="예: best, sale, no9, timedeal"
+              placeholder="예: best, sale, no9"
               disabled={!!editingCollection}
               required
             />
@@ -181,7 +176,7 @@ export default function CollectionFormModal({
 
           <div>
             <label className="block text-sm font-medium mb-2">
-              대표 이미지 <span className="text-red-500">*</span>
+              대표 이미지
               <span className="text-xs text-gray-500 ml-2">(16:9 비율 이미지를 권장합니다)</span>
             </label>
             <div className="space-y-2">

@@ -7,12 +7,10 @@ import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/common/PromotionModalWrapper'
-import { TimeDealUI } from '@/components/timedeal/TimeDealUI'
 import ProductCard from '@/components/product/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import { Product } from '@/lib/supabase/supabase'
 import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
-import { useTimeDealStore } from '@/lib/timedeal/timedeal.store'
 
 export default function SalePage() {
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])
@@ -22,9 +20,6 @@ export default function SalePage() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const isFetchingRef = useRef(false)
-  
-  // 타임딜 데이터는 store에서 구독 (폴링 제거)
-  const timedealData = useTimeDealStore((state) => state.timedealData)
 
   const fetchCategoryProducts = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
     if (isFetchingRef.current) return
@@ -120,16 +115,7 @@ export default function SalePage() {
       <Header />
       
       <main className="flex-1">
-        {/* 타임딜 섹션 (타임딜이 있을 때만 표시) */}
-        {timedealData && (
-          <>
-            <TimeDealUI data={timedealData} variant="grid" />
-            {/* 구분선 */}
-            <div className="border-t border-gray-300 my-6"></div>
-          </>
-        )}
-
-        <div className={`container mx-auto px-4 ${timedealData ? 'py-4 pt-6' : 'pt-4 pb-4'}`}>
+        <div className="container mx-auto px-4 pt-4 pb-4">
           <div className="flex justify-between items-center mb-6">
             <h1 
               className="text-2xl md:text-3xl font-semibold"

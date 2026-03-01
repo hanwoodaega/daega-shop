@@ -24,6 +24,7 @@ export interface ProductListState {
   items: Product[]
   filterCategory: string
   search: string
+  filterStatus: 'active' | 'soldout' | 'deleted' | 'all'
   page: number
   total: number
 }

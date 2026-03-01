@@ -4,7 +4,6 @@ import { Product } from '@/lib/supabase/supabase'
 import { throttle } from '@/lib/utils/utils'
 import { Collection } from './collection.types'
 import { fetchCollection, fetchCollectionSection } from './collection.service'
-import { useTimeDealStore } from '@/lib/timedeal/timedeal.store'
 
 interface UseCollectionProductsReturn {
   collection: Collection | null
@@ -213,9 +212,6 @@ export function useCollectionSection(collectionType: string): UseCollectionSecti
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
 
-  // 타임딜인 경우 store에서 데이터 구독 (폴링 제거)
-  const timedealData = useTimeDealStore((state) => state.timedealData)
-
   const fetchProducts = useCallback(async () => {
     try {
       const data = await fetchCollectionSection({
@@ -232,23 +228,50 @@ export function useCollectionSection(collectionType: string): UseCollectionSecti
   }, [collectionType])
 
   useEffect(() => {
-    // 타임딜인 경우 store에서 데이터를 사용
-    if (collectionType === 'timedeal') {
-      if (timedealData?.products) {
-        setProducts(timedealData.products)
-        setLoading(false)
-      } else {
-        setProducts([])
-        setLoading(false)
-      }
-      return
-    }
-
-    // 타임딜이 아닌 경우 기존 로직 유지
     fetchProducts()
-  }, [collectionType, fetchProducts, timedealData])
+  }, [fetchProducts])
 
   return {
+    products,
+    loading,
+  }
+}
+
+// 홈페이지용: 컬렉션 섹션 데이터(컬렉션 정보 포함)
+interface UseCollectionSectionDataReturn {
+  collection: Collection | null
+  products: Product[]
+  loading: boolean
+}
+
+export function useCollectionSectionData(collectionType: string): UseCollectionSectionDataReturn {
+  const [collection, setCollection] = useState<Collection | null>(null)
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchProducts = useCallback(async () => {
+    try {
+      const data = await fetchCollectionSection({
+        collectionType,
+      })
+
+      setCollection(data.collection || null)
+      setProducts(data.products || [])
+    } catch (error) {
+      console.error('컬렉션 섹션 조회 실패:', error)
+      setCollection(null)
+      setProducts([])
+    } finally {
+      setLoading(false)
+    }
+  }, [collectionType])
+
+  useEffect(() => {
+    fetchProducts()
+  }, [fetchProducts])
+
+  return {
+    collection,
     products,
     loading,
   }

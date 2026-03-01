@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { PRODUCT_SELECT_FIELDS, enrichProductsServer } from '@/lib/product/product.service'
-import { getTimedealDiscountPercentMap } from '@/lib/timedeal/timedeal-utils'
 
 // 동적 라우트로 설정 (searchParams 사용)
 export const dynamic = 'force-dynamic'
@@ -76,36 +75,9 @@ export async function GET(request: NextRequest) {
         `name.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%`
       )
     } else if (filter) {
-      // 필터 적용
+      // 필터 적용 (flash-sale 제거됨 - 타임딜 미사용)
       if (filter === 'flash-sale') {
-        // 타임딜 상품 필터: timedeals 테이블에서 활성 타임딜 조회 후 상품 ID 조회
-        const now = new Date().toISOString()
-        const { data: activeTimedeal } = await supabase
-          .from('timedeals')
-          .select('id')
-          .lte('start_at', now)
-          .gte('end_at', now)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        
-        if (activeTimedeal) {
-          const { data: timedealProducts } = await supabase
-            .from('timedeal_products')
-            .select('product_id')
-            .eq('timedeal_id', activeTimedeal.id)
-          
-          const timedealProductIds = timedealProducts?.map((tp: any) => tp.product_id) || []
-          if (timedealProductIds.length > 0) {
-            query = query.in('id', timedealProductIds)
-          } else {
-            // 타임딜 상품이 없으면 빈 결과 반환
-            query = query.eq('id', '00000000-0000-0000-0000-000000000000') // 존재하지 않는 ID로 필터링
-          }
-        } else {
-          // 활성 타임딜이 없으면 빈 결과 반환
-          query = query.eq('id', '00000000-0000-0000-0000-000000000000') // 존재하지 않는 ID로 필터링
-        }
+        query = query.eq('id', '00000000-0000-0000-0000-000000000000')
       }
       // filter=promotion일 때는 inner join으로 이미 필터링됨
     } else if (category && category !== '전체') {
@@ -114,10 +86,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 정렬 적용
-    if (filter === 'flash-sale') {
-      // 타임딜은 가격 순으로 정렬
-      query = query.order('price', { ascending: true })
-    } else if (sort === 'price_asc') {
+    if (sort === 'price_asc') {
       query = query.order('price', { ascending: true })
     } else if (sort === 'price_desc') {
       query = query.order('price', { ascending: false })
@@ -148,13 +117,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // 타임딜 할인율 일괄 조회
-    const productIds = products.map((p: any) => p.id)
-    const timedealDiscountMap = await getTimedealDiscountPercentMap(productIds)
-
     // 공통 유틸리티 함수로 상품 데이터 보강
-    const enrichedProducts = await enrichProductsServer(products, timedealDiscountMap, { 
-      filter: filter || undefined 
+    const enrichedProducts = await enrichProductsServer(products, {
+      filter: filter || undefined
     })
 
     const totalPages = Math.ceil((count || 0) / limit)

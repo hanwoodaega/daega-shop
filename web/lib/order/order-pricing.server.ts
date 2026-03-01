@@ -4,40 +4,6 @@ import { extractActivePromotion, PRODUCT_SELECT_FIELDS } from '../product/produc
 import { GIFT_MIN_AMOUNT } from '../utils/constants'
 import { SupabaseClient } from '@supabase/supabase-js'
 
-async function getTimedealDiscountMapWithAdmin(
-  supabaseAdmin: SupabaseClient,
-  productIds: string[]
-): Promise<Map<string, number>> {
-  const discountMap = new Map<string, number>()
-  if (productIds.length === 0) return discountMap
-
-  const now = new Date().toISOString()
-  const { data: activeTimedeal } = await supabaseAdmin
-    .from('timedeals')
-    .select('id')
-    .lte('start_at', now)
-    .gte('end_at', now)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!activeTimedeal) return discountMap
-
-  const { data: timedealProducts } = await supabaseAdmin
-    .from('timedeal_products')
-    .select('product_id, discount_percent')
-    .eq('timedeal_id', activeTimedeal.id)
-    .in('product_id', productIds)
-
-  if (timedealProducts) {
-    timedealProducts.forEach((tp: any) => {
-      discountMap.set(tp.product_id, tp.discount_percent || 0)
-    })
-  }
-
-  return discountMap
-}
-
 export interface OrderItemInput {
   productId: string
   quantity: number
@@ -134,14 +100,11 @@ export async function calculateOrderPricing({
     throw new Error('일부 상품 정보를 찾을 수 없습니다.')
   }
 
-  const timedealMap = await getTimedealDiscountMapWithAdmin(supabaseAdmin, productIds)
-
   const productMap = new Map<string, any>()
   products.forEach((product: any) => {
     productMap.set(product.id, {
       ...product,
       promotion: extractActivePromotion(product),
-      timedeal_discount_percent: timedealMap.get(product.id) || 0,
     })
   })
 
@@ -177,7 +140,6 @@ export async function calculateOrderPricing({
     const product = productMap.get(item.productId)
     const pricing = getFinalPricing({
       basePrice: product.price,
-      timedealDiscountPercent: product.timedeal_discount_percent,
       promotion: product.promotion,
       weightGram: product.weight_gram,
     })
@@ -200,7 +162,6 @@ export async function calculateOrderPricing({
         const product = productMap.get(item.productId)
         const pricing = getFinalPricing({
           basePrice: product.price,
-          timedealDiscountPercent: product.timedeal_discount_percent,
           promotion: product.promotion,
           weightGram: product.weight_gram,
         })

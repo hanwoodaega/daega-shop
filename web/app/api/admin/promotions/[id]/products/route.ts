@@ -38,6 +38,7 @@ export async function POST(
       .select('priority')
       .eq('promotion_id', params.id)
       .order('priority', { ascending: false })
+      .order('created_at', { ascending: true })
       .limit(1)
 
     const maxPriority = existingProducts && existingProducts.length > 0 

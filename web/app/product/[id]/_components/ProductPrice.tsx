@@ -6,13 +6,11 @@ import { getFinalPricing } from '@/lib/product/product.pricing'
 
 interface ProductPriceProps {
   product: Product
-  timedealDiscountPercent?: number | null
 }
 
-export default function ProductPrice({ product, timedealDiscountPercent }: ProductPriceProps) {
+export default function ProductPrice({ product }: ProductPriceProps) {
   const pricing = getFinalPricing({
     basePrice: product.price,
-    timedealDiscountPercent,
     promotion: product.promotion,
     weightGram: product.weight_gram,
   })

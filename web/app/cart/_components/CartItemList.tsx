@@ -66,8 +66,15 @@ export default function CartItemList({
                 <div key={item.id} className={`${itemIndex === 0 ? 'pt-1' : 'pt-3'} pb-3 ${itemIndex < groupItems.length - 1 ? 'border-dashed-long' : ''}`}>
                   <div className="flex items-start space-x-3">
                     {/* 상품 이미지 */}
-                    <Link href={`/product/${item.slug || item.productId}`} className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 text-xs hover:opacity-80 transition">
-                      이미지 준비중
+                    <Link
+                      href={`/product/${item.slug || item.productId}`}
+                      className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 text-xs hover:opacity-80 transition overflow-hidden rounded"
+                    >
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                      ) : (
+                        '이미지 준비중'
+                      )}
                     </Link>
 
                     {/* 상품 정보 */}
@@ -77,7 +84,10 @@ export default function CartItemList({
                           {item.brand && (
                             <div className="text-sm font-bold text-gray-900 mb-0.5">{item.brand}</div>
                           )}
-                          <h3 className="text-sm font-normal mb-1">{item.name}</h3>
+                          <h3 className="text-sm font-normal mb-1">
+                            {item.name}
+                            {item.weightGram ? ` ${item.weightGram}G` : ''}
+                          </h3>
                         </Link>
                       </div>
 
@@ -146,7 +156,7 @@ export default function CartItemList({
           <div key={item.id} className={`py-6 ${index < groupedItems.standalone.length - 1 || Object.keys(groupedItems.groups).length > 0 ? 'border-b border-gray-300' : ''}`}>
             <div className="flex items-start space-x-3">
               {/* 상품 이미지 */}
-              <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center">
+              <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center overflow-hidden rounded">
                 {/* 체크박스 - 이미지 왼쪽 상단 (품절 상품은 제거) */}
                 {!itemSoldOut && (
                   <div 
@@ -167,7 +177,11 @@ export default function CartItemList({
                   </div>
                 )}
                 <Link href={`/products/${item.slug || item.productId}`} className="absolute inset-0 flex items-center justify-center hover:opacity-80 transition">
-                  <span className="text-gray-500 text-xs">이미지 준비중</span>
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-gray-500 text-xs">이미지 준비중</span>
+                  )}
                 </Link>
                 {/* 품절 오버레이 */}
                 {itemSoldOut && (
@@ -184,7 +198,10 @@ export default function CartItemList({
                     {item.brand && (
                       <div className="text-sm font-bold text-gray-900 mb-0.5 line-clamp-1">{item.brand}</div>
                     )}
-                    <h3 className="text-sm font-normal mb-1 line-clamp-2">{item.name}</h3>
+                    <h3 className="text-sm font-normal mb-1 line-clamp-2">
+                      {item.name}
+                      {item.weightGram ? ` ${item.weightGram}G` : ''}
+                    </h3>
                   </Link>
                   <button
                     onClick={() => onRemoveItem(userId || null, item.id!)}
@@ -258,9 +275,13 @@ export default function CartItemList({
             <div key={item.id} className={`py-6 ${index < groupedItems.soldOutItems.length - 1 ? 'border-b border-gray-300' : ''}`}>
               <div className="flex items-start space-x-3">
                 {/* 상품 이미지 (품절 오버레이) */}
-                <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center">
+                <div className="relative w-24 h-24 bg-gray-200 flex-shrink-0 flex items-center justify-center overflow-hidden rounded">
                   <Link href={`/product/${item.slug || item.productId}`} className="absolute inset-0 flex items-center justify-center hover:opacity-80 transition">
-                    <span className="text-gray-500 text-xs">이미지 준비중</span>
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-gray-500 text-xs">이미지 준비중</span>
+                    )}
                   </Link>
                   {/* 품절 오버레이 */}
                   <div className="absolute inset-0 bg-gray-900 bg-opacity-40 flex items-center justify-center z-20">
@@ -275,7 +296,10 @@ export default function CartItemList({
                       {item.brand && (
                         <div className="text-sm font-bold text-gray-900 mb-0.5 line-clamp-1">{item.brand}</div>
                       )}
-                      <h3 className="text-sm font-normal mb-1 line-clamp-2">{item.name}</h3>
+                      <h3 className="text-sm font-normal mb-1 line-clamp-2">
+                        {item.name}
+                        {item.weightGram ? ` ${item.weightGram}G` : ''}
+                      </h3>
                     </Link>
                     <button
                       onClick={() => onRemoveItem(userId || null, item.id!)}

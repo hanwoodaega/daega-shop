@@ -9,6 +9,7 @@ export interface CartItem {
   slug?: string | null  // 상품 slug (URL 생성용)
   name: string
   price: number
+  weightGram?: number | null
   quantity: number
   imageUrl: string | null
   discount_percent?: number

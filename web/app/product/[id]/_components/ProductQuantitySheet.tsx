@@ -21,7 +21,6 @@ export default function ProductQuantitySheet({
 }: ProductQuantitySheetProps) {
   const pricing = getFinalPricing({
     basePrice: product.price,
-    timedealDiscountPercent: (product as any).timedeal_discount_percent || 0,
     promotion: product.promotion,
   })
 

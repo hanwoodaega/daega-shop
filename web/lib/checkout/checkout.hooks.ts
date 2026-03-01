@@ -80,6 +80,7 @@ export function useCheckout(options: UseCheckoutOptions) {
   const [usedPointsInput, setUsedPointsInput] = useState('')
 
   const [paymentMethod, setPaymentMethod] = useState('card')
+  const tossWidgetsRef = useRef<any>(null)
 
   const [serverPricing, setServerPricing] = useState<{
     originalTotal: number
@@ -219,7 +220,7 @@ export function useCheckout(options: UseCheckoutOptions) {
         ...prev,
         name: prev.name || userProfile.name || '',
         phone: prev.phone || userProfile.phone || '',
-        email: prev.email || user?.email || '',
+        email: prev.email || '',
       }))
     }
   }, [userProfile, user?.email])
@@ -583,7 +584,10 @@ export function useCheckout(options: UseCheckoutOptions) {
         }
 
         const prepareData = await prepareRes.json()
-        const amount = prepareData.amount
+        const amount = Number(prepareData.amount)
+        if (!Number.isFinite(amount) || amount < 0) {
+          throw new Error('결제 금액을 불러오지 못했습니다.')
+        }
         const meta = {
           isDirectPurchase,
           isGiftMode,
@@ -613,9 +617,9 @@ export function useCheckout(options: UseCheckoutOptions) {
         throw new Error('결제 설정이 없습니다.')
       }
 
-      const tossFactory = (window as any)?.TossPayments
-      if (!tossFactory) {
-        throw new Error('결제 모듈을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
+      const widgets = tossWidgetsRef.current
+      if (!widgets) {
+        throw new Error('결제 위젯을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
       }
 
       const orderId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
@@ -640,7 +644,10 @@ export function useCheckout(options: UseCheckoutOptions) {
       }
 
       const prepareData = await prepareRes.json()
-      const amount = prepareData.amount
+      const amount = Number(prepareData.amount)
+      if (!Number.isFinite(amount) || amount < 0) {
+        throw new Error('결제 금액을 불러오지 못했습니다.')
+      }
       const meta = {
         isDirectPurchase,
         isGiftMode,
@@ -669,32 +676,23 @@ export function useCheckout(options: UseCheckoutOptions) {
         throw new Error('휴대폰 번호를 확인해주세요.')
       }
 
-      const tossPayments = tossFactory(tossClientKey)
+      const normalizedEmail = (formData.email || '').trim()
+      const emailDomain = normalizedEmail.split('@')[1] || ''
+      const isInternalEmail =
+        normalizedEmail === (user?.email || '') &&
+        (emailDomain.endsWith('.local') || emailDomain.endsWith('thedaega.local'))
+
       const paymentOptions: any = {
-        amount,
         orderId,
         orderName,
         successUrl,
         failUrl,
         customerName: formData.name.trim(),
-        customerEmail: formData.email || undefined,
+        customerEmail: normalizedEmail && !isInternalEmail ? normalizedEmail : undefined,
         customerMobilePhone: sanitizedPhone,
       }
 
-      const methodMap: Record<string, { method: string; easyPay?: { provider: string } }> = {
-        card: { method: 'CARD' },
-        tosspay: { method: 'EASY_PAY', easyPay: { provider: 'TOSSPAY' } },
-        naverpay: { method: 'EASY_PAY', easyPay: { provider: 'NAVERPAY' } },
-        kakaopay: { method: 'EASY_PAY', easyPay: { provider: 'KAKAOPAY' } },
-        samsungpay: { method: 'EASY_PAY', easyPay: { provider: 'SAMSUNGPAY' } },
-      }
-
-      const methodConfig = methodMap[paymentMethod] || { method: 'CARD' }
-      if (methodConfig.easyPay) {
-        paymentOptions.easyPay = methodConfig.easyPay
-      }
-
-      await tossPayments.requestPayment(methodConfig.method, paymentOptions)
+      await widgets.requestPayment(paymentOptions)
     }
 
     const saveAddressIfNeeded = async () => {
@@ -847,7 +845,6 @@ export function useCheckout(options: UseCheckoutOptions) {
     selectedCoupon,
     giftData,
     saveAsDefaultAddress,
-    paymentMethod,
     buildOrderInput,
     clearDirectPurchase,
     removeSelectedFromCart,
@@ -869,6 +866,10 @@ export function useCheckout(options: UseCheckoutOptions) {
       }, 100)
       timeoutsRef.current.push(t)
     })
+  }, [])
+
+  const setTossWidgets = useCallback((widgets: any) => {
+    tossWidgetsRef.current = widgets
   }, [])
 
   return {
@@ -901,6 +902,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       setPaymentMethod,
       setGiftData,
       setCurrentStep,
+      setTossWidgets,
       handleSubmit,
       handleNextStep,
       handleSearchAddress,

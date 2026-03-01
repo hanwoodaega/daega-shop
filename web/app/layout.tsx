@@ -22,12 +22,9 @@ export default function RootLayout({
     <html lang="ko">
       <body className="antialiased" style={{ fontFamily: 'Pretendard, sans-serif' }}>
         <ClientLayout>{children}</ClientLayout>
-        <Toaster 
+        <Toaster
           position="top-center"
-          containerStyle={{
-            top: '50%',
-            transform: 'translateY(-50%)',
-          }}
+          containerStyle={{ top: '50%', transform: 'translateY(-50%)' }}
           toastOptions={{
             duration: 3000,
             style: {

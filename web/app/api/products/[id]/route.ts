@@ -55,32 +55,8 @@ export async function GET(
       return NextResponse.json({ error: '상품을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    // 타임딜 할인율 맵 조회
-    const now = new Date().toISOString()
-    const { data: activeTimedeal } = await supabase
-      .from('timedeals')
-      .select('id')
-      .lte('start_at', now)
-      .gte('end_at', now)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    
-    const timedealDiscountMap = new Map<string, number>()
-    if (activeTimedeal) {
-      const { data: timedealProducts } = await supabase
-        .from('timedeal_products')
-        .select('product_id, discount_percent')
-        .eq('timedeal_id', activeTimedeal.id)
-        .eq('product_id', data.id)
-      
-      if (timedealProducts && timedealProducts.length > 0) {
-        timedealDiscountMap.set(data.id, timedealProducts[0].discount_percent || 0)
-      }
-    }
-
-    // 공통 유틸리티로 상품 데이터 보강 (프로모션, 타임딜 할인율 등)
-    const enrichedProducts = await enrichProductsServer([data], timedealDiscountMap)
+    // 공통 유틸리티로 상품 데이터 보강 (프로모션 등)
+    const enrichedProducts = await enrichProductsServer([data])
     const enrichedProduct = enrichedProducts[0] || data
     
     return NextResponse.json(enrichedProduct)

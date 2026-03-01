@@ -4,9 +4,9 @@ import BottomNavbar from '@/components/layout/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/common/PromotionModalWrapper'
 import CategoryGrid from '@/components/sections/CategoryGrid'
+import WeeklyDiscountSection from '@/components/sections/WeeklyDiscountSection'
 import CollectionSectionContainer from './(home)/_components/CollectionSectionContainer'
 import RecommendationSection from '@/components/sections/RecommendationSection'
-import TimeDealSection from '@/components/timedeal/TimeDealSection'
 import HeroSlider from '@/components/sections/HeroSlider'
 import BannerSection from '@/components/banner/BannerSection'
 import { getServerBaseUrl } from '@/lib/utils/server-url'
@@ -64,12 +64,19 @@ export default async function Home() {
     // 에러 시 빈 배열로 fallback
   }
 
+  const filteredCollections = collections.filter(
+    (collection) => collection.type?.toLowerCase() !== 'weekly_discount'
+  )
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       
       <main className="flex-1">
-        <HeroSlider />
+        {/* PC(lg)에서만 히어로 슬라이더가 화면 가득, 나머지 콘텐츠는 1050px 컨테이너 안 */}
+        <div className="lg:relative lg:left-1/2 lg:right-1/2 lg:-ml-[50vw] lg:-mr-[50vw] lg:w-screen">
+          <HeroSlider />
+        </div>
 
         <section className="py-8 bg-white">
           <div className="container mx-auto px-4">
@@ -77,10 +84,10 @@ export default async function Home() {
           </div>
         </section>
 
-        <TimeDealSection />
+        <WeeklyDiscountSection />
 
-        {collections.length > 0 &&
-          collections.map((collection) => (
+        {filteredCollections.length > 0 &&
+          filteredCollections.map((collection) => (
             <CollectionSectionContainer key={collection.id} collection={collection} />
           ))
         }

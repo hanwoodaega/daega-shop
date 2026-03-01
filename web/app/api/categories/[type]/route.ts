@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { enrichProductsServer } from '@/lib/product/product.service'
-import { getTimedealDiscountPercentMap } from '@/lib/timedeal/timedeal-utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,7 +93,9 @@ export async function GET(
 
     // 정렬 적용
     if (sort === 'default') {
-      categoryProductsQuery = categoryProductsQuery.order('priority', { ascending: true })
+      categoryProductsQuery = categoryProductsQuery
+        .order('priority', { ascending: true })
+        .order('created_at', { ascending: true })
     }
 
     const { data: categoryProducts, error: productsError, count } = await categoryProductsQuery.range(from, to)
@@ -114,12 +115,8 @@ export async function GET(
       })
       .filter((p: any) => p && p.status !== 'deleted')
 
-    // 타임딜 할인율 일괄 조회
-    const productIds = rawProducts.map((p: any) => p.id).filter(Boolean)
-    const timedealDiscountMap = await getTimedealDiscountPercentMap(productIds)
-
-    // 공통 유틸리티 함수로 상품 데이터 보강 (이미지, 프로모션, 타임딜 할인율 포함)
-    let products = await enrichProductsServer(rawProducts, timedealDiscountMap)
+    // 공통 유틸리티 함수로 상품 데이터 보강
+    let products = await enrichProductsServer(rawProducts)
 
     // 가격 정렬 (클라이언트 사이드에서 처리)
     if (sort === 'price_asc') {

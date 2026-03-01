@@ -28,6 +28,7 @@ export async function POST(
       .select('priority')
       .eq('gift_category_id', id)
       .order('priority', { ascending: false })
+      .order('created_at', { ascending: true })
       .limit(1)
 
     let nextPriority = priority || ((existingProducts?.[0]?.priority || 0) + 1)

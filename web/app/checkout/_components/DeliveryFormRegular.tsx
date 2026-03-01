@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { formatPhoneNumber } from '@/lib/utils/format-phone'
 
 interface DeliveryFormRegularProps {
   formData: {
@@ -37,12 +38,13 @@ export default function DeliveryFormRegular({
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-base font-bold text-gray-900">{defaultAddress.name}</h3>
-                  <span className="text-xs bg-primary-100 text-primary-800 px-2 py-0.5 rounded">기본</span>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-base font-bold text-gray-900">
+                    {defaultAddress.recipient_name}
+                  </h3>
                 </div>
-                <p className="text-sm text-gray-700 mb-1">
-                  {defaultAddress.recipient_name} · {defaultAddress.recipient_phone}
+                <p className="text-sm text-gray-700 mb-0.5">
+                  {formatPhoneNumber(defaultAddress.recipient_phone)}
                 </p>
                 <p className="text-sm text-gray-700">
                   {defaultAddress.address}

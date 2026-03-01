@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
       .from('gift_categories')
       .select('*')
       .order('priority', { ascending: true })
+      .order('created_at', { ascending: true })
 
     if (slug) {
       query = query.eq('slug', slug)

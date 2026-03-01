@@ -243,10 +243,8 @@ export default function RecommendationSection() {
             const hasValidImage = isValidImageUrl(product.image_url)
             const shouldRenderImage = hasValidImage && !product.image_url?.includes('via.placeholder.com')
 
-            const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
             const pricing = getFinalPricing({
               basePrice: product.price,
-              timedealDiscountPercent,
               promotion: product.promotion,
               weightGram: product.weight_gram,
             })

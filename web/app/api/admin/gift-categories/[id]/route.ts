@@ -53,7 +53,9 @@ export async function GET(
       productsQuery = productsQuery.eq('product_id', productId)
     }
 
-    const { data: products, error: productsError } = await productsQuery.order('priority', { ascending: true })
+    const { data: products, error: productsError } = await productsQuery
+      .order('priority', { ascending: true })
+      .order('created_at', { ascending: true })
 
     if (productsError) {
       return NextResponse.json({ error: productsError.message }, { status: 400 })

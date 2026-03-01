@@ -37,6 +37,7 @@ export async function GET(
       .eq('gift_category_id', categoryData.id)
       // .neq() 대신 클라이언트 측에서 필터링 (join된 테이블 필터링 제한)
       .order('priority', { ascending: true })
+      .order('created_at', { ascending: true })
 
     if (productsError) {
       console.error('선물 대상 상품 조회 실패:', productsError)
@@ -59,7 +60,7 @@ export async function GET(
         const orderA = a.gift_display_order ?? 999999
         const orderB = b.gift_display_order ?? 999999
         if (orderA !== orderB) return orderA - orderB
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       })
     
     const result = filtered.slice(0, 20)

@@ -43,6 +43,7 @@ export async function GET(
       `)
       .eq('collection_id', params.id)
       .order('priority', { ascending: true })
+      .order('created_at', { ascending: true })
 
     if (productsError) {
       return NextResponse.json({ error: productsError.message }, { status: 400 })

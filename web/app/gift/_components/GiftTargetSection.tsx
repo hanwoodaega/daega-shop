@@ -57,13 +57,11 @@ export default function GiftTargetSection({
           ) : products.length > 0 ? (
             <div>
               {products.map((product) => {
-                const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
                 const promotionDiscountPercent = (product as any).promotion?.type === 'percent' 
                   ? (product as any).promotion.discount_percent 
                   : 0
-                const discountPercent = timedealDiscountPercent > 0 
-                  ? timedealDiscountPercent 
-                  : promotionDiscountPercent || (product as any).discount_percent || 0
+                const discountPercent =
+                  promotionDiscountPercent || (product as any).discount_percent || 0
                 const finalPrice = discountPercent > 0
                   ? Math.round(product.price * (1 - discountPercent / 100))
                   : product.price

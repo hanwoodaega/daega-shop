@@ -32,30 +32,6 @@ async function getCategoryByType(type: string): Promise<Category | null> {
 async function getProducts(): Promise<Product[]> {
   try {
     const supabase = createSupabaseAdminClient()
-    const now = new Date().toISOString()
-
-    const { data: activeTimedeal } = await supabase
-      .from('timedeals')
-      .select('id')
-      .lte('start_at', now)
-      .gte('end_at', now)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    const timedealMap = new Map<string, number>()
-    if (activeTimedeal) {
-      const { data: timedealProducts } = await supabase
-        .from('timedeal_products')
-        .select('product_id, discount_percent')
-        .eq('timedeal_id', activeTimedeal.id)
-
-      if (timedealProducts) {
-        timedealProducts.forEach((tp: any) => {
-          timedealMap.set(tp.product_id, tp.discount_percent || 0)
-        })
-      }
-    }
 
     const { data, error } = await supabase
       .from('products')
@@ -88,12 +64,9 @@ async function getProducts(): Promise<Product[]> {
 
     return (data || []).map((product: any) => {
       const promotion = extractActivePromotion(product)
-      const timedealDiscount = timedealMap.get(product.id) || 0
 
       let promotionLabel: string | null = null
-      if (timedealDiscount > 0) {
-        promotionLabel = `타임딜 ${timedealDiscount}%`
-      } else if (promotion?.is_active && promotion?.type === 'bogo' && promotion?.buy_qty) {
+      if (promotion?.is_active && promotion?.type === 'bogo' && promotion?.buy_qty) {
         promotionLabel = `프로모션 ${promotion.buy_qty}+1`
       } else if (promotion?.is_active && promotion?.type === 'percent' && promotion?.discount_percent) {
         promotionLabel = `프로모션 ${promotion.discount_percent}%`
@@ -110,7 +83,6 @@ async function getProducts(): Promise<Product[]> {
         promotion_type: promotion?.type || null,
         promotion_discount_percent: promotion?.discount_percent || null,
         promotion_buy_qty: promotion?.buy_qty || null,
-        timedeal_discount_percent: timedealDiscount || null,
       }
     })
   } catch (error) {

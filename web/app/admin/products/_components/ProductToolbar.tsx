@@ -59,6 +59,19 @@ export default function ProductToolbar({
             </option>
           ))}
         </select>
+        <select
+          className="border rounded-lg px-3 py-2 text-sm"
+          value={listState.filterStatus}
+          onChange={(e) => {
+            onUpdateFilter('filterStatus', e.target.value as ProductListState['filterStatus'])
+            onUpdateFilter('page', 1)
+          }}
+        >
+          <option value="all">전체 상태</option>
+          <option value="active">판매중</option>
+          <option value="soldout">품절</option>
+          <option value="deleted">삭제됨</option>
+        </select>
       </div>
     </div>
   )

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { enrichProductsServer } from '@/lib/product/product.service'
-import { getTimedealDiscountPercentMap } from '@/lib/timedeal/timedeal-utils'
 
 // GET: 컬렉션별 상품 목록 조회 (공개 API)
 // params.slug는 실제로는 type (best, sale, no9)
@@ -99,8 +98,10 @@ export async function GET(
     // 가격 정렬일 때는 priority 정렬을 하지 않음 (클라이언트에서 가격 정렬)
     // default일 때만 priority 정렬
     if (sort === 'default') {
-      // default 정렬: priority가 낮은 순서대로, null은 나중에 (기본 동작)
-      collectionProductsQuery = collectionProductsQuery.order('priority', { ascending: true })
+      // default 정렬: priority가 낮은 순서대로, 같으면 먼저 만든 순서
+      collectionProductsQuery = collectionProductsQuery
+        .order('priority', { ascending: true })
+        .order('created_at', { ascending: true })
     }
     // price_asc, price_desc는 DB에서 정렬하지 않음 (클라이언트에서 처리)
 
@@ -121,12 +122,8 @@ export async function GET(
       })
       .filter((p: any) => p && p.status !== 'deleted') // deleted 상태 제외
 
-    // 타임딜 할인율 일괄 조회
-    const productIds = rawProducts.map((p: any) => p.id).filter(Boolean)
-    const timedealDiscountMap = await getTimedealDiscountPercentMap(productIds)
-
     // 공통 유틸리티 함수로 상품 데이터 보강
-    let products = await enrichProductsServer(rawProducts, timedealDiscountMap)
+    let products = await enrichProductsServer(rawProducts)
 
     // 가격 정렬 (클라이언트 사이드에서 처리 - Supabase의 중첩 정렬 제한)
     if (sort === 'price_asc') {

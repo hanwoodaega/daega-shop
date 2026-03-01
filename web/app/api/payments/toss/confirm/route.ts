@@ -123,6 +123,10 @@ export async function POST(request: NextRequest) {
       gift_card_design: payload.gift_card_design,
       payment_method: payload.payment_method || 'toss_card',
     }
+    orderInsertData.toss_order_id = orderId
+    if (paymentKey) {
+      orderInsertData.toss_payment_key = paymentKey
+    }
 
     if (payload.is_gift) {
       orderInsertData.gift_token = giftToken

@@ -71,8 +71,8 @@ export default function BottomNavbar() {
         </div>
       )}
 
-{/* 하단 네비게이션 바 */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40">
+{/* 하단 네비게이션 바 - 모바일/태블릿만 (PC에서는 미표시) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden">
         <div className="w-full flex justify-center">
           <div className="w-full max-w-[480px] bg-white border-t border-gray-200 shadow-lg px-2">
             <div className="flex items-center justify-around h-16">

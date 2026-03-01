@@ -10,14 +10,12 @@ import PromotionModalWrapper from '@/components/common/PromotionModalWrapper'
 import { CATEGORIES } from '@/lib/utils/constants'
 import { ProductFilter, ProductSortOrder } from '@/lib/product'
 import { useInfiniteProducts } from '@/lib/product'
-import { useTimeDealInfo } from '@/lib/timedeal'
 import {
   ProductsHeader,
   ProductsCategoryNav,
   ProductsGrid,
   ProductsEmpty,
   ProductsHero,
-  ProductsTimeDealHero,
 } from './_components'
 
 export interface ProductsPageClientProps {
@@ -39,9 +37,6 @@ export default function ProductsPageClient(props: ProductsPageClientProps = {}) 
   useEffect(() => {
     setSelectedCategory(category || '전체')
   }, [category])
-
-  // 타임딜 정보
-  const timeDealInfo = useTimeDealInfo(filter || null)
 
   // 상품 조회
   const {
@@ -68,47 +63,19 @@ export default function ProductsPageClient(props: ProductsPageClientProps = {}) 
   // 카테고리가 선택되었는지 확인
   const hasCategory = Boolean(selectedCategory && !searchQuery && !filter)
 
-  const isTimeDeal = filter === 'flash-sale'
-
   return (
     <div className="min-h-screen flex flex-col">
       {/* 헤더 */}
-      {isTimeDeal ? (
-        <ProductsHeader isTimeDeal />
-      ) : (
-        <>
-          <Header hideMainMenu={hasCategory} />
-          <ProductsCategoryNav selectedCategory={selectedCategory} hasCategory={hasCategory} />
-        </>
-      )}
+      <>
+        <Header hideMainMenu={hasCategory} />
+        <ProductsCategoryNav selectedCategory={selectedCategory} hasCategory={hasCategory} />
+      </>
 
       <main className="flex-1">
-        {/* 타임딜 콘텐츠 */}
-        {isTimeDeal && (
-          <div>
-            <ProductsTimeDealHero
-              title={timeDealInfo.title}
-              description={timeDealInfo.description}
-              endTime={timeDealInfo.endTime}
-            />
-            <div className="bg-white pb-4 -mx-2 px-3 relative z-10">
-              <div className="px-3 bg-white">
-                {displayedProducts.length === 0 && !loading ? (
-                  <ProductsEmpty searchQuery={searchQuery} />
-                ) : (
-                  <ProductsGrid products={displayedProducts} loading={loading} loadingMore={loadingMore} />
-                )}
-              </div>
-            </div>
-            <div className="bg-white h-8 -mt-4"></div>
-          </div>
-        )}
-
         {/* 히어로 섹션 - 베스트/특가용 */}
-        {filter && !isTimeDeal && <ProductsHero filter={filter} />}
+        {filter && <ProductsHero filter={filter} />}
 
-        {/* 타임딜이 아닐 때만 일반 레이아웃 표시 */}
-        {!isTimeDeal && (
+        {/* 일반 레이아웃 */}
           <div className="container mx-auto px-4 py-4 pt-6">
             {/* 페이지 제목 & 정렬 - 카테고리 선택 시 숨김 */}
             {!hasCategory && (
@@ -161,7 +128,6 @@ export default function ProductsPageClient(props: ProductsPageClientProps = {}) 
               <ProductsGrid products={displayedProducts} loading={loading} loadingMore={loadingMore} />
             )}
           </div>
-        )}
       </main>
 
       <ScrollToTop />

@@ -45,7 +45,6 @@ export async function fetchCartItemsForUser(supabase: any, userId: string) {
 
   const productIds = (data || []).map((item: any) => item.product_id).filter(Boolean)
   let productImages: { [key: string]: string } = {}
-  const timedealDiscountMap = new Map<string, number>()
 
   if (productIds.length > 0) {
     const { data: imagesData } = await supabase
@@ -59,34 +58,6 @@ export async function fetchCartItemsForUser(supabase: any, userId: string) {
         acc[img.product_id] = img.image_url
         return acc
       }, {})
-    }
-
-    try {
-      const now = new Date().toISOString()
-      const { data: activeTimedeal } = await supabase
-        .from('timedeals')
-        .select('id')
-        .lte('start_at', now)
-        .gte('end_at', now)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (activeTimedeal) {
-        const { data: timedealProducts } = await supabase
-          .from('timedeal_products')
-          .select('product_id, discount_percent')
-          .eq('timedeal_id', activeTimedeal.id)
-          .in('product_id', productIds)
-
-        if (timedealProducts) {
-          timedealProducts.forEach((tp: any) => {
-            timedealDiscountMap.set(tp.product_id, tp.discount_percent || 0)
-          })
-        }
-      }
-    } catch {
-      // ignore timedeal failures
     }
   }
 
@@ -216,10 +187,8 @@ export async function fetchCartItemsForUser(supabase: any, userId: string) {
         const qty = item.quantity || 0
         discountPercent = qty > 0 ? Math.round((freeCount / qty) * 100) : 0
       } else {
-        const timedealDiscountPercent = timedealDiscountMap.get(item.product_id) || 0
         const pricing = getFinalPricing({
           basePrice: product?.price || 0,
-          timedealDiscountPercent,
           promotion,
           weightGram: product?.weight_gram,
         })
@@ -239,6 +208,7 @@ export async function fetchCartItemsForUser(supabase: any, userId: string) {
         slug: product?.slug || null,
         name: product?.name || '',
         price: product?.price || 0,
+        weightGram: product?.weight_gram || null,
         quantity: item.quantity,
         imageUrl: productImages[item.product_id] || '',
         discount_percent: discountPercent,

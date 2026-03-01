@@ -32,20 +32,18 @@ function ProductCard({ product }: ProductCardProps) {
     hasValidImage && product.image_url?.includes('via.placeholder.com'),
     [hasValidImage, product.image_url]
   )
-  const shouldRenderImage = useMemo(() => 
-    hasValidImage && !isPlaceholderHost,
+  const shouldRenderImage = useMemo(
+    () => hasValidImage && !isPlaceholderHost,
     [hasValidImage, isPlaceholderHost]
   )
-  const timedealDiscountPercent = (product as any).timedeal_discount_percent || 0
   const pricing = useMemo(
     () =>
       getFinalPricing({
         basePrice: product.price,
-        timedealDiscountPercent,
         promotion: product.promotion,
         weightGram: product.weight_gram,
       }),
-    [product.price, product.promotion, product.weight_gram, timedealDiscountPercent]
+    [product.price, product.promotion, product.weight_gram]
   )
 
   const discountPrice = pricing.finalPrice

@@ -53,32 +53,22 @@ function extractActivePromotion(product: any): any | null {
 
 /**
  * Client 사이드에서 상품 데이터 보강 (프로모션만)
- * 타임딜 할인율은 API에서 이미 포함되어 있음
  * @param products 상품 배열
  * @returns 보강된 상품 배열
  */
-export function enrichProducts(
-  products: any[],
-  timedealDiscountMap?: Map<string, number>
-): any[] {
+export function enrichProducts(products: any[]): any[] {
   if (!products || products.length === 0) {
     return []
   }
 
-  // 상품 데이터 보강
   return products.map((product: any) => {
-    // 활성화된 프로모션 찾기
     const activePromotion = extractActivePromotion(product)
-
-    // 타임딜 할인율 조회 (이미 API에서 포함되어 있거나 맵에서 가져옴)
-    const timedealDiscountPercent = timedealDiscountMap?.get(product.id) || (product as any).timedeal_discount_percent || 0
 
     return {
       ...product,
       average_rating: product.average_rating || 0,
       review_count: product.review_count || 0,
       promotion: activePromotion,
-      timedeal_discount_percent: timedealDiscountPercent,
     }
   })
 }

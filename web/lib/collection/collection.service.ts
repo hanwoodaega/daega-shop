@@ -60,7 +60,7 @@ export async function fetchCollection({
   }
 }
 
-// 홈페이지용: 컬렉션 섹션 데이터 페칭 (limit=4, 타임딜 처리 포함)
+// 홈페이지용: 컬렉션 섹션 데이터 페칭 (limit=4)
 export interface FetchCollectionSectionParams {
   collectionType: string
   signal?: AbortSignal
@@ -69,23 +69,18 @@ export interface FetchCollectionSectionParams {
 export interface FetchCollectionSectionResponse {
   collection: Collection | null
   products: Product[]
-  isTimedeal?: boolean
-  timedealEndAt?: string | null
 }
 
 export async function fetchCollectionSection({
   collectionType,
   signal,
 }: FetchCollectionSectionParams): Promise<FetchCollectionSectionResponse> {
-  // 타임딜은 별도 API 사용
-  const apiPath = collectionType === 'timedeal' 
-    ? '/api/timedeals?limit=4'
-    : `/api/collections/${collectionType}?limit=4`
-  
+  const apiPath = `/api/collections/${collectionType}?limit=4`
+
   const response = await fetch(apiPath, {
     signal,
   })
-  
+
   if (!response.ok) {
     return {
       collection: null,
@@ -94,11 +89,8 @@ export async function fetchCollectionSection({
   }
 
   const data = await response.json()
-  
-  // 타임딜은 timedeal 객체 사용, 다른 컬렉션은 collection 객체 사용
-  const collectionData = collectionType === 'timedeal' ? data.timedeal : data.collection
-  
-  // 컬렉션이 없거나 상품이 없으면 빈 배열 반환
+  const collectionData = data.collection
+
   if (!collectionData || !data.products || data.products.length === 0) {
     return {
       collection: null,
@@ -106,19 +98,6 @@ export async function fetchCollectionSection({
     }
   }
 
-  // 타임딜 종료 시간 체크
-  if (collectionType === 'timedeal' && collectionData.end_at) {
-    const now = new Date()
-    const endTime = new Date(collectionData.end_at)
-    if (endTime <= now) {
-      return {
-        collection: null,
-        products: [],
-      }
-    }
-  }
-
-  // 상품 데이터 변환
   const activeProducts = (data.products || []).map((product: any) => ({
     ...product
   } as Product))
@@ -126,7 +105,5 @@ export async function fetchCollectionSection({
   return {
     collection: collectionData as Collection,
     products: activeProducts,
-    isTimedeal: collectionType === 'timedeal',
-    timedealEndAt: collectionType === 'timedeal' ? collectionData.end_at : null,
   }
 }

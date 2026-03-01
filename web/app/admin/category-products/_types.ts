@@ -33,6 +33,5 @@ export interface Product {
   promotion_type?: string | null
   promotion_discount_percent?: number | null
   promotion_buy_qty?: number | null
-  timedeal_discount_percent?: number | null
 }
 

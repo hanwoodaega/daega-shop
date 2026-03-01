@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
 // GET: 활성화된 히어로 슬라이드 목록 조회 (공개 API)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
-
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('hero_slides')
       .select('*')
       .eq('is_active', true)

@@ -1,19 +1,26 @@
 'use client'
 
-import { useCallback, useState, Suspense, useEffect } from 'react'
+import { useCallback, useState, Suspense, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import MainMenu from '@/components/layout/MainMenu'
 import NotificationBell from '@/components/common/NotificationBell'
-import { useWishlistStore, useSearchUIStore, useCartStore } from '@/lib/store'
+import { useSearchUIStore, useCartStore } from '@/lib/store'
+import { useAuth } from '@/lib/auth/auth-context'
 
 function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = false }: { hideMainMenu?: boolean, showCartButton?: boolean, sticky?: boolean }) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [mounted, setMounted] = useState(false)
+  const [profileName, setProfileName] = useState<string | null>(null)
+  const [menuFixed, setMenuFixed] = useState(false)
+  const [menuBarHeight, setMenuBarHeight] = useState(56)
+  const headerAboveNavRef = useRef<HTMLDivElement>(null)
+  const navRef = useRef<HTMLElement>(null)
   const { isSearchOpen, closeSearch } = useSearchUIStore()
   const cartCount = useCartStore((state) => state.getTotalItems())
+  const { user, loading } = useAuth()
 
   useEffect(() => {
     setMounted(true)
@@ -49,25 +56,170 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
     }
   }, [isSearchOpen])
 
+  // users 테이블의 name 우선 사용
+  useEffect(() => {
+    let cancelled = false
+
+    if (!user) {
+      setProfileName(null)
+      return
+    }
+
+    const loadProfileName = async () => {
+      try {
+        const res = await fetch('/api/profile/info')
+        if (!res.ok) return
+        const data = await res.json().catch(() => null)
+        if (!cancelled) {
+          setProfileName(data?.name ?? null)
+        }
+      } catch {
+        if (!cancelled) {
+          setProfileName(null)
+        }
+      }
+    }
+
+    loadProfileName()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id])
+
+  const displayName = profileName || (user as any)?.user_metadata?.name || ''
+
+  // PC: 스크롤 시 메인메뉴만 상단 고정 (fixed)
+  useEffect(() => {
+    if (hideMainMenu) return
+    const onScroll = () => {
+      if (typeof window === 'undefined') return
+      const isLg = window.innerWidth >= 1024
+      if (!isLg) {
+        setMenuFixed(false)
+        return
+      }
+      const headerHeight = headerAboveNavRef.current?.offsetHeight ?? 120
+      if (window.scrollY > headerHeight) {
+        if (!menuFixed && navRef.current) {
+          setMenuBarHeight(navRef.current.offsetHeight)
+        }
+        setMenuFixed(true)
+      } else {
+        setMenuFixed(false)
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    onScroll()
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [hideMainMenu, menuFixed])
+
   return (
     <>
+      <div ref={headerAboveNavRef}>
+      {/* PC 전용 상단 유틸 바 */}
+      <div className="hidden lg:block bg-white">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-end items-center h-11 gap-4 text-sm text-gray-700">
+            {!loading && !user && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => router.push('/auth/login')}
+                  className="hover:text-red-600 transition"
+                >
+                  로그인
+                </button>
+                <span className="text-gray-300">│</span>
+                <button
+                  type="button"
+                  onClick={() => router.push('/auth/signup')}
+                  className="hover:text-red-600 transition"
+                >
+                  회원가입
+                </button>
+                <span className="text-gray-300">│</span>
+                <button
+                  type="button"
+                  onClick={() => router.push('/support')}
+                  className="hover:text-red-600 transition"
+                >
+                  고객센터
+                </button>
+              </>
+            )}
+            {!loading && user && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => router.push('/profile')}
+                  className="hover:text-red-600 transition"
+                >
+                  {displayName || '마이페이지'}님
+                </button>
+                <span className="text-gray-300">│</span>
+                <button
+                  type="button"
+                  onClick={() => router.push('/support')}
+                  className="hover:text-red-600 transition"
+                >
+                  고객센터
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* 첫 번째 부분: 로고, 검색창 (Normal) */}
-      <div className={`relative ${sticky ? 'sticky top-0 z-50' : ''} bg-white border-b border-gray-200`}>
+      <div className="relative bg-white border-b border-gray-200 lg:border-b-0">
         {/* 콘텐츠 */}
-        <div className="relative z-10 container mx-auto pl-2 pr-4">
+        <div className="relative z-10 container mx-auto pl-6 pr-4">
           <div className="flex items-center justify-start h-16 gap-4">
             {/* 로고 */}
-            <Link href="/" prefetch={false} className="flex-shrink-0 z-20 flex items-center" aria-label="홈으로 이동">
+            <Link
+              href="/"
+              prefetch={false}
+              className="flex-shrink-0 z-20 flex items-center -ml-6 lg:ml-0"
+              aria-label="홈으로 이동"
+            >
               <Image
                 src="/images/logo.png"
                 alt="대가정육마트 로고"
                 width={160}
                 height={48}
-                className="object-contain scale-x-[0.9]"
+                className="object-contain scale-x-[0.85]"
                 style={{ width: 'auto', height: 'auto' }}
                 priority
               />
             </Link>
+            {/* PC 전용: 로고 오른쪽 검색창 */}
+            <form
+              onSubmit={(e) => { handleSearch(e); }}
+              className="hidden lg:flex flex-1 max-w-lg mx-4 relative items-center"
+            >
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="검색어를 입력하세요"
+                className="w-full pl-4 pr-12 py-2.5 text-lg border border-gray-300 rounded-full focus:outline-none focus:border-primary-600 focus:ring-1 focus:ring-primary-600 bg-gray-50 lg:bg-white"
+              />
+              <button
+                type="submit"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700"
+                aria-label="검색"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </button>
+            </form>
             {isSearchOpen ? (
               <>
                 {/* 검색 모드 */}
@@ -132,14 +284,21 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
           </div>
         </div>
       </div>
+      </div>
 
-      {/* 두 번째 부분: 메인 메뉴 (Sticky) */}
+      {/* 두 번째 부분: 메인 메뉴 (PC: 화면 전체 너비 + 스크롤 시 fixed 고정) */}
       {!hideMainMenu && (
-        <nav className="sticky top-0 z-50 shadow-sm bg-white">
-          <Suspense fallback={<div className="h-16 bg-white border-b border-gray-200"></div>}>
-            <MainMenu />
-          </Suspense>
-        </nav>
+        <div className="lg:relative lg:left-1/2 lg:right-1/2 lg:-ml-[50vw] lg:-mr-[50vw] lg:w-screen">
+          <nav
+            ref={navRef}
+            className={`w-full z-50 shadow-sm bg-white ${menuFixed ? 'lg:fixed lg:top-0 lg:left-0 lg:right-0' : ''}`}
+          >
+            <Suspense fallback={<div className="h-16 bg-white border-b border-gray-200"></div>}>
+              <MainMenu />
+            </Suspense>
+          </nav>
+          {menuFixed && <div style={{ height: menuBarHeight }} aria-hidden />}
+        </div>
       )}
     </>
   )
@@ -149,7 +308,7 @@ export default function Header({ hideMainMenu = false, showCartButton = false, s
   return (
     <Suspense fallback={
       <>
-        <div className={`relative ${sticky ? 'sticky top-0 z-50' : ''} bg-white border-b border-gray-200`}>
+        <div className="relative bg-white border-b border-gray-200">
           <div className="relative z-10 container mx-auto pl-2 pr-4">
             <div className="flex items-center h-16 gap-4">
               <Link href="/" prefetch={false} className="flex-shrink-0 z-20" aria-label="홈으로 이동">
