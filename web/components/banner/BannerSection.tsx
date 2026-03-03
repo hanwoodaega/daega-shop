@@ -1,46 +1,43 @@
 import BannerSectionUI from './BannerSectionUI'
-import { getServerBaseUrl } from '@/lib/utils/server-url'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 
 /**
  * Server Component: 배너 데이터 fetch 담당
- * - 서버에서 배너 데이터 가져오기
+ * - 서버에서 Supabase 직접 조회 (URL 의존 없음, 배포 환경에서도 동작)
  * - 초기 HTML에 포함되어 SEO 최적화
- * - 서버 캐시/ISR 활용 가능
  */
 export default async function BannerSection() {
   try {
-    const siteUrl = await getServerBaseUrl()
-    
-    // 서버에서 fetch with tags: revalidateTag('banner')로 캐시 무효화 가능
-    if (!siteUrl) {
+    const supabase = await createSupabaseServerClient()
+    const { data: banners, error } = await supabase
+      .from('banners')
+      .select('id, title, subtitle_black, subtitle_red, description, image_url, background_color, slug')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+
+    if (error || !banners?.length) {
       return null
     }
 
-    const res = await fetch(`${siteUrl}/api/banners`, {
-      next: { tags: ['banner'], revalidate: 60 }, // 1분 캐시
-    })
-    
-    if (!res.ok) {
-      return null
+    return <BannerSectionUI banners={banners} />
+  } catch (error: unknown) {
+    const err = error as {
+      code?: string
+      errno?: number
+      digest?: string
+      cause?: { code?: string; errno?: number }
     }
 
-    const data = await res.json()
+    const isConnectionRefused =
+      err?.code === 'ECONNREFUSED' ||
+      err?.cause?.code === 'ECONNREFUSED' ||
+      err?.errno === -111 ||
+      err?.cause?.errno === -111
 
-    if (!data.banners || data.banners.length === 0) {
-      return null
-    }
+    const isDynamicServerUsage = err?.digest === 'DYNAMIC_SERVER_USAGE'
 
-    return <BannerSectionUI banners={data.banners} />
-  } catch (error: any) {
-    // 빌드 시점 연결 실패는 무시 (정상적인 동작)
-    // ECONNREFUSED 에러는 조용히 무시
-    const isConnectionRefused = 
-      error?.code === 'ECONNREFUSED' || 
-      error?.cause?.code === 'ECONNREFUSED' ||
-      error?.errno === -111 ||
-      error?.cause?.errno === -111
-    
-    if (!isConnectionRefused) {
+    // 빌드 시 정적 렌더링 시도(DYNAMIC_SERVER_USAGE)나 로컬 서버 미실행(ECONNREFUSED)은 조용히 무시
+    if (!isConnectionRefused && !isDynamicServerUsage) {
       console.error('배너 조회 실패:', error)
     }
     return null
