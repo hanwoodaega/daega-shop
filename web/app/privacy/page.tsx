@@ -116,7 +116,7 @@ export default function PrivacyPage() {
                 <li>성명: 김다민</li>
                 <li>직책: 개인정보보호책임자</li>
                 <li>전화번호: 010-3941-1223</li>
-                <li>이메일: admin@hanwoodaega.com</li>
+                <li>이메일: ekals010829@naver.com</li>
               </ul>
             </div>
           </section>

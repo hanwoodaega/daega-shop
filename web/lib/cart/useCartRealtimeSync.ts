@@ -8,6 +8,7 @@ import {
   setCartItems,
   syncCartOnLogin,
 } from '@/lib/cart/cart-db'
+import { getCartStorageKey } from '@/lib/cart/cart-storage-key'
 
 /**
  * 장바구니 실시간 동기화 Hook
@@ -64,18 +65,50 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
       }
     }
     
+    const readCartFromStorage = () => {
+      if (typeof window === 'undefined') return null
+      const key = getCartStorageKey()
+      const raw = window.localStorage.getItem(key)
+      if (!raw) return []
+      try {
+        const parsed = JSON.parse(raw)
+        return Array.isArray(parsed?.state?.items) ? parsed.state.items : []
+      } catch {
+        return []
+      }
+    }
+
     // 페이지 포커스 시 갱신 (다른 탭에서 돌아올 때)
     const handleFocus = () => {
-      scheduleLoadCart(0)
+      if (userId) {
+        scheduleLoadCart(0)
+      } else {
+        const items = readCartFromStorage()
+        if (items) setCartItems(items, 'storageSync')
+      }
     }
     window.addEventListener('focus', handleFocus)
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        scheduleLoadCart(0)
+        if (userId) {
+          scheduleLoadCart(0)
+        } else {
+          const items = readCartFromStorage()
+          if (items) setCartItems(items, 'storageSync')
+        }
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    const handleStorage = (event: StorageEvent) => {
+      if (!event.key || event.storageArea !== window.localStorage) return
+      const currentKey = getCartStorageKey()
+      if (event.key !== currentKey) return
+      const items = readCartFromStorage()
+      if (items) setCartItems(items, 'storageSync')
+    }
+    window.addEventListener('storage', handleStorage)
     
     // Supabase Realtime 구독: 상품 가격/할인율 변경 시 장바구니 갱신
     // 최신 items를 스토어에서 가져오기 (클로저 문제 방지)
@@ -116,6 +149,7 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
     return () => {
       window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('storage', handleStorage)
       if (reloadTimeoutRef.current) {
         clearTimeout(reloadTimeoutRef.current)
         reloadTimeoutRef.current = null

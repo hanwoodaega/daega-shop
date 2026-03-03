@@ -119,8 +119,8 @@ export default function FinanceTermsPage() {
               <p className="font-semibold mb-2">분쟁처리 책임자 및 담당자</p>
               <ul className="space-y-1 text-gray-700">
                 <li>담당자: 고객지원팀</li>
-                <li>연락처: 1588-0000</li>
-                <li>이메일: support@daega.com</li>
+                <li>연락처: 061-724-1223</li>
+                <li>이메일: ekals010829@naver.com</li>
               </ul>
             </div>
           </section>

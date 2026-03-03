@@ -42,7 +42,7 @@ export default function RefundPage() {
             </ul>
             <div className="bg-yellow-50 p-4 rounded-lg mt-4">
               <p className="text-sm text-gray-700">
-                <strong>⚠️ 중요:</strong> 상품 수령 후 24시간 이내에 사진과 함께 고객센터(1588-0000)로 
+                <strong>⚠️ 중요:</strong> 상품 수령 후 24시간 이내에 사진과 함께 고객센터(061-724-1223)로 
                 연락 주시기 바랍니다.
               </p>
             </div>
@@ -69,7 +69,7 @@ export default function RefundPage() {
                 <div>
                   <h3 className="font-semibold mb-1">고객센터 연락</h3>
                   <p className="text-gray-700 text-sm">
-                    상품 수령 후 24시간 이내 고객센터(1588-0000) 또는 이메일(support@daega.com)로 
+                    상품 수령 후 24시간 이내 고객센터(061-724-1223) 또는 이메일(ekals010829@naver.com)로 
                     연락하여 반품/교환 의사를 전달합니다.
                   </p>
                 </div>
@@ -172,10 +172,9 @@ export default function RefundPage() {
             <h2 className="text-2xl font-semibold mb-4">7. 고객센터 안내</h2>
             <div className="bg-gray-50 p-6 rounded-lg">
               <ul className="space-y-2 text-gray-700">
-                <li><strong>전화:</strong> 1588-0000</li>
-                <li><strong>이메일:</strong> support@daega.com</li>
-                <li><strong>운영시간:</strong> 평일 09:00 - 18:00 (주말/공휴일 휴무)</li>
-                <li><strong>점심시간:</strong> 12:00 - 13:00</li>
+                <li><strong>전화:</strong> 061-724-1223</li>
+                <li><strong>이메일:</strong> ekals010829@naver.com</li>
+                <li><strong>운영시간:</strong> 09:00 - 21:00 (연중무휴)</li>
               </ul>
             </div>
           </section>

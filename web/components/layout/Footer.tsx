@@ -17,9 +17,10 @@ const FOOTER_LINKS = [
 
 const COMPANY_INFO = [
   { value: '(주)한우대가', bold: true },
-  { value: '대표자: 김영락 | 사업자등록번호: 174-86-03355' },
+  { value: '대표자: 김영락 | 주소: 전남 순천시 해룡면 상성길 183' },
+  { value: '사업자등록번호: 174-86-03355' },
   { value: '통신판매업신고: 제0000-서울-0000호' },
-  { value: '개인정보보호책임자: 김다민 | 주소: 전남 순천시 연향상가 7길 7' },
+  { value: '개인정보보호책임자: 김다민' },
 ]
 
 export default function Footer() {
@@ -49,7 +50,7 @@ export default function Footer() {
               </div>
             </div>
             <ul className="space-y-1 text-xs text-gray-600">
-              <li>1588-0000/admin@hanwoodaega.com</li>
+              <li>061-724-1223/ekals010829@naver.com</li>
             </ul>
           </div>
         </div>
