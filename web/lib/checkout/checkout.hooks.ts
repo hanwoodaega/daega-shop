@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useDefaultAddress, useUserProfile } from '@/lib/address/useAddress'
@@ -80,7 +81,6 @@ export function useCheckout(options: UseCheckoutOptions) {
   const [usedPointsInput, setUsedPointsInput] = useState('')
 
   const [paymentMethod, setPaymentMethod] = useState('card')
-  const tossWidgetsRef = useRef<any>(null)
 
   const [serverPricing, setServerPricing] = useState<{
     originalTotal: number
@@ -617,11 +617,6 @@ export function useCheckout(options: UseCheckoutOptions) {
         throw new Error('결제 설정이 없습니다.')
       }
 
-      const widgets = tossWidgetsRef.current
-      if (!widgets) {
-        throw new Error('결제 위젯을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
-      }
-
       const orderId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
         ? crypto.randomUUID()
         : `order-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -682,7 +677,24 @@ export function useCheckout(options: UseCheckoutOptions) {
         normalizedEmail === (user?.email || '') &&
         (emailDomain.endsWith('.local') || emailDomain.endsWith('thedaega.local'))
 
+      const methodMap: Record<string, { method: string; easyPay?: { provider: string } }> = {
+        card: { method: 'CARD' },
+        transfer: { method: 'TRANSFER' },
+        virtual: { method: 'VIRTUAL_ACCOUNT' },
+        naverpay: { method: 'EASY_PAY', easyPay: { provider: 'NAVERPAY' } },
+        kakaopay: { method: 'EASY_PAY', easyPay: { provider: 'KAKAOPAY' } },
+        tosspay: { method: 'EASY_PAY', easyPay: { provider: 'TOSSPAY' } },
+        samsungpay: { method: 'EASY_PAY', easyPay: { provider: 'SAMSUNGPAY' } },
+        applepay: { method: 'EASY_PAY', easyPay: { provider: 'APPLEPAY' } },
+      }
+      const methodConfig = methodMap[paymentMethod] || { method: 'CARD' }
+
       const paymentOptions: any = {
+        method: methodConfig.method,
+        amount: {
+          currency: 'KRW',
+          value: amount,
+        },
         orderId,
         orderName,
         successUrl,
@@ -691,8 +703,18 @@ export function useCheckout(options: UseCheckoutOptions) {
         customerEmail: normalizedEmail && !isInternalEmail ? normalizedEmail : undefined,
         customerMobilePhone: sanitizedPhone,
       }
+      if (methodConfig.easyPay) {
+        paymentOptions.easyPay = methodConfig.easyPay
+      }
 
-      await widgets.requestPayment(paymentOptions)
+      const customerKey = user?.id
+      if (!customerKey) {
+        throw new Error('로그인이 필요합니다.')
+      }
+
+      const tossPayments = await loadTossPayments(tossClientKey)
+      const payment = (tossPayments as any).payment({ customerKey })
+      await payment.requestPayment(paymentOptions)
     }
 
     const saveAddressIfNeeded = async () => {
@@ -868,10 +890,6 @@ export function useCheckout(options: UseCheckoutOptions) {
     })
   }, [])
 
-  const setTossWidgets = useCallback((widgets: any) => {
-    tossWidgetsRef.current = widgets
-  }, [])
-
   return {
     state: {
       deliveryState,
@@ -902,7 +920,6 @@ export function useCheckout(options: UseCheckoutOptions) {
       setPaymentMethod,
       setGiftData,
       setCurrentStep,
-      setTossWidgets,
       handleSubmit,
       handleNextStep,
       handleSearchAddress,

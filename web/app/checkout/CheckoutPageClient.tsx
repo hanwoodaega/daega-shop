@@ -17,7 +17,7 @@ import {
   DeliveryFormQuick,
   DeliveryFormRegular,
   GiftMessageCard,
-  TossPaymentWidget,
+  PaymentMethodSelector,
   OrderSummaryBox,
   CheckoutBottomBar,
 } from './_components'
@@ -47,6 +47,7 @@ function CheckoutPageContent() {
     usedPoints,
     loadingPoints,
     usedPointsInput,
+    paymentMethod,
     giftData,
     currentStep,
     items,
@@ -63,6 +64,7 @@ function CheckoutPageContent() {
     setUsedPointsInput,
     setGiftData,
     setCurrentStep,
+    setPaymentMethod,
     handleSubmit,
     handleNextStep,
     handleSearchAddress,
@@ -373,11 +375,10 @@ function CheckoutPageContent() {
               </div>
               )}
 
-              {isPaymentStepVisible && user?.id && (
-                <TossPaymentWidget
-                  amount={orderTotal}
-                  customerKey={user.id}
-                  onWidgetsReady={actions.setTossWidgets}
+              {isPaymentStepVisible && (
+                <PaymentMethodSelector
+                  paymentMethod={paymentMethod}
+                  onPaymentMethodChange={setPaymentMethod}
                 />
               )}
             </div>
