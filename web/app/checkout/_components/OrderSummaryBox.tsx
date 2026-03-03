@@ -32,7 +32,7 @@ export default function OrderSummaryBox({
   finalTotal,
 }: OrderSummaryBoxProps) {
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 sticky top-24 mb-20">
+    <div className="bg-white rounded-lg shadow-md p-6 sticky top-24 mb-20 lg:static lg:top-auto lg:mb-2">
       <h2 className="text-xl font-bold mb-4">주문 요약</h2>
       
       {!isGiftMode && (

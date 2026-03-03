@@ -23,7 +23,7 @@ export default function OrderSummary({
   const { originalTotal, discountAmount, shipping, total } = calculateOrderTotal(selectedItems, deliveryMethod)
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 sticky top-24 mb-40">
+    <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 sticky top-24 mb-40 lg:static lg:top-auto lg:mb-2">
       <h2 className="text-xl font-bold mb-4">주문 요약</h2>
       
       {/* 배송 방법 표시 */}

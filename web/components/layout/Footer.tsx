@@ -27,9 +27,9 @@ export default function Footer() {
   const pathname = usePathname()
   
   return (
-    <footer className="mt-10 border-t-[0.5px] border-gray-300">
-      {/* 고객센터 - 하얀색 배경 */}
-      <div className="bg-white text-gray-900">
+    <footer className="mt-10 border-t-[0.5px] border-gray-300 bg-white text-gray-900">
+      {/* 고객센터 */}
+      <div>
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col space-y-4">
             <div className="flex items-center justify-between">
@@ -56,42 +56,46 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* 회사 정보 및 약관 - 진한 회색 배경 */}
-      <div className="bg-gray-800">
+      <div className="border-t border-gray-300"></div>
+
+      {/* 회사 정보 및 약관 */}
+      <div>
         <div className="container mx-auto px-4 py-8 pb-16">
           <div className="mb-6">
-            <ul className="space-y-1 text-xs text-gray-400">
+            <ul className="space-y-1 text-xs text-gray-600">
               {COMPANY_INFO.map((info, index) => (
-                <li key={index} className={info.bold ? 'font-bold text-gray-300' : ''}>
+                <li key={index} className={info.bold ? 'font-bold text-gray-900' : ''}>
                   {info.value}
                 </li>
               ))}
             </ul>
           </div>
+        </div>
+      </div>
 
-          <div className="border-t border-gray-600 pt-6">
-            <div className="flex flex-wrap gap-2 mb-4" style={{ fontSize: '11px' }}>
-              {FOOTER_LINKS.map((link, index) => (
-                <div key={link.href} className="flex items-center gap-2">
-                  <Link 
-                    href={link.href}
-                    prefetch={false}
-                    className={`font-bold transition ${
-                      pathname === link.href ? 'text-red-400' : 'text-gray-400 hover:text-gray-300'
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                  {index < FOOTER_LINKS.length - 1 && (
-                    <span className="text-gray-500">|</span>
-                  )}
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mb-4">
-              &copy; (주)한우대가. All rights reserved.
-            </p>
+      <div className="border-t border-gray-300">
+        <div className="container mx-auto px-4 pt-6 pb-10">
+          <div className="flex flex-wrap gap-2 mb-4" style={{ fontSize: '11px' }}>
+            {FOOTER_LINKS.map((link, index) => (
+              <div key={link.href} className="flex items-center gap-2">
+                <Link 
+                  href={link.href}
+                  prefetch={false}
+                  className={`font-bold transition ${
+                    pathname === link.href ? 'text-red-600' : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+                {index < FOOTER_LINKS.length - 1 && (
+                  <span className="text-gray-400">|</span>
+                )}
+              </div>
+            ))}
           </div>
+          <p className="text-xs text-gray-500 mb-4">
+            &copy; (주)한우대가. All rights reserved.
+          </p>
         </div>
       </div>
     </footer>

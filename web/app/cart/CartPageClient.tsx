@@ -180,13 +180,22 @@ function CartPageContent() {
                 quickDeliveryArea={quickDeliveryArea}
                 quickDeliveryTime={quickDeliveryTime}
               />
+              <div className="hidden lg:block mt-2">
+                <button
+                  onClick={handleCheckout}
+                  className="w-full bg-red-600 text-white py-3 text-base font-medium hover:bg-red-600"
+                  suppressHydrationWarning
+                >
+                  주문하기 ({mounted ? getSelectedItems().filter(item => !isSoldOut(item.status)).reduce((total, item) => total + item.quantity, 0) : 0})
+                </button>
+              </div>
             </div>
           </div>
         )}
       </main>
 
       {/* 하단 고정 액션 바 */}
-      <div className="fixed bottom-0 left-0 right-0 z-50" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
         <div className="w-full flex justify-center">
           <div className="w-full max-w-[480px] bg-white shadow-lg px-0 pb-0 flex gap-0">
             {deliveryMethod === 'regular' && (

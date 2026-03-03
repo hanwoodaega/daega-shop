@@ -555,6 +555,19 @@ export function useCheckout(options: UseCheckoutOptions) {
       return true
     }
 
+    const isUserCancelledPayment = (error: any) => {
+      const code = String(error?.code || '')
+      const message = String(error?.message || '')
+      const combined = `${code} ${message}`.toLowerCase()
+      return (
+        combined.includes('user_cancel') ||
+        combined.includes('cancel') ||
+        combined.includes('취소') ||
+        combined.includes('canceled') ||
+        combined.includes('cancelled')
+      )
+    }
+
     const startTossPayment = async () => {
       const tossClientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY
       const shouldMockToss =
@@ -844,6 +857,10 @@ export function useCheckout(options: UseCheckoutOptions) {
     try {
       await startTossPayment()
     } catch (error) {
+      if (isUserCancelledPayment(error)) {
+        setFlags(prev => ({ ...prev, isProcessing: false }))
+        return
+      }
       showError(error)
       setFlags(prev => ({ ...prev, isProcessing: false }))
     }

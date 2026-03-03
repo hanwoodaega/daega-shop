@@ -44,20 +44,32 @@ export async function fetchCartItemsForUser(supabase: any, userId: string) {
   }
 
   const productIds = (data || []).map((item: any) => item.product_id).filter(Boolean)
-  let productImages: { [key: string]: string } = {}
+  let productImages: { [key: string]: string | null } = {}
 
   if (productIds.length > 0) {
     const { data: imagesData } = await supabase
       .from('product_images')
-      .select('product_id, image_url')
+      .select('product_id, image_url, priority, created_at')
       .in('product_id', productIds)
-      .eq('is_primary', true)
+      .order('priority', { ascending: true })
+      .order('created_at', { ascending: true })
 
     if (imagesData) {
-      productImages = imagesData.reduce((acc: any, img: any) => {
-        acc[img.product_id] = img.image_url
+      const imageMap = new Map<string, { image_url: string; priority: number | null; created_at: string | null }>()
+      imagesData.forEach((img: any) => {
+        if (!img?.product_id) return
+        if (!imageMap.has(img.product_id)) {
+          imageMap.set(img.product_id, {
+            image_url: img.image_url,
+            priority: img.priority ?? null,
+            created_at: img.created_at ?? null,
+          })
+        }
+      })
+      productImages = Array.from(imageMap.entries()).reduce((acc, [productId, img]) => {
+        acc[productId] = img.image_url || null
         return acc
-      }, {})
+      }, {} as { [key: string]: string | null })
     }
   }
 
@@ -210,7 +222,7 @@ export async function fetchCartItemsForUser(supabase: any, userId: string) {
         price: product?.price || 0,
         weightGram: product?.weight_gram || null,
         quantity: item.quantity,
-        imageUrl: productImages[item.product_id] || '',
+        imageUrl: productImages[item.product_id] || null,
         discount_percent: discountPercent,
         brand: product?.brand,
         promotion_type: promotionType,

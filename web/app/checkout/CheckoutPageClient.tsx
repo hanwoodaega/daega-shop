@@ -399,21 +399,56 @@ function CheckoutPageContent() {
                   shipping={shipping}
                   finalTotal={finalTotal}
                 />
+                {mounted && (
+                  <div className="hidden lg:block mt-2">
+                    {isGiftMode && currentStep < totalGiftSteps ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleNextStep(e)
+                        }}
+                        className="w-full text-lg font-bold bg-red-600 text-white hover:bg-red-600 py-3 flex items-center justify-center transition"
+                      >
+                        다음
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        form="checkout-form"
+                        disabled={isProcessing}
+                        className="w-full text-lg font-bold bg-red-600 text-white hover:bg-blue-950 py-3 transition disabled:bg-gray-400 disabled:text-gray-500 flex items-center justify-center gap-2"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                            처리 중...
+                          </>
+                        ) : (
+                          <span>{formatPrice(finalTotal + shipping)}원 결제하기</span>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )}
             </div>
             )}
           </div>
         </form>
 
         {mounted && (
-          <CheckoutBottomBar
-            isGiftMode={isGiftMode}
-            currentStep={currentStep}
-            totalGiftSteps={totalGiftSteps}
-            isProcessing={isProcessing}
-            finalTotal={finalTotal}
-            shipping={shipping}
-            onNextStep={handleNextStep}
-          />
+          <div className="lg:hidden">
+            <CheckoutBottomBar
+              isGiftMode={isGiftMode}
+              currentStep={currentStep}
+              totalGiftSteps={totalGiftSteps}
+              isProcessing={isProcessing}
+              finalTotal={finalTotal}
+              shipping={shipping}
+              onNextStep={handleNextStep}
+            />
+          </div>
         )}
       </main>
 
