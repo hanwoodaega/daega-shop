@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
@@ -22,16 +22,33 @@ interface RecommendationCategory {
   is_active: boolean
 }
 
-export default function RecommendationSection() {
-  const [categories, setCategories] = useState<RecommendationCategory[]>([])
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+interface RecommendationSectionProps {
+  initialCategories?: RecommendationCategory[]
+  initialProducts?: Product[]
+  initialSelectedCategoryId?: string | null
+  initialProductsCategoryId?: string | null
+}
+
+export default function RecommendationSection({
+  initialCategories,
+  initialProducts,
+  initialSelectedCategoryId,
+  initialProductsCategoryId,
+}: RecommendationSectionProps) {
+  const hasInitialCategories = (initialCategories?.length ?? 0) > 0
+  const [categories, setCategories] = useState<RecommendationCategory[]>(initialCategories ?? [])
+  const [products, setProducts] = useState<Product[]>(initialProducts ?? [])
+  const [loading, setLoading] = useState(!hasInitialCategories)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    initialSelectedCategoryId ?? initialCategories?.[0]?.id ?? null
+  )
   const [currentPage, setCurrentPage] = useState(0)
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const openPromotionModal = usePromotionModalStore((state) => state.openModal)
   const { user } = useAuth()
+  const initialProductsCategoryIdRef = useRef<string | null>(initialProductsCategoryId ?? null)
+  const initialProductsProvidedRef = useRef<boolean>(typeof initialProducts !== 'undefined')
 
   // 페이지 수 계산
   const totalPages = Math.ceil(products.length / PRODUCTS_PER_PAGE)
@@ -43,6 +60,11 @@ export default function RecommendationSection() {
   )
 
   useEffect(() => {
+    if (hasInitialCategories) {
+      setLoading(false)
+      return
+    }
+
     const fetchCategories = async () => {
       if (!isSupabaseConfigured) {
         setLoading(false)
@@ -69,11 +91,21 @@ export default function RecommendationSection() {
     }
 
     fetchCategories()
-  }, [])
+  }, [hasInitialCategories, selectedCategoryId])
 
   useEffect(() => {
     if (!selectedCategoryId) {
       setProducts([])
+      setCurrentPage(0)
+      return
+    }
+
+    const shouldUseInitialProducts =
+      initialProductsProvidedRef.current &&
+      initialProductsCategoryIdRef.current === selectedCategoryId
+
+    if (shouldUseInitialProducts) {
+      setProducts(initialProducts ?? [])
       setCurrentPage(0)
       return
     }
@@ -114,7 +146,7 @@ export default function RecommendationSection() {
     }
 
     fetchProducts()
-  }, [selectedCategoryId])
+  }, [selectedCategoryId, initialProducts])
 
   if (loading) {
     return (

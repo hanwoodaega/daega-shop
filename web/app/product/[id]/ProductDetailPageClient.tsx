@@ -14,6 +14,7 @@ import { toggleWishlistDB } from '@/lib/wishlist/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart/cart-db'
 import { CartItem } from '@/lib/store'
 import toast from 'react-hot-toast'
+import { Product } from '@/lib/supabase/supabase'
 import { isSoldOut } from '@/lib/product/product-utils'
 import { getFinalPricing } from '@/lib/product/product.pricing'
 import { useProductDetail } from './_hooks/useProductDetail'
@@ -33,17 +34,26 @@ import {
 
 interface ProductDetailPageClientProps {
   productId: string
+  initialProduct?: Product | null
+  initialImages?: Array<{ id: string; image_url: string; priority: number }>
 }
 
-export default function ProductDetailPageClient({ productId }: ProductDetailPageClientProps) {
+export default function ProductDetailPageClient({
+  productId,
+  initialProduct,
+  initialImages,
+}: ProductDetailPageClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
   
   // Hooks
-  const { product, loading } = useProductDetail(productId)
+  const { product, loading } = useProductDetail(productId, initialProduct)
   const { reviewCount, averageRating } = useProductReviews(product?.id || null)
-  const { images, selectedIndex, handlePrevious, handleNext, handleSwipe } = useProductImages(product)
+  const { images, selectedIndex, handlePrevious, handleNext, handleSwipe } = useProductImages(
+    product,
+    initialImages
+  )
   
   // State
   const [quantity, setQuantity] = useState(1)

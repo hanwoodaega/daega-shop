@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Product } from '@/lib/supabase/supabase'
 import toast from 'react-hot-toast'
 
@@ -10,9 +10,10 @@ export interface UseProductDetailReturn {
   refetch: () => Promise<void>
 }
 
-export function useProductDetail(productId: string): UseProductDetailReturn {
-  const [product, setProduct] = useState<Product | null>(null)
-  const [loading, setLoading] = useState(true)
+export function useProductDetail(productId: string, initialProduct?: Product | null): UseProductDetailReturn {
+  const [product, setProduct] = useState<Product | null>(initialProduct ?? null)
+  const [loading, setLoading] = useState(!initialProduct)
+  const initialProductIdRef = useRef<string | null>(initialProduct?.id ?? null)
 
   const fetchProduct = useCallback(async () => {
     try {
@@ -53,8 +54,17 @@ export function useProductDetail(productId: string): UseProductDetailReturn {
   }, [productId])
 
   useEffect(() => {
+    const hasMatchingInitial =
+      !!initialProductIdRef.current &&
+      (initialProductIdRef.current === productId || initialProduct?.slug === productId)
+
+    if (hasMatchingInitial) {
+      setLoading(false)
+      return
+    }
+
     fetchProduct()
-  }, [fetchProduct])
+  }, [fetchProduct, productId, initialProduct?.slug])
 
   return {
     product,

@@ -27,7 +27,7 @@ export default function BannerHeader({ title }: BannerHeaderProps) {
         
         {/* 중앙: 제목 (absolute로 완전 중앙 배치) */}
         <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-          <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">
+          <h1 className="text-2xl md:text-3xl font-normal text-gray-900 whitespace-nowrap">
             {title}
           </h1>
         </div>

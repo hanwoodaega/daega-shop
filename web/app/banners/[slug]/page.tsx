@@ -5,7 +5,8 @@ import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import BannerHeader from './_components/BannerHeader'
 import BannerPageClient from './BannerPageClient'
 
-export default function BannerPage({ params }: { params: { slug: string } }) {
+export default async function BannerPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   return (
     <Suspense fallback={
       <div className="min-h-screen flex flex-col">
@@ -21,7 +22,7 @@ export default function BannerPage({ params }: { params: { slug: string } }) {
         <BottomNavbar />
       </div>
     }>
-      <BannerPageClient slug={params.slug} />
+      <BannerPageClient slug={slug} />
     </Suspense>
   )
 }

@@ -11,10 +11,14 @@ interface HeroSlide {
   sort_order: number
 }
 
-export default function HeroSlider() {
-  const [slides, setSlides] = useState<HeroSlide[]>([])
+interface HeroSliderProps {
+  initialSlides?: HeroSlide[]
+}
+
+export default function HeroSlider({ initialSlides }: HeroSliderProps) {
+  const [slides, setSlides] = useState<HeroSlide[]>(initialSlides ?? [])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!initialSlides)
   const [isDesktop, setIsDesktop] = useState(false)
 
   // 화면 크기 기준으로 데스크톱 여부 판별 (lg 기준)
@@ -29,6 +33,11 @@ export default function HeroSlider() {
   }, [])
 
   useEffect(() => {
+    if (initialSlides && initialSlides.length > 0) {
+      setLoading(false)
+      return
+    }
+
     const fetchSlides = async () => {
       try {
         const res = await fetch('/api/hero')
@@ -44,7 +53,7 @@ export default function HeroSlider() {
     }
 
     fetchSlides()
-  }, [])
+  }, [initialSlides])
 
   const slideCount = slides.length
 
@@ -86,7 +95,7 @@ export default function HeroSlider() {
     setCurrentIndex((prev) => (prev + 1) % slideCount)
   }
 
-  const renderTile = (slide: HeroSlide, key: string) => {
+  const renderTile = (slide: HeroSlide, key: string, shouldPriority: boolean) => {
     const image = (
       <Image
         src={slide.image_url}
@@ -95,7 +104,7 @@ export default function HeroSlider() {
         className="object-cover"
         // PC에서는 가운데 2장(각 480px), 모바일/탭에서는 전체 너비 사용
         sizes="(min-width: 1024px) 480px, 100vw"
-        priority
+        priority={shouldPriority}
       />
     )
 
@@ -125,7 +134,7 @@ export default function HeroSlider() {
         {/* 모바일/태블릿: 3:2 배너 1장 */}
         {visibleSlides[0] && (
           <div className="relative w-full aspect-[3/2] lg:hidden">
-            {renderTile(visibleSlides[0], visibleSlides[0].id)}
+            {renderTile(visibleSlides[0], visibleSlides[0].id, true)}
           </div>
         )}
 
@@ -143,7 +152,7 @@ export default function HeroSlider() {
                     transitionDelay: `${idx * 120}ms`,
                   }}
                 >
-                  {renderTile(slide, `${slide.id}-${idx}`)}
+                  {renderTile(slide, `${slide.id}-${idx}`, idx === 1)}
                   {idx === 2 && slideCount > 1 && (
                     <div className="absolute bottom-2 right-2 px-2 py-1 rounded-full bg-black/60 text-white text-xs font-medium">
                       {currentIndex + 1}/{slideCount}

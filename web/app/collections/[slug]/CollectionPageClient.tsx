@@ -6,15 +6,18 @@ import BottomNavbar from '@/components/layout/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/common/PromotionModalWrapper'
 import { useCollectionProducts } from '@/lib/collection'
+import { Collection } from '@/lib/collection'
+import { Product } from '@/lib/supabase/supabase'
 import CollectionHeader from './_components/CollectionHeader'
 import CollectionDescription from './_components/CollectionDescription'
 import CollectionProductGrid from './_components/CollectionProductGrid'
 
 interface CollectionPageClientProps {
   slug: string
+  initialData?: { collection: Collection | null; products: Product[]; totalPages?: number }
 }
 
-export default function CollectionPageClient({ slug }: CollectionPageClientProps) {
+export default function CollectionPageClient({ slug, initialData }: CollectionPageClientProps) {
   const {
     collection,
     products,
@@ -23,7 +26,7 @@ export default function CollectionPageClient({ slug }: CollectionPageClientProps
     hasMore,
     sortOrder,
     setSortOrder,
-  } = useCollectionProducts(slug)
+  } = useCollectionProducts(slug, initialData)
 
   const collectionTitle = collection?.title || '컬렉션'
 

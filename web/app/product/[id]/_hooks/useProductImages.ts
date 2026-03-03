@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/supabase'
 import { Product } from '@/lib/supabase/supabase'
 
@@ -19,13 +19,27 @@ export interface UseProductImagesReturn {
   handleSwipe: (direction: 'left' | 'right') => void
 }
 
-export function useProductImages(product: Product | null): UseProductImagesReturn {
-  const [images, setImages] = useState<ProductImage[]>([])
+export function useProductImages(
+  product: Product | null,
+  initialImages?: ProductImage[]
+): UseProductImagesReturn {
+  const [images, setImages] = useState<ProductImage[]>(initialImages ?? [])
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const initialProductIdRef = useRef<string | null>(product?.id ?? null)
+  const initialImagesRef = useRef<ProductImage[] | undefined>(initialImages)
 
   useEffect(() => {
     if (!product?.id) {
       setImages([])
+      return
+    }
+
+    const shouldUseInitial =
+      initialImagesRef.current &&
+      initialProductIdRef.current === product.id
+
+    if (shouldUseInitial) {
+      setImages(initialImagesRef.current || [])
       return
     }
 

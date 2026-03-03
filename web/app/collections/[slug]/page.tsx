@@ -3,8 +3,32 @@ import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 import CollectionPageClient from './CollectionPageClient'
+import { getServerBaseUrl } from '@/lib/utils/server-url'
+import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
 
-export default function CollectionPage({ params }: { params: { slug: string } }) {
+export default async function CollectionPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  let initialData: { collection: any | null; products: any[]; totalPages?: number } | undefined
+  try {
+    const siteUrl = await getServerBaseUrl()
+    if (siteUrl) {
+      const res = await fetch(
+        `${siteUrl}/api/collections/${slug}?page=1&limit=${DEFAULT_PAGE_SIZE}&sort=default`,
+        { next: { revalidate: 300 } }
+      )
+      if (res.ok) {
+        const data = await res.json()
+        initialData = {
+          collection: data.collection ?? null,
+          products: data.products ?? [],
+          totalPages: data.totalPages ?? 0,
+        }
+      }
+    }
+  } catch {
+    initialData = undefined
+  }
+
   return (
     <Suspense fallback={
       <div className="min-h-screen flex flex-col">
@@ -28,7 +52,7 @@ export default function CollectionPage({ params }: { params: { slug: string } })
         <BottomNavbar />
       </div>
     }>
-      <CollectionPageClient slug={params.slug} />
+      <CollectionPageClient slug={slug} initialData={initialData} />
     </Suspense>
   )
 }

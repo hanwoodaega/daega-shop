@@ -1,6 +1,15 @@
 import { Suspense } from 'react'
 import Footer from '@/components/layout/Footer'
 import ProductDetailPageClient from './ProductDetailPageClient'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { PRODUCT_SELECT_FIELDS, enrichProductsServer } from '@/lib/product/product.service'
+import { Product } from '@/lib/supabase/supabase'
+
+interface ProductImage {
+  id: string
+  image_url: string
+  priority: number
+}
 
 interface ProductDetailPageProps {
   params: Promise<{ id: string }>
@@ -8,6 +17,67 @@ interface ProductDetailPageProps {
 
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { id } = await params
+  let initialProduct: Product | null = null
+  let initialImages: ProductImage[] = []
+
+  try {
+    const supabase = await createSupabaseServerClient()
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+
+    let data
+    let error
+
+    if (isUUID) {
+      const result = await supabase
+        .from('products')
+        .select(PRODUCT_SELECT_FIELDS)
+        .eq('id', id)
+        .neq('status', 'deleted')
+        .single()
+
+      data = result.data
+      error = result.error
+    } else {
+      const result = await supabase
+        .from('products')
+        .select(PRODUCT_SELECT_FIELDS)
+        .eq('slug', id)
+        .neq('status', 'deleted')
+        .single()
+
+      data = result.data
+      error = result.error
+
+      if ((error || !data) && !isUUID) {
+        const retryResult = await supabase
+          .from('products')
+          .select(PRODUCT_SELECT_FIELDS)
+          .eq('id', id)
+          .neq('status', 'deleted')
+          .single()
+
+        data = retryResult.data
+        error = retryResult.error
+      }
+    }
+
+    if (!error && data) {
+      const enrichedProducts = await enrichProductsServer([data])
+      initialProduct = enrichedProducts[0] || data
+
+      const { data: images } = await supabase
+        .from('product_images')
+        .select('id, image_url, priority')
+        .eq('product_id', data.id)
+        .order('priority', { ascending: true })
+        .order('created_at', { ascending: true })
+
+      initialImages = images || []
+    }
+  } catch {
+    initialProduct = null
+    initialImages = []
+  }
 
   return (
     <Suspense fallback={
@@ -38,7 +108,11 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         <Footer />
       </div>
     }>
-      <ProductDetailPageClient productId={id} />
+      <ProductDetailPageClient
+        productId={id}
+        initialProduct={initialProduct}
+        initialImages={initialImages}
+      />
     </Suspense>
   )
 }

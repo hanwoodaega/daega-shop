@@ -1,16 +1,20 @@
-'use client'
-
 import Link from 'next/link'
 import ProductCard from '@/components/product/ProductCard'
-import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
-import { useCollectionSectionData } from '@/lib/collection/collection.hooks'
+import { Collection } from '@/lib/collection'
+import { Product } from '@/lib/supabase/supabase'
 
 const WEEKLY_DISCOUNT_TYPE = 'weekly_discount'
 
-export default function WeeklyDiscountSection() {
-  const { collection, products, loading } = useCollectionSectionData(WEEKLY_DISCOUNT_TYPE)
+interface WeeklyDiscountSectionProps {
+  collection: Collection | null
+  products: Product[]
+}
 
-  if (!loading && (!collection || products.length === 0)) {
+export default function WeeklyDiscountSection({
+  collection,
+  products,
+}: WeeklyDiscountSectionProps) {
+  if (!collection || products.length === 0) {
     return null
   }
 
@@ -35,15 +39,9 @@ export default function WeeklyDiscountSection() {
         </div>
 
         <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {loading
-            ? [...Array(4)].map((_, i) => (
-                <div key={i}>
-                  <ProductCardSkeleton />
-                </div>
-              ))
-            : products.slice(0, 4).map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+          {products.slice(0, 4).map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
         </div>
       </div>
     </section>

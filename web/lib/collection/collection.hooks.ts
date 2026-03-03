@@ -16,17 +16,25 @@ interface UseCollectionProductsReturn {
   loadMore: () => void
 }
 
-export function useCollectionProducts(slug: string): UseCollectionProductsReturn {
-  const [collection, setCollection] = useState<Collection | null>(null)
-  const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
+export function useCollectionProducts(
+  slug: string,
+  initialData?: { collection: Collection | null; products: Product[]; totalPages?: number }
+): UseCollectionProductsReturn {
+  const hasInitialData = typeof initialData !== 'undefined'
+  const [collection, setCollection] = useState<Collection | null>(initialData?.collection ?? null)
+  const [displayedProducts, setDisplayedProducts] = useState<Product[]>(initialData?.products ?? [])
+  const [loading, setLoading] = useState(!hasInitialData)
   const [loadingMore, setLoadingMore] = useState(false)
   const [sortOrder, setSortOrder] = useState<'default' | 'price_asc' | 'price_desc'>('default')
   const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
+  const [hasMore, setHasMore] = useState(
+    hasInitialData ? (initialData?.totalPages ?? 0) > 1 : true
+  )
   const isFetchingRef = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
   const requestIdRef = useRef(0) // Race Condition 방지용
+  const initialSlugRef = useRef(slug)
+  const initialDataUsedRef = useRef(hasInitialData)
 
   const fetchCollectionData = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
     // 중복 요청 방지: 무한스크롤만 차단, 초기 로딩/sort 변경은 항상 실행
@@ -138,6 +146,18 @@ export function useCollectionProducts(slug: string): UseCollectionProductsReturn
   // slug나 sortOrder 변경 시 첫 페이지부터 다시 로드
   useEffect(() => {
     if (slug) {
+      if (
+        initialDataUsedRef.current &&
+        slug === initialSlugRef.current &&
+        sortOrder === 'default'
+      ) {
+        setPage(1)
+        setHasMore((initialData?.totalPages ?? 0) > 1)
+        setLoading(false)
+        initialDataUsedRef.current = false
+        return
+      }
+
       setPage(1)
       setDisplayedProducts([])
       fetchCollectionData(1, sortOrder)
