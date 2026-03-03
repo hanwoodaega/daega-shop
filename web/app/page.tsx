@@ -37,7 +37,7 @@ export default async function Home() {
   let collections: Collection[] = []
 
   try {
-    const siteUrl = getServerBaseUrl()
+    const siteUrl = await getServerBaseUrl()
 
     if (siteUrl) {
       const res = await fetch(`${siteUrl}/api/collections`, {

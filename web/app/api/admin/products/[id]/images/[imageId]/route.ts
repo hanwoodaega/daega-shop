@@ -10,7 +10,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; imageId: string }> | { id: string; imageId: string } }
 ) {
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -45,7 +45,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; imageId: string }> | { id: string; imageId: string } }
 ) {
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

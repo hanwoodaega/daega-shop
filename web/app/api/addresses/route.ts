@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     }
     const user = authResult.user
 
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     const { data: addresses, error } = await supabase
       .from('addresses')
       .select('*')
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
     const user = authResult.user
 
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     const body = await request.json()
     const { name, recipient_name, recipient_phone, zipcode, address, address_detail, delivery_note, is_default } = body
 

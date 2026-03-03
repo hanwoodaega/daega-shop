@@ -41,7 +41,6 @@ async function getProducts(): Promise<Product[]> {
         price,
         brand,
         category,
-        image_url,
         promotion_products (
           promotion_id,
           promotions (
@@ -62,7 +61,26 @@ async function getProducts(): Promise<Product[]> {
       return []
     }
 
-    return (data || []).map((product: any) => {
+    const products = data || []
+    const productIds = products.map((product: any) => product.id)
+    let imageMap: Record<string, string | null> = {}
+
+    if (productIds.length > 0) {
+      const { data: imagesData } = await supabase
+        .from('product_images')
+        .select('product_id, image_url')
+        .in('product_id', productIds)
+        .eq('is_primary', true)
+
+      if (imagesData) {
+        imageMap = imagesData.reduce((acc: Record<string, string | null>, img: any) => {
+          acc[img.product_id] = img.image_url
+          return acc
+        }, {})
+      }
+    }
+
+    return products.map((product: any) => {
       const promotion = extractActivePromotion(product)
 
       let promotionLabel: string | null = null
@@ -78,7 +96,7 @@ async function getProducts(): Promise<Product[]> {
         price: product.price,
         brand: product.brand,
         category: product.category,
-        image_url: product.image_url,
+        image_url: imageMap[product.id] || null,
         promotion_label: promotionLabel,
         promotion_type: promotion?.type || null,
         promotion_discount_percent: promotion?.discount_percent || null,

@@ -7,10 +7,11 @@ export const dynamic = 'force-dynamic'
 // GET: 카테고리 상품 조회 (공개 API)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { type: string } }
+  { params }: { params: Promise<{ type: string }> }
 ) {
+  const { type } = await params
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     const { searchParams } = new URL(request.url)
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
@@ -19,7 +20,7 @@ export async function GET(
     const to = from + limit - 1
 
     // type 필드를 소문자로 정규화
-    const normalizedType = params.type.trim().toLowerCase()
+    const normalizedType = type.trim().toLowerCase()
 
     // 카테고리 정보 조회 (활성 상태만)
     const { data: category, error: categoryError } = await supabase
@@ -39,11 +40,11 @@ export async function GET(
       
       // 소문자로 못 찾으면 원본 type으로도 시도
       let fallbackCategory = allCategory
-      if (!allCategory && params.type !== normalizedType) {
+      if (!allCategory && type !== normalizedType) {
         const { data: fallback } = await supabase
           .from('categories')
           .select('id, type, is_active, title')
-          .eq('type', params.type)
+          .eq('type', type)
           .maybeSingle()
         fallbackCategory = fallback || null
       }

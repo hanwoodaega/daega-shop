@@ -31,7 +31,7 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   reactStrictMode: true,
-  optimizeFonts: true,
+  turbopack: {},
 }
 
 module.exports = nextConfig

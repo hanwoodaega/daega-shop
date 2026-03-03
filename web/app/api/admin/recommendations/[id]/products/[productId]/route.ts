@@ -8,7 +8,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; productId: string }> }
 ) {
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

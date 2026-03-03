@@ -5,16 +5,17 @@ import { assertAdmin } from '@/lib/auth/admin-auth'
 // GET: 배너의 상품 목록 조회
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const { id } = params
+    const { id } = await params
     
     const { data, error } = await supabaseAdmin
       .from('banner_products')
@@ -46,16 +47,17 @@ export async function GET(
 // POST: 배너에 상품 추가
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const { product_ids } = body
 
@@ -131,16 +133,17 @@ export async function POST(
 // DELETE: 배너에서 상품 제거
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const { id } = params
+    const { id } = await params
     const { searchParams } = new URL(request.url)
     const product_id = searchParams.get('product_id')
 

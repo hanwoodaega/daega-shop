@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 // GET: 읽지 않은 알림 개수 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 사용자 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()

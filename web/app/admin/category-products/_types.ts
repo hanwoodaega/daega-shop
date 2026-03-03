@@ -16,7 +16,7 @@ export interface CategoryProduct {
     id: string
     name: string
     price: number
-    image_url: string
+    image_url: string | null
     brand: string | null
     category: string
   }
@@ -26,7 +26,7 @@ export interface Product {
   id: string
   name: string
   price: number
-  image_url: string
+  image_url: string | null
   brand: string | null
   category: string
   promotion_label?: string | null

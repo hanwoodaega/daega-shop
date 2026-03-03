@@ -7,12 +7,13 @@ export const dynamic = 'force-dynamic'
 // PUT: 쿠폰 수정
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     // 관리자 인증 확인
     try {
-      assertAdmin()
+      await assertAdmin()
     } catch (e: any) {
       return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
     }
@@ -73,7 +74,7 @@ export async function PUT(
     const { data, error } = await supabase
       .from('coupons')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -98,12 +99,13 @@ export async function PUT(
 // DELETE: 쿠폰 삭제 (soft delete)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     // 관리자 인증 확인
     try {
-      assertAdmin()
+      await assertAdmin()
     } catch (e: any) {
       return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
     }
@@ -114,7 +116,7 @@ export async function DELETE(
     const { data: existingCoupon, error: fetchError } = await supabase
       .from('coupons')
       .select('id, is_deleted')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (fetchError || !existingCoupon) {
@@ -137,7 +139,7 @@ export async function DELETE(
         is_deleted: true,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 

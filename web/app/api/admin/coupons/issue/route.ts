@@ -16,7 +16,7 @@ import { assertAdmin } from '@/lib/auth/admin-auth'
  */
 export async function POST(request: NextRequest) {
   try {
-    assertAdmin()
+    await assertAdmin()
     
     const supabase = createSupabaseAdminClient()
     const body = await request.json()

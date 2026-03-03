@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     const { data: profile } = await supabase
       .from('users')
       .select('phone, phone_verified_at, name, status')

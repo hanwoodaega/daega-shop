@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 
 // GET: 관리자 인증 상태 확인
 export async function GET() {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const cookie = cookieStore.get('admin_auth')
   
   if (!cookie || cookie.value !== '1') {

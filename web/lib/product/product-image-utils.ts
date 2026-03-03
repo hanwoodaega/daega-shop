@@ -15,7 +15,7 @@ export async function getProductMainImageUrl(
   fallbackImageUrl?: string | null
 ): Promise<string | null> {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     const { data, error } = await supabase
       .from('product_images')
@@ -53,7 +53,7 @@ export async function getProductMainImageUrlMap(
   }
   
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 각 상품의 우선순위가 가장 높은 이미지 조회
     // Supabase에서는 서브쿼리가 제한적이므로, 각 상품에 대해 조회

@@ -5,7 +5,7 @@ import { assertAdmin } from '@/lib/auth/admin-auth'
 // GET: 컬렉션 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 // POST: 컬렉션 생성
 export async function POST(request: NextRequest) {
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

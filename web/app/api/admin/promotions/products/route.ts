@@ -5,7 +5,7 @@ import { assertAdmin } from '@/lib/auth/admin-auth'
 // GET: 모든 활성 프로모션의 상품 ID 목록 조회 (N+1 문제 해결)
 export async function GET(request: NextRequest) {
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

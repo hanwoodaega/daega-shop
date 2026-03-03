@@ -10,7 +10,7 @@ import { NextRequest } from 'next/server'
  */
 export async function getUserFromServer(): Promise<User | null> {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     const { data: { user }, error } = await supabase.auth.getUser()
     
     if (error || !user) {
@@ -26,7 +26,7 @@ export async function getUserFromServer(): Promise<User | null> {
 
 export async function getUserFromRequest(request: NextRequest): Promise<User | null> {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
 
@@ -51,7 +51,7 @@ type ActiveUserResult =
 
 export async function requireActiveUserFromServer(): Promise<ActiveUserResult> {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     const { data: { user }, error } = await supabase.auth.getUser()
 
     if (error || !user) {

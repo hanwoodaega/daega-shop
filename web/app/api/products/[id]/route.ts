@@ -4,13 +4,14 @@ import { PRODUCT_SELECT_FIELDS, enrichProductsServer } from '@/lib/product/produ
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // UUID 형식인지 확인
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id)
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
     
     let data
     let error
@@ -20,7 +21,7 @@ export async function GET(
       const result = await supabase
         .from('products')
         .select(PRODUCT_SELECT_FIELDS)
-        .eq('id', params.id)
+        .eq('id', id)
         .neq('status', 'deleted')
         .single()
       
@@ -30,7 +31,7 @@ export async function GET(
       const result = await supabase
         .from('products')
         .select(PRODUCT_SELECT_FIELDS)
-        .eq('slug', params.id)
+        .eq('slug', id)
         .neq('status', 'deleted')
         .single()
       
@@ -42,7 +43,7 @@ export async function GET(
         const retryResult = await supabase
           .from('products')
           .select(PRODUCT_SELECT_FIELDS)
-          .eq('id', params.id)
+          .eq('id', id)
           .neq('status', 'deleted')
           .single()
         
@@ -62,7 +63,7 @@ export async function GET(
     return NextResponse.json(enrichedProduct)
   } catch (error: any) {
     console.error('[API/products/[id]] 상품 조회 실패:', error)
-    console.error('[API/products/[id]] 상품 ID:', params.id)
+    console.error('[API/products/[id]] 상품 ID:', id)
     console.error('[API/products/[id]] 에러 코드:', error?.code)
     console.error('[API/products/[id]] 에러 메시지:', error?.message)
     return NextResponse.json({ error: '상품 조회 실패' }, { status: 500 })

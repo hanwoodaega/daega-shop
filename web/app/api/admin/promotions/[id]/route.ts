@@ -6,10 +6,11 @@ import { getProductMainImageUrlMap } from '@/lib/product/product-image-utils'
 // GET: 프로모션 상세 조회
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -19,7 +20,7 @@ export async function GET(
     const { data: promotion, error: promoError } = await supabaseAdmin
       .from('promotions')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (promoError || !promotion) {
@@ -41,7 +42,7 @@ export async function GET(
           brand
         )
       `)
-      .eq('promotion_id', params.id)
+      .eq('promotion_id', id)
       .order('priority', { ascending: true })
       .order('created_at', { ascending: true })
 
@@ -87,10 +88,11 @@ export async function GET(
 // PUT: 프로모션 수정
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -127,7 +129,7 @@ export async function PUT(
     const { data, error } = await supabaseAdmin
       .from('promotions')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -145,10 +147,11 @@ export async function PUT(
 // DELETE: 프로모션 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -158,7 +161,7 @@ export async function DELETE(
     const { error } = await supabaseAdmin
       .from('promotions')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })

@@ -5,7 +5,7 @@ import { nameToSlug } from '@/lib/utils/utils'
 import { extractActivePromotion } from '@/lib/product/product.service'
 
 export async function GET(request: Request) {
-  try { assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  try { await assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   const { searchParams } = new URL(request.url)
   const category = searchParams.get('category')
   const tag = searchParams.get('tag')
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  try { assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  try { await assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   
   let body: any = {}
   try {

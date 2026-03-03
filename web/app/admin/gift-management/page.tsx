@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import GiftManagementPage from './_components/GiftManagementPage'
 
 export default async function Page() {
-  const supabase = createSupabaseServerClient()
+  const supabase = await createSupabaseServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

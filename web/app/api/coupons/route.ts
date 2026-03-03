@@ -50,7 +50,7 @@ function isCouponExpired(userCoupon: UserCoupon, coupon: Coupon | null): boolean
 // GET: 사용자 쿠폰 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()

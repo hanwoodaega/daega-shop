@@ -10,7 +10,7 @@ import { addPoints } from '@/lib/point/points'
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabaseAuth = createSupabaseServerClient()
+    const supabaseAuth = await createSupabaseServerClient()
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
     
     if (authError || !user) {

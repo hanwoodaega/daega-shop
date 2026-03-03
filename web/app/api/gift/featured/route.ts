@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // GET: 실시간 인기 선물세트 상품 조회
 export async function GET() {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 실시간 인기 카테고리 조회
     const { data: categoryData, error: categoryError } = await supabase

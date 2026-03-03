@@ -6,14 +6,15 @@ import { addPoints } from '@/lib/point/points'
 // PATCH /api/admin/reviews/:id  { status: 'approved' | 'rejected' }
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    try { assertAdmin() } catch (e: any) {
+    try { await assertAdmin() } catch (e: any) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const reviewId = params.id
-    const supabase = createSupabaseServerClient()
+    const reviewId = id
+    const supabase = await createSupabaseServerClient()
     const supabaseAdmin = createSupabaseAdminClient() // RLS 우회를 위한 관리자 클라이언트
     const body = await request.json()
     const { status, reply, deleteReply, points } = body as { status?: 'approved' | 'rejected', reply?: string, deleteReply?: boolean, points?: number }
@@ -216,13 +217,14 @@ export async function PATCH(
 // DELETE /api/admin/reviews/:id
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    try { assertAdmin() } catch (e: any) {
+    try { await assertAdmin() } catch (e: any) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const reviewId = params.id
+    const reviewId = id
     const supabaseAdmin = createSupabaseAdminClient() // RLS 우회를 위한 관리자 클라이언트
 
     // 삭제 전 product_id 가져오기

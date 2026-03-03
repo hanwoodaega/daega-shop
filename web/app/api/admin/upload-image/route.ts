@@ -7,7 +7,7 @@ export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

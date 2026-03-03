@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 // POST: 관리자가 알림 생성 및 발송
 export async function POST(request: NextRequest) {
   try {
-    try { assertAdmin() } catch (e: any) {
+    try { await assertAdmin() } catch (e: any) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

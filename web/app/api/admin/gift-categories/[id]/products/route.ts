@@ -5,16 +5,17 @@ import { assertAdmin } from '@/lib/auth/admin-auth'
 // POST: 선물 카테고리에 상품 추가
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const { product_ids, priority } = body
 
@@ -59,16 +60,17 @@ export async function POST(
 // DELETE: 선물 카테고리에서 상품 제거
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const { id } = params
+    const { id } = await params
     const { searchParams } = new URL(request.url)
     const productIds = searchParams.getAll('product_id')
 
@@ -99,16 +101,17 @@ export async function DELETE(
 // PATCH: 상품의 priority 업데이트
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const { product_id, priority } = body
 

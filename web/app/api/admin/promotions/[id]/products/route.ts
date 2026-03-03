@@ -5,10 +5,11 @@ import { assertAdmin } from '@/lib/auth/admin-auth'
 // POST: 프로모션에 상품 추가
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -25,7 +26,7 @@ export async function POST(
     const { data: promotion, error: promoError } = await supabaseAdmin
       .from('promotions')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (promoError || !promotion) {
@@ -36,7 +37,7 @@ export async function POST(
     const { data: existingProducts } = await supabaseAdmin
       .from('promotion_products')
       .select('priority')
-      .eq('promotion_id', params.id)
+      .eq('promotion_id', id)
       .order('priority', { ascending: false })
       .order('created_at', { ascending: true })
       .limit(1)
@@ -47,7 +48,7 @@ export async function POST(
 
     // 상품 추가
     const promotionProducts = product_ids.map((product_id: string, index: number) => ({
-      promotion_id: params.id,
+      promotion_id: id,
       product_id,
       group_id: group_id || null,
       priority: maxPriority + 1 + index,
@@ -72,10 +73,11 @@ export async function POST(
 // DELETE: 프로모션에서 상품 제거
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -91,7 +93,7 @@ export async function DELETE(
     const { error } = await supabaseAdmin
       .from('promotion_products')
       .delete()
-      .eq('promotion_id', params.id)
+      .eq('promotion_id', id)
       .eq('product_id', product_id)
 
     if (error) {

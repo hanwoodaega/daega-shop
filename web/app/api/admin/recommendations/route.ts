@@ -5,7 +5,7 @@ import { assertAdmin } from '@/lib/auth/admin-auth'
 // GET: 모든 추천 카테고리 조회 (관리자용)
 export async function GET(request: NextRequest) {
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 // POST: 추천 카테고리 생성
 export async function POST(request: NextRequest) {
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

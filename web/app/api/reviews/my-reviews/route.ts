@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 // GET: 내가 작성한 리뷰 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
 
     // 사용자 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()

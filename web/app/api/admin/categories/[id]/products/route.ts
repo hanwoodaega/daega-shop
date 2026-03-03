@@ -5,10 +5,11 @@ import { assertAdmin } from '@/lib/auth/admin-auth'
 // POST: 카테고리에 상품 추가
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -25,7 +26,7 @@ export async function POST(
     const { data: category, error: categoryError } = await supabaseAdmin
       .from('categories')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (categoryError || !category) {
@@ -34,7 +35,7 @@ export async function POST(
 
     // 상품 추가 (priority는 null로 설정)
     const categoryProducts = product_ids.map((product_id: string) => ({
-      category_id: params.id,
+      category_id: id,
       product_id,
       priority: null,
     }))
@@ -58,10 +59,11 @@ export async function POST(
 // PUT: 카테고리 상품의 priority 업데이트
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -85,7 +87,7 @@ export async function PUT(
     const { data: category, error: categoryError } = await supabaseAdmin
       .from('categories')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (categoryError || !category) {
@@ -97,7 +99,7 @@ export async function PUT(
       .from('category_products')
       .update({ priority: priority === null || priority === undefined ? null : priority })
       .eq('id', category_product_id)
-      .eq('category_id', params.id)
+      .eq('category_id', id)
       .select()
       .single()
 
@@ -115,10 +117,11 @@ export async function PUT(
 // DELETE: 카테고리에서 상품 제거
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -134,7 +137,7 @@ export async function DELETE(
     const { error } = await supabaseAdmin
       .from('category_products')
       .delete()
-      .eq('category_id', params.id)
+      .eq('category_id', id)
       .eq('product_id', product_id)
 
     if (error) {

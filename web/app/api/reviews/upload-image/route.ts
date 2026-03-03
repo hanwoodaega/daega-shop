@@ -5,7 +5,7 @@ export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
 
     // 사용자 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()

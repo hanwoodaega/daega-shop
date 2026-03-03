@@ -6,10 +6,11 @@ import { getProductMainImageUrlMap } from '@/lib/product/product-image-utils'
 // GET: 카테고리 상세 조회 (상품 목록 포함)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -19,7 +20,7 @@ export async function GET(
     const { data: category, error: categoryError } = await supabaseAdmin
       .from('categories')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (categoryError || !category) {
@@ -41,7 +42,7 @@ export async function GET(
           category
         )
       `)
-      .eq('category_id', params.id)
+      .eq('category_id', id)
       .order('priority', { ascending: true })
       .order('created_at', { ascending: true })
 
@@ -87,10 +88,11 @@ export async function GET(
 // PUT: 카테고리 수정
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -103,7 +105,7 @@ export async function PUT(
     const { data: existingCategory } = await supabaseAdmin
       .from('categories')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!existingCategory) {
@@ -119,7 +121,7 @@ export async function PUT(
     const { data, error } = await supabaseAdmin
       .from('categories')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -137,10 +139,11 @@ export async function PUT(
 // DELETE: 카테고리 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -150,7 +153,7 @@ export async function DELETE(
     const { data: existingCategory } = await supabaseAdmin
       .from('categories')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!existingCategory) {
@@ -161,7 +164,7 @@ export async function DELETE(
     const { error: productsError } = await supabaseAdmin
       .from('category_products')
       .delete()
-      .eq('category_id', params.id)
+      .eq('category_id', id)
 
     if (productsError) {
       return NextResponse.json({ error: productsError.message }, { status: 400 })
@@ -171,7 +174,7 @@ export async function DELETE(
     const { error } = await supabaseAdmin
       .from('categories')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })

@@ -7,10 +7,11 @@ export const dynamic = 'force-dynamic'
 // PUT: 주소 수정
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()
@@ -31,7 +32,7 @@ export async function PUT(
         .update({ is_default: false })
         .eq('user_id', user.id)
         .eq('is_default', true)
-        .neq('id', params.id)
+        .neq('id', id)
     }
 
     // 주소 수정
@@ -48,7 +49,7 @@ export async function PUT(
         is_default: is_default || false,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id) // 본인 주소만 수정 가능
       .select()
       .single()
@@ -71,10 +72,11 @@ export async function PUT(
 // DELETE: 주소 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()
@@ -89,7 +91,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('addresses')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
 
     if (error) {

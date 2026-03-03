@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
     const user = authResult.user
 
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     const body = await request.json()
     const { userCouponId, orderId, purchaseAmount } = body
 

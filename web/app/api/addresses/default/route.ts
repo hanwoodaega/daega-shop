@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 // GET: 기본 주소 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()

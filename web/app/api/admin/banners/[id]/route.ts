@@ -6,10 +6,11 @@ import { assertAdmin } from '@/lib/auth/admin-auth'
 // GET: 배너 조회 (상품 목록 포함)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -18,7 +19,7 @@ export async function GET(
     const { data: banner, error: bannerError } = await supabaseAdmin
       .from('banners')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (bannerError || !banner) {
@@ -39,7 +40,7 @@ export async function GET(
           category
         )
       `)
-      .eq('banner_id', params.id)
+      .eq('banner_id', id)
 
     if (productsError) {
       console.error('배너 상품 조회 실패:', productsError)
@@ -58,10 +59,11 @@ export async function GET(
 // PUT: 배너 수정
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -79,7 +81,7 @@ export async function PUT(
         .from('banners')
         .select('id')
         .eq('slug', normalizedSlug)
-        .neq('id', params.id)
+        .neq('id', id)
         .maybeSingle()
 
       if (existing) {
@@ -102,7 +104,7 @@ export async function PUT(
     const { data, error } = await supabaseAdmin
       .from('banners')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -111,7 +113,7 @@ export async function PUT(
     }
 
     // 캐시 무효화
-    revalidateTag('banner')
+    revalidateTag('banner', 'default')
     revalidatePath('/')
 
     return NextResponse.json({ banner: data })
@@ -124,10 +126,11 @@ export async function PUT(
 // DELETE: 배너 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -136,14 +139,14 @@ export async function DELETE(
     const { error } = await supabaseAdmin
       .from('banners')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
     // 캐시 무효화
-    revalidateTag('banner')
+    revalidateTag('banner', 'default')
     revalidatePath('/')
 
     return NextResponse.json({ success: true })

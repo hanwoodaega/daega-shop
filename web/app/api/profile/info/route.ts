@@ -46,7 +46,7 @@ function isCouponValid(userCoupon: UserCoupon, coupon: Coupon): boolean {
 // GET: 마이페이지 전체 정보 조회 (이름, 주문 개수, 쿠폰 개수, 포인트)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인 (헬퍼 함수 사용)
     const authResult = await requireActiveUserFromServer()

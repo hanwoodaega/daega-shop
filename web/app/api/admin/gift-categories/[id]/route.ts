@@ -7,16 +7,17 @@ import { normalizeCategoryProduct } from '@/app/admin/gift-management/_utils/fet
 // GET: 선물 카테고리 상세 조회 (상품 목록 포함)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const { id } = params
+    const { id } = await params
     const { searchParams } = new URL(request.url)
     const productId = searchParams.get('product_id')
 
@@ -100,16 +101,17 @@ export async function GET(
 // PUT: 선물 카테고리 수정
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const { name, slug, priority } = body
 
@@ -141,16 +143,17 @@ export async function PUT(
 // DELETE: 선물 카테고리 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const { id } = params
+    const { id } = await params
 
     // CASCADE로 gift_category_products도 자동 삭제됨
     const { error } = await supabaseAdmin

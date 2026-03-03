@@ -5,10 +5,10 @@ import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 // GET /api/admin/reviews?status=pending|approved|rejected&page=&limit=
 export async function GET(request: NextRequest) {
   try {
-    try { assertAdmin() } catch (e: any) {
+    try { await assertAdmin() } catch (e: any) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status') || 'pending'
     const page = parseInt(searchParams.get('page') || '1')

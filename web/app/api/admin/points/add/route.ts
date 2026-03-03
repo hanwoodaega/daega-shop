@@ -7,7 +7,7 @@ import { addPoints } from '@/lib/point/points'
 export async function POST(request: NextRequest) {
   try {
     try { 
-      assertAdmin() 
+      await assertAdmin() 
     } catch (e: any) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

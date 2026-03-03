@@ -3,15 +3,16 @@ import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { enrichProductsServer } from '@/lib/product/product.service'
 
 // GET: 컬렉션별 상품 목록 조회 (공개 API)
-// params.slug는 실제로는 type (best, sale, no9)
+// slug는 실제로는 type (best, sale, no9)
 export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
+  const { slug } = await params
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     const { searchParams } = new URL(request.url)
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')))
@@ -20,7 +21,7 @@ export async function GET(
     const to = from + limit - 1
 
     // type 필드를 소문자로 정규화 (DB 저장 시 소문자로 저장되도록 했으므로)
-    const normalizedType = params.slug.trim().toLowerCase()
+    const normalizedType = slug.trim().toLowerCase()
 
     // 컬렉션 정보 조회 (type으로 조회, 활성 상태만)
     const { data: collection, error: collectionError } = await supabase
@@ -40,11 +41,11 @@ export async function GET(
       
       // 소문자로 못 찾으면 원본 slug로도 시도 (기존 데이터 호환성)
       let fallbackCollection = allCollection
-      if (!allCollection && params.slug !== normalizedType) {
+      if (!allCollection && slug !== normalizedType) {
         const { data: fallback } = await supabase
           .from('collections')
           .select('id, type, is_active, title')
-          .eq('type', params.slug)
+          .eq('type', slug)
           .maybeSingle()
         fallbackCollection = fallback || null
       }

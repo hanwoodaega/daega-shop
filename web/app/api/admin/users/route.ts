@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 // GET: 관리자가 사용자 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    try { assertAdmin() } catch (e: any) {
+    try { await assertAdmin() } catch (e: any) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

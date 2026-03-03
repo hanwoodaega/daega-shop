@@ -5,10 +5,11 @@ import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
+  const { slug } = await params
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || DEFAULT_PAGE_SIZE.toString())
@@ -18,7 +19,7 @@ export async function GET(
     const { data: banner, error: bannerError } = await supabase
       .from('banners')
       .select('*')
-      .eq('slug', params.slug)
+      .eq('slug', slug)
       .eq('is_active', true)
       .single()
 

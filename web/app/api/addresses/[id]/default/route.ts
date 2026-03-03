@@ -7,10 +7,12 @@ export const dynamic = 'force-dynamic'
 // PUT: 기본 배송지로 설정
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const supabase = createSupabaseServerClient()
+    const { id } = await params
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()
@@ -32,7 +34,7 @@ export async function PUT(
     const { data, error } = await supabase
       .from('addresses')
       .update({ is_default: true })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id) // 본인 주소만 수정 가능
       .select()
       .single()

@@ -6,7 +6,7 @@ import { nameToSlug } from '@/lib/utils/utils'
 export const dynamic = 'force-dynamic'
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
-  try { assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  try { await assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   const { id } = await context.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   
@@ -75,7 +75,7 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  try { assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  try { await assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   const { id } = await context.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   

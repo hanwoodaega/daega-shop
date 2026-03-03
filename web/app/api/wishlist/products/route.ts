@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ products: [] })
     }
 
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 상품 조회
     const { data: productsData, error: productsError } = await supabase

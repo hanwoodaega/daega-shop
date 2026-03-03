@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
 
     // filter=promotion일 때는 활성화된 프로모션의 상품만 조회
     let promotionProductIds: string[] = []

@@ -6,8 +6,8 @@ import { createClient } from '@supabase/supabase-js'
  * API 라우트에서 사용하는 Supabase 클라이언트 (쿠키 기반 인증)
  * 사용자 인증이 필요한 작업에 사용
  */
-export function createSupabaseServerClient() {
-  const cookieStore = cookies()
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies()
   
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

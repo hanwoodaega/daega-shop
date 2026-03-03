@@ -9,9 +9,10 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ categoryId: string }> }
 ) {
+  const { categoryId } = await params
   try {
     const { categoryId } = await params
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
 
     // 추천 상품 조회
     const { data: recommendationProducts, error: recommendationError } = await supabase

@@ -6,7 +6,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 export async function GET(request: NextRequest) {
   try {
     try { 
-      assertAdmin() 
+      await assertAdmin() 
     } catch (e: any) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

@@ -1,7 +1,7 @@
 import { headers } from 'next/headers'
 import { PHASE_PRODUCTION_BUILD } from 'next/constants'
 
-export function getServerBaseUrl() {
+export async function getServerBaseUrl() {
   if (process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD) {
     return null
   }
@@ -14,7 +14,7 @@ export function getServerBaseUrl() {
     return `https://${process.env.VERCEL_URL}`
   }
 
-  const hdrs = headers()
+  const hdrs = await headers()
   const host = hdrs.get('x-forwarded-host') || hdrs.get('host')
   if (!host) {
     return null

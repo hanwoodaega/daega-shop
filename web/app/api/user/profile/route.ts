@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 // GET: 사용자 프로필 정보 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const user = await getUserFromServer()
@@ -59,7 +59,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }
 
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     const { data: statusRow, error: statusError } = await supabase
       .from('users')
       .select('status')
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }
 
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     const { data: statusRow, error: statusError } = await supabase
       .from('users')
       .select('status')

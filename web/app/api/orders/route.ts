@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // GET: 사용자 주문 목록 조회 (구매확정 여부 포함)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()

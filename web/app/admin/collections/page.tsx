@@ -34,7 +34,7 @@ async function getProducts(): Promise<Product[]> {
     const supabase = createSupabaseAdminClient()
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, price, brand, category, image_url')
+      .select('id, name, price, brand, category')
       .neq('status', 'deleted')
       .order('created_at', { ascending: false })
       .limit(1000)
@@ -44,7 +44,29 @@ async function getProducts(): Promise<Product[]> {
       return []
     }
 
-    return data || []
+    const products = data || []
+    const productIds = products.map((product: any) => product.id)
+    let imageMap: Record<string, string | null> = {}
+
+    if (productIds.length > 0) {
+      const { data: imagesData } = await supabase
+        .from('product_images')
+        .select('product_id, image_url')
+        .in('product_id', productIds)
+        .eq('is_primary', true)
+
+      if (imagesData) {
+        imageMap = imagesData.reduce((acc: Record<string, string | null>, img: any) => {
+          acc[img.product_id] = img.image_url
+          return acc
+        }, {})
+      }
+    }
+
+    return products.map((product: any) => ({
+      ...product,
+      image_url: imageMap[product.id] || null,
+    }))
   } catch (error) {
     console.error('상품 조회 실패:', error)
     return []

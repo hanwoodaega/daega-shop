@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     // 관리자 인증 확인
     const { assertAdmin } = await import('@/lib/auth/admin-auth')
     try {
-      assertAdmin()
+      await assertAdmin()
     } catch (e: any) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

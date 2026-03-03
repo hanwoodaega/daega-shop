@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 // GET: 위시리스트 조회
 export async function GET() {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()
@@ -57,7 +57,7 @@ export async function GET() {
 // POST: 위시리스트에 상품 추가
 export async function POST(request: Request) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
 // DELETE: 위시리스트에서 상품 제거
 export async function DELETE(request: Request) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()

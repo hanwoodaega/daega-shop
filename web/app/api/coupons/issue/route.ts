@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   try {
     // 관리자 인증 필수
-    assertAdmin()
+    await assertAdmin()
 
     const supabase = createSupabaseAdminClient()
     const body = await request.json()

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 // GET: 현재 인증 세션 확인
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
 
     const user = await getUserFromRequest(request)
     if (!user) {

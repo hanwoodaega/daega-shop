@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 // GET: 승인 대기 중인 리뷰의 적립 예정 포인트 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 사용자 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()

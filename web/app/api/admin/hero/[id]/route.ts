@@ -5,10 +5,11 @@ import { assertAdmin } from '@/lib/auth/admin-auth'
 // PUT: 히어로 슬라이드 수정
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -29,7 +30,7 @@ export async function PUT(
     const { data, error } = await supabaseAdmin
       .from('hero_slides')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -47,10 +48,11 @@ export async function PUT(
 // DELETE: 히어로 슬라이드 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -59,7 +61,7 @@ export async function DELETE(
     const { error } = await supabaseAdmin
       .from('hero_slides')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })

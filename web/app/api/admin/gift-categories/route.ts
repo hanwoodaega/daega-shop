@@ -5,7 +5,7 @@ import { assertAdmin } from '@/lib/auth/admin-auth'
 // GET: 선물 카테고리 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 // POST: 선물 카테고리 생성
 export async function POST(request: NextRequest) {
   try {
-    assertAdmin()
+    await assertAdmin()
   } catch (e: any) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

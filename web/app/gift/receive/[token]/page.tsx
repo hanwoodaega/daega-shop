@@ -12,10 +12,10 @@ type GiftMeta = {
   } | null
 }
 
-function getSiteUrl() {
+async function getSiteUrl() {
   const envUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '')
   if (envUrl) return envUrl
-  const headerList = headers()
+  const headerList = await headers()
   const host = headerList.get('x-forwarded-host') || headerList.get('host')
   const proto = headerList.get('x-forwarded-proto') || 'http'
   if (!host) return ''
@@ -81,7 +81,7 @@ export async function generateMetadata({
 }: {
   params: { token: string }
 }): Promise<Metadata> {
-  const siteUrl = getSiteUrl()
+  const siteUrl = await getSiteUrl()
   const token = params.token
 
   try {

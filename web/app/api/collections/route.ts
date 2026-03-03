@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 // GET: 메인페이지용 활성 컬렉션 목록 조회 (공개 API)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
 
     // 활성 컬렉션만 조회 (필요한 필드만 선택)
     const { data: collections, error } = await supabase

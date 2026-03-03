@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // GET: 장바구니 조회
 export async function GET() {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()
@@ -40,7 +40,7 @@ export async function GET() {
 // POST: 장바구니에 상품 추가
 export async function POST(request: Request) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()
@@ -155,7 +155,7 @@ export async function POST(request: Request) {
 // PATCH: 장바구니 상품 수량 수정
 export async function PATCH(request: Request) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()
@@ -201,7 +201,7 @@ export async function PATCH(request: Request) {
 // 본문이 일부 환경에서 무시될 수 있으므로 URL 쿼리 우선 사용
 export async function DELETE(request: Request) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     const authResult = await requireActiveUserFromServer()
     if ('error' in authResult) {

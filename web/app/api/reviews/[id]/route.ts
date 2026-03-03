@@ -4,11 +4,12 @@ import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 // PATCH: 리뷰 수정
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const reviewId = params.id
-    const supabase = createSupabaseServerClient()
+    const reviewId = id
+    const supabase = await createSupabaseServerClient()
 
     // 사용자 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -139,11 +140,12 @@ export async function PATCH(
 // DELETE: 리뷰 삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const reviewId = params.id
-    const supabase = createSupabaseServerClient()
+    const reviewId = id
+    const supabase = await createSupabaseServerClient()
 
     // 사용자 인증 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser()

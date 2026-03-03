@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 // POST: 동일 주소 확인 및 주소 개수 조회
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
     
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()

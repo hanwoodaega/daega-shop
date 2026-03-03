@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 // GET: products 테이블에서 사용 중인 카테고리 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = await createSupabaseServerClient()
 
     // products 테이블에서 고유한 category 값 조회 (deleted 상태 제외)
     const { data, error } = await supabase

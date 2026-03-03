@@ -9,7 +9,7 @@ import { getServerBaseUrl } from '@/lib/utils/server-url'
  */
 export default async function BannerSection() {
   try {
-    const siteUrl = getServerBaseUrl()
+    const siteUrl = await getServerBaseUrl()
     
     // 서버에서 fetch with tags: revalidateTag('banner')로 캐시 무효화 가능
     if (!siteUrl) {
