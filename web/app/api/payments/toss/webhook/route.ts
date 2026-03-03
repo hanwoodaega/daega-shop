@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 
+export const runtime = 'nodejs'
+
 type TossPaymentStatus =
   | 'READY'
   | 'IN_PROGRESS'
