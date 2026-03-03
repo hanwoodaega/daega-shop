@@ -183,6 +183,38 @@ export async function POST(request: NextRequest) {
         .eq('user_id', user.id)
     }
 
+    // 결제 완료 후 장바구니 정리 (서버 기준으로 강제 삭제)
+    try {
+      const deleteTargets = new Map<string, { productId: string; promotionGroupId?: string | null }>()
+      payload.items.forEach((item) => {
+        const key = `${item.productId}::${item.promotion_group_id ?? ''}`
+        if (!deleteTargets.has(key)) {
+          deleteTargets.set(key, {
+            productId: item.productId,
+            promotionGroupId: item.promotion_group_id ?? null,
+          })
+        }
+      })
+
+      for (const target of Array.from(deleteTargets.values())) {
+        let query = supabaseAdmin
+          .from('carts')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('product_id', target.productId)
+
+        if (target.promotionGroupId) {
+          query = query.eq('promotion_group_id', target.promotionGroupId)
+        } else {
+          query = query.is('promotion_group_id', null)
+        }
+
+        await query
+      }
+    } catch (e) {
+      console.error('장바구니 정리 실패:', e)
+    }
+
     try {
       await supabaseAdmin.from('notifications').insert({
         user_id: user.id,

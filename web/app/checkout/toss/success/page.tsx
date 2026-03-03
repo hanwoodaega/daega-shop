@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
-import { removeFromCartDB } from '@/lib/cart/cart-db'
+import { removeFromCartDB, setCartItems } from '@/lib/cart/cart-db'
 import { useAuth } from '@/lib/auth/auth-context'
 import { initKakaoSDK } from '@/lib/order/gift/initKakao'
 import { shareGiftToKakao } from '@/lib/order/gift/kakaoShare'
@@ -60,7 +60,7 @@ function TossSuccessContent() {
   const removeSelectedFromCart = useCartStore((state) => state.removeSelectedItems)
   const clearDirectPurchase = useDirectPurchaseStore((state) => state.clearItems)
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
-  const [message, setMessage] = useState('결제 승인 중입니다...')
+  const [message, setMessage] = useState('')
   const confirmStartedRef = useRef(false)
 
   useEffect(() => {
@@ -125,7 +125,6 @@ function TossSuccessContent() {
 
           sessionStorage.removeItem(metaKey)
           setStatus('success')
-          setMessage('결제가 완료되었습니다. (테스트)')
 
           const redirectUrl = meta.isGiftMode && data?.gift_token
             ? `/orders?giftToken=${data.gift_token}`
@@ -170,7 +169,6 @@ function TossSuccessContent() {
         sessionStorage.removeItem(metaKey)
 
         setStatus('success')
-        setMessage('결제가 완료되었습니다. 주문 페이지로 이동합니다.')
 
         const redirectUrl = meta.isGiftMode && data?.gift_token
           ? `/orders?giftToken=${data.gift_token}`
@@ -251,42 +249,45 @@ function TossSuccessContent() {
       return
     }
 
+    const itemsByKey = new Map<string, { productId: string; promotionGroupId?: string | null }>()
+    meta.items.forEach((it) => {
+      const key = `${it.productId}::${it.promotion_group_id ?? ''}`
+      if (!itemsByKey.has(key)) {
+        itemsByKey.set(key, { productId: it.productId, promotionGroupId: it.promotion_group_id })
+      }
+    })
+
     try {
       if (user?.id) {
-        const handledGroups = new Set<string>()
-        for (const it of meta.items) {
-          const dbId = it.id
-          const groupId = it.promotion_group_id
-          if (groupId) {
-            if (!handledGroups.has(groupId)) {
-              const success = await removeFromCartDB(user.id, {
-                cartId: dbId || undefined,
-                promotionGroupId: groupId,
-              })
-              if (success) {
-                handledGroups.add(groupId)
-              }
-            }
-          } else if (dbId && !dbId.startsWith('cart-')) {
-            await removeFromCartDB(user.id, { cartId: dbId })
-          }
-        }
+        await Promise.all(
+          Array.from(itemsByKey.values()).map(({ productId, promotionGroupId }) =>
+            removeFromCartDB(user.id, {
+              productId,
+              promotionGroupId: promotionGroupId ?? undefined,
+            })
+          )
+        )
       }
     } catch (err) {
       // DB 삭제 실패해도 UI는 진행
     }
 
-    removeSelectedFromCart()
+    // 선택 여부와 관계없이 결제된 상품은 로컬에서 제거
+    const currentItems = useCartStore.getState().items
+    const filtered = currentItems.filter((item) => {
+      const key = `${item.productId}::${item.promotion_group_id ?? ''}`
+      return !itemsByKey.has(key)
+    })
+    setCartItems(filtered, 'paymentSuccess')
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">
-        <h1 className="text-lg font-semibold text-gray-900 mb-2">토스페이먼츠 결제</h1>
-        <p className={`text-sm ${status === 'error' ? 'text-red-600' : 'text-gray-600'}`}>
-          {message}
-        </p>
-      </div>
+      {status === 'error' && (
+        <div className="max-w-md w-full bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">
+          <p className="text-sm text-red-600">{message || '결제 승인에 실패했습니다.'}</p>
+        </div>
+      )}
     </div>
   )
 }
