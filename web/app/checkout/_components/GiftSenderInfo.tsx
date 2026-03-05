@@ -93,7 +93,7 @@ export default function GiftSenderInfo({
                 onPhoneChange(numbers)
               }}
               required
-              placeholder="01012345678"
+              placeholder="숫자만 입력하세요"
               maxLength={11}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />

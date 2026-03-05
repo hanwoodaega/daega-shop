@@ -8,20 +8,28 @@ interface LoginPromptProps {
   onClose: () => void
   title?: string
   message?: string
+  /** 비회원 주문하기 버튼 클릭 시 호출 (제공 시 해당 버튼 노출) */
+  onGuestClick?: () => void
 }
 
 export default function LoginPrompt({
   isOpen,
   onClose,
   title = '로그인이 필요합니다',
-  message = '이 기능을 사용하려면 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?'
+  message = '이 기능을 사용하려면 로그인이 필요합니다. 로그인 페이지로 이동하시겠습니까?',
+  onGuestClick,
 }: LoginPromptProps) {
   const router = useRouter()
   const pathname = usePathname()
 
-  const handleConfirm = () => {
+  const handleLogin = () => {
     const next = encodeURIComponent(pathname || '/')
     router.push(`/auth/login?next=${next}`)
+    onClose()
+  }
+
+  const handleGuest = () => {
+    onGuestClick?.()
     onClose()
   }
 
@@ -31,9 +39,9 @@ export default function LoginPrompt({
       title={title}
       message={message}
       confirmText="로그인"
-      cancelText="취소"
-      onConfirm={handleConfirm}
-      onCancel={onClose}
+      cancelText={onGuestClick ? '비회원으로 주문하기' : '취소'}
+      onConfirm={handleLogin}
+      onCancel={onGuestClick ? handleGuest : onClose}
     />
   )
 }

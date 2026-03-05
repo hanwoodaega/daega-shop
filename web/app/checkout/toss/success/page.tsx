@@ -126,9 +126,12 @@ function TossSuccessContent() {
           sessionStorage.removeItem(metaKey)
           setStatus('success')
 
+          const isGuestOrder = data?.order && data.order.user_id == null
           const redirectUrl = meta.isGiftMode && data?.gift_token
             ? `/orders?giftToken=${data.gift_token}`
-            : '/orders'
+            : isGuestOrder
+              ? `/order-lookup?order_number=${encodeURIComponent(data.order?.order_number ?? '')}&phone=${encodeURIComponent(meta.orderInput?.shipping_phone ?? '')}&done=1`
+              : '/orders'
           window.setTimeout(() => router.replace(redirectUrl), 1200)
           return
         }
@@ -170,9 +173,12 @@ function TossSuccessContent() {
 
         setStatus('success')
 
+        const isGuestOrder = data?.order && data.order.user_id == null
         const redirectUrl = meta.isGiftMode && data?.gift_token
           ? `/orders?giftToken=${data.gift_token}`
-          : '/orders'
+          : isGuestOrder
+            ? `/order-lookup?order_number=${encodeURIComponent(data.order?.order_number ?? '')}&phone=${encodeURIComponent(meta.orderInput?.shipping_phone ?? '')}&done=1`
+            : '/orders'
         window.setTimeout(() => router.replace(redirectUrl), 1200)
       } catch (error: any) {
         setStatus('error')

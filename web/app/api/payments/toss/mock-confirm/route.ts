@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
+import { getUserFromServer } from '@/lib/auth/auth-server'
 import { usePoints } from '@/lib/point/points'
+import { sendOrderCompleteSms } from '@/lib/sms/send'
+import { getServerBaseUrl } from '@/lib/utils/server-url'
 import crypto from 'crypto'
 import { calculateOrderPricing, OrderInput } from '@/lib/order/order-pricing.server'
 
@@ -20,13 +22,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const authResult = await requireActiveUserFromServer()
-    if ('error' in authResult) {
-      const status = authResult.error === 'unauthorized' ? 401 : 403
-      const errorMessage = authResult.error === 'unauthorized' ? '로그인이 필요합니다.' : '접근 권한이 없습니다.'
-      return NextResponse.json({ error: errorMessage }, { status })
-    }
-    const user = authResult.user
+    const user = await getUserFromServer()
 
     const { orderId, amount, orderInput } = await request.json()
     if (!orderId || !orderInput) {
@@ -36,7 +32,7 @@ export async function POST(request: NextRequest) {
     const supabaseAdmin = createSupabaseAdminClient()
     const { pricing, itemSnapshots } = await calculateOrderPricing({
       supabaseAdmin,
-      userId: user.id,
+      userId: user?.id ?? null,
       input: orderInput as OrderInput,
     })
 
@@ -47,17 +43,20 @@ export async function POST(request: NextRequest) {
     const today = new Date()
     const datePrefix = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
     const sanitizedOrderId = String(orderId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-    // order_number 컬럼이 varchar(13) → YYYYMMDD-XXXX (8+1+4=13자)
     const idempotencySuffix = sanitizedOrderId.slice(0, 4)
     const idempotentOrderNumber = idempotencySuffix ? `${datePrefix}-${idempotencySuffix}` : null
 
     if (idempotentOrderNumber) {
-      const { data: existingOrder } = await supabaseAdmin
+      let existingQuery = supabaseAdmin
         .from('orders')
         .select('*')
         .eq('order_number', idempotentOrderNumber)
-        .eq('user_id', user.id)
-        .maybeSingle()
+      if (user) {
+        existingQuery = existingQuery.eq('user_id', user.id)
+      } else {
+        existingQuery = existingQuery.is('user_id', null)
+      }
+      const { data: existingOrder } = await existingQuery.maybeSingle()
       if (existingOrder) {
         const giftToken = existingOrder.gift_token ?? null
         return NextResponse.json({ success: true, order: existingOrder, gift_token: giftToken })
@@ -90,7 +89,7 @@ export async function POST(request: NextRequest) {
     const giftExpiresAt = payload.is_gift ? new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString() : null
 
     const orderInsertData: any = {
-      user_id: user.id,
+      user_id: user?.id ?? null,
       order_number: orderNumber,
       total_amount: pricing.finalTotal,
       status: 'ORDER_RECEIVED',
@@ -149,7 +148,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (pricing.appliedPoints > 0) {
+    if (user && pricing.appliedPoints > 0) {
       await usePoints(
         user.id,
         pricing.appliedPoints,
@@ -159,7 +158,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (payload.used_coupon_id && pricing.couponDiscount > 0) {
+    if (user && payload.used_coupon_id && pricing.couponDiscount > 0) {
       await supabaseAdmin
         .from('user_coupons')
         .update({
@@ -171,36 +170,48 @@ export async function POST(request: NextRequest) {
         .eq('user_id', user.id)
     }
 
-    // 결제 완료 후 장바구니 정리 (서버 기준으로 강제 삭제)
-    try {
-      const deleteTargets = new Map<string, { productId: string; promotionGroupId?: string | null }>()
-      payload.items.forEach((item) => {
-        const key = `${item.productId}::${item.promotion_group_id ?? ''}`
-        if (!deleteTargets.has(key)) {
-          deleteTargets.set(key, {
-            productId: item.productId,
-            promotionGroupId: item.promotion_group_id ?? null,
-          })
+    if (user) {
+      try {
+        const deleteTargets = new Map<string, { productId: string; promotionGroupId?: string | null }>()
+        payload.items.forEach((item) => {
+          const key = `${item.productId}::${item.promotion_group_id ?? ''}`
+          if (!deleteTargets.has(key)) {
+            deleteTargets.set(key, {
+              productId: item.productId,
+              promotionGroupId: item.promotion_group_id ?? null,
+            })
+          }
+        })
+
+        for (const target of Array.from(deleteTargets.values())) {
+          let query = supabaseAdmin
+            .from('carts')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('product_id', target.productId)
+
+          if (target.promotionGroupId) {
+            query = query.eq('promotion_group_id', target.promotionGroupId)
+          } else {
+            query = query.is('promotion_group_id', null)
+          }
+
+          await query
         }
-      })
-
-      for (const target of Array.from(deleteTargets.values())) {
-        let query = supabaseAdmin
-          .from('carts')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('product_id', target.productId)
-
-        if (target.promotionGroupId) {
-          query = query.eq('promotion_group_id', target.promotionGroupId)
-        } else {
-          query = query.is('promotion_group_id', null)
-        }
-
-        await query
+      } catch (e) {
+        console.error('장바구니 정리 실패:', e)
       }
-    } catch (e) {
-      console.error('장바구니 정리 실패:', e)
+    }
+
+    // 주문 완료 안내 문자 (수령인 연락처 있으면 발송)
+    if (!payload.is_gift && normalizedPhone.length >= 10) {
+      try {
+        const baseUrl = (await getServerBaseUrl()) || process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin
+        const orderLookupUrl = `${baseUrl.replace(/\/$/, '')}/order-lookup`
+        await sendOrderCompleteSms(normalizedPhone, orderNumber, orderLookupUrl)
+      } catch (e) {
+        console.error('주문 완료 문자 발송 실패:', e)
+      }
     }
 
     return NextResponse.json({ success: true, order, gift_token: giftToken })

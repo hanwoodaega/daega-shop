@@ -483,7 +483,7 @@ export default function GiftReceiveClient() {
                   value={formData.recipient_phone}
                   onChange={handlePhoneChange}
                   required
-                  placeholder="01012345678"
+                  placeholder="숫자만 입력하세요"
                   maxLength={11}
                   className="w-full px-4 py-2 border rounded-lg text-gray-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   style={{ borderColor: '#D4C6A8' }}

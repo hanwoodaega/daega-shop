@@ -44,7 +44,7 @@ export default function CouponIssueModal({
                   onConditionsChange({ ...conditions, phone: numbers })
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="01012345678"
+                placeholder="숫자만 입력하세요"
                 maxLength={11}
               />
               <p className="mt-1 text-xs text-gray-500">

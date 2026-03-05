@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getProductDescription } from '@/components/product-descriptions'
 import Footer from '@/components/layout/Footer'
-import LoginPrompt from '@/components/common/LoginPrompt'
+import LoginPromptModal from '@/components/common/LoginPromptModal'
 import ConfirmModal from '@/components/common/ConfirmModal'
 import ReviewWriteModal from '@/components/review/ReviewWriteModal'
 import PromotionModalWrapper from '@/components/common/PromotionModalWrapper'
@@ -262,10 +262,11 @@ export default function ProductDetailPageClient({
         />
       )}
       
-      <LoginPrompt
-        isOpen={showLoginPrompt}
+      <LoginPromptModal
+        show={showLoginPrompt}
         onClose={() => setShowLoginPrompt(false)}
-        message="주문을 계속하시려면 로그인해 주세요."
+        onGuestCheckout={() => router.push('/checkout')}
+        loginNextUrl="/checkout"
       />
       
       <PromotionModalWrapper />

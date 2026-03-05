@@ -74,7 +74,7 @@ export async function calculateOrderPricing({
   input,
 }: {
   supabaseAdmin: SupabaseClient
-  userId: string
+  userId: string | null
   input: OrderInput
 }): Promise<{
   pricing: PricingResult
@@ -221,7 +221,7 @@ export async function calculateOrderPricing({
   const shipping = calculateShipping(discountedTotal, input.delivery_type)
 
   let couponDiscount = 0
-  if (input.used_coupon_id) {
+  if (userId && input.used_coupon_id) {
     const { data: userCoupon } = await supabaseAdmin
       .from('user_coupons')
       .select(`*, coupon:coupons (*)`)
@@ -261,7 +261,7 @@ export async function calculateOrderPricing({
   }
 
   let appliedPoints = 0
-  if (input.used_points && input.used_points > 0) {
+  if (userId && input.used_points && input.used_points > 0) {
     const { data: userPoints } = await supabaseAdmin
       .from('user_points')
       .select('total_points')

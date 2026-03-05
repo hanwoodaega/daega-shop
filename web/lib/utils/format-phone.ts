@@ -37,6 +37,24 @@ export function formatPhoneNumber(phone: string): string {
 }
 
 /**
+ * 입력 중인 전화번호 표시용 (하이픈 자동 삽입, 부분 입력 지원)
+ * 010 → 010, 0101 → 010-1, 01012345678 → 010-1234-5678
+ */
+export function formatPhoneDisplay(phone: string): string {
+  if (!phone) return ''
+  const n = phone.replace(/[^0-9]/g, '')
+  if (n.length <= 3) return n
+  // 02 지역번호 (10자리)
+  if (n.startsWith('02')) {
+    if (n.length <= 6) return `${n.slice(0, 2)}-${n.slice(2)}`
+    return `${n.slice(0, 2)}-${n.slice(2, 6)}-${n.slice(6, 10)}`
+  }
+  // 01x 휴대폰 (11자리)
+  if (n.length <= 7) return `${n.slice(0, 3)}-${n.slice(3)}`
+  return `${n.slice(0, 3)}-${n.slice(3, 7)}-${n.slice(7, 11)}`
+}
+
+/**
  * 전화번호 유효성 검사
  * @param phone - 전화번호 문자열
  * @returns 유효한 전화번호인지 여부

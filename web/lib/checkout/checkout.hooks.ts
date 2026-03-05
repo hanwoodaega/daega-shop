@@ -535,7 +535,7 @@ export function useCheckout(options: UseCheckoutOptions) {
         }
       }
 
-      if (usedPoints > 0) {
+      if (user && usedPoints > 0) {
         if (usedPoints > userPoints) {
           showError({ message: '보유 포인트보다 많이 사용할 수 없습니다.' }, { icon: '⚠️' })
           return false
@@ -544,12 +544,6 @@ export function useCheckout(options: UseCheckoutOptions) {
           showError({ message: '결제 금액보다 많은 포인트를 사용할 수 없습니다.' }, { icon: '⚠️' })
           return false
         }
-      }
-
-      if (!user) {
-        showError({ message: '로그인이 필요합니다.' }, { icon: '🔒' })
-        router.push('/auth/login?next=/checkout')
-        return false
       }
 
       return true
@@ -720,10 +714,7 @@ export function useCheckout(options: UseCheckoutOptions) {
         paymentOptions.easyPay = methodConfig.easyPay
       }
 
-      const customerKey = user?.id
-      if (!customerKey) {
-        throw new Error('로그인이 필요합니다.')
-      }
+      const customerKey = user?.id ?? `guest_${orderId}`
 
       const tossPayments = await loadTossPayments(tossClientKey)
       const payment = (tossPayments as any).payment({ customerKey })

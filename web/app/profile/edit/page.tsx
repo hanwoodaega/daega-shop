@@ -580,7 +580,7 @@ function ProfileEditContent() {
                           }
                         }}
                         className="flex-1 min-w-0 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="01012345678"
+                        placeholder="숫자만 입력하세요"
                         maxLength={11}
                         disabled={isVerifyingPhone}
                         required

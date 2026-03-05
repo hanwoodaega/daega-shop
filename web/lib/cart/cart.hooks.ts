@@ -146,7 +146,7 @@ export function useCart() {
 
   const handleCheckout = useCallback(() => {
     const selectedItems = getSelectedItems()
-    
+
     const validation = validateCheckout({
       selectedItems,
       deliveryMethod,
@@ -161,18 +161,43 @@ export function useCart() {
       })
       return
     }
-    
+
     if (!user) {
       setShowLoginPrompt(true)
       return
     }
-    
+
+    goToCheckout()
+  }, [getSelectedItems, user, deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime])
+
+  const goToCheckout = useCallback(() => {
     sessionStorage.setItem('deliveryMethod', deliveryMethod)
     sessionStorage.setItem('pickupTime', pickupTime)
     sessionStorage.setItem('quickDeliveryArea', quickDeliveryArea)
     sessionStorage.setItem('quickDeliveryTime', quickDeliveryTime)
     router.push('/checkout')
-  }, [getSelectedItems, user, router, deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime])
+  }, [router, deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime])
+
+  const handleGuestCheckout = useCallback(() => {
+    const selectedItems = getSelectedItems()
+
+    const validation = validateCheckout({
+      selectedItems,
+      deliveryMethod,
+      pickupTime,
+      quickDeliveryArea,
+      quickDeliveryTime,
+    })
+
+    if (!validation.valid) {
+      toast.error(validation.error || '주문 정보를 확인해주세요.', {
+        icon: validation.errorIcon,
+      })
+      return
+    }
+
+    goToCheckout()
+  }, [getSelectedItems, deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime, goToCheckout])
 
   const handleGiftCheckout = useCallback(() => {
     if (!ensureKakaoGiftAvailability()) {
@@ -201,7 +226,7 @@ export function useCart() {
       setShowLoginPrompt(true)
       return
     }
-    
+
     sessionStorage.setItem('deliveryMethod', deliveryMethod)
     sessionStorage.setItem('pickupTime', pickupTime)
     sessionStorage.setItem('quickDeliveryArea', quickDeliveryArea)
@@ -252,6 +277,7 @@ export function useCart() {
     handleSelectAddress,
     confirmAddressSelection,
     handleCheckout,
+    handleGuestCheckout,
     handleGiftCheckout,
     openAddressModal,
     removeCartItemWithDB,

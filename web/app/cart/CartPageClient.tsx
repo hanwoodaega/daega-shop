@@ -56,6 +56,7 @@ function CartPageContent() {
     handleSelectAddress,
     confirmAddressSelection,
     handleCheckout,
+    handleGuestCheckout,
     handleGiftCheckout,
     openAddressModal,
     removeCartItemWithDB,
@@ -241,6 +242,7 @@ function CartPageContent() {
       <LoginPromptModal
         show={showLoginPrompt}
         onClose={() => setShowLoginPrompt(false)}
+        onGuestCheckout={handleGuestCheckout}
       />
 
       <Footer />

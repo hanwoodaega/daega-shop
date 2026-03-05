@@ -221,14 +221,6 @@ function CheckoutPageContent() {
               {!isGiftMode && (
                 <OrdererInfo
                   formData={formData}
-                  isEditingOrderer={isEditingOrderer}
-                  onEdit={() => setFlags(prev => ({ ...prev, isEditingOrderer: true }))}
-                  onCancel={() => setFlags(prev => ({ ...prev, isEditingOrderer: false }))}
-                  onSave={() => {
-                    if (formData.name && formData.phone) {
-                      setFlags(prev => ({ ...prev, isEditingOrderer: false }))
-                    }
-                  }}
                   onInputChange={handleInputChange}
                   onPhoneChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
                 />
@@ -239,6 +231,7 @@ function CheckoutPageContent() {
                   formData={formData}
                   hasDefaultAddress={hasDefaultAddress}
                   saveAsDefaultAddress={saveAsDefaultAddress}
+                  isGuest={!user}
                   onSearchAddress={handleSearchAddress}
                   onInputChange={handleInputChange}
                   onSaveAsDefaultChange={(checked) => setFlags(prev => ({ ...prev, saveAsDefaultAddress: checked }))}
@@ -251,6 +244,7 @@ function CheckoutPageContent() {
                   defaultAddress={defaultAddress}
                   hasDefaultAddress={hasDefaultAddress}
                   saveAsDefaultAddress={saveAsDefaultAddress}
+                  isGuest={!user}
                   onSearchAddress={handleSearchAddress}
                   onInputChange={handleInputChange}
                   onSaveAsDefaultChange={(checked) => setFlags(prev => ({ ...prev, saveAsDefaultAddress: checked }))}
@@ -266,7 +260,7 @@ function CheckoutPageContent() {
                 />
               )}
 
-              {(!isGiftMode || currentStep === 3) && (
+              {user && (!isGiftMode || currentStep === 3) && (
               <div className="bg-white rounded-lg shadow-md p-4">
                 <h2 className="text-lg font-bold mb-3">쿠폰</h2>
                 <div className="space-y-2">
@@ -310,7 +304,7 @@ function CheckoutPageContent() {
               </div>
               )}
 
-              {(!isGiftMode || currentStep === 3) && (
+              {user && (!isGiftMode || currentStep === 3) && (
               <div className="bg-white rounded-lg shadow-md p-4">
                 <h2 className="text-lg font-bold mb-3">포인트</h2>
                 {loadingPoints ? (

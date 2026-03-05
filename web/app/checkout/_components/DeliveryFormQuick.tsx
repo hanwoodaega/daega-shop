@@ -9,6 +9,8 @@ interface DeliveryFormQuickProps {
   }
   hasDefaultAddress: boolean
   saveAsDefaultAddress: boolean
+  /** 비회원이면 true → 기본 배송지 저장 체크란 숨김 */
+  isGuest?: boolean
   onSearchAddress: () => void
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void
   onSaveAsDefaultChange: (checked: boolean) => void
@@ -18,6 +20,7 @@ export default function DeliveryFormQuick({
   formData,
   hasDefaultAddress,
   saveAsDefaultAddress,
+  isGuest = false,
   onSearchAddress,
   onInputChange,
   onSaveAsDefaultChange,
@@ -92,7 +95,7 @@ export default function DeliveryFormQuick({
           <p className="text-xs text-gray-500 mt-1 text-right">{formData.message.length}/50</p>
         </div>
 
-        {!hasDefaultAddress && (
+        {!isGuest && !hasDefaultAddress && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start">
               <input

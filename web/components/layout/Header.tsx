@@ -145,6 +145,14 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
                 <span className="text-gray-300">│</span>
                 <button
                   type="button"
+                  onClick={() => router.push('/order-lookup')}
+                  className="hover:text-red-600 transition"
+                >
+                  주문조회
+                </button>
+                <span className="text-gray-300">│</span>
+                <button
+                  type="button"
                   onClick={() => router.push('/support')}
                   className="hover:text-red-600 transition"
                 >

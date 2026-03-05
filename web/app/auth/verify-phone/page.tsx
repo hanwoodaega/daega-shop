@@ -233,7 +233,7 @@ function VerifyPhoneContent() {
                   value={phone}
                   onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
                   className="flex-1 min-w-0 w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
-                  placeholder="01012345678"
+                  placeholder="숫자만 입력하세요"
                   maxLength={13}
                   required
                 />
