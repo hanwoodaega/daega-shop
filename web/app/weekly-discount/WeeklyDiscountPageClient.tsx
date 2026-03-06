@@ -7,34 +7,35 @@ import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/common/PromotionModalWrapper'
-import { Product } from '@/lib/supabase/supabase'
 import ProductCard from '@/components/product/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
+import { Product } from '@/lib/supabase/supabase'
+import { Collection } from '@/lib/collection'
 import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
 
-interface BestPageClientProps {
-  initialProducts?: Product[]
-  initialTotalPages?: number
+interface WeeklyDiscountPageClientProps {
+  initialData?: { collection: Collection | null; products: Product[]; totalPages?: number }
 }
 
-export default function BestPageClient({ initialProducts, initialTotalPages }: BestPageClientProps) {
-  const hasInitial = typeof initialProducts !== 'undefined'
-  const [displayedProducts, setDisplayedProducts] = useState<Product[]>(initialProducts ?? [])
+export default function WeeklyDiscountPageClient({ initialData }: WeeklyDiscountPageClientProps) {
+  const hasInitial = typeof initialData !== 'undefined'
+  const [collection, setCollection] = useState<Collection | null>(initialData?.collection ?? null)
+  const [displayedProducts, setDisplayedProducts] = useState<Product[]>(initialData?.products ?? [])
   const [loading, setLoading] = useState(!hasInitial)
   const [loadingMore, setLoadingMore] = useState(false)
   const [sortOrder, setSortOrder] = useState<'default' | 'price_asc' | 'price_desc'>('default')
   const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(hasInitial ? (initialTotalPages ?? 0) > 1 : true)
+  const [hasMore, setHasMore] = useState(hasInitial ? (initialData?.totalPages ?? 0) > 1 : true)
   const isFetchingRef = useRef(false)
   const initialUsedRef = useRef(hasInitial)
 
-  const fetchCategory = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
+  const fetchData = useCallback(async (pageNum: number = 1, sort: 'default' | 'price_asc' | 'price_desc' = 'default') => {
     if (isFetchingRef.current) return
-    
+
     isFetchingRef.current = true
     setLoading(pageNum === 1)
     setLoadingMore(pageNum > 1)
-    
+
     try {
       const params = new URLSearchParams({
         page: pageNum.toString(),
@@ -45,9 +46,9 @@ export default function BestPageClient({ initialProducts, initialTotalPages }: B
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-      const response = await fetch(`/api/collections/best?${params.toString()}`, {
+      const response = await fetch(`/api/collections/weekly_discount?${params.toString()}`, {
         cache: 'no-store',
-        signal: controller.signal
+        signal: controller.signal,
       })
 
       clearTimeout(timeoutId)
@@ -57,22 +58,23 @@ export default function BestPageClient({ initialProducts, initialTotalPages }: B
       }
 
       const data = await response.json()
-      
+
       if (pageNum === 1) {
+        setCollection(data.collection ?? null)
         setDisplayedProducts(data.products || [])
       } else {
-        setDisplayedProducts(prev => {
+        setDisplayedProducts((prev) => {
           const existingIds = new Set(prev.map((p: any) => p.id))
           const newProducts = (data.products || []).filter((p: any) => !existingIds.has(p.id))
           return [...prev, ...newProducts]
         })
       }
-      
+
       setHasMore(pageNum < (data.totalPages ?? 0))
     } catch (error: any) {
-      console.error('카테고리 조회 실패:', error)
+      console.error('이번주 행사 조회 실패:', error)
       if (error.name === 'AbortError') {
-        alert('카테고리를 불러오는데 시간이 오래 걸립니다. 잠시 후 다시 시도해주세요.')
+        alert('데이터를 불러오는데 시간이 오래 걸립니다. 잠시 후 다시 시도해주세요.')
       }
     } finally {
       isFetchingRef.current = false
@@ -84,7 +86,7 @@ export default function BestPageClient({ initialProducts, initialTotalPages }: B
   useEffect(() => {
     if (initialUsedRef.current && sortOrder === 'default') {
       setPage(1)
-      setHasMore((initialTotalPages ?? 0) > 1)
+      setHasMore((initialData?.totalPages ?? 0) > 1)
       setLoading(false)
       initialUsedRef.current = false
       return
@@ -92,26 +94,26 @@ export default function BestPageClient({ initialProducts, initialTotalPages }: B
 
     setPage(1)
     setDisplayedProducts([])
-    fetchCategory(1, sortOrder)
-  }, [sortOrder, fetchCategory, initialTotalPages])
+    fetchData(1, sortOrder)
+  }, [sortOrder, fetchData, initialData?.totalPages])
 
   useEffect(() => {
     if (page > 1) {
-      fetchCategory(page, sortOrder)
+      fetchData(page, sortOrder)
     }
-  }, [page, sortOrder, fetchCategory])
+  }, [page, sortOrder, fetchData])
 
   useEffect(() => {
     const handleScroll = () => {
       if (loadingMore || !hasMore) return
-      
+
       const scrollHeight = document.documentElement.scrollHeight
       const scrollTop = document.documentElement.scrollTop || document.body.scrollTop
       const clientHeight = document.documentElement.clientHeight
-      
+
       if (scrollTop + clientHeight >= scrollHeight - 500) {
         if (!loadingMore && hasMore) {
-          setPage(prev => prev + 1)
+          setPage((prev) => prev + 1)
         }
       }
     }
@@ -120,23 +122,16 @@ export default function BestPageClient({ initialProducts, initialTotalPages }: B
     return () => window.removeEventListener('scroll', handleScroll)
   }, [loadingMore, hasMore])
 
+  const title = collection?.title || '이번주 행사'
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
-      <main className="flex-1 container mx-auto px-4 py-4 pt-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-xl font-bold mb-1">
-              베스트
-            </h1>
-            {displayedProducts.length > 0 && (
-              <p className="text-gray-600 text-sm">
-                {displayedProducts.length}개의 상품
-              </p>
-            )}
-          </div>
+
+      <main className="flex-1">
+        <div className="container mx-auto px-4 pt-4 pb-4">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">{title}</h1>
             <select
               value={sortOrder}
               onChange={(e) => {
@@ -150,9 +145,8 @@ export default function BestPageClient({ initialProducts, initialTotalPages }: B
               <option value="price_asc">낮은 가격순</option>
               <option value="price_desc">높은 가격순</option>
             </select>
-        </div>
+          </div>
 
-        {/* 상품 그리드 */}
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
               {[...Array(8)].map((_, i) => (
@@ -162,12 +156,10 @@ export default function BestPageClient({ initialProducts, initialTotalPages }: B
           ) : displayedProducts.length === 0 ? (
             <div className="text-center py-20">
               <div className="text-6xl mb-4">🔍</div>
-              <p className="text-xl text-gray-600 mb-2">
-                등록된 상품이 없습니다
-              </p>
-              <Link href="/products">
+              <p className="text-xl text-gray-600 mb-2">이번 주 할인 상품이 없습니다</p>
+              <Link href="/">
                 <button className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-600 transition">
-                  전체 상품 보기
+                  홈으로 가기
                 </button>
               </Link>
             </div>
@@ -178,16 +170,15 @@ export default function BestPageClient({ initialProducts, initialTotalPages }: B
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
-              
-              {/* 무한 스크롤 로딩 */}
+
               {loadingMore && (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-800"></div>
                 </div>
               )}
-              
             </>
           )}
+        </div>
       </main>
 
       <ScrollToTop />

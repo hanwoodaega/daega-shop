@@ -11,6 +11,8 @@ import HeroSlider from '@/components/sections/HeroSlider'
 import BannerSection from '@/components/banner/BannerSection'
 import { getServerBaseUrl } from '@/lib/utils/server-url'
 
+export const dynamic = 'force-dynamic'
+
 interface ColorTheme {
   background?: string
   accent?: string
@@ -57,16 +59,17 @@ export default async function Home() {
 
   try {
     const siteUrl = await getServerBaseUrl()
+    const baseUrl = siteUrl || (typeof window === 'undefined' ? process.env.NEXT_PUBLIC_SITE_URL : '')
 
-    if (siteUrl) {
+    if (baseUrl) {
       const [collectionsRes, heroRes, recommendationRes] = await Promise.all([
-        fetch(`${siteUrl}/api/collections`, {
+        fetch(`${baseUrl}/api/collections`, {
           next: { revalidate: 300 }, // 5분 캐시
         }),
-        fetch(`${siteUrl}/api/hero`, {
+        fetch(`${baseUrl}/api/hero`, {
           next: { revalidate: 300 }, // 5분 캐시
         }),
-        fetch(`${siteUrl}/api/recommendations`, {
+        fetch(`${baseUrl}/api/recommendations`, {
           next: { revalidate: 300 }, // 5분 캐시
         }),
       ])
@@ -89,7 +92,7 @@ export default async function Home() {
 
       if (recommendationCategoryId) {
         const recProductsRes = await fetch(
-          `${siteUrl}/api/recommendations/${recommendationCategoryId}/products`,
+          `${baseUrl}/api/recommendations/${recommendationCategoryId}/products`,
           { next: { revalidate: 300 } }
         )
         if (recProductsRes.ok) {
@@ -103,7 +106,7 @@ export default async function Home() {
       ) || null
 
       if (weeklyCollection) {
-        const weeklyRes = await fetch(`${siteUrl}/api/collections/weekly_discount?limit=4`, {
+        const weeklyRes = await fetch(`${baseUrl}/api/collections/weekly_discount?limit=4`, {
           next: { revalidate: 300 },
         })
         if (weeklyRes.ok) {
@@ -119,7 +122,8 @@ export default async function Home() {
       if (nonWeeklyCollections.length > 0) {
         const sectionResults = await Promise.all(
           nonWeeklyCollections.map(async (collection) => {
-            const res = await fetch(`${siteUrl}/api/collections/${collection.type}?limit=4`, {
+            const typeSlug = (collection.type || '').trim().toLowerCase()
+            const res = await fetch(`${baseUrl}/api/collections/${encodeURIComponent(typeSlug)}?limit=4`, {
               next: { revalidate: 300 },
             })
 

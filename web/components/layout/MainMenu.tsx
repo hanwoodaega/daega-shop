@@ -26,8 +26,8 @@ export default function MainMenu() {
   const [categoryOpen, setCategoryOpen] = useState(false)
 
   return (
-    <div className="bg-white border-b border-gray-200 lg:pt-4">
-      <div className="w-full max-w-[960px] mx-auto px-3">
+    <div className="bg-white border-b border-gray-200 lg:border-b-2 lg:border-red-600 lg:pt-4">
+      <div className="w-full max-w-[1000px] mx-auto px-3">
         <div
           className="flex flex-wrap items-center justify-between lg:justify-center gap-4 sm:gap-6 lg:gap-16 pt-2 pb-0.5 pl-1.5 pr-1.5 lg:overflow-visible"
         >
@@ -56,7 +56,7 @@ export default function MainMenu() {
               <span>카테고리</span>
             </button>
             {categoryOpen && (
-              <div className="absolute left-0 top-full mt-1 w-56 bg-white border border-gray-200 shadow-lg rounded-md z-[100]">
+              <div className="absolute left-0 top-full mt-3 w-56 bg-white border border-gray-200 shadow-lg rounded-md z-[100]">
                 <nav className="py-2">
                   {CATEGORIES.map((category) => (
                     <Link
@@ -73,6 +73,22 @@ export default function MainMenu() {
               </div>
             )}
           </div>
+
+          {/* PC 전용: 이번주 행사 (카테고리 오른쪽) */}
+          <Link
+            href="/weekly-discount"
+            prefetch={false}
+            className={`hidden lg:inline-flex relative group ${menuLinkClass(pathname === '/weekly-discount')}`}
+          >
+            <span>이번주 행사</span>
+            <span
+              className={`absolute bottom-0 h-0.5 transition-all ${
+                pathname === '/weekly-discount'
+                  ? 'bg-red-600 left-[-8px] right-[-8px]'
+                  : 'w-0 left-0 right-0 bg-primary-800 group-hover:w-full'
+              }`}
+            />
+          </Link>
 
           {MAIN_MENUS.map((menu) => {
             const isActive = pathname === menu.href

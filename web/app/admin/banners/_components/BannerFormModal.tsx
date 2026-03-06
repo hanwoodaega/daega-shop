@@ -210,6 +210,7 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
           <div>
             <label className="block text-sm font-medium mb-2">
               이미지 URL <span className="text-red-500">*</span>
+              <span className="text-xs text-gray-500 font-normal ml-2">(권장: 400×400px, 정사각형)</span>
             </label>
             <div className="space-y-2">
               <div className="flex gap-2">

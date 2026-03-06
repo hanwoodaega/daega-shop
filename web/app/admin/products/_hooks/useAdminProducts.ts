@@ -32,7 +32,7 @@ export function useAdminProducts() {
     items: [],
     filterCategory: '전체',
     search: '',
-    filterStatus: 'all',
+    filterStatus: 'active', // 기본: 판매중만
     page: 1,
     total: 0,
   })
@@ -257,6 +257,7 @@ export function useAdminProducts() {
   const closeCreateModal = useCallback(() => {
     setIsCreateOpen(false)
     setForm({ ...INITIAL_FORM_STATE })
+    setUIState(prev => ({ ...prev, error: null }))
   }, [])
 
   const clearError = useCallback(() => {

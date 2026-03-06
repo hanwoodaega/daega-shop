@@ -45,7 +45,7 @@ export default function SalePageClient({ initialProducts, initialTotalPages }: S
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-      const response = await fetch(`/api/categories/sale?${params.toString()}`, { 
+      const response = await fetch(`/api/collections/sale?${params.toString()}`, {
         cache: 'no-store',
         signal: controller.signal
       })
@@ -53,7 +53,7 @@ export default function SalePageClient({ initialProducts, initialTotalPages }: S
       clearTimeout(timeoutId)
 
       if (!response.ok) {
-        throw new Error('카테고리 조회 실패')
+        throw new Error('컬렉션 조회 실패')
       }
 
       const data = await response.json()
@@ -68,10 +68,9 @@ export default function SalePageClient({ initialProducts, initialTotalPages }: S
         })
       }
       
-      // 다음 페이지가 있는지 확인
-      setHasMore(pageNum < data.pagination.totalPages && (data.products || []).length > 0)
+      setHasMore(pageNum < (data.totalPages ?? 0) && (data.products || []).length > 0)
     } catch (error: any) {
-      console.error('카테고리 상품 조회 실패:', error)
+      console.error('컬렉션 상품 조회 실패:', error)
       if (error.name === 'AbortError') {
         alert('상품을 불러오는데 시간이 오래 걸립니다. 잠시 후 다시 시도해주세요.')
       }

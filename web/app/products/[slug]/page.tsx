@@ -40,7 +40,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           </div>
         </header>
         <main className="flex-1 container mx-auto px-4 py-4 pt-6">
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {[...Array(8)].map((_, i) => (
               <ProductCardSkeleton key={i} />
             ))}

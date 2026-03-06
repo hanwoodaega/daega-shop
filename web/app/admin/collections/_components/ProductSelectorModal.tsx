@@ -53,7 +53,7 @@ export default function ProductSelectorModal({
       })
   }, [initialProducts.length])
 
-  // 필터링된 상품 목록 (useMemo로 최적화)
+  // 필터링: 현재 컬렉션에 이미 포함된 상품만 제외 (같은 상품은 best, no9 등 다른 컬렉션에 중복 가능)
   const filteredProducts = useMemo(() => {
     const query = debouncedSearchQuery.toLowerCase().trim()
     
@@ -165,8 +165,9 @@ export default function ProductSelectorModal({
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => {}}
-                        className="w-5 h-5"
+                        onChange={() => handleToggleProduct(product.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-5 h-5 shrink-0"
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">

@@ -5,9 +5,13 @@ import { supabase } from '@/lib/supabase/supabase'
 interface UseImageUploadOptions {
   bucket: string
   maxSizeMB?: number
+  /** true면 서버 API(/api/admin/upload-image)로 업로드 (RLS 회피, 관리자 전용) */
+  useServerUpload?: boolean
+  /** true면 서버에서 비율 유지하며 리사이즈·압축만 (잘리지 않음) */
+  preserveAspect?: boolean
 }
 
-export function useImageUpload({ bucket, maxSizeMB = 10 }: UseImageUploadOptions) {
+export function useImageUpload({ bucket, maxSizeMB = 10, useServerUpload = false, preserveAspect = false }: UseImageUploadOptions) {
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -26,6 +30,21 @@ export function useImageUpload({ bucket, maxSizeMB = 10 }: UseImageUploadOptions
 
     setUploading(true)
     try {
+      if (useServerUpload) {
+        const form = new FormData()
+        form.set('file', file)
+        form.set('bucket', bucket)
+        if (preserveAspect) form.set('preserveAspect', 'true')
+        const res = await fetch('/api/admin/upload-image', { method: 'POST', body: form })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          toast.error(data.error || '이미지 업로드 실패')
+          return null
+        }
+        toast.success('이미지 업로드 완료')
+        return data.url ?? null
+      }
+
       const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png'
       const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
 

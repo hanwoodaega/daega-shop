@@ -11,6 +11,7 @@ interface ProductCreateModalProps {
   isOpen: boolean
   form: ProductFormData
   loading: boolean
+  error: string | null
   onClose: () => void
   onUpdateField: <K extends keyof ProductFormData>(field: K, value: ProductFormData[K]) => void
   onSubmit: () => Promise<CreateProductResult>
@@ -20,6 +21,7 @@ export default function ProductCreateModal({
   isOpen,
   form,
   loading,
+  error,
   onClose,
   onUpdateField,
   onSubmit,
@@ -51,6 +53,11 @@ export default function ProductCreateModal({
           </button>
         </div>
         <form onSubmit={handleSubmit} className="px-6 py-6">
+          {error && (
+            <div className="max-w-2xl mx-auto mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+              {error}
+            </div>
+          )}
           <div className="space-y-4 max-w-2xl mx-auto">
             <div>
               <label className="block text-sm font-medium mb-1 text-neutral-600">브랜드</label>
@@ -131,6 +138,12 @@ export default function ProductCreateModal({
               <p>등록 후 목록에서 "품절처리/판매재개" 버튼으로 상태를 직접 전환하세요.</p>
               <p className="text-xs text-neutral-500 mt-1">
                 타임딜 재고는 타임딜 메뉴에서 별도로 관리됩니다.
+              </p>
+            </div>
+            <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-4 text-sm text-amber-800">
+              <p className="font-semibold mb-1">이미지 등록</p>
+              <p className="text-xs">
+                이미지는 상품 등록 후 목록에서 해당 상품의 <strong>[수정]</strong> 버튼을 눌러 추가할 수 있습니다. 권장: 800×800px (1:1 비율).
               </p>
             </div>
           </div>

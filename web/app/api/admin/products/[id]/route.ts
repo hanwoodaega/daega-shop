@@ -105,25 +105,23 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   // slug 처리: 명시적으로 전달되었는지 확인
   if ('slug' in updates) {
     const slugValue = String(updates.slug || '').trim()
-    
+
     if (slugValue) {
-      // slug가 명시적으로 입력된 경우 - 중복 체크 후 사용
-      let uniqueSlug = slugValue
-      let counter = 1
-      
-      while (true) {
-        const { data: existing } = await supabaseAdmin
-          .from('products')
-          .select('id')
-          .eq('slug', uniqueSlug)
-          .neq('id', id)
-          .single()
-        
-        if (!existing) break
-        uniqueSlug = `${slugValue}-${counter}`
-        counter++
+      // slug가 명시적으로 입력된 경우 - 다른 상품에서 사용 중이면 중복 불가(에러)
+      const { data: existing } = await supabaseAdmin
+        .from('products')
+        .select('id')
+        .eq('slug', slugValue)
+        .neq('id', id)
+        .single()
+
+      if (existing) {
+        return NextResponse.json(
+          { error: '이 slug는 이미 다른 상품에서 사용 중입니다. 다른 값을 입력하세요.' },
+          { status: 400 }
+        )
       }
-      updates.slug = uniqueSlug
+      updates.slug = slugValue
     } else {
       // slug가 빈 문자열이거나 null인 경우 - null로 설정 (또는 name에서 자동 생성)
       if ('name' in updates) {

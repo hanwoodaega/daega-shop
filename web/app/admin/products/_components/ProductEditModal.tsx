@@ -135,7 +135,7 @@ export default function ProductEditModal({
                     <p className="text-xs text-gray-500 mt-1">업로드 중... (서버에서 1:1 비율로 자동 압축됩니다)</p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">
-                    이미지를 하나씩 업로드할 수 있습니다. (서버에서 1:1 비율로 자동 압축됩니다)
+                    이미지를 하나씩 업로드할 수 있습니다. 권장: 800×800px 이상 (1:1 비율). 서버에서 1:1로 자동 압축됩니다.
                   </p>
                 </div>
 

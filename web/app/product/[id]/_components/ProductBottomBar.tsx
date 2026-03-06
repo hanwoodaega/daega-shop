@@ -11,6 +11,8 @@ interface ProductBottomBarProps {
   onBuyClick: () => void
   onCartClick: () => void
   onPromotionClick: () => void
+  /** true면 고정이 아닌 문서 흐름 안에 배치 (PC용) */
+  staticPosition?: boolean
 }
 
 export default function ProductBottomBar({
@@ -22,15 +24,23 @@ export default function ProductBottomBar({
   onBuyClick,
   onCartClick,
   onPromotionClick,
+  staticPosition = false,
 }: ProductBottomBarProps) {
   if (soldOut) {
     return null
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
+    <div
+      className={
+        staticPosition
+          ? 'w-full mt-6'
+          : 'fixed bottom-0 left-0 right-0 z-40'
+      }
+      style={staticPosition ? undefined : { paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
+    >
       <div className="w-full flex justify-center">
-        <div className="w-full max-w-[480px] bg-white border-t border-gray-200 shadow-lg">
+        <div className={`w-full bg-white shadow-lg ${staticPosition ? 'border border-gray-200 rounded-lg' : 'max-w-[480px] border-t border-gray-200'}`}>
           {/* BOGO 골라담기 버튼 (활성화된 프로모션 상품일 때만 표시) */}
           {product.promotion?.is_active && product.promotion?.type === 'bogo' && product.promotion?.buy_qty && (
             <div className="border-b border-gray-200">

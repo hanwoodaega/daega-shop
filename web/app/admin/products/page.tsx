@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import AdminPageLayout from '../_components/AdminPageLayout'
 import { useAdminProducts } from './_hooks/useAdminProducts'
 import ProductHeader from './_components/ProductHeader'
@@ -121,6 +122,7 @@ export default function AdminProductManagementPage() {
         isOpen={isCreateOpen}
         form={form}
         loading={uiState.loading}
+        error={uiState.error}
         onClose={closeCreateModal}
         onUpdateField={updateFormField}
         onSubmit={handleSubmit}

@@ -23,14 +23,88 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
   const abortControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
-    if (!userId) {
-      syncedUserIdRef.current = null
-      return
-    }
-
     registerAbortLoadCart(() => {
       abortControllerRef.current?.abort()
     })
+
+    const readCartFromStorage = () => {
+      if (typeof window === 'undefined') return []
+      const key = getCartStorageKey()
+      const raw = window.localStorage.getItem(key)
+      if (!raw) return []
+      try {
+        const parsed = JSON.parse(raw)
+        return Array.isArray(parsed?.state?.items) ? parsed.state.items : []
+      } catch {
+        return []
+      }
+    }
+
+    // 비로그인: 장바구니 상품 최신 정보 반영 (포커스/visibility 시 API 호출 후 스토어 병합)
+    const refreshGuestCartDetails = async () => {
+      const items = readCartFromStorage()
+      if (!items?.length) return
+      const productIds = Array.from(new Set(items.map((i: any) => i.productId).filter(Boolean)))
+      if (productIds.length === 0) return
+      try {
+        const res = await fetch(`/api/cart/details?ids=${productIds.join(',')}`, { cache: 'no-store' })
+        if (!res.ok) return
+        const { details } = await res.json()
+        if (!Array.isArray(details)) return
+        const detailByProductId = new Map(details.map((d: any) => [d.productId, d]))
+        const merged = items.map((item: any) => {
+          const d = detailByProductId.get(item.productId)
+          if (!d) return item
+          return {
+            ...item,
+            name: d.name ?? item.name,
+            price: d.price ?? item.price,
+            slug: d.slug ?? item.slug,
+            imageUrl: d.imageUrl ?? item.imageUrl,
+            discount_percent: d.discount_percent ?? item.discount_percent,
+            status: d.status ?? item.status,
+            brand: d.brand ?? item.brand,
+          }
+        })
+        setCartItems(merged, 'storageSync')
+      } catch {
+        // 무시
+      }
+    }
+
+    if (!userId) {
+      syncedUserIdRef.current = null
+      const handleFocus = () => {
+        const items = readCartFromStorage()
+        if (items?.length) refreshGuestCartDetails()
+        else if (items) setCartItems(items, 'storageSync')
+      }
+      const handleVisibility = () => {
+        if (document.visibilityState === 'visible') {
+          const items = readCartFromStorage()
+          if (items?.length) refreshGuestCartDetails()
+          else if (items) setCartItems(items, 'storageSync')
+        }
+      }
+      window.addEventListener('focus', handleFocus)
+      document.addEventListener('visibilitychange', handleVisibility)
+      // 마운트 시 한 번 갱신 (장바구니 페이지 진입 시 최신 정보 반영)
+      if (readCartFromStorage().length > 0) refreshGuestCartDetails()
+
+      const handleStorage = (event: StorageEvent) => {
+        if (!event.key || event.storageArea !== window.localStorage) return
+        if (event.key !== getCartStorageKey()) return
+        const items = readCartFromStorage()
+        if (items) setCartItems(items, 'storageSync')
+      }
+      window.addEventListener('storage', handleStorage)
+
+      return () => {
+        window.removeEventListener('focus', handleFocus)
+        document.removeEventListener('visibilitychange', handleVisibility)
+        window.removeEventListener('storage', handleStorage)
+      }
+    }
 
     const loadCart = async () => {
       abortControllerRef.current = new AbortController()
@@ -56,7 +130,6 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
     }
 
     // 로그인 직후 첫 로드만 syncCartOnLogin. 단, 이번 세션에서 bootstrap이 이미 장바구니를 세팅했으면 건너뜀.
-    // 이미 동기화된 뒤에는 effect 재실행 시 loadCart() 호출 안 함. 포커스/visibility/Realtime에서만 loadCart() 호출.
     if (syncedUserIdRef.current !== userId) {
       syncedUserIdRef.current = userId
       if (!getBootstrapHasSetCartThisSession()) {
@@ -64,39 +137,15 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
         syncCartOnLogin(userId, abortControllerRef.current.signal).catch(() => {})
       }
     }
-    
-    const readCartFromStorage = () => {
-      if (typeof window === 'undefined') return null
-      const key = getCartStorageKey()
-      const raw = window.localStorage.getItem(key)
-      if (!raw) return []
-      try {
-        const parsed = JSON.parse(raw)
-        return Array.isArray(parsed?.state?.items) ? parsed.state.items : []
-      } catch {
-        return []
-      }
-    }
 
-    // 페이지 포커스 시 갱신 (다른 탭에서 돌아올 때)
     const handleFocus = () => {
-      if (userId) {
-        scheduleLoadCart(0)
-      } else {
-        const items = readCartFromStorage()
-        if (items) setCartItems(items, 'storageSync')
-      }
+      scheduleLoadCart(0)
     }
     window.addEventListener('focus', handleFocus)
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        if (userId) {
-          scheduleLoadCart(0)
-        } else {
-          const items = readCartFromStorage()
-          if (items) setCartItems(items, 'storageSync')
-        }
+        scheduleLoadCart(0)
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -133,12 +182,9 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
             table: 'products',
             filter: `id=in.(${productIds.join(',')})`
           },
-          (payload: any) => {
-            // 상품 가격이나 할인율이 변경되면 장바구니 갱신
-            if (payload.new.price !== payload.old?.price || 
-                payload.new.discount_percent !== payload.old?.discount_percent) {
-              scheduleLoadCart()
-            }
+          () => {
+            // 상품 정보/가격/할인/프로모션 등이 변경되면 장바구니 갱신
+            scheduleLoadCart()
           }
         )
         .subscribe()

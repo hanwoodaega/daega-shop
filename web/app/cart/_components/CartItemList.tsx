@@ -84,7 +84,7 @@ export default function CartItemList({
                           {item.brand && (
                             <div className="text-sm font-bold text-gray-900 mb-0.5">{item.brand}</div>
                           )}
-                          <h3 className="text-sm font-normal mb-1">
+                          <h3 className="text-sm font-normal mb-0.5">
                             {item.name}
                             {item.weightGram ? ` ${item.weightGram}G` : ''}
                           </h3>
@@ -198,7 +198,7 @@ export default function CartItemList({
                     {item.brand && (
                       <div className="text-sm font-bold text-gray-900 mb-0.5 line-clamp-1">{item.brand}</div>
                     )}
-                    <h3 className="text-sm font-normal mb-1 line-clamp-2">
+                    <h3 className="text-sm font-normal mb-0.5 line-clamp-2">
                       {item.name}
                       {item.weightGram ? ` ${item.weightGram}G` : ''}
                     </h3>
@@ -218,7 +218,7 @@ export default function CartItemList({
                   <div className="flex-1">
                     {item.discount_percent && item.discount_percent > 0 ? (
                       <>
-                        <div className="text-xs text-gray-500 line-through mt-1">
+                        <div className="text-xs text-gray-500 line-through mt-0.5">
                           {formatPrice(item.price * item.quantity)}원
                         </div>
                         <div className="flex items-baseline gap-2 mt-0">
@@ -296,7 +296,7 @@ export default function CartItemList({
                       {item.brand && (
                         <div className="text-sm font-bold text-gray-900 mb-0.5 line-clamp-1">{item.brand}</div>
                       )}
-                      <h3 className="text-sm font-normal mb-1 line-clamp-2">
+                      <h3 className="text-sm font-normal mb-0.5 line-clamp-2">
                         {item.name}
                         {item.weightGram ? ` ${item.weightGram}G` : ''}
                       </h3>

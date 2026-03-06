@@ -228,8 +228,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 주문 완료 안내 문자 (수령인 연락처 있으면 발송, 실패해도 주문은 유지)
-    if (!payload.is_gift && normalizedPhone.length >= 10) {
+    // 주문 완료 안내 문자 (비회원일 때만, 수령인 연락처 있으면 발송, 실패해도 주문은 유지)
+    if (!user && !payload.is_gift && normalizedPhone.length >= 10) {
       try {
         const baseUrl = (await getServerBaseUrl()) || process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin
         const orderLookupUrl = `${baseUrl.replace(/\/$/, '')}/order-lookup`

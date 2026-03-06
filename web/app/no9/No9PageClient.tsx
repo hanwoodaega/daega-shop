@@ -73,7 +73,7 @@ export default function No9PageClient({ initialProducts }: No9PageClientProps) {
     const fetchProducts = async () => {
       try {
         setLoading(true)
-        const response = await fetch('/api/categories/no9?limit=100&page=1')
+        const response = await fetch('/api/collections/no9?limit=100&page=1')
         if (response.ok) {
           const data = await response.json()
           setProducts(data.products || [])

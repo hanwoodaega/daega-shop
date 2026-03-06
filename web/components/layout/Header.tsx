@@ -184,7 +184,7 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
       </div>
 
       {/* 첫 번째 부분: 로고, 검색창 (Normal) */}
-      <div className="relative bg-white border-b border-gray-200 lg:border-b-0">
+      <div className="relative bg-white border-b border-gray-200 lg:border-b-0 lg:pb-3">
         {/* 콘텐츠 */}
         <div className="relative z-10 container mx-auto pl-6 pr-4">
           <div className="flex items-center justify-start h-16 gap-4">

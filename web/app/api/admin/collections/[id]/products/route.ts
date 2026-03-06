@@ -33,11 +33,25 @@ export async function POST(
       return NextResponse.json({ error: '컬렉션을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    // 상품 추가 (priority는 null로 설정 - 사용자가 원할 때 설정할 수 있도록)
-    const collectionProducts = product_ids.map((product_id: string) => ({
+    // 이 컬렉션에 이미 포함된 상품은 제외 (같은 상품은 다른 컬렉션(best, no9 등)에는 중복 허용)
+    const { data: existing } = await supabaseAdmin
+      .from('collection_products')
+      .select('product_id')
+      .eq('collection_id', id)
+      .in('product_id', product_ids)
+
+    const existingIds = new Set((existing || []).map((r: { product_id: string }) => r.product_id))
+    const toInsert = product_ids.filter((pid: string) => !existingIds.has(pid))
+
+    if (toInsert.length === 0) {
+      return NextResponse.json({ error: '선택한 상품이 이미 이 컬렉션에 모두 포함되어 있습니다.' }, { status: 400 })
+    }
+
+    // 상품 추가 (priority는 null로 설정)
+    const collectionProducts = toInsert.map((product_id: string) => ({
       collection_id: id,
       product_id,
-      priority: null, // 기본값은 null로 설정
+      priority: null,
     }))
 
     const { data, error } = await supabaseAdmin
@@ -49,7 +63,7 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
-    return NextResponse.json({ products: data })
+    return NextResponse.json({ products: data, added: toInsert.length })
   } catch (error: any) {
     console.error('상품 추가 실패:', error)
     return NextResponse.json({ error: '서버 오류' }, { status: 500 })

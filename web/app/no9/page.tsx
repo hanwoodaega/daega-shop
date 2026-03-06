@@ -6,7 +6,7 @@ export default async function HanwooDaegaNo9Page() {
   try {
     const siteUrl = await getServerBaseUrl()
     if (siteUrl) {
-      const res = await fetch(`${siteUrl}/api/categories/no9?limit=100&page=1`, {
+      const res = await fetch(`${siteUrl}/api/collections/no9?limit=100&page=1`, {
         next: { revalidate: 300 },
       })
       if (res.ok) {

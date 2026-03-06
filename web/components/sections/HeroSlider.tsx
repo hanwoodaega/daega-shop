@@ -131,24 +131,24 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
   return (
     <section className="relative overflow-hidden">
       <div className="w-full relative">
-        {/* 모바일/태블릿: 3:2 배너 1장 */}
+        {/* 모바일/태블릿: 5:3 배너 1장 */}
         {visibleSlides[0] && (
-          <div className="relative w-full aspect-[3/2] lg:hidden">
+          <div className="relative w-full aspect-[5/3] lg:hidden">
             {renderTile(visibleSlides[0], visibleSlides[0].id, true)}
           </div>
         )}
 
-        {/* PC: 가운데 2장은 960px 고정, 양옆은 화면 여유에 따라 노출 */}
-        <div className="hidden lg:block px-2 py-2">
-          <div className="relative max-w-[960px] mx-auto h-[320px] overflow-visible">
+        {/* PC: 가운데 2장은 1000px 고정, 양옆은 화면 여유에 따라 노출 */}
+        <div className="hidden lg:block px-2 pt-0 pb-2">
+          <div className="relative max-w-[1000px] mx-auto h-[288px] overflow-visible">
             {visibleSlides.map((slide, idx) => {
               const offset = idx - 1 // -1,0,1,2
               return (
                 <div
                   key={slide.id}
-                  className="absolute top-0 w-[480px] h-[320px] transition-transform duration-700"
-                  style={{
-                    left: `calc(${offset} * (480px + 16px))`,
+                  className="absolute top-0 w-[480px] h-[288px] transition-transform duration-700"
+                    style={{
+                    left: `calc(${offset} * (480px + 8px))`,
                     transitionDelay: `${idx * 120}ms`,
                   }}
                 >
@@ -162,7 +162,7 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
               )
             })}
 
-            {/* 좌/우 화살표 (960px 영역 양옆) */}
+            {/* 좌/우 화살표 (1000px 영역 양옆) */}
             {slideCount > 1 && (
               <>
                 <button

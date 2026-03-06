@@ -16,7 +16,7 @@ export default function BannerSectionUI({ banners }: BannerSectionUIProps) {
         {banners.map((banner) => {
           const BannerContent = (
             <div
-              className="rounded-none lg:rounded-lg px-4 py-4"
+              className="rounded-none lg:rounded-lg px-4 py-6"
               style={{ backgroundColor: banner.background_color }}
             >
               <div className="flex flex-row items-center gap-4">
@@ -25,12 +25,12 @@ export default function BannerSectionUI({ banners }: BannerSectionUIProps) {
                   {/* 부제목 영역 */}
                   <div className="mb-2">
                     {banner.subtitle_black && (
-                      <h2 className="text-base md:text-lg lg:text-[15px] font-bold text-black mb-0 whitespace-pre-line tracking-tight leading-tight">
+                      <h2 className="text-lg md:text-xl lg:text-[17px] font-bold text-black mb-0 whitespace-pre-line tracking-tight leading-tight">
                         {banner.subtitle_black}
                       </h2>
                     )}
                     {banner.subtitle_red && (
-                      <h2 className="text-base md:text-lg lg:text-[15px] font-bold text-red-600 whitespace-pre-line tracking-tight leading-tight">
+                      <h2 className="text-lg md:text-xl lg:text-[17px] font-bold text-red-600 whitespace-pre-line tracking-tight leading-tight">
                         {banner.subtitle_red}
                       </h2>
                     )}
@@ -38,7 +38,7 @@ export default function BannerSectionUI({ banners }: BannerSectionUIProps) {
                   
                   {/* 설명 */}
                   {banner.description && (
-                    <p className="text-xs md:text-sm text-gray-700 whitespace-pre-line">
+                    <p className="text-sm md:text-base text-gray-700 whitespace-pre-line">
                       {banner.description}
                     </p>
                   )}
@@ -50,7 +50,7 @@ export default function BannerSectionUI({ banners }: BannerSectionUIProps) {
                     <img
                       src={banner.image_url}
                       alt={banner.title || banner.subtitle_black || banner.subtitle_red || '배너'}
-                      className="w-24 h-24 md:w-28 md:h-28 lg:w-24 lg:h-24 object-contain"
+                      className="w-24 h-24 md:w-28 md:h-28 lg:w-28 lg:h-28 object-contain"
                     />
                   ) : null}
                 </div>

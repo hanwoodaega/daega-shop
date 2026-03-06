@@ -14,10 +14,11 @@ export default function ProductInfo({ product, reviewCount, averageRating, onRev
   const soldOut = isSoldOut(product.status)
 
   return (
-    <div className="flex items-start justify-between gap-3 mb-2">
-      <div className="flex-1">
+    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between lg:gap-4 lg:mt-8 gap-3 mb-2">
+      {/* PC: 브랜드 왼쪽, 상품명 오른쪽 / 모바일: 세로 배치 */}
+      <div className="flex flex-col lg:flex-row lg:items-baseline lg:gap-3 flex-1 min-w-0">
         {product.brand && (
-          <div className="text-lg font-bold text-primary-900 mb-1">{product.brand}</div>
+          <div className="text-lg font-bold text-primary-900 mb-1 lg:mb-0">{product.brand}</div>
         )}
         <h1 className="text-xl font-normal inline-flex items-center">
           {product.name}
@@ -25,10 +26,10 @@ export default function ProductInfo({ product, reviewCount, averageRating, onRev
             <span className="ml-1 text-xl font-normal">{product.weight_gram}G</span>
           )}
         </h1>
-        {soldOut && (
-          <p className="text-sm text-gray-500 mt-1">해당 상품은 품절 되었습니다.</p>
-        )}
       </div>
+      {soldOut && (
+        <p className="text-sm text-gray-500 mt-1">해당 상품은 품절 되었습니다.</p>
+      )}
       
       {/* 리뷰 요약 */}
       {reviewCount > 0 && (

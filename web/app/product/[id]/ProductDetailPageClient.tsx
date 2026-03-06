@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getProductDescription } from '@/components/product-descriptions'
 import Footer from '@/components/layout/Footer'
+import Header from '@/components/layout/Header'
 import LoginPromptModal from '@/components/common/LoginPromptModal'
 import ConfirmModal from '@/components/common/ConfirmModal'
 import ReviewWriteModal from '@/components/review/ReviewWriteModal'
@@ -202,7 +203,12 @@ export default function ProductDetailPageClient({
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <ProductHeader product={null} cartCount={0} mounted={mounted} />
+        <div className="lg:hidden">
+          <ProductHeader product={null} cartCount={0} mounted={mounted} />
+        </div>
+        <div className="hidden lg:block">
+          <Header />
+        </div>
         <div className="flex-1 flex justify-center items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>
@@ -217,31 +223,67 @@ export default function ProductDetailPageClient({
   
   return (
     <div className="min-h-screen flex flex-col">
-      <ProductHeader product={product} cartCount={cartCount} mounted={mounted} />
-      
+      {/* 모바일: 상품 상세용 간단 헤더 */}
+      <div className="lg:hidden">
+        <ProductHeader product={product} cartCount={cartCount} mounted={mounted} />
+      </div>
+      {/* PC: 공통 헤더 + 메인 메뉴 */}
+      <div className="hidden lg:block">
+        <Header />
+      </div>
+
       <main className="flex-1">
-        <ProductImageGallery
-          product={product}
-          images={images}
-          selectedIndex={selectedIndex}
-          onPrevious={handlePrevious}
-          onNext={handleNext}
-          onSwipe={handleSwipe}
-        />
-        
-        <div className="px-4 py-8">
-          <ProductInfo
-            product={product}
-            reviewCount={reviewCount}
-            averageRating={averageRating}
-            onReviewClick={handleReviewClick}
-          />
-          
-          <ProductPrice product={product} />
+        {/* PC: 이미지 왼쪽 상단, 작은 크기 / 모바일: 기존 전체 너비 */}
+        <div className="lg:flex lg:items-start lg:gap-8 lg:container lg:mx-auto lg:px-4 lg:pt-6">
+          <div className="w-full aspect-square lg:w-[480px] lg:h-[480px] lg:flex-shrink-0 lg:rounded-lg lg:overflow-hidden">
+            <ProductImageGallery
+              product={product}
+              images={images}
+              selectedIndex={selectedIndex}
+              onPrevious={handlePrevious}
+              onNext={handleNext}
+              onSwipe={handleSwipe}
+            />
+          </div>
+          <div className="lg:flex-1 lg:min-w-0">
+            <div className="px-4 py-8 lg:pt-0 lg:px-0">
+              <ProductInfo
+                product={product}
+                reviewCount={reviewCount}
+                averageRating={averageRating}
+                onReviewClick={handleReviewClick}
+              />
+              
+              <ProductPrice product={product} />
+
+              <p className="text-sm text-gray-600 mb-4">
+                <span className="font-medium text-gray-900">배송 기간:</span> 평균 1~2일 (주말 및 공휴일 제외)
+                <span className="block mt-1">오후 3시 이전 주문 시 당일 발송됩니다.</span>
+              </p>
+
+              {/* PC: 교환/반품/환불 안내 + 구매 버튼을 상품 텍스트 밑에 배치 */}
+              <div className="hidden lg:block">
+                <ProductInfoButtons product={product} />
+                <ProductBottomBar
+                  product={product}
+                  productId={productId}
+                  isWished={isWished}
+                  soldOut={soldOut}
+                  onWishlistToggle={handleWishlistToggle}
+                  onBuyClick={() => handleOpenQuantitySheet('buy')}
+                  onCartClick={() => handleOpenQuantitySheet('cart')}
+                  onPromotionClick={() => openPromotionModal(productId)}
+                  staticPosition
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </main>
-      
-      <ProductBottomBar
+
+      {/* 모바일: 하단 고정 버튼 */}
+      <div className="lg:hidden">
+        <ProductBottomBar
         product={product}
         productId={productId}
         isWished={isWished}
@@ -251,6 +293,7 @@ export default function ProductDetailPageClient({
         onCartClick={() => handleOpenQuantitySheet('cart')}
         onPromotionClick={() => openPromotionModal(productId)}
       />
+      </div>
       
       {showQty && (
         <ProductQuantitySheet
@@ -281,7 +324,9 @@ export default function ProductDetailPageClient({
         onCancel={() => setShowCartConfirm(false)}
       />
       
-      <ProductInfoButtons product={product} />
+      <div className="lg:hidden">
+        <ProductInfoButtons product={product} />
+      </div>
       
       <ProductDescription
         product={product}

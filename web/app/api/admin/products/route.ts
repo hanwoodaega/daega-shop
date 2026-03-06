@@ -46,9 +46,8 @@ export async function GET(request: Request) {
     .order('created_at', { ascending: false })
   if (status && status !== 'all') {
     query = query.eq('status', status)
-  } else {
-    query = query.neq('status', 'deleted') // 기본은 deleted 제외
   }
+  // status === 'all' 이면 필터 없이 전체 조회 (판매중/품절/삭제 모두)
   if (category && category !== '전체') {
     query = query.eq('category', category)
   }
@@ -105,24 +104,30 @@ export async function POST(request: Request) {
 
   // slug 생성 (수동 입력이 있으면 사용, 없으면 자동 생성)
   let slug: string | null = null
-  
-  // slug가 명시적으로 전달되었는지 확인 (빈 문자열도 명시적 입력으로 간주)
-  if ('slug' in body) {
+  const slugExplicitlyProvided = 'slug' in body && String(body.slug || '').trim().length > 0
+
+  if (slugExplicitlyProvided) {
     const slugValue = String(body.slug || '').trim()
-    if (slugValue) {
-      // 수동으로 slug가 입력된 경우 - 그대로 사용
-      slug = slugValue
+    // 수동 입력된 slug가 이미 존재하면 등록 거부 (중복 불가)
+    const { data: existing } = await supabaseAdmin
+      .from('products')
+      .select('id')
+      .eq('slug', slugValue)
+      .single()
+    if (existing) {
+      return NextResponse.json(
+        { error: '이 slug는 이미 다른 상품에서 사용 중입니다. 다른 값을 입력하세요.' },
+        { status: 400 }
+      )
     }
+    slug = slugValue
   }
-  
+
   // slug가 없으면 상품명에서 자동 생성
   if (!slug && body.name) {
-    slug = nameToSlug(body.name)
-  }
-  
-  // slug 중복 체크 및 고유성 보장
-  if (slug) {
-    let uniqueSlug = slug
+    const baseSlug = nameToSlug(body.name)
+    // 자동 생성 시에만 중복이면 -1, -2 붙여서 고유하게
+    let uniqueSlug = baseSlug
     let counter = 1
     while (true) {
       const { data: existing } = await supabaseAdmin
@@ -130,9 +135,8 @@ export async function POST(request: Request) {
         .select('id')
         .eq('slug', uniqueSlug)
         .single()
-      
       if (!existing) break
-      uniqueSlug = `${slug}-${counter}`
+      uniqueSlug = `${baseSlug}-${counter}`
       counter++
     }
     slug = uniqueSlug

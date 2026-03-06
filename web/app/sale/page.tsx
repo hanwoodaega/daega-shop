@@ -10,13 +10,13 @@ export default async function SalePage() {
     const siteUrl = await getServerBaseUrl()
     if (siteUrl) {
       const res = await fetch(
-        `${siteUrl}/api/categories/sale?page=1&limit=${DEFAULT_PAGE_SIZE}&sort=default`,
+        `${siteUrl}/api/collections/sale?page=1&limit=${DEFAULT_PAGE_SIZE}&sort=default`,
         { next: { revalidate: 300 } }
       )
       if (res.ok) {
         const data = await res.json()
         initialProducts = data.products || []
-        initialTotalPages = data.pagination?.totalPages || 0
+        initialTotalPages = data.totalPages ?? 0
       }
     }
   } catch {

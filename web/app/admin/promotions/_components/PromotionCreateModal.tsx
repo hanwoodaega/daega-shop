@@ -95,8 +95,16 @@ export default function PromotionCreateModal({
                 type="number"
                 min="0"
                 max="100"
-                value={formData.discount_percent}
-                onChange={(e) => onUpdateField('discount_percent', parseFloat(e.target.value))}
+                value={Number.isFinite(formData.discount_percent) ? formData.discount_percent : ''}
+                onChange={(e) => {
+                  const v = e.target.value
+                  if (v === '') {
+                    onUpdateField('discount_percent', 0)
+                    return
+                  }
+                  const num = parseFloat(v)
+                  onUpdateField('discount_percent', Number.isFinite(num) ? num : 0)
+                }}
                 className="w-full px-3 py-2 border rounded-lg"
                 placeholder="예: 20"
               />

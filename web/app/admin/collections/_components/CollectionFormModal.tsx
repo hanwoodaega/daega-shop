@@ -47,6 +47,8 @@ export default function CollectionFormModal({
   const { uploading, fileInputRef, handleFileSelect } = useImageUpload({
     bucket: 'product-images',
     maxSizeMB: 10,
+    useServerUpload: true, // RLS 회피를 위해 관리자 API로 업로드
+    preserveAspect: true, // 비율 유지하며 압축만 (잘리지 않음)
   })
 
   useEffect(() => {
@@ -177,7 +179,7 @@ export default function CollectionFormModal({
           <div>
             <label className="block text-sm font-medium mb-2">
               대표 이미지
-              <span className="text-xs text-gray-500 ml-2">(16:9 비율 이미지를 권장합니다)</span>
+              <span className="text-xs text-gray-500 ml-2">(권장: 1200×675px, 16:9 비율)</span>
             </label>
             <div className="space-y-2">
               <div className="flex gap-2">

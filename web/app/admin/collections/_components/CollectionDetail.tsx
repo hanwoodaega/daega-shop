@@ -24,6 +24,7 @@ export default function CollectionDetail({
   const [collectionProducts, setCollectionProducts] = useState<CollectionProduct[]>([])
   const [showProductSelector, setShowProductSelector] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [priorityInputs, setPriorityInputs] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (collection) {
@@ -212,11 +213,19 @@ export default function CollectionDetail({
                         <input
                           type="number"
                           min="0"
-                          value={cp.priority ?? ''}
+                          value={priorityInputs[cp.id] !== undefined ? priorityInputs[cp.id] : (cp.priority ?? '')}
                           placeholder="순서"
+                          onChange={(e) =>
+                            setPriorityInputs((prev) => ({ ...prev, [cp.id]: e.target.value }))
+                          }
                           onBlur={(e) => {
                             const value = e.target.value
-                            const newPriority = value === '' ? null : (parseInt(value) || null)
+                            const newPriority = value === '' ? null : (parseInt(value, 10) || null)
+                            setPriorityInputs((prev) => {
+                              const next = { ...prev }
+                              delete next[cp.id]
+                              return next
+                            })
                             handleUpdatePriority(cp.id, newPriority)
                           }}
                           className="w-16 px-1 py-0.5 text-xs border rounded text-center"
