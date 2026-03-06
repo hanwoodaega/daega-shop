@@ -23,76 +23,62 @@ interface TossWebhookPayload {
   }
 }
 
+const OK = () => NextResponse.json({ ok: true, received: true })
+
 async function fetchPaymentFromToss(paymentKey: string) {
   const secretKey = process.env.TOSS_SECRET_KEY
-  if (!secretKey) {
-    return null
-  }
-
+  if (!secretKey) return null
   const auth = Buffer.from(`${secretKey}:`).toString('base64')
   const res = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}`, {
-    headers: {
-      Authorization: `Basic ${auth}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
   })
-
-  if (!res.ok) {
-    return null
-  }
-
+  if (!res.ok) return null
   return res.json()
 }
 
 function mapTossStatusToOrderStatus(status?: TossPaymentStatus) {
   if (!status) return null
   if (status === 'DONE') return 'ORDER_RECEIVED'
-  if (status === 'CANCELED' || status === 'PARTIAL_CANCELED' || status === 'ABORTED' || status === 'EXPIRED') {
-    return 'cancelled'
-  }
+  if (['CANCELED', 'PARTIAL_CANCELED', 'ABORTED', 'EXPIRED'].includes(status)) return 'cancelled'
   return null
 }
 
 function shouldUpdateOrderStatus(currentStatus: string, nextStatus: string) {
   if (currentStatus === nextStatus) return false
-  if (nextStatus === 'cancelled') {
-    return ['pending', 'ORDER_RECEIVED', 'PREPARING'].includes(currentStatus)
-  }
-  if (nextStatus === 'ORDER_RECEIVED') {
-    return currentStatus === 'pending'
-  }
+  if (nextStatus === 'cancelled') return ['pending', 'ORDER_RECEIVED', 'PREPARING'].includes(currentStatus)
+  if (nextStatus === 'ORDER_RECEIVED') return currentStatus === 'pending'
   return false
 }
 
 export async function POST(request: NextRequest) {
   try {
     const payload = (await request.json()) as TossWebhookPayload
-    if (payload.eventType !== 'PAYMENT_STATUS_CHANGED') {
-      return NextResponse.json({ received: true })
-    }
-
+    const eventType = payload.eventType
     const data = payload.data || {}
     let paymentKey = data.paymentKey || ''
     let orderId = data.orderId || ''
     let status = data.status
 
+    if (eventType !== 'PAYMENT_STATUS_CHANGED') {
+      return OK()
+    }
+
+    // 로그: eventType, paymentKey, orderId (추적용)
+    console.log('[Toss webhook]', { eventType, paymentKey: paymentKey || '(없음)', orderId: orderId || '(없음)' })
+
     if (paymentKey) {
       const payment = await fetchPaymentFromToss(paymentKey)
-      if (payment?.orderId) {
-        orderId = payment.orderId
-      }
-      if (payment?.status) {
-        status = payment.status as TossPaymentStatus
-      }
+      if (payment?.orderId) orderId = payment.orderId
+      if (payment?.status) status = payment.status as TossPaymentStatus
     }
 
     if (!orderId) {
-      return NextResponse.json({ received: true })
+      return OK()
     }
 
     const nextStatus = mapTossStatusToOrderStatus(status)
     if (!nextStatus) {
-      return NextResponse.json({ received: true })
+      return OK()
     }
 
     const supabaseAdmin = createSupabaseAdminClient()
@@ -103,25 +89,31 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
 
     if (!order) {
-      return NextResponse.json({ received: true })
+      return OK()
     }
 
-    const updateData: Record<string, any> = {}
-    if (paymentKey && !order.toss_payment_key) {
-      updateData.toss_payment_key = paymentKey
+    // 이미 결제완료(ORDER_RECEIVED)면 바로 200 — 재처리 안 함
+    if (order.status === 'ORDER_RECEIVED') {
+      return OK()
     }
-    if (shouldUpdateOrderStatus(order.status, nextStatus)) {
-      updateData.status = nextStatus
+
+    // 같은 orderId / 상태 이미 반영됐으면 재처리 안 함
+    if (order.status === nextStatus && (!paymentKey || order.toss_payment_key)) {
+      return OK()
     }
+
+    const updateData: Record<string, unknown> = {}
+    if (paymentKey && !order.toss_payment_key) updateData.toss_payment_key = paymentKey
+    if (shouldUpdateOrderStatus(order.status, nextStatus)) updateData.status = nextStatus
 
     if (Object.keys(updateData).length > 0) {
       updateData.updated_at = new Date().toISOString()
       await supabaseAdmin.from('orders').update(updateData).eq('id', order.id)
     }
 
-    return NextResponse.json({ received: true })
-  } catch (error: any) {
-    console.error('Toss webhook 처리 오류:', error)
-    return NextResponse.json({ received: true })
+    return OK()
+  } catch (error: unknown) {
+    console.error('[Toss webhook] 처리 오류:', error)
+    return OK()
   }
 }

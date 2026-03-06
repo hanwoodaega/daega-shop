@@ -59,8 +59,7 @@ export async function sendOrderCompleteSms(
   orderNumber: string,
   orderLookupUrl: string
 ): Promise<void> {
-  const text = `[대가정육마트]
-주문이 접수되었습니다.
+  const text = `[대가] 주문이 접수되었습니다.
 주문번호: ${orderNumber}
 주문조회: ${orderLookupUrl}`
   const result = await sendSms(phone, text)
