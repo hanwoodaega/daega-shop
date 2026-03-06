@@ -41,6 +41,7 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
     }
 
     // 비로그인: 장바구니 상품 최신 정보 반영 (포커스/visibility 시 API 호출 후 스토어 병합)
+    // 삭제/품절 반영: API에 없는 상품(삭제됨) 제거, 있는 상품은 status(품절 등) 반영
     const refreshGuestCartDetails = async () => {
       const items = readCartFromStorage()
       if (!items?.length) return
@@ -52,20 +53,21 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
         const { details } = await res.json()
         if (!Array.isArray(details)) return
         const detailByProductId = new Map(details.map((d: any) => [d.productId, d]))
-        const merged = items.map((item: any) => {
-          const d = detailByProductId.get(item.productId)
-          if (!d) return item
-          return {
-            ...item,
-            name: d.name ?? item.name,
-            price: d.price ?? item.price,
-            slug: d.slug ?? item.slug,
-            imageUrl: d.imageUrl ?? item.imageUrl,
-            discount_percent: d.discount_percent ?? item.discount_percent,
-            status: d.status ?? item.status,
-            brand: d.brand ?? item.brand,
-          }
-        })
+        const merged = items
+          .filter((item: any) => detailByProductId.has(item.productId))
+          .map((item: any) => {
+            const d = detailByProductId.get(item.productId)!
+            return {
+              ...item,
+              name: d.name ?? item.name,
+              price: d.price ?? item.price,
+              slug: d.slug ?? item.slug,
+              imageUrl: d.imageUrl ?? item.imageUrl,
+              discount_percent: d.discount_percent ?? item.discount_percent,
+              status: d.status ?? item.status,
+              brand: d.brand ?? item.brand,
+            }
+          })
         setCartItems(merged, 'storageSync')
       } catch {
         // 무시
@@ -99,10 +101,42 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
       }
       window.addEventListener('storage', handleStorage)
 
+      // 비로그인 Realtime: 장바구니 상품 정보 변경 시 즉시 반영 (회원과 동일)
+      const guestProductIds = useCartStore.getState().items
+        .map((item) => item.productId)
+        .filter(Boolean)
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+      if (guestProductIds.length > 0) {
+        const channelName = 'product-price-changes-guest'
+        const channel = supabase
+          .channel(channelName)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'products',
+              filter: `id=in.(${guestProductIds.join(',')})`,
+            },
+            () => {
+              refreshGuestCartDetails()
+            }
+          )
+          .subscribe()
+        channelRef.current = channel
+      }
+
       return () => {
         window.removeEventListener('focus', handleFocus)
         document.removeEventListener('visibilitychange', handleVisibility)
         window.removeEventListener('storage', handleStorage)
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current)
+          channelRef.current = null
+        }
       }
     }
 
