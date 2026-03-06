@@ -85,7 +85,7 @@ export default function SupportPage() {
             </h2>
             <div className="space-y-2 text-sm">
               <p className="text-gray-900 font-medium">대가정육마트</p>
-              <p className="text-gray-600">주소: 전라남도 순천시 해룡면</p>
+              <p className="text-gray-600">주소: 전라남도 순천시 해룡면 상성길 183</p>
               <p className="text-gray-600">영업시간: 매일 10:00 ~ 20:00</p>
             </div>
           </div>

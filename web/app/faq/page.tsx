@@ -110,7 +110,7 @@ export default function FAQPage() {
                 <p className="mb-2">• 제품 하자가 있는 경우 즉시 사진과 함께 고객센터로 연락해주세요.</p>
                 <p className="mb-2"><strong>환불 처리:</strong></p>
                 <p className="mb-2">• MY {'->'} 주문내역 {'->'} 결제완료 상태에서 &quot;주문취소&quot; 클릭</p>
-                <p>• 환불은 영업일 기준 3~5일 소요됩니다.</p>
+                <p>• 환불은 영업일 기준 3~5일이 소요될 수 있습니다.</p>
               </div>
             </details>
 
@@ -124,7 +124,7 @@ export default function FAQPage() {
               </summary>
               <div className="mt-2 px-3 py-2 text-sm text-gray-700">
                 <p className="mb-2"><strong>매장 위치:</strong></p>
-                <p className="mb-2">전라남도 순천시 해룡면 대가정육마트</p>
+                <p className="mb-2">전라남도 순천시 해룡면 상성길 183 대가정육마트</p>
                 <p className="mb-2"><strong>픽업 가능 시간:</strong></p>
                 <p className="mb-2">오전 10:00 ~ 오후 8:00 (매일)</p>
                 <p className="mb-2"><strong>픽업 방법:</strong></p>

@@ -61,7 +61,7 @@ export function useOrders({ userId, giftToken }: UseOrdersParams): UseOrdersRetu
     const order = orders.find(o => o.id === orderId)
     if (!order) return
 
-    if (!confirm(`주문을 취소하시겠습니까?\n\n환불 예정 금액: ${formatPrice(order.total_amount)}원\n환불은 영업일 기준 3-5일 소요됩니다.`)) {
+    if (!confirm(`주문을 취소하시겠습니까?\n\n환불 예정 금액: ${formatPrice(order.total_amount)}원\n환불은 영업일 기준 3-5일이 소요될 수 있습니다.`)) {
       return
     }
 
@@ -80,7 +80,7 @@ export function useOrders({ userId, giftToken }: UseOrdersParams): UseOrdersRetu
           : o
       ))
 
-      showSuccess('주문이 취소되었습니다.\n환불이 진행됩니다. 영업일 기준 3-5일 소요됩니다.', {
+      showSuccess('주문이 취소되었습니다.\n환불은 영업일 기준 3-5일이 소요될 수 있습니다.', {
         duration: 5000,
       })
     } catch (error) {
