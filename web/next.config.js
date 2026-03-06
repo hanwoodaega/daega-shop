@@ -7,6 +7,15 @@ const nextConfig = {
     }
     return config
   },
+  async redirects() {
+    return [
+      {
+        source: '/o',
+        destination: '/order-lookup',
+        permanent: true,
+      },
+    ]
+  },
   images: {
     remotePatterns: [
       {

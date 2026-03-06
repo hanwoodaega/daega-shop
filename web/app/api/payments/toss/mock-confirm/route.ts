@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
     if (!user && !payload.is_gift && normalizedPhone.length >= 10) {
       try {
         const baseUrl = (await getServerBaseUrl()) || process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin
-        const orderLookupUrl = `${baseUrl.replace(/\/$/, '')}/order-lookup`
+        const orderLookupUrl = `${baseUrl.replace(/\/$/, '')}/o`
         await sendOrderCompleteSms(normalizedPhone, orderNumber, orderLookupUrl)
       } catch (e) {
         console.error('주문 완료 문자 발송 실패:', e)
