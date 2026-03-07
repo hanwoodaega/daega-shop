@@ -428,7 +428,7 @@ export default function AddressesPage() {
                   required
                   maxLength={13}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  placeholder="숫자만 입력하세요"
+                  placeholder="휴대폰 번호를 입력해주세요"
                 />
               </div>
 

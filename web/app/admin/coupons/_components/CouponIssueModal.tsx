@@ -44,11 +44,11 @@ export default function CouponIssueModal({
                   onConditionsChange({ ...conditions, phone: numbers })
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder="숫자만 입력하세요"
+                placeholder="휴대폰 번호를 입력해주세요"
                 maxLength={11}
               />
               <p className="mt-1 text-xs text-gray-500">
-                특정 개인에게 지급하려면 전화번호를 입력하세요. (하이픈 없이 숫자만)
+                특정 개인에게 지급하려면 전화번호를 입력해주세요. (하이픈 없이 숫자만)
               </p>
             </div>
           </div>
@@ -189,7 +189,7 @@ export default function CouponIssueModal({
           <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-800">
             <p className="font-semibold mb-1">💡 조건 안내:</p>
             <ul className="list-disc list-inside space-y-1">
-              <li>전화번호: 특정 개인에게 지급하려면 전화번호만 입력하세요 (다른 조건과 함께 사용 가능)</li>
+              <li>전화번호: 특정 개인에게 지급하려면 전화번호만 입력해주세요 (다른 조건과 함께 사용 가능)</li>
               <li>생일 조건: 선택한 월에 생일인 사용자에게 지급</li>
               <li>
                 구매 금액/횟수: <span className="font-semibold text-red-600">구매 기간을 먼저 입력해야 합니다</span>

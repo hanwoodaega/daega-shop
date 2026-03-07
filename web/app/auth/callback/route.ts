@@ -35,9 +35,9 @@ export async function GET(request: Request) {
         // 에러 타입에 따라 다른 메시지 표시
         let errorMessage = '인증에 실패했습니다.'
         if (exchangeError.message?.includes('expired') || exchangeError.message?.includes('만료')) {
-          errorMessage = '인증 링크가 만료되었습니다. 비밀번호 찾기를 다시 시도해 주세요.'
+          errorMessage = '인증 링크가 만료되었습니다. 비밀번호 찾기를 다시 시도해주세요.'
         } else if (exchangeError.message?.includes('invalid') || exchangeError.message?.includes('유효하지')) {
-          errorMessage = '유효하지 않은 인증 링크입니다. 비밀번호 찾기를 다시 시도해 주세요.'
+          errorMessage = '유효하지 않은 인증 링크입니다. 비밀번호 찾기를 다시 시도해주세요.'
         }
         
         return NextResponse.redirect(

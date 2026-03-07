@@ -1,11 +1,16 @@
 'use client'
 
 import Link from 'next/link'
+import Header from '@/components/layout/Header'
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 bg-white">
-      <div className="max-w-md w-full text-center space-y-4">
+    <div className="min-h-screen flex flex-col bg-white">
+      <div className="hidden lg:block">
+        <Header showCartButton />
+      </div>
+      <main className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="max-w-md w-full text-center space-y-4">
         <h1 className="text-xl font-semibold text-gray-900">비밀번호 재설정</h1>
         <p className="text-sm text-gray-600">
           비밀번호 재설정은 휴대폰 인증을 통해 진행됩니다.
@@ -14,6 +19,7 @@ export default function ResetPasswordPage() {
           비밀번호 재설정으로 이동
         </Link>
       </div>
+      </main>
     </div>
   )
 }

@@ -174,7 +174,7 @@ export default function RefundPage() {
               <ul className="space-y-2 text-gray-700">
                 <li><strong>전화:</strong> 061-724-1223</li>
                 <li><strong>이메일:</strong> ekals010829@naver.com</li>
-                <li><strong>운영시간:</strong> 09:00 - 21:00 (연중무휴)</li>
+                <li><strong>운영시간:</strong> 매일 09:00 - 18:00</li>
               </ul>
             </div>
           </section>

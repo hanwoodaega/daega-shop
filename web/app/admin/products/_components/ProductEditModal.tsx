@@ -118,7 +118,7 @@ export default function ProductEditModal({
                   }
                   placeholder="예: 300, 700"
                 />
-                <p className="text-xs text-gray-500 mt-1">상품 무게를 그램 단위로 입력하세요</p>
+                <p className="text-xs text-gray-500 mt-1">상품 무게를 그램 단위로 입력해주세요</p>
               </div>
               <div className="border-t pt-3 mt-3">
                 <label className="block text-xs text-gray-600 mb-2 font-semibold">상품 이미지 관리</label>

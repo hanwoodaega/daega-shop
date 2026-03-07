@@ -60,7 +60,7 @@ export default function OrderActions({
                 type="text"
                 value={trackingInput}
                 onChange={(e) => onTrackingChange(e.target.value)}
-                placeholder="송장번호를 입력하세요"
+                placeholder="송장번호를 입력해주세요"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-800"
               />
             </div>

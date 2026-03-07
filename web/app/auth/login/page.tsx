@@ -4,7 +4,8 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/supabase'
-import { useCartStore } from '@/lib/store'
+import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
 
 function LoginForm() {
   const router = useRouter()
@@ -12,7 +13,6 @@ function LoginForm() {
   const redirectAfterLogin = searchParams.get('next') || '/'
   const urlError = searchParams.get('error')
   const fromSignup = searchParams.get('signup') === '1'
-  const cartCount = useCartStore((state) => state.getTotalItems())
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -94,10 +94,7 @@ function LoginForm() {
         password,
       })
 
-      console.log('로그인 결과:', { user: data?.user?.id, error })
-
       if (error) {
-        console.error('로그인 에러:', error)
         throw error
       }
 
@@ -122,7 +119,6 @@ function LoginForm() {
       router.push(targetPath)
       router.refresh()
     } catch (error: any) {
-      console.error('로그인 실패:', error)
       setError(error.message || '로그인에 실패했습니다.')
       setLoading(false)
     }
@@ -245,8 +241,12 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* 헤더 */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+      {/* PC: 메인 헤더 + 메인메뉴 */}
+      <div className="hidden lg:block">
+        <Header showCartButton />
+      </div>
+      {/* 모바일: 간단 헤더 */}
+      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
           {/* 왼쪽: 뒤로가기 */}
           <button
@@ -266,32 +266,23 @@ function LoginForm() {
             </h1>
           </div>
           
-          {/* 오른쪽: 장바구니 버튼 */}
+          {/* 오른쪽: 홈 버튼 */}
           <div className="ml-auto flex items-center">
-            <button
-              onClick={() => router.push('/cart')}
-              className="p-2 hover:bg-gray-100 rounded-full transition relative"
-              aria-label="장바구니"
+            <Link
+              href="/"
+              aria-label="홈으로"
+              className="p-2 hover:bg-gray-100 rounded-full transition"
             >
               <svg className="w-8 h-8 md:w-9 md:h-9 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
-              <span
-                className={`absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center transition ${
-                  cartCount > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-0 pointer-events-none'
-                }`}
-                suppressHydrationWarning
-                aria-hidden={cartCount <= 0}
-              >
-                {cartCount > 99 ? '99+' : cartCount}
-              </span>
-            </button>
+            </Link>
           </div>
         </div>
       </header>
       
       <main className="flex-1 bg-white flex items-start justify-center pt-12 pb-12 px-6">
-        <div className="max-w-md w-full">
+        <div className="max-w-md w-full lg:max-w-sm lg:mx-auto">
           <h2 className="text-3xl font-bold text-center mb-8 text-primary-900">로그인</h2>
 
             {showSignupSuccess && (
@@ -299,7 +290,7 @@ function LoginForm() {
                 <span className="flex-shrink-0 mt-0.5" aria-hidden>✓</span>
                 <div className="flex-1">
                   <p className="font-medium">회원가입이 완료되었습니다.</p>
-                  <p className="mt-1 text-green-700">아래에서 로그인해 주세요.</p>
+                  <p className="mt-1 text-green-700">아래에서 로그인해주세요.</p>
                 </div>
                 <button
                   type="button"
@@ -326,8 +317,8 @@ function LoginForm() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
-                  placeholder="아이디"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
+                  placeholder="아이디를 입력해주세요"
                   autoComplete="username"
                 />
               </div>
@@ -338,8 +329,8 @@ function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
-                  placeholder="비밀번호"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
+                  placeholder="비밀번호를 입력해주세요"
                 />
               </div>
 
@@ -347,7 +338,7 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-red-600 text-white py-3 rounded-none font-semibold hover:bg-blue-950 transition disabled:bg-gray-400"
+                className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-950 transition disabled:bg-gray-400"
               >
                 {loading ? '로그인 중...' : '로그인'}
               </button>
@@ -366,7 +357,7 @@ function LoginForm() {
             <div className="space-y-3 mb-6">
               <button
                 onClick={() => handleSocialLogin('kakao')}
-                className="w-full bg-[#FEE500] text-[#000000] py-3 rounded-none font-semibold hover:bg-[#FDD835] transition flex items-center justify-center space-x-2"
+                className="w-full bg-[#FEE500] text-[#000000] py-3 rounded-lg font-semibold hover:bg-[#FDD835] transition flex items-center justify-center space-x-2"
               >
                 <img 
                   src="/images/kakao-logo.png" 
@@ -378,7 +369,7 @@ function LoginForm() {
               
               <button
                 onClick={() => handleSocialLogin('naver')}
-                className="w-full bg-[#03C75A] text-white py-3 rounded-none font-semibold hover:bg-[#02B350] transition flex items-center justify-center space-x-2"
+                className="w-full bg-[#03C75A] text-white py-3 rounded-lg font-semibold hover:bg-[#02B350] transition flex items-center justify-center space-x-2"
               >
                 <span className="text-white font-bold text-lg">N</span>
                 <span>네이버로 회원가입/로그인</span>
@@ -387,7 +378,7 @@ function LoginForm() {
 
             <div className="mt-6 text-center">
               <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                <Link href="/auth/signup/terms" className="text-gray-600 hover:text-gray-900">
+                <Link href="/auth/signup" className="text-gray-600 hover:text-gray-900">
                   회원가입
                 </Link>
                 <span className="text-gray-400">|</span>
@@ -403,6 +394,9 @@ function LoginForm() {
         </div>
       </main>
 
+      <div className="hidden lg:block lg:mt-16">
+        <Footer />
+      </div>
     </div>
   )
 }
@@ -411,7 +405,10 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex flex-col">
-        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+        <div className="hidden lg:block">
+          <Header showCartButton />
+        </div>
+        <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
           <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
             <div className="w-10 h-10"></div>
             <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
@@ -425,6 +422,9 @@ export default function LoginPage() {
             <div className="animate-pulse">로딩 중...</div>
           </div>
         </main>
+        <div className="hidden lg:block">
+          <Footer />
+        </div>
       </div>
     }>
       <LoginForm />

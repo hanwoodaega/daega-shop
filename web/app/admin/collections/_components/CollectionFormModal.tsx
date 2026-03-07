@@ -96,7 +96,7 @@ export default function CollectionFormModal({
     e.preventDefault()
 
     if (!formData.type) {
-      toast.error('타입을 입력하세요')
+      toast.error('타입을 입력해주세요')
       return
     }
 

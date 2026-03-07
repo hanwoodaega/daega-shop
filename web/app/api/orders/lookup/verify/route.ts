@@ -164,14 +164,18 @@ export async function POST(request: NextRequest) {
     if (productIds.length > 0) {
       const { data: imagesData } = await supabase
         .from('product_images')
-        .select('product_id, image_url')
+        .select('product_id, image_url, priority')
         .in('product_id', productIds)
-        .eq('is_primary', true)
-      if (imagesData) {
-        productImages = imagesData.reduce((acc: Record<string, string>, img: { product_id: string; image_url: string }) => {
-          acc[img.product_id] = img.image_url
-          return acc
-        }, {})
+        .order('priority', { ascending: true })
+        .order('created_at', { ascending: true })
+      if (imagesData && imagesData.length > 0) {
+        const byProduct = new Map<string, string>()
+        for (const img of imagesData) {
+          if (!byProduct.has(img.product_id)) {
+            byProduct.set(img.product_id, img.image_url)
+          }
+        }
+        productImages = Object.fromEntries(byProduct)
       }
     }
 

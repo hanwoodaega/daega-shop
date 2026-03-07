@@ -43,7 +43,7 @@ export default function ProductCreateModal({
         <div className="flex items-start justify-between px-6 py-4 border-b border-neutral-200">
           <div>
             <p className="text-xs text-neutral-500">새 상품 등록</p>
-            <h3 className="text-lg font-semibold text-neutral-900">상품 정보를 입력하세요</h3>
+            <h3 className="text-lg font-semibold text-neutral-900">상품 정보를 입력해주세요</h3>
           </div>
           <button
             onClick={onClose}
@@ -130,7 +130,7 @@ export default function ProductCreateModal({
                 placeholder="예: 300, 700"
               />
               <p className="text-xs text-neutral-500 mt-1">
-                상품 무게를 그램 단위로 입력하세요 (예: 300g, 700g)
+                상품 무게를 그램 단위로 입력해주세요 (예: 300g, 700g)
               </p>
             </div>
             <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/80 px-3 py-4 text-sm text-neutral-600">

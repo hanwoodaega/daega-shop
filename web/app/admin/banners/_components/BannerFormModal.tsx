@@ -118,12 +118,12 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
     e.preventDefault()
 
     if (!formData.image_url) {
-      toast.error('이미지 URL을 입력하세요')
+      toast.error('이미지 URL을 입력해주세요')
       return
     }
 
     if (!formData.slug || formData.slug.trim() === '') {
-      toast.error('Slug를 입력하세요')
+      toast.error('Slug를 입력해주세요')
       return
     }
 

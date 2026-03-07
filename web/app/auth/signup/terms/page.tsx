@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import Header from '@/components/layout/Header'
 
 function SignupTermsContent() {
   const router = useRouter()
@@ -17,6 +18,12 @@ function SignupTermsContent() {
   const [marketingAgreed, setMarketingAgreed] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!isSocialFlow) {
+      router.replace('/auth/signup')
+    }
+  }, [isSocialFlow, router])
 
   useEffect(() => {
     if (termsAgreed && privacyAgreed && thirdPartyAgreed && ageAgreed && marketingAgreed) {
@@ -81,7 +88,10 @@ function SignupTermsContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+      <div className="hidden lg:block">
+        <Header showCartButton />
+      </div>
+      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
           <button
             onClick={() => router.back()}
@@ -102,7 +112,7 @@ function SignupTermsContent() {
         </div>
       </header>
       
-      <main className="flex-1 bg-white flex items-start justify-center pt-6 pb-24 px-6">
+      <main className="flex-1 bg-white flex items-start justify-center pt-6 pb-24 lg:pt-10 lg:pb-8 px-6">
         <div className="max-w-md w-full">
           {submitError && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
@@ -297,10 +307,22 @@ function SignupTermsContent() {
               <p className="ml-8 mt-1 text-sm text-gray-600">할인 혜택 및 이벤트 소식을 받아볼 수 있습니다.</p>
             </div>
           </div>
+
+          {/* PC: 다음 버튼을 텍스트 맨 아래에 배치 */}
+          <div className="hidden lg:block mt-6">
+            <button
+              onClick={handleNext}
+              disabled={!isNextEnabled || submitting}
+              className="w-full bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-950 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {submitting ? '처리 중...' : '다음'}
+            </button>
+          </div>
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 z-50">
+      {/* 모바일: 하단 고정 버튼 */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
         <div className="w-full flex justify-center">
           <div className="w-full max-w-[480px] bg-white border-t border-gray-200 px-6 py-4">
             <button

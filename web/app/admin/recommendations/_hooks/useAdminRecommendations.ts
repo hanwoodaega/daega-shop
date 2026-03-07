@@ -71,7 +71,7 @@ export function useAdminRecommendations() {
 
   const handleCreate = useCallback(async () => {
     if (!formData.name) {
-      toast.error('카테고리 이름을 입력하세요')
+      toast.error('카테고리 이름을 입력해주세요')
       return false
     }
 
@@ -100,7 +100,7 @@ export function useAdminRecommendations() {
 
   const handleUpdate = useCallback(async () => {
     if (!editingCategory || !formData.name) {
-      toast.error('카테고리 이름을 입력하세요')
+      toast.error('카테고리 이름을 입력해주세요')
       return false
     }
 

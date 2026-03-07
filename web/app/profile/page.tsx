@@ -411,7 +411,7 @@ export default function ProfilePage() {
                 </Link>
                 <p className="text-sm text-black mt-3">회원가입하고 혜택 받아가세요!</p>
                 <Link
-                  href="/auth/signup/terms"
+                  href="/auth/signup"
                   className="w-full mt-2 px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-blue-950 transition flex items-center justify-between"
                 >
                   <span>신규 회원 가입 혜택 보기</span>

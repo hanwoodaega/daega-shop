@@ -46,7 +46,7 @@ export default function LoginPromptModal({
           </svg>
         </button>
         <p className="text-base font-medium text-gray-900 mb-1">로그인이 필요합니다.</p>
-        <p className="text-sm text-gray-600 mb-5">주문을 계속하시려면 로그인해 주세요.</p>
+        <p className="text-sm text-gray-600 mb-5">주문을 계속하시려면 로그인해주세요.</p>
         <div className="flex gap-3">
           <button
             type="button"

@@ -30,7 +30,7 @@ export default function OrdererInfo({
             value={formData.name}
             onChange={onInputChange}
             required
-            placeholder="이름을 입력하세요"
+            placeholder="이름을 입력해주세요"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-gray-400"
           />
         </div>
@@ -47,7 +47,7 @@ export default function OrdererInfo({
               onPhoneChange(numbers)
             }}
             required
-            placeholder="숫자만 입력하세요"
+            placeholder="휴대폰 번호를 입력해주세요"
             maxLength={13}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-gray-400"
           />

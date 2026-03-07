@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       .single()
     if (existing) {
       return NextResponse.json(
-        { error: '이 slug는 이미 다른 상품에서 사용 중입니다. 다른 값을 입력하세요.' },
+        { error: '이 slug는 이미 다른 상품에서 사용 중입니다. 다른 값을 입력해주세요.' },
         { status: 400 }
       )
     }

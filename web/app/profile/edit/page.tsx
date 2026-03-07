@@ -537,7 +537,7 @@ function ProfileEditContent() {
                 onChange={(e) => setName(e.target.value)}
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="이름을 입력하세요"
+                placeholder="이름을 입력해주세요"
               />
             </div>
 
@@ -580,7 +580,7 @@ function ProfileEditContent() {
                           }
                         }}
                         className="flex-1 min-w-0 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="숫자만 입력하세요"
+                        placeholder="휴대폰 번호를 입력해주세요"
                         maxLength={11}
                         disabled={isVerifyingPhone}
                         required

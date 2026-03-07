@@ -107,7 +107,7 @@ export default function CouponFormModal({
                 required
               />
               <p className="mt-1 text-xs text-gray-500">
-                할인율 적용 시 최대 할인 가능한 금액을 입력하세요
+                할인율 적용 시 최대 할인 가능한 금액을 입력해주세요
               </p>
             </div>
           )}

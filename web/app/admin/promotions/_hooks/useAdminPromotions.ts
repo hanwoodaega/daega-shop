@@ -33,17 +33,17 @@ export function useAdminPromotions() {
 
   const handleCreate = useCallback(async (productIds: string[]) => {
     if (!formData.title.trim()) {
-      toast.error('제목을 입력하세요')
+      toast.error('제목을 입력해주세요')
       return false
     }
 
     if (formData.type === 'bogo' && !formData.buy_qty) {
-      toast.error('BOGO 타입은 구매 개수를 입력하세요')
+      toast.error('BOGO 타입은 구매 개수를 입력해주세요')
       return false
     }
 
     if (formData.type === 'percent' && !formData.discount_percent) {
-      toast.error('할인율을 입력하세요')
+      toast.error('할인율을 입력해주세요')
       return false
     }
 
@@ -80,7 +80,7 @@ export function useAdminPromotions() {
     if (!editingPromotion) return false
 
     if (!formData.title.trim()) {
-      toast.error('제목을 입력하세요')
+      toast.error('제목을 입력해주세요')
       return false
     }
 

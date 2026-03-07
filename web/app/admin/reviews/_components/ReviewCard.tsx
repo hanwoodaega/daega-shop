@@ -106,7 +106,7 @@ export default function ReviewCard({
               onChange={(e) => onReplyChange(e.target.value)}
               rows={3}
               className="w-full border rounded px-2 py-1 text-sm"
-              placeholder="관리자 답변을 입력하세요"
+              placeholder="관리자 답변을 입력해주세요"
             />
             <div className="mt-2 text-right">
               <button

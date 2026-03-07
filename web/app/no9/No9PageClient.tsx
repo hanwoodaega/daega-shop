@@ -380,7 +380,7 @@ export default function No9PageClient({ initialProducts }: No9PageClientProps) {
       <section className="bg-black py-16 md:py-24">
         <div className="container mx-auto px-4 md:px-8">
           <h2 className="text-2xl md:text-3xl lg:text-4xl font-normal text-white text-center mb-12 md:mb-16">
-            구매 전 확인해 주세요
+            구매 전 확인해주세요
           </h2>
           
           <div className="space-y-8 md:space-y-12 max-w-4xl mx-auto">

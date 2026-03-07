@@ -215,7 +215,7 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="검색어를 입력하세요"
+                placeholder="검색어를 입력해주세요"
                 className="w-full pl-4 pr-12 py-2.5 text-lg border border-gray-300 rounded-full focus:outline-none focus:border-primary-600 focus:ring-1 focus:ring-primary-600 bg-gray-50 lg:bg-white"
               />
               <button
@@ -242,7 +242,7 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
                         closeSearch()
                       }
                     }}
-                    placeholder="검색어를 입력하세요"
+                    placeholder="검색어를 입력해주세요"
                     autoFocus
                     className="w-full px-4 py-2 text-base border-2 border-gray-300 rounded-full focus:outline-none focus:border-primary-700 transition bg-white"
                   />

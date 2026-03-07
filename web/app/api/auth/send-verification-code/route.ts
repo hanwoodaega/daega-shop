@@ -13,7 +13,7 @@ const MAX_DAILY_SENDS: Record<string, number> = {
 }
 const LOCK_MINUTES = 10
 
-const SOCIAL_LOGIN_MESSAGE = '카카오/네이버 계정으로 가입되어 있습니다.\n카카오/네이버 로그인을 이용해 주세요.'
+const SOCIAL_LOGIN_MESSAGE = '카카오/네이버 계정으로 가입되어 있습니다.\n카카오/네이버 로그인을 이용해주세요.'
 
 /**
  * 인증번호 발송 API (카카오 알림톡 + SMS fallback)

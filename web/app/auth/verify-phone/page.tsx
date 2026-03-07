@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/supabase'
+import Header from '@/components/layout/Header'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -168,7 +169,10 @@ function VerifyPhoneContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+      <div className="hidden lg:block">
+        <Header showCartButton />
+      </div>
+      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
           <button
             onClick={() => router.back()}
@@ -218,7 +222,7 @@ function VerifyPhoneContent() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
-                  placeholder="이름 입력"
+                  placeholder="이름을 입력해주세요"
                   required
                 />
               </div>
@@ -233,7 +237,7 @@ function VerifyPhoneContent() {
                   value={phone}
                   onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
                   className="flex-1 min-w-0 w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
-                  placeholder="숫자만 입력하세요"
+                  placeholder="휴대폰 번호를 입력해주세요"
                   maxLength={13}
                   required
                 />

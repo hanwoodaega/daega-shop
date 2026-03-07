@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Footer from '@/components/layout/Footer'
+import Header from '@/components/layout/Header'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useCartStore } from '@/lib/store'
 
@@ -10,9 +11,13 @@ export default function SupportPage() {
   const cartCount = useCartStore((state) => state.getTotalItems())
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* 헤더 */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* PC: 메인 헤더 + 메인메뉴 */}
+      <div className="hidden lg:block">
+        <Header showCartButton />
+      </div>
+      {/* 모바일: 간단 헤더 */}
+      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
           {/* 왼쪽: 뒤로가기 */}
           <button
@@ -56,9 +61,10 @@ export default function SupportPage() {
         </div>
       </header>
       
-      <main className="flex-1 container mx-auto px-4 py-4 pb-24">
+      <main className="flex-1 container mx-auto px-4 py-4 pb-24 lg:pb-6">
+        <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">고객센터</h2>
 
-        <div className="space-y-4">
+        <div className="space-y-4 w-full lg:max-w-lg lg:mx-auto">
           {/* 고객센터 연락처 */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-lg font-bold mb-4 flex items-center">
@@ -68,9 +74,8 @@ export default function SupportPage() {
               고객센터 연락처
             </h2>
             <div className="space-y-2 text-sm">
-              <p className="text-gray-900 font-medium">전화: 010-3941-1223</p>
-              <p className="text-gray-600">운영시간: 평일 10:00 ~ 18:00</p>
-              <p className="text-gray-600">(주말 및 공휴일 휴무)</p>
+              <p className="text-gray-900 font-medium">전화: 061-724-1223</p>
+              <p className="text-gray-600">운영시간: 매일 09:00 ~ 18:00</p>
             </div>
           </div>
 
@@ -86,14 +91,16 @@ export default function SupportPage() {
             <div className="space-y-2 text-sm">
               <p className="text-gray-900 font-medium">대가정육마트</p>
               <p className="text-gray-600">주소: 전라남도 순천시 해룡면 상성길 183</p>
-              <p className="text-gray-600">영업시간: 매일 10:00 ~ 20:00</p>
+              <p className="text-gray-600">영업시간: 매일 09:00 ~ 21:00</p>
             </div>
           </div>
         </div>
       </main>
 
       <Footer />
-      <BottomNavbar />
+      <div className="lg:hidden">
+        <BottomNavbar />
+      </div>
     </div>
   )
 }

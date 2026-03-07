@@ -20,7 +20,7 @@ export default function NotificationForm({
           type="text"
           value={formData.title}
           onChange={(e) => onUpdateField('title', e.target.value)}
-          placeholder="알림 제목을 입력하세요"
+          placeholder="알림 제목을 입력해주세요"
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-800"
         />
       </div>
@@ -32,7 +32,7 @@ export default function NotificationForm({
         <textarea
           value={formData.content}
           onChange={(e) => onUpdateField('content', e.target.value)}
-          placeholder="알림 내용을 입력하세요"
+          placeholder="알림 내용을 입력해주세요"
           rows={6}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-800"
         />

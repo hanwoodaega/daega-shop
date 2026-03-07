@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Footer from '@/components/layout/Footer'
+import Header from '@/components/layout/Header'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -147,7 +148,10 @@ export default function FindPasswordPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+      <div className="hidden lg:block">
+        <Header showCartButton />
+      </div>
+      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
           <button
             onClick={() => router.back()}
@@ -166,40 +170,51 @@ export default function FindPasswordPage() {
 
       <main className="flex-1 flex items-start justify-center pt-10 pb-12 px-6">
         <div className="max-w-md w-full">
+          <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">비밀번호 찾기</h2>
           {step === 1 && (
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">아이디</label>
+              <div className="flex flex-col items-center">
+                <label className="block text-sm font-medium text-gray-700 mb-2 w-full lg:max-w-xs text-left">아이디</label>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
-                  placeholder="아이디"
+                  className="w-full lg:max-w-xs px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
+                  placeholder="아이디를 입력해주세요."
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">휴대폰 번호</label>
-                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
-                    className="flex-1 min-w-0 w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
-                    placeholder="휴대폰 번호"
-                    maxLength={13}
-                  />
+              <div className="flex flex-col items-center">
+                <label className="block text-sm font-medium text-gray-700 mb-2 w-full lg:max-w-xs text-left">휴대폰 번호</label>
+                <div className="flex flex-col xs:flex-row gap-2 xs:items-center w-full lg:max-w-xs">
+                  <div className="flex-1 min-w-0 w-full relative">
+                    {!phone && (
+                      <div
+                        className="absolute inset-0 flex items-center pointer-events-none text-gray-400 pl-4 pr-4"
+                        aria-hidden
+                      >
+                        <span className="truncate">휴대폰 번호를 입력해주세요.</span>
+                      </div>
+                    )}
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600 text-left"
+                      placeholder=" "
+                      maxLength={13}
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={sendCode}
                     disabled={loading || username.trim().length < 6 || phone.length < 10}
-                    className="w-full sm:w-auto flex-shrink-0 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
+                    className="w-full sm:w-auto flex-shrink-0 px-4 py-2.5 rounded-lg font-semibold transition whitespace-nowrap disabled:opacity-50 disabled:bg-gray-100 disabled:border disabled:border-gray-300 disabled:text-gray-700 bg-blue-900 text-white hover:bg-blue-950"
                   >
                     인증 요청
                   </button>
                 </div>
                 {error && (
-                  <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm whitespace-pre-line">
+                  <div className="mt-3 w-full lg:max-w-xs p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm whitespace-pre-line">
                     {error}
                   </div>
                 )}
@@ -209,100 +224,120 @@ export default function FindPasswordPage() {
 
           {step === 2 && (
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">휴대폰 번호</label>
-                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
-                    className="flex-1 min-w-0 w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
-                    placeholder="휴대폰 번호"
-                    maxLength={13}
-                  />
+              <div className="flex flex-col items-center">
+                <label className="block text-sm font-medium text-gray-700 mb-2 w-full lg:max-w-xs text-left">휴대폰 번호</label>
+                <div className="flex flex-col xs:flex-row gap-2 xs:items-center w-full lg:max-w-xs">
+                  <div className="flex-1 min-w-0 w-full relative">
+                    {!phone && (
+                      <div
+                        className="absolute inset-0 flex items-center pointer-events-none text-gray-400 pl-4 pr-4"
+                        aria-hidden
+                      >
+                        <span className="truncate">휴대폰 번호를 입력해주세요.</span>
+                      </div>
+                    )}
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600 text-left"
+                      placeholder=" "
+                      maxLength={13}
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={sendCode}
                     disabled={loading || username.trim().length < 6 || phone.length < 10}
-                    className="w-full sm:w-auto flex-shrink-0 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
+                    className="w-full sm:w-auto flex-shrink-0 px-4 py-2.5 rounded-lg font-semibold transition whitespace-nowrap disabled:opacity-50 disabled:bg-gray-100 disabled:border disabled:border-gray-300 disabled:text-gray-700 bg-blue-900 text-white hover:bg-blue-950"
                   >
                     인증 요청
                   </button>
                 </div>
                 {error && (
-                  <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm whitespace-pre-line">
+                  <div className="mt-3 w-full lg:max-w-xs p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm whitespace-pre-line">
                     {error}
                   </div>
                 )}
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">인증번호</label>
-                  {otpRemaining > 0 && (
-                    <span className="text-sm font-semibold text-red-600">
-                      {formatOtpCountdown(otpRemaining)}
-                    </span>
-                  )}
+              <div className="flex flex-col items-center">
+                <div className="w-full lg:max-w-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">인증번호</label>
+                    {otpRemaining > 0 && (
+                      <span className="text-sm font-semibold text-red-600">
+                        {formatOtpCountdown(otpRemaining)}
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
+                    placeholder="6자리 숫자"
+                    maxLength={6}
+                  />
                 </div>
-                <input
-                  type="text"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                  className="w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
-                  placeholder="6자리 숫자"
-                  maxLength={6}
-                />
               </div>
-              <button
-                type="button"
-                onClick={verifyCode}
-                disabled={loading || code.length !== 6}
-                className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-950 transition disabled:bg-gray-400"
-              >
-                확인
-              </button>
+              <div className="flex flex-col items-center">
+                <button
+                  type="button"
+                  onClick={verifyCode}
+                  disabled={loading || code.length !== 6}
+                  className="w-full lg:max-w-xs bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-950 transition disabled:bg-gray-400"
+                >
+                  확인
+                </button>
+              </div>
             </div>
           )}
 
           {step === 3 && (
             <div className="space-y-4">
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-                placeholder="새 비밀번호"
-              />
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-                placeholder="새 비밀번호 확인"
-              />
-              <button
-                type="button"
-                onClick={updatePassword}
-                disabled={loading}
-                className="w-full bg-blue-900 text-white py-3 rounded-lg font-semibold"
-              >
-                비밀번호 변경
-              </button>
+              <div className="flex flex-col items-center">
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full lg:max-w-xs px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
+                  placeholder="새 비밀번호"
+                />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full lg:max-w-xs px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600 mt-2"
+                  placeholder="새 비밀번호 확인"
+                />
+                <button
+                  type="button"
+                  onClick={updatePassword}
+                  disabled={loading}
+                  className="w-full lg:max-w-xs mt-2 bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-950 transition"
+                >
+                  비밀번호 변경
+                </button>
+              </div>
             </div>
           )}
 
           {step === 4 && (
             <div className="space-y-4 text-center">
               <p className="text-gray-700">비밀번호가 변경되었습니다.</p>
-              <Link href="/auth/login" className="block w-full bg-blue-900 text-white py-3 rounded-lg font-semibold">
-                로그인하기
-              </Link>
+              <div className="flex flex-col items-center">
+                <Link href="/auth/login" className="w-full lg:max-w-xs block text-center bg-red-600 text-white py-3 rounded-lg font-semibold">
+                  로그인하기
+                </Link>
+              </div>
             </div>
           )}
         </div>
       </main>
-      <Footer />
+      <div className="lg:mt-16">
+        <Footer />
+      </div>
     </div>
   )
 }

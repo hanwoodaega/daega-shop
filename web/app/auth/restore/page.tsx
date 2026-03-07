@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/supabase'
+import Header from '@/components/layout/Header'
 
 function RestoreAccountContent() {
   const router = useRouter()
@@ -92,7 +93,10 @@ function RestoreAccountContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+      <div className="hidden lg:block">
+        <Header showCartButton />
+      </div>
+      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
           <button
             onClick={() => router.back()}

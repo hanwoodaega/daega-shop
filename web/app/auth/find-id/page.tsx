@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Footer from '@/components/layout/Footer'
+import Header from '@/components/layout/Header'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -116,7 +117,10 @@ export default function FindIdPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+      <div className="hidden lg:block">
+        <Header showCartButton />
+      </div>
+      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
           <button
             onClick={() => router.back()}
@@ -135,27 +139,40 @@ export default function FindIdPage() {
 
       <main className="flex-1 flex items-start justify-center pt-10 pb-12 px-6">
         <div className="max-w-md w-full">
+          <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">아이디 찾기</h2>
           {step !== 3 && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600 text-center mt-2 whitespace-pre-line">
-                가입 시 등록한 휴대폰 번호로{'\n'}아이디를 확인하실 수 있습니다.
+              <p className="text-sm lg:text-base text-gray-600 text-center mt-2 lg:whitespace-nowrap lg:mb-6">
+                가입 시 등록한 휴대폰 번호로
+                <br className="lg:hidden" />
+                아이디를 확인하실 수 있습니다.
               </p>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">휴대폰 번호</label>
-                <div className="flex flex-col xs:flex-row gap-2 xs:items-center">
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
-                    className="flex-1 min-w-0 w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
-                    placeholder="휴대폰 번호"
-                    maxLength={13}
-                  />
+              <div className="flex flex-col items-center">
+                <label className="block text-sm font-medium text-gray-700 mb-2 w-full lg:max-w-xs text-left">휴대폰 번호</label>
+                <div className="flex flex-col xs:flex-row gap-2 xs:items-center w-full lg:max-w-xs">
+                  <div className="flex-1 min-w-0 w-full relative">
+                    {!phone && (
+                      <div
+                        className="absolute inset-0 flex items-center pointer-events-none text-gray-400 pl-4 pr-4"
+                        aria-hidden
+                      >
+                        <span className="truncate">휴대폰 번호를 입력해주세요.</span>
+                      </div>
+                    )}
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600 text-left"
+                      placeholder=" "
+                      maxLength={13}
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={sendCode}
                     disabled={loading || phone.length < 10}
-                    className="w-full sm:w-auto flex-shrink-0 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
+                    className="w-full sm:w-auto flex-shrink-0 px-4 py-2.5 rounded-lg font-semibold transition whitespace-nowrap disabled:opacity-50 disabled:bg-gray-100 disabled:border disabled:border-gray-300 disabled:text-gray-700 bg-blue-900 text-white hover:bg-blue-950"
                   >
                     인증 요청
                   </button>
@@ -169,33 +186,37 @@ export default function FindIdPage() {
 
               {step === 2 && (
                 <>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-gray-700">인증번호</label>
-                      {otpRemaining > 0 && (
-                        <span className="text-sm font-semibold text-red-600">
-                          {formatOtpCountdown(otpRemaining)}
-                        </span>
-                      )}
+                  <div className="flex flex-col items-center">
+                    <div className="w-full lg:max-w-xs">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-sm font-medium text-gray-700">인증번호</label>
+                        {otpRemaining > 0 && (
+                          <span className="text-sm font-semibold text-red-600">
+                            {formatOtpCountdown(otpRemaining)}
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
+                        placeholder="6자리 숫자"
+                        maxLength={6}
+                      />
                     </div>
-                    <input
-                      type="text"
-                      value={code}
-                      onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                      className="w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
-                      placeholder="6자리 숫자"
-                      maxLength={6}
-                    />
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={verifyAndFind}
-                    disabled={loading || code.length !== 6}
-                    className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-950 transition disabled:bg-gray-400"
-                  >
-                    확인
-                  </button>
+                  <div className="flex flex-col items-center">
+                    <button
+                      type="button"
+                      onClick={verifyAndFind}
+                      disabled={loading || code.length !== 6}
+                      className="w-full lg:max-w-xs bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-950 transition disabled:bg-gray-400"
+                    >
+                      확인
+                    </button>
+                  </div>
                 </>
               )}
             </div>
@@ -207,12 +228,14 @@ export default function FindIdPage() {
                 <p className="text-gray-700">가입된 계정이 확인되었습니다.</p>
                 <p className="text-gray-700">등록된 번호로 안내문자를 발송했습니다.</p>
               </div>
-              <Link
-                href="/auth/login"
-                className="mt-12 block w-full bg-blue-900 text-white py-3 rounded-lg font-semibold"
-              >
-                로그인하기
-              </Link>
+              <div className="flex flex-col items-center mt-12">
+                <Link
+                  href="/auth/login"
+                  className="w-full lg:max-w-xs block text-center bg-red-600 text-white py-3 rounded-lg font-semibold"
+                >
+                  로그인하기
+                </Link>
+              </div>
               <Link href="/auth/find-password" className="mt-3 block text-sm text-gray-600 underline">
                 비밀번호도 잊었나요?
               </Link>
@@ -220,7 +243,9 @@ export default function FindIdPage() {
           )}
         </div>
       </main>
-      <Footer />
+      <div className="lg:mt-16">
+        <Footer />
+      </div>
     </div>
   )
 }
