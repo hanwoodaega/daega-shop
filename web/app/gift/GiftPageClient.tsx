@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useGift } from '@/lib/gift'
@@ -27,9 +28,17 @@ export default function GiftPageClient() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <GiftHeader />
+      {/* PC: 메인 헤더 + 메인메뉴 */}
+      <div className="hidden lg:block">
+        <Header />
+      </div>
+      {/* 모바일/태블릿: 선물관 전용 헤더 */}
+      <div className="lg:hidden">
+        <GiftHeader />
+      </div>
 
       <main className="flex-1 pt-4 pb-20">
+        <div className="lg:max-w-3xl lg:mx-auto lg:px-4">
         {/* 선물하기 설명서 버튼 */}
         <section className="container mx-auto px-4 mb-6">
           <Link
@@ -60,6 +69,7 @@ export default function GiftPageClient() {
           loading={loadingBudget}
           onBudgetChange={setSelectedBudget}
         />
+      </div>
       </main>
 
       <Footer />

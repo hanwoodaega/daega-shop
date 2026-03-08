@@ -58,7 +58,7 @@ export default function GiftBudgetSection({
               ))}
             </div>
           ) : products.length > 0 ? (
-            <div>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
               {products.map((product) => (
                 <GiftProductCard
                   key={product.id}

@@ -16,18 +16,18 @@ export default function GiftFeaturedSection({ products, loading }: GiftFeaturedS
     <section className="container mx-auto px-4 mb-8">
       <h2 className="text-lg font-semibold mb-4">실시간 인기 선물세트</h2>
       {loading ? (
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="flex-shrink-0 w-40">
+        <div className="flex gap-4 overflow-x-auto pb-4 lg:grid lg:grid-cols-4 lg:gap-4 lg:overflow-visible">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="flex-shrink-0 w-40 lg:w-auto">
               <ProductCardSkeleton />
             </div>
           ))}
         </div>
       ) : products.length > 0 ? (
         <>
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide lg:grid lg:grid-cols-4 lg:gap-4 lg:overflow-visible">
             {products.map((product) => (
-              <div key={product.id} className="flex-shrink-0 w-40">
+              <div key={product.id} className="flex-shrink-0 w-40 lg:w-auto">
                 <ProductCard product={product} />
               </div>
             ))}
