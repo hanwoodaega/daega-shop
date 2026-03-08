@@ -1,12 +1,12 @@
 'use client'
 
 import Link from 'next/link'
+import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
 import PromotionModalWrapper from '@/components/common/PromotionModalWrapper'
 import { useBannerProducts } from '@/lib/banner'
-import BannerHeader from './_components/BannerHeader'
 import BannerDescription from './_components/BannerDescription'
 import BannerProductGrid from './_components/BannerProductGrid'
 
@@ -22,7 +22,7 @@ export default function BannerPageClient({ slug }: BannerPageClientProps) {
   if (!banner && !loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <BannerHeader title="배너" />
+        <Header />
         <main className="flex-1 container mx-auto px-4 py-20 text-center">
           <p className="text-xl text-gray-600 mb-4">배너를 찾을 수 없습니다</p>
           <Link href="/">
@@ -39,8 +39,8 @@ export default function BannerPageClient({ slug }: BannerPageClientProps) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <BannerHeader title={bannerTitle} />
-      
+      <Header />
+
       <main className="flex-1">
         <div className="container mx-auto px-4 py-4 pt-6">
           {banner && (
@@ -52,6 +52,7 @@ export default function BannerPageClient({ slug }: BannerPageClientProps) {
           )}
 
           <BannerProductGrid
+            bannerTitle={bannerTitle}
             products={products}
             loading={loading}
             loadingMore={loadingMore}

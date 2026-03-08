@@ -64,22 +64,29 @@ export default function No9PageClient({ initialProducts }: No9PageClientProps) {
   }, [totalSlides])
 
   // 한우대가 NO.9 카테고리 상품 조회
+  const [fetchError, setFetchError] = useState<string | null>(null)
+
   useEffect(() => {
     if (typeof initialProducts !== 'undefined') {
       setLoading(false)
+      setFetchError(null)
       return
     }
 
     const fetchProducts = async () => {
       try {
         setLoading(true)
+        setFetchError(null)
         const response = await fetch('/api/collections/no9?limit=100&page=1')
         if (response.ok) {
           const data = await response.json()
           setProducts(data.products || [])
+        } else {
+          setFetchError('상품을 불러오는데 실패했습니다.')
         }
       } catch (error) {
         console.error('상품 조회 실패:', error)
+        setFetchError('네트워크 오류가 발생했습니다. 다시 시도해주세요.')
       } finally {
         setLoading(false)
       }
@@ -421,13 +428,32 @@ export default function No9PageClient({ initialProducts }: No9PageClientProps) {
       </section>
       
       {/* 한우대가 NO.9 상품 섹션 */}
-      {products.length > 0 && (
+      {(products.length > 0 || loading || fetchError) && (
         <section className="bg-white py-16 md:py-24">
           <div className="container mx-auto px-4 md:px-8">
             <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 md:mb-12 text-black">
               한우대가 NO.9 상품
             </h2>
-            {loading ? (
+            {fetchError ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600 mb-4">{fetchError}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFetchError(null)
+                    setLoading(true)
+                    fetch('/api/collections/no9?limit=100&page=1')
+                      .then((res) => res.ok ? res.json() : Promise.reject(new Error('조회 실패')))
+                      .then((data) => setProducts(data.products || []))
+                      .catch(() => setFetchError('상품을 불러오는데 실패했습니다.'))
+                      .finally(() => setLoading(false))
+                  }}
+                  className="px-6 py-2 bg-primary-800 text-white rounded-lg hover:opacity-90 transition"
+                >
+                  다시 시도
+                </button>
+              </div>
+            ) : loading ? (
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 {[...Array(4)].map((_, i) => (
                   <ProductCardSkeleton key={i} />

@@ -25,6 +25,8 @@ function NotificationsPageContent() {
     unreadCountGeneral,
     unreadCountEarned,
     markAllRead,
+    error,
+    retry,
   } = useNotifications({ userId: user?.id })
 
   useEffect(() => {
@@ -79,6 +81,17 @@ function NotificationsPageContent() {
 
         {loading ? (
           <NotificationsSkeleton />
+        ) : error ? (
+          <div className="text-center py-20">
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button
+              type="button"
+              onClick={retry}
+              className="px-6 py-2 bg-primary-800 text-white rounded-lg hover:opacity-90 transition"
+            >
+              다시 시도
+            </button>
+          </div>
         ) : filteredNotifications.length === 0 ? (
           <div className="text-center py-20">
             <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

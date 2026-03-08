@@ -32,10 +32,8 @@ export default function NotificationBell() {
       if (typeof data.count === 'number') {
         setUnreadCount(data.count)
       }
-    } catch (error) {
-      // 네트워크 에러 (연결 실패 등)는 조용히 처리
-      // 서버가 시작 중이거나 일시적으로 연결할 수 없는 상황은 정상적인 동작
-      // UI는 기존 값을 유지하거나 0으로 설정하지 않음
+    } catch {
+      setUnreadCount(0)
     }
   }
 

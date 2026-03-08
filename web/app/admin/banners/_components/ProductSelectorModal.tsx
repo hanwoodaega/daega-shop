@@ -24,14 +24,11 @@ export default function ProductSelectorModal({
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProducts, setSelectedProducts] = useState<string[]>([])
   const [loading, setLoading] = useState(initialProducts.length === 0)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
-  // 초기 상품이 없으면 가져오기
-  useEffect(() => {
-    if (initialProducts.length > 0) {
-      setLoading(false)
-      return
-    }
-
+  const loadProducts = () => {
+    setLoading(true)
+    setFetchError(null)
     fetch('/api/admin/products?limit=1000')
       .then(res => res.json())
       .then(data => {
@@ -39,12 +36,21 @@ export default function ProductSelectorModal({
           setProducts(data.items)
         }
       })
-      .catch(error => {
-        console.error('상품 조회 실패:', error)
+      .catch(() => {
+        setFetchError('상품 목록을 불러오는데 실패했습니다.')
       })
       .finally(() => {
         setLoading(false)
       })
+  }
+
+  // 초기 상품이 없으면 가져오기
+  useEffect(() => {
+    if (initialProducts.length > 0) {
+      setLoading(false)
+      return
+    }
+    loadProducts()
   }, [initialProducts.length])
 
   // 필터링된 상품 목록 (단일 필터로 최적화)
@@ -128,6 +134,17 @@ export default function ProductSelectorModal({
 
           {loading ? (
             <div className="text-center py-8 text-gray-500">로딩 중...</div>
+          ) : fetchError ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600 mb-4">{fetchError}</p>
+              <button
+                type="button"
+                onClick={loadProducts}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                다시 시도
+              </button>
+            </div>
           ) : (
             <div className="max-h-96 overflow-y-auto space-y-2">
               {filteredProducts.length === 0 ? (

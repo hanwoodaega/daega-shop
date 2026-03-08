@@ -1,11 +1,9 @@
-import BestPageClient from './BestPageClient'
+import CollectionProductsPageClient from '@/components/sections/CollectionProductsPageClient'
 import { getServerBaseUrl } from '@/lib/utils/server-url'
 import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
 
 export default async function BestPage() {
-  let initialProducts
-  let initialTotalPages
-
+  let initialData: { collection: null; products: any[]; totalPages: number } | undefined
   try {
     const siteUrl = await getServerBaseUrl()
     if (siteUrl) {
@@ -15,19 +13,25 @@ export default async function BestPage() {
       )
       if (res.ok) {
         const data = await res.json()
-        initialProducts = data.products || []
-        initialTotalPages = data.totalPages ?? 0
+        initialData = {
+          collection: null,
+          products: data.products ?? [],
+          totalPages: data.totalPages ?? 0,
+        }
       }
     }
   } catch {
-    initialProducts = undefined
-    initialTotalPages = undefined
+    initialData = undefined
   }
 
   return (
-    <BestPageClient
-      initialProducts={initialProducts}
-      initialTotalPages={initialTotalPages}
+    <CollectionProductsPageClient
+      slug="best"
+      title="베스트"
+      initialData={initialData}
+      emptyMessage="등록된 상품이 없습니다"
+      emptyLinkHref="/products"
+      emptyLinkLabel="전체 상품 보기"
     />
   )
 }

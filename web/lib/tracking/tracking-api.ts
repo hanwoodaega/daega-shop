@@ -20,25 +20,7 @@ export async function getTrackingStatus(
   trackingNumber: string
 ): Promise<TrackingResponse | null> {
   try {
-    // TODO: 실제 택배사 API 연동
-    // 각 택배사별로 다른 API를 사용하므로 통합 서비스나 개별 API 연동 필요
-    
-    // 예시: CJ대한통운 API 연동
-    if (company === 'CJ대한통운') {
-      // CJ대한통운 API 호출
-      // const response = await fetch(`https://api.cjlogistics.com/tracking/${trackingNumber}`)
-      // return parseCJTrackingResponse(response)
-    }
-    
-    // 예시: 한진택배 API 연동
-    if (company === '한진택배') {
-      // 한진택배 API 호출
-      // const response = await fetch(`https://api.hanjin.co.kr/tracking/${trackingNumber}`)
-      // return parseHanjinTrackingResponse(response)
-    }
-    
-    // 임시로 null 반환 (API 연동 전까지)
-    // 실제 구현 시에는 각 택배사 API를 호출하여 상태를 파싱하여 반환
+    // TODO: 실제 택배사 API 연동 (CJ/한진 등) 시 해당 API 호출 후 파싱하여 반환
     return null
   } catch (error) {
     console.error('배송조회 API 오류:', error)

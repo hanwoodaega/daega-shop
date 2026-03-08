@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import ScrollToTop from '@/components/common/ScrollToTop'
@@ -8,7 +9,6 @@ import PromotionModalWrapper from '@/components/common/PromotionModalWrapper'
 import { useCollectionProducts } from '@/lib/collection'
 import { Collection } from '@/lib/collection'
 import { Product } from '@/lib/supabase/supabase'
-import CollectionHeader from './_components/CollectionHeader'
 import CollectionDescription from './_components/CollectionDescription'
 import CollectionProductGrid from './_components/CollectionProductGrid'
 
@@ -33,7 +33,7 @@ export default function CollectionPageClient({ slug, initialData }: CollectionPa
   if (!collection && !loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <CollectionHeader title="컬렉션" />
+        <Header />
         <main className="flex-1 container mx-auto px-4 py-20 text-center">
           <p className="text-xl text-gray-600 mb-4">컬렉션을 찾을 수 없습니다</p>
           <Link href="/">
@@ -50,8 +50,8 @@ export default function CollectionPageClient({ slug, initialData }: CollectionPa
 
   return (
     <div className="min-h-screen flex flex-col">
-      <CollectionHeader title={collectionTitle} />
-      
+      <Header />
+
       <main className="flex-1">
         {collection && (
           <CollectionDescription
@@ -60,6 +60,7 @@ export default function CollectionPageClient({ slug, initialData }: CollectionPa
         )}
 
         <CollectionProductGrid
+          collectionTitle={collectionTitle}
           products={products}
           loading={loading}
           loadingMore={loadingMore}

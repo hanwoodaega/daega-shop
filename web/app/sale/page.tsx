@@ -1,11 +1,9 @@
-import SalePageClient from './SalePageClient'
+import CollectionProductsPageClient from '@/components/sections/CollectionProductsPageClient'
 import { getServerBaseUrl } from '@/lib/utils/server-url'
 import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
 
 export default async function SalePage() {
-  let initialProducts
-  let initialTotalPages
-
+  let initialData: { collection: null; products: any[]; totalPages: number } | undefined
   try {
     const siteUrl = await getServerBaseUrl()
     if (siteUrl) {
@@ -15,19 +13,25 @@ export default async function SalePage() {
       )
       if (res.ok) {
         const data = await res.json()
-        initialProducts = data.products || []
-        initialTotalPages = data.totalPages ?? 0
+        initialData = {
+          collection: null,
+          products: data.products ?? [],
+          totalPages: data.totalPages ?? 0,
+        }
       }
     }
   } catch {
-    initialProducts = undefined
-    initialTotalPages = undefined
+    initialData = undefined
   }
 
   return (
-    <SalePageClient
-      initialProducts={initialProducts}
-      initialTotalPages={initialTotalPages}
+    <CollectionProductsPageClient
+      slug="sale"
+      title="특가 상품"
+      initialData={initialData}
+      emptyMessage="할인 중인 상품이 없습니다"
+      emptyLinkHref="/products"
+      emptyLinkLabel="전체 상품 보기"
     />
   )
 }

@@ -1,9 +1,9 @@
-import WeeklyDiscountPageClient from './WeeklyDiscountPageClient'
+import CollectionProductsPageClient from '@/components/sections/CollectionProductsPageClient'
 import { getServerBaseUrl } from '@/lib/utils/server-url'
 import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
 
 export default async function WeeklyDiscountPage() {
-  let initialData: { collection: any | null; products: any[]; totalPages?: number } | undefined
+  let initialData: { collection: any; products: any[]; totalPages?: number } | undefined
   try {
     const siteUrl = await getServerBaseUrl()
     if (siteUrl) {
@@ -25,6 +25,14 @@ export default async function WeeklyDiscountPage() {
   }
 
   return (
-    <WeeklyDiscountPageClient initialData={initialData} />
+    <CollectionProductsPageClient
+      slug="weekly_discount"
+      title="이번주 행사"
+      initialData={initialData}
+      emptyMessage="이번 주 할인 상품이 없습니다"
+      emptyLinkHref="/"
+      emptyLinkLabel="홈으로 가기"
+      titleFromCollection
+    />
   )
 }

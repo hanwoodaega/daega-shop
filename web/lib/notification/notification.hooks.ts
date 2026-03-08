@@ -17,27 +17,33 @@ interface UseNotificationsReturn {
   unreadCountGeneral: number
   unreadCountEarned: number
   markAllRead: () => void
+  error: string | null
+  retry: () => void
 }
 
 export function useNotifications({ userId }: UseNotificationsOptions): UseNotificationsReturn {
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('general')
 
   const loadNotifications = useCallback(async () => {
     if (!userId) {
       setNotifications([])
       setLoading(false)
+      setError(null)
       return
     }
 
     setLoading(true)
+    setError(null)
     try {
       const data = await fetchNotifications()
       setNotifications(data)
-    } catch (error) {
-      console.error('알림 조회 실패:', error)
+    } catch (err) {
+      console.error('알림 조회 실패:', err)
       setNotifications([])
+      setError(err instanceof Error ? err.message : '알림을 불러오는데 실패했습니다.')
     } finally {
       setLoading(false)
     }
@@ -52,8 +58,10 @@ export function useNotifications({ userId }: UseNotificationsOptions): UseNotifi
     const hasUnread = notifications.some((n) => !n.is_read)
     if (!hasUnread) return
 
-    // fire-and-forget
-    markAllNotificationsRead()
+    // fire-and-forget: 실패 시에도 UI는 낙관적으로 갱신
+    markAllNotificationsRead().catch((err) => {
+      console.error('알림 전체 읽음 처리 실패:', err)
+    })
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
   }, [userId, notifications])
 
@@ -93,6 +101,8 @@ export function useNotifications({ userId }: UseNotificationsOptions): UseNotifi
     unreadCountGeneral,
     unreadCountEarned,
     markAllRead,
+    error,
+    retry: loadNotifications,
   }
 }
 

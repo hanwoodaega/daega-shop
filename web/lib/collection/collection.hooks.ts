@@ -14,6 +14,8 @@ interface UseCollectionProductsReturn {
   sortOrder: 'default' | 'price_asc' | 'price_desc'
   setSortOrder: (sort: 'default' | 'price_asc' | 'price_desc') => void
   loadMore: () => void
+  error: string | null
+  retry: () => void
 }
 
 export function useCollectionProducts(
@@ -25,6 +27,7 @@ export function useCollectionProducts(
   const [displayedProducts, setDisplayedProducts] = useState<Product[]>(initialData?.products ?? [])
   const [loading, setLoading] = useState(!hasInitialData)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [sortOrder, setSortOrder] = useState<'default' | 'price_asc' | 'price_desc'>('default')
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(
@@ -52,6 +55,7 @@ export function useCollectionProducts(
     isFetchingRef.current = true
     setLoading(pageNum === 1)
     setLoadingMore(pageNum > 1)
+    setError(null)
     
     const controller = new AbortController()
     abortControllerRef.current = controller
@@ -107,6 +111,9 @@ export function useCollectionProducts(
       }
       
       setHasMore(pageNum < data.totalPages)
+      if (requestId === requestIdRef.current) {
+        setError(null)
+      }
     } catch (error: any) {
       // AbortError는 정상적인 취소 (페이지 이동 등)이므로 무시
       if (error.name === 'AbortError') {
@@ -121,7 +128,9 @@ export function useCollectionProducts(
       
       // 사용자에게 에러 알림 (최신 요청일 때만)
       if (requestId === requestIdRef.current) {
-        toast.error(error.message || '컬렉션을 불러오는데 실패했습니다')
+        const message = error?.message || '컬렉션을 불러오는데 실패했습니다'
+        setError(message)
+        toast.error(message)
       }
     } finally {
       // timeout 정리 보장
@@ -142,6 +151,13 @@ export function useCollectionProducts(
       }
     }
   }, [slug])
+
+  const retry = useCallback(() => {
+    setError(null)
+    setPage(1)
+    setDisplayedProducts([])
+    fetchCollectionData(1, sortOrder)
+  }, [sortOrder, fetchCollectionData])
 
   // slug나 sortOrder 변경 시 첫 페이지부터 다시 로드
   useEffect(() => {
@@ -219,6 +235,8 @@ export function useCollectionProducts(
     sortOrder,
     setSortOrder: handleSortOrderChange,
     loadMore: handleLoadMore,
+    error,
+    retry,
   }
 }
 

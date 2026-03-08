@@ -6,6 +6,7 @@ import ProductCard from '@/components/product/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 
 interface CollectionProductGridProps {
+  collectionTitle?: string
   products: Product[]
   loading: boolean
   loadingMore: boolean
@@ -14,6 +15,7 @@ interface CollectionProductGridProps {
 }
 
 export default function CollectionProductGrid({
+  collectionTitle,
   products,
   loading,
   loadingMore,
@@ -22,21 +24,31 @@ export default function CollectionProductGrid({
 }: CollectionProductGridProps) {
   return (
     <div className="container mx-auto px-4 py-4 pt-6">
-      <div className="flex justify-end items-center mb-6">
-        <select
-          value={sortOrder}
-          onChange={(e) => onSortOrderChange(e.target.value as 'default' | 'price_asc' | 'price_desc')}
-          className="px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-800 focus:border-transparent transition"
-        >
-          <option value="default">최신순</option>
-          <option value="price_asc">낮은 가격순</option>
-          <option value="price_desc">높은 가격순</option>
-        </select>
+      <div className="flex justify-between items-center mb-6">
+        {collectionTitle && (
+          <div>
+            <h1 className="text-xl font-bold mb-1">{collectionTitle}</h1>
+            {products.length > 0 && (
+              <p className="text-gray-600 text-sm">{products.length}개의 상품</p>
+            )}
+          </div>
+        )}
+        <div className={collectionTitle ? 'flex items-center' : 'flex justify-end items-center w-full'}>
+          <select
+            value={sortOrder}
+            onChange={(e) => onSortOrderChange(e.target.value as 'default' | 'price_asc' | 'price_desc')}
+            className="px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-800 focus:border-transparent transition"
+          >
+            <option value="default">최신순</option>
+            <option value="price_asc">낮은 가격순</option>
+            <option value="price_desc">높은 가격순</option>
+          </select>
+        </div>
       </div>
 
       {/* 상품 그리드 */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4">
           {[...Array(8)].map((_, i) => (
             <ProductCardSkeleton key={i} />
           ))}
@@ -55,12 +67,12 @@ export default function CollectionProductGrid({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
-          
+
           {/* 무한 스크롤 로딩 */}
           {loadingMore && (
             <div className="flex justify-center py-8">

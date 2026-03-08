@@ -82,7 +82,7 @@ export default function MainMenu() {
           >
             <span>이번주 행사</span>
             <span
-              className={`absolute bottom-0 h-0.5 transition-all ${
+              className={`absolute bottom-0 h-0.5 transition-all lg:opacity-0 lg:h-0 ${
                 pathname === '/weekly-discount'
                   ? 'bg-red-600 left-[-8px] right-[-8px]'
                   : 'w-0 left-0 right-0 bg-primary-800 group-hover:w-full'
@@ -103,7 +103,7 @@ export default function MainMenu() {
               >
                 <span>{menu.name}</span>
                 <span
-                  className={`absolute bottom-0 h-0.5 transition-all ${
+                  className={`absolute bottom-0 h-0.5 transition-all lg:opacity-0 lg:h-0 ${
                     isActive
                       ? 'bg-red-600 left-[-8px] right-[-8px]'
                       : 'w-0 left-0 right-0 bg-primary-800 group-hover:w-full'

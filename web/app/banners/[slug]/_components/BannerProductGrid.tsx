@@ -6,21 +6,32 @@ import ProductCard from '@/components/product/ProductCard'
 import ProductCardSkeleton from '@/components/skeletons/ProductCardSkeleton'
 
 interface BannerProductGridProps {
+  bannerTitle?: string
   products: Product[]
   loading: boolean
   loadingMore: boolean
 }
 
 export default function BannerProductGrid({
+  bannerTitle,
   products,
   loading,
   loadingMore,
 }: BannerProductGridProps) {
   return (
     <>
+      {bannerTitle && (
+        <div className="mb-6">
+          <h1 className="text-xl font-bold mb-1">{bannerTitle}</h1>
+          {products.length > 0 && (
+            <p className="text-gray-600 text-sm">{products.length}개의 상품</p>
+          )}
+        </div>
+      )}
+
       {/* 상품 그리드 */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4">
           {[...Array(8)].map((_, i) => (
             <ProductCardSkeleton key={i} />
           ))}
@@ -39,12 +50,12 @@ export default function BannerProductGrid({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
-          
+
           {/* 무한 스크롤 로딩 */}
           {loadingMore && (
             <div className="flex justify-center py-8">
