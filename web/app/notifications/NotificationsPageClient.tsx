@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/auth-context'
+import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useNotifications } from '@/lib/notification'
@@ -40,8 +41,13 @@ function NotificationsPageContent() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <NotificationsHeader />
+      <div className="min-h-screen flex flex-col bg-white">
+        <div className="lg:hidden">
+          <NotificationsHeader />
+        </div>
+        <div className="hidden lg:block">
+          <Header showCartButton />
+        </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>
@@ -52,10 +58,18 @@ function NotificationsPageContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <NotificationsHeader />
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* 모바일: 기존 알림 헤더 */}
+      <div className="lg:hidden">
+        <NotificationsHeader />
+      </div>
+      {/* PC: 메인 헤더 + 메인메뉴 */}
+      <div className="hidden lg:block">
+        <Header showCartButton />
+      </div>
 
-      <main className="flex-1 container mx-auto px-4 py-6 pb-24">
+      <main className="flex-1 container mx-auto max-w-3xl px-4 py-6 pb-24 lg:pb-6">
+        <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">알림</h2>
         <NotificationsTabs
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -86,8 +100,13 @@ function NotificationsPageContent() {
 export default function NotificationsPageClient() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex flex-col">
-        <NotificationsHeader />
+      <div className="min-h-screen flex flex-col bg-white">
+        <div className="lg:hidden">
+          <NotificationsHeader />
+        </div>
+        <div className="hidden lg:block">
+          <Header showCartButton />
+        </div>
         <NotificationsSkeleton />
         <Footer />
         <BottomNavbar />

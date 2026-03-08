@@ -17,7 +17,7 @@ const MAIN_MENUS = [
 ]
 
 const menuLinkClass = (isActive: boolean) =>
-  `flex-shrink-0 font-normal text-base sm:text-lg md:text-xl transition relative group pb-1 whitespace-nowrap ${
+  `flex-shrink-0 font-normal text-base sm:text-lg md:text-xl lg:text-lg transition relative group pb-1 whitespace-nowrap ${
     isActive ? 'text-red-600' : 'text-black hover:text-primary-800'
   }`
 

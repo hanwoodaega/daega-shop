@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import FreeShippingProgress from '@/components/common/FreeShippingProgress'
@@ -65,9 +66,17 @@ function CartPageContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <CartHeader />
+      {/* 모바일: 기존 장바구니 헤더 */}
+      <div className="lg:hidden">
+        <CartHeader />
+      </div>
+      {/* PC: 메인 헤더 + 메인메뉴 */}
+      <div className="hidden lg:block">
+        <Header showCartButton />
+      </div>
 
-      <main className="flex-1 container mx-auto px-2 pt-2 pb-0 md:pb-32">
+      <main className="flex-1 container mx-auto max-w-4xl px-2 pt-2 lg:pt-6 pb-0 md:pb-32">
+        <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">장바구니</h2>
         {/* 배송지 정보 */}
         {!loadingAddress && user && items.length > 0 && (
           <div className="mb-3 bg-white rounded-lg px-3 py-2">

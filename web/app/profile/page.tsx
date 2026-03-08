@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useCartStore } from '@/lib/store'
@@ -163,7 +165,41 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-white">
+        <div className="lg:hidden">
+          <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+            <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
+              <button
+                onClick={() => router.back()}
+                aria-label="뒤로가기"
+                className="p-2 text-gray-700 hover:text-gray-900"
+              >
+                <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">마이페이지</h1>
+              </div>
+            </div>
+          </header>
+        </div>
+        <div className="hidden lg:block">
+          <Header showCartButton />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
+        </div>
+        <Footer />
+        <BottomNavbar />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* 모바일: 마이페이지 전용 헤더 */}
+      <div className="lg:hidden">
         <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
           <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
             <button
@@ -180,41 +216,14 @@ export default function ProfilePage() {
             </div>
           </div>
         </header>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
-        </div>
-        <BottomNavbar />
       </div>
-    )
-  }
+      {/* PC: 메인 헤더 + 메인메뉴 */}
+      <div className="hidden lg:block">
+        <Header showCartButton />
+      </div>
 
-  return (
-    <div className="min-h-screen flex flex-col bg-white">
-      {/* 마이 전용 헤더 */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
-        <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
-          {/* 왼쪽: 뒤로가기 */}
-          <button
-            onClick={() => router.back()}
-            aria-label="뒤로가기"
-            className="p-2 text-gray-700 hover:text-gray-900"
-          >
-            <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          
-          {/* 중앙: 제목 (absolute로 완전 중앙 배치) */}
-          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">
-              마이페이지
-            </h1>
-          </div>
-          
-        </div>
-      </header>
-      
-      <main className="flex-1 container mx-auto px-4 py-8 pb-24">
+      <main className="flex-1 container mx-auto max-w-2xl px-4 py-6 pb-24 lg:pb-6">
+        <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">마이페이지</h2>
         {user ? (
           <>
             {loadingProfile ? (
@@ -482,6 +491,7 @@ export default function ProfilePage() {
         )}
       </main>
 
+      <Footer />
       <BottomNavbar />
     </div>
   )

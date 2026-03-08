@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -39,9 +40,15 @@ function OrdersPageContent() {
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
-        <OrderHeader />
-        <main className="flex-1 container mx-auto px-4 py-4 pb-24">
+      <div className="min-h-screen flex flex-col bg-white">
+        <div className="lg:hidden">
+          <OrderHeader />
+        </div>
+        <div className="hidden lg:block">
+          <Header showCartButton />
+        </div>
+        <main className="flex-1 container mx-auto max-w-4xl px-4 py-6 pb-24 lg:pb-6">
+          <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">주문내역</h2>
           <OrderSkeleton />
         </main>
         <Footer />
@@ -51,10 +58,18 @@ function OrdersPageContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <OrderHeader />
-      
-      <main className="flex-1 container mx-auto px-4 py-4 pb-24">
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* 모바일: 주문내역 전용 헤더 */}
+      <div className="lg:hidden">
+        <OrderHeader />
+      </div>
+      {/* PC: 메인 헤더 + 메인메뉴 */}
+      <div className="hidden lg:block">
+        <Header showCartButton />
+      </div>
+
+      <main className="flex-1 container mx-auto max-w-4xl px-4 py-6 pb-24 lg:pb-6">
+        <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">주문내역</h2>
         {giftToken && (
           <GiftShareBox giftToken={giftToken} giftOrder={giftOrder} />
         )}
@@ -81,9 +96,15 @@ function OrdersPageContent() {
 export default function OrdersPageClientWrapper() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex flex-col bg-gray-50">
-        <OrderHeader />
-        <main className="flex-1 container mx-auto px-4 py-4 pb-24">
+      <div className="min-h-screen flex flex-col bg-white">
+        <div className="lg:hidden">
+          <OrderHeader />
+        </div>
+        <div className="hidden lg:block">
+          <Header showCartButton />
+        </div>
+        <main className="flex-1 container mx-auto max-w-4xl px-4 py-6 pb-24 lg:pb-6">
+          <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">주문내역</h2>
           <OrderSkeleton />
         </main>
         <Footer />
