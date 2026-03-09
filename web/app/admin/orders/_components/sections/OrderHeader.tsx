@@ -1,6 +1,5 @@
 import { Order } from '../../_types'
-import { getStatusText, getStatusTextColor, getRefundStatusText } from '@/lib/order/order-utils'
-import { getDeliveryTypeText } from '@/lib/order/order-utils'
+import { getStatusText, getStatusTextColor, getDeliveryTypeText } from '@/lib/order/order-utils'
 
 interface OrderHeaderProps {
   order: Order
@@ -30,15 +29,6 @@ export default function OrderHeader({ order }: OrderHeaderProps) {
           <span className={`text-base font-bold ${getStatusTextColor(order.status)}`}>
             {getStatusText(order.status, order.delivery_type)}
           </span>
-          {order.status === 'cancelled' && order.refund_status && (
-            <span className={`text-xs px-2 py-1 rounded ${
-              order.refund_status === 'completed' ? 'bg-green-100 text-green-700' :
-              order.refund_status === 'processing' ? 'bg-blue-100 text-blue-700' :
-              'bg-yellow-100 text-yellow-700'
-            }`}>
-              {getRefundStatusText(order.refund_status)}
-            </span>
-          )}
         </div>
       </div>
       <div className="flex items-center gap-2">

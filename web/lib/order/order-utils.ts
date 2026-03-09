@@ -5,17 +5,17 @@ export function getStatusText(status: string, deliveryType?: string): string {
   if (deliveryType === 'pickup') {
     switch (status) {
       case 'pending':
-        return '결제 대기'
+        return '결제대기'
       case 'ORDER_RECEIVED':
         return '주문완료'
       case 'PREPARING':
-        return '준비 중'
+        return '상품준비중'
       case 'IN_TRANSIT':
-        return '준비 중'
+        return '상품준비중'
       case 'DELIVERED':
         return '완료'
       case 'cancelled':
-        return '주문 취소'
+        return '주문취소'
       default:
         return status
     }
@@ -24,7 +24,7 @@ export function getStatusText(status: string, deliveryType?: string): string {
   // 택배배달, 퀵배달의 경우
   switch (status) {
     case 'pending':
-      return '결제 대기'
+      return '결제대기'
     case 'ORDER_RECEIVED':
       return '주문완료'
     case 'PREPARING':
@@ -34,7 +34,7 @@ export function getStatusText(status: string, deliveryType?: string): string {
     case 'DELIVERED':
       return '배송완료'
     case 'cancelled':
-      return '주문 취소'
+      return '주문취소'
     // 하위 호환성을 위한 기존 상태
     case 'paid':
       return '주문완료'
@@ -58,6 +58,26 @@ export function getDeliveryTypeText(deliveryType: string): string {
     default:
       return deliveryType
   }
+}
+
+/** 주문 카드용 배송 일시 표기 (예: 3.9(월) 07:30) */
+export function formatOrderDeliveryDisplay(
+  createdAt: string,
+  deliveryTime?: string | null,
+  status?: string
+): string {
+  const d = new Date(createdAt)
+  const month = d.getMonth() + 1
+  const date = d.getDate()
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토']
+  const day = dayNames[d.getDay()]
+  const timePart = deliveryTime && /^\d{1,2}:\d{2}/.test(deliveryTime)
+    ? deliveryTime.match(/^\d{1,2}:\d{2}/)?.[0] ?? ''
+    : ''
+  if (timePart) {
+    return `${month}.${date}(${day}) ${timePart}`
+  }
+  return `${month}.${date}(${day})`
 }
 
 /**

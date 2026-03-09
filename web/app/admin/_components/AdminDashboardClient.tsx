@@ -44,7 +44,7 @@ const managementCards: AdminCard[] = [
   },
   {
     title: '컬렉션 관리',
-    description: '베스트, 특가, 한우대가 NO.9 등 컬렉션을 관리하세요.',
+    description: '베스트, 특가, 한우대가No.9 등 컬렉션을 관리하세요.',
     href: '/admin/collections',
     accent: 'bg-teal-100 text-teal-700',
   },

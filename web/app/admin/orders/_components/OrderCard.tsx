@@ -13,7 +13,6 @@ interface OrderCardProps {
   trackingInput: string
   onTrackingChange: (number: string) => void
   onStatusChange: (orderId: string, newStatus: OrderStatus, trackingNumber?: string) => Promise<boolean>
-  onRefundComplete: (orderId: string) => Promise<boolean>
 }
 
 export default function OrderCard({
@@ -22,7 +21,6 @@ export default function OrderCard({
   trackingInput,
   onTrackingChange,
   onStatusChange,
-  onRefundComplete,
 }: OrderCardProps) {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -33,11 +31,7 @@ export default function OrderCard({
         <OrderItems order={order} />
         <ShippingInfo order={order} />
         <PaymentSummary order={order} />
-        <RefundInfo 
-          order={order} 
-          updatingOrderId={updatingOrderId} 
-          onRefundComplete={onRefundComplete} 
-        />
+        <RefundInfo order={order} />
         <OrderActions 
           order={order}
           updatingOrderId={updatingOrderId}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 import { usePoints } from '@/lib/point/points'
+import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,7 +10,10 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient()
-    
+    const { searchParams } = new URL(request.url)
+    const monthsParam = searchParams.get('months')
+    const months = monthsParam ? Math.min(36, Math.max(1, parseInt(monthsParam, 10) || 1)) : 1
+
     // 서버에서 사용자 인증 확인
     const authResult = await requireActiveUserFromServer()
     if ('error' in authResult) {
@@ -18,6 +22,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: errorMessage }, { status })
     }
     const user = authResult.user
+
+    const since = new Date()
+    since.setMonth(since.getMonth() - months)
+    const sinceIso = since.toISOString()
 
     // 주문 목록 조회
     // 1. 먼저 주문 목록만 조회 (조인 없이)
@@ -39,17 +47,13 @@ export async function GET(request: NextRequest) {
         is_gift,
         gift_token,
         gift_message,
-        gift_card_design,
-        gift_status,
         gift_expires_at,
-        refund_status,
-        refund_amount,
-        refund_requested_at,
         refund_completed_at,
         created_at,
         updated_at
       `)
       .eq('user_id', user.id)
+      .gte('created_at', sinceIso)
       .order('created_at', { ascending: false })
 
     if (ordersError) {
@@ -86,23 +90,22 @@ export async function GET(request: NextRequest) {
       // 상품 조회 실패해도 주문 목록은 반환 (빈 상품 목록)
     }
 
-    // 3. 상품 이미지 조회
+    // 3. 상품 이미지 조회 (priority 오름차순, 0이 우선 → 상품당 1장)
     const productIds = Array.from(new Set(orderItems?.map(item => item.product_id) || []))
     let productImages: Record<string, string> = {}
-    
+
     if (productIds.length > 0) {
       const { data: imagesData } = await supabase
         .from('product_images')
-        .select('product_id, image_url')
+        .select('product_id, image_url, priority')
         .in('product_id', productIds)
-        .eq('is_primary', true)
-      
-      if (imagesData) {
-        productImages = imagesData.reduce((acc: any, img: any) => {
-          acc[img.product_id] = img.image_url
-          return acc
-        }, {})
-      }
+        .order('priority', { ascending: true })
+
+      const byProduct = new Map<string, string>()
+      imagesData?.forEach((img: any) => {
+        if (!byProduct.has(img.product_id)) byProduct.set(img.product_id, img.image_url)
+      })
+      productImages = Object.fromEntries(byProduct)
     }
 
     // 4. 구매확정 여부 확인
@@ -191,7 +194,6 @@ export async function POST(request: NextRequest) {
       used_points,
       is_gift,
       gift_message,
-      gift_card_design,
       items: rawItems
     } = body
 
@@ -217,15 +219,11 @@ export async function POST(request: NextRequest) {
       delivery_note,
       is_gift: is_gift || false,
       gift_message,
-      gift_card_design,
     }
 
     if (is_gift) {
       orderInsertData.gift_token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
-      orderInsertData.gift_status = 'pending'
-      const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + 5)
-      orderInsertData.gift_expires_at = expiresAt.toISOString()
+      orderInsertData.gift_expires_at = getGiftExpiresAtEndOfDayKST()
     }
 
     // 1. 주문 생성

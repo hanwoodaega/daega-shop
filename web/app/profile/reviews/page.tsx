@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Footer from '@/components/layout/Footer'
-import BottomNavbar from '@/components/layout/BottomNavbar'
 import ReviewWriteModal from '@/components/review/ReviewWriteModal'
 import ReviewStars from '@/components/review/ReviewStars'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -225,11 +223,10 @@ export default function ProfileReviewsPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* 헤더 */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* 모바일 전용 헤더 */}
+      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
-          {/* 왼쪽: 뒤로가기 */}
           <button
             onClick={() => router.back()}
             aria-label="뒤로가기"
@@ -239,178 +236,267 @@ export default function ProfileReviewsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          
-          {/* 중앙: 제목 */}
           <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">
-              나의 리뷰
-            </h1>
+            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">나의 리뷰</h1>
           </div>
-          
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-4 py-6 pb-24">
-
-        {/* 탭 */}
-        <div className="flex border-b border-gray-300 mb-6">
-          <button
-            onClick={() => setActiveTab('reviewable')}
-            className={`flex-1 py-3 text-center font-medium ${
-              activeTab === 'reviewable'
-                ? 'text-primary-800 border-b-2 border-primary-800'
-                : 'text-gray-600'
-            }`}
-          >
-            작성 가능한 리뷰
-            {reviewableCount > 0 && (
-              <span className="ml-1 text-red-500">({reviewableCount})</span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('written')}
-            className={`flex-1 py-3 text-center font-medium ${
-              activeTab === 'written'
-                ? 'text-primary-800 border-b-2 border-primary-800'
-                : 'text-gray-600'
-            }`}
-          >
-            작성한 리뷰
-            {myReviewsCount > 0 && (
-              <span className="ml-1">({myReviewsCount})</span>
-            )}
-          </button>
-        </div>
-
-        {/* 내용 */}
-        {loading ? (
-          <div className="py-20 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800 mx-auto"></div>
-          </div>
-        ) : activeTab === 'reviewable' ? (
-          // 작성 가능한 리뷰
-          reviewableProducts.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="text-6xl mb-4">📝</div>
-              <p className="text-gray-600 mb-2">작성 가능한 리뷰가 없습니다.</p>
-              <p className="text-sm text-gray-500">배송 완료된 상품에 대해 리뷰를 작성할 수 있습니다.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {reviewableProducts.map((product) => (
-                <div 
-                  key={product.order_item_id} 
-                  className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition"
-                  onClick={() => router.push(`/product/${product.product_id}`)}
+      <main className="flex-1 container mx-auto px-4 py-6 pb-24 lg:py-6 lg:pb-6 lg:max-w-none">
+        {/* PC 전용: 상단 카드 "나의 리뷰" + 탭, 아래 본문 */}
+        <div className="hidden lg:block">
+          <div className="bg-white rounded-lg border border-gray-200 p-5 pb-0 mb-4 shadow-sm">
+            <h2 className="text-2xl font-bold text-primary-900 mb-4 text-center">나의 리뷰</h2>
+            <div className="border-t border-gray-200">
+              <div className="flex border-b border-gray-200 -mb-px">
+                <button
+                  onClick={() => setActiveTab('reviewable')}
+                  className={`flex-1 py-3 text-center font-medium transition ${
+                    activeTab === 'reviewable'
+                      ? 'text-primary-800 border-b-2 border-primary-800'
+                      : 'text-gray-600'
+                  }`}
                 >
-                  <div className="flex items-start gap-4">
-                    {/* 상품 이미지 (없거나 무효면 회색 박스) */}
-                    <div className="w-20 h-20 bg-gray-200 rounded flex-shrink-0 overflow-hidden flex items-center justify-center">
-                      {product.product_image && isValidImageUrl(product.product_image) ? (
-                        <img 
-                          src={product.product_image} 
-                          alt={product.product_name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-xs text-gray-500">이미지 없음</span>
-                      )}
-                    </div>
+                  작성 가능한 리뷰
+                  {reviewableCount > 0 && <span className="ml-1 text-red-500">({reviewableCount})</span>}
+                </button>
+                <button
+                  onClick={() => setActiveTab('written')}
+                  className={`flex-1 py-3 text-center font-medium transition ${
+                    activeTab === 'written'
+                      ? 'text-primary-800 border-b-2 border-primary-800'
+                      : 'text-gray-600'
+                  }`}
+                >
+                  작성한 리뷰
+                  {myReviewsCount > 0 && <span className="ml-1">({myReviewsCount})</span>}
+                </button>
+              </div>
+            </div>
+          </div>
 
-                    {/* 상품 정보 */}
-                    <div className="flex-1 min-w-0">
-                      {product.product_brand && (
-                        <p className="text-xs text-gray-600 mb-1">{product.product_brand}</p>
-                      )}
-                      <p className="text-sm font-medium text-gray-900 mb-1 truncate w-full">
-                        {product.product_name}
-                      </p>
-                      <p className="text-xs text-gray-500 mb-2">
-                        주문번호: {product.order_number}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        구매일: {formatDate(product.order_date)}
-                      </p>
-                    </div>
-
-                    {/* 리뷰 작성 버튼 */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleWriteReview(product)
-                      }}
-                      className="px-3 py-1.5 bg-white text-red-600 border border-red-600 rounded text-sm font-medium hover:bg-blue-50 transition whitespace-nowrap flex-shrink-0 self-start"
-                    >
-                      리뷰 작성
-                    </button>
-                  </div>
+          {loading ? (
+            <div className="py-20 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800 mx-auto"></div>
+            </div>
+          ) : activeTab === 'reviewable' ? (
+            reviewableProducts.length === 0 ? (
+              <div className="bg-white rounded-lg border border-gray-200 p-8 text-center shadow-sm">
+                <div className="flex justify-center mb-4">
+                  <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
                 </div>
-              ))}
-            </div>
-          )
-        ) : (
-          // 작성한 리뷰
-          myReviews.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="text-6xl mb-4">✍️</div>
-              <p className="text-gray-600 mb-2">작성한 리뷰가 없습니다.</p>
-              <p className="text-sm text-gray-500">구매한 상품에 대한 리뷰를 작성해보세요.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {myReviews.map((review) => (
-                <div key={review.id} className="border border-gray-200 rounded-lg p-4 overflow-hidden">
-                  {/* 리뷰 내용 */}
-                  <div className="flex-1">
-                    {review.product.brand && (
-                      <p className="text-xs text-gray-600 mb-1">{review.product.brand}</p>
-                    )}
-                    <button
-                      onClick={() => router.push(`/products/${review.product_id}`)}
-                      className="text-sm font-medium mb-2 text-blue-600 hover:underline text-left block"
-                    >
-                      {review.product.name}
-                    </button>
-                    <ReviewStars rating={review.rating} size="sm" />
-                    {review.title && (
-                      <h4 className="text-sm font-semibold text-gray-900 mt-2 mb-1">{review.title}</h4>
-                    )}
-                    <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{review.content}</p>
-                    
-                    {/* 리뷰 이미지 */}
-                    {review.images && review.images.length > 0 && (
-                      <div className="mt-2 overflow-x-auto">
-                        <div className="flex gap-2 w-max py-1 px-1">
-                          {review.images.map((image, index) => (
-                            <div key={index} className="w-16 h-16 bg-gray-200 rounded overflow-hidden flex-shrink-0">
-                              <img 
-                                src={image} 
-                                alt={`리뷰 이미지 ${index + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          ))}
-                        </div>
+                <p className="text-gray-600 mb-2">작성 가능한 리뷰가 없습니다.</p>
+                <p className="text-sm text-gray-500">배송 완료된 상품에 대해 리뷰를 작성할 수 있습니다.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {reviewableProducts.map((product) => (
+                  <div
+                    key={product.order_item_id}
+                    className="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:bg-gray-50 transition shadow-sm"
+                    onClick={() => router.push(`/product/${product.product_id}`)}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-20 h-20 bg-gray-200 rounded flex-shrink-0 overflow-hidden flex items-center justify-center">
+                        {product.product_image && isValidImageUrl(product.product_image) ? (
+                          <img src={product.product_image} alt={product.product_name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xs text-gray-500">이미지 없음</span>
+                        )}
                       </div>
-                    )}
-                    
-                    <p className="text-xs text-gray-500 mt-2">{formatDate(review.created_at)}</p>
-                    
-                    {/* 수정 버튼 */}
-                    <div className="flex gap-2 mt-3">
+                      <div className="flex-1 min-w-0">
+                        {product.product_brand && <p className="text-xs text-gray-600 mb-1">{product.product_brand}</p>}
+                        <p className="text-sm font-medium text-gray-900 mb-1 truncate w-full">{product.product_name}</p>
+                        <p className="text-xs text-gray-500 mb-2">주문번호: {product.order_number}</p>
+                        <p className="text-xs text-gray-500">구매일: {formatDate(product.order_date)}</p>
+                      </div>
                       <button
-                        onClick={() => handleEditReview(review)}
-                        className="px-4 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                        onClick={(e) => { e.stopPropagation(); handleWriteReview(product) }}
+                        className="px-3 py-1.5 bg-white text-red-600 border border-red-600 rounded text-sm font-medium hover:bg-blue-50 transition whitespace-nowrap flex-shrink-0 self-start"
                       >
-                        수정
+                        리뷰 작성
                       </button>
                     </div>
                   </div>
+                ))}
+              </div>
+            )
+          ) : (
+            myReviews.length === 0 ? (
+              <div className="bg-white rounded-lg border border-gray-200 p-8 text-center shadow-sm">
+                <div className="flex justify-center mb-4">
+                  <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
                 </div>
-              ))}
+                <p className="text-gray-600 mb-2">작성한 리뷰가 없습니다.</p>
+                <p className="text-sm text-gray-500">구매한 상품에 대한 리뷰를 작성해보세요.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {myReviews.map((review) => (
+                  <div key={review.id} className="bg-white rounded-lg border border-gray-200 p-4 overflow-hidden shadow-sm">
+                    <div className="flex-1">
+                      {review.product.brand && <p className="text-xs text-gray-600 mb-1">{review.product.brand}</p>}
+                      <button
+                        onClick={() => router.push(`/products/${review.product_id}`)}
+                        className="text-sm font-medium mb-2 text-blue-600 hover:underline text-left block"
+                      >
+                        {review.product.name}
+                      </button>
+                      <ReviewStars rating={review.rating} size="sm" />
+                      {review.title && <h4 className="text-sm font-semibold text-gray-900 mt-2 mb-1">{review.title}</h4>}
+                      <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{review.content}</p>
+                      {review.images && review.images.length > 0 && (
+                        <div className="mt-2 overflow-x-auto">
+                          <div className="flex gap-2 w-max py-1 px-1">
+                            {review.images.map((image, index) => (
+                              <div key={index} className="w-16 h-16 bg-gray-200 rounded overflow-hidden flex-shrink-0">
+                                <img src={image} alt={`리뷰 이미지 ${index + 1}`} className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500 mt-2">{formatDate(review.created_at)}</p>
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => handleEditReview(review)}
+                          className="px-4 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                        >
+                          수정
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </div>
+
+        {/* 모바일 전용 */}
+        <div className="lg:hidden">
+          <div className="flex border-b border-gray-300 mb-6">
+            <button
+              onClick={() => setActiveTab('reviewable')}
+              className={`flex-1 py-3 text-center font-medium ${
+                activeTab === 'reviewable'
+                  ? 'text-primary-800 border-b-2 border-primary-800'
+                  : 'text-gray-600'
+              }`}
+            >
+              작성 가능한 리뷰
+              {reviewableCount > 0 && <span className="ml-1 text-red-500">({reviewableCount})</span>}
+            </button>
+            <button
+              onClick={() => setActiveTab('written')}
+              className={`flex-1 py-3 text-center font-medium ${
+                activeTab === 'written'
+                  ? 'text-primary-800 border-b-2 border-primary-800'
+                  : 'text-gray-600'
+              }`}
+            >
+              작성한 리뷰
+              {myReviewsCount > 0 && <span className="ml-1">({myReviewsCount})</span>}
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="py-20 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800 mx-auto"></div>
             </div>
-          )
-        )}
+          ) : activeTab === 'reviewable' ? (
+            reviewableProducts.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="text-6xl mb-4">📝</div>
+                <p className="text-gray-600 mb-2">작성 가능한 리뷰가 없습니다.</p>
+                <p className="text-sm text-gray-500">배송 완료된 상품에 대해 리뷰를 작성할 수 있습니다.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {reviewableProducts.map((product) => (
+                  <div
+                    key={product.order_item_id}
+                    className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition"
+                    onClick={() => router.push(`/product/${product.product_id}`)}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-20 h-20 bg-gray-200 rounded flex-shrink-0 overflow-hidden flex items-center justify-center">
+                        {product.product_image && isValidImageUrl(product.product_image) ? (
+                          <img src={product.product_image} alt={product.product_name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xs text-gray-500">이미지 없음</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {product.product_brand && <p className="text-xs text-gray-600 mb-1">{product.product_brand}</p>}
+                        <p className="text-sm font-medium text-gray-900 mb-1 truncate w-full">{product.product_name}</p>
+                        <p className="text-xs text-gray-500 mb-2">주문번호: {product.order_number}</p>
+                        <p className="text-xs text-gray-500">구매일: {formatDate(product.order_date)}</p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleWriteReview(product) }}
+                        className="px-3 py-1.5 bg-white text-red-600 border border-red-600 rounded text-sm font-medium hover:bg-blue-50 transition whitespace-nowrap flex-shrink-0 self-start"
+                      >
+                        리뷰 작성
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : (
+            myReviews.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="text-6xl mb-4">✍️</div>
+                <p className="text-gray-600 mb-2">작성한 리뷰가 없습니다.</p>
+                <p className="text-sm text-gray-500">구매한 상품에 대한 리뷰를 작성해보세요.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {myReviews.map((review) => (
+                  <div key={review.id} className="border border-gray-200 rounded-lg p-4 overflow-hidden">
+                    <div className="flex-1">
+                      {review.product.brand && <p className="text-xs text-gray-600 mb-1">{review.product.brand}</p>}
+                      <button
+                        onClick={() => router.push(`/products/${review.product_id}`)}
+                        className="text-sm font-medium mb-2 text-blue-600 hover:underline text-left block"
+                      >
+                        {review.product.name}
+                      </button>
+                      <ReviewStars rating={review.rating} size="sm" />
+                      {review.title && <h4 className="text-sm font-semibold text-gray-900 mt-2 mb-1">{review.title}</h4>}
+                      <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{review.content}</p>
+                      {review.images && review.images.length > 0 && (
+                        <div className="mt-2 overflow-x-auto">
+                          <div className="flex gap-2 w-max py-1 px-1">
+                            {review.images.map((image, index) => (
+                              <div key={index} className="w-16 h-16 bg-gray-200 rounded overflow-hidden flex-shrink-0">
+                                <img src={image} alt={`리뷰 이미지 ${index + 1}`} className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500 mt-2">{formatDate(review.created_at)}</p>
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => handleEditReview(review)}
+                          className="px-4 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                        >
+                          수정
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </div>
       </main>
 
       {/* 리뷰 작성 모달 */}
@@ -451,8 +537,6 @@ export default function ProfileReviewsPage() {
         />
       )}
 
-      <Footer />
-      <BottomNavbar />
     </div>
   )
 }

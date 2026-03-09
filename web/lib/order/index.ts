@@ -10,8 +10,5 @@ export * from './order.service'
 export * from './order.hooks'
 
 // Gift utilities (order의 한 기능)
-export * from './gift/kakaoShare'
-export * from './gift/initKakao'
 export * from './gift/gift-types'
-export * from './gift/gift-utils'
 

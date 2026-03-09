@@ -16,7 +16,7 @@ export const MAIN_MENU_LINKS = [
   { name: '홈', href: '/' },
   { name: '베스트', href: '/best' },
   { name: '특가', href: '/sale' },
-  { name: '한우대가 NO.9', href: '/no9' },
+  { name: '한우대가No.9', href: '/no9' },
   { name: '리뷰이벤트', href: '/review-event' },
 ]
 

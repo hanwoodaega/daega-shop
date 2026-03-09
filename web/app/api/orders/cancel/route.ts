@@ -102,9 +102,7 @@ export async function POST(request: NextRequest) {
       .from('orders')
       .update({
         status: 'cancelled',
-        refund_status: 'pending',
-        refund_amount: order.total_amount,
-        refund_requested_at: new Date().toISOString(),
+        refund_completed_at: new Date().toISOString(),
       })
       .eq('id', orderId)
 
@@ -123,10 +121,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: '주문이 취소되었습니다. 환불이 진행됩니다.',
+      message: '주문이 취소되었습니다. 환불이 완료되었습니다.',
       refund: {
         amount: order.total_amount,
-        status: 'pending',
+        status: 'completed',
       },
       points: {
         deducted: pointResult.deducted,

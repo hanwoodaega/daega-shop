@@ -13,7 +13,6 @@ import { SHIPPING, GIFT_MIN_AMOUNT } from '@/lib/utils/constants'
 import { getUserCoupons, isCouponValid } from '@/lib/coupon/coupons'
 import { UserCoupon, Coupon } from '@/lib/supabase/supabase'
 import { removeFromCartDB } from '@/lib/cart/cart-db'
-import { initKakaoSDK } from '@/lib/order/gift/initKakao'
 import { showError, showSuccess, showInfo } from '@/lib/utils/error-handler'
 import { formatPrice } from '@/lib/utils/utils'
 import { DeliveryState, FormData, Flags, GiftData } from './checkout.types'
@@ -67,7 +66,6 @@ export function useCheckout(options: UseCheckoutOptions) {
     isProcessing: false,
     mounted: false,
     saveAsDefaultAddress: false,
-    isEditingOrderer: false,
   })
 
   const [availableCoupons, setAvailableCoupons] = useState<UserCoupon[]>([])
@@ -102,8 +100,7 @@ export function useCheckout(options: UseCheckoutOptions) {
 
   const [giftData, setGiftData] = useState<GiftData>({
     message: '',
-    cardDesign: 'birthday-1',
-    withMessage: true,
+    recipientPhone: '',
   })
 
   const [currentStep, setCurrentStep] = useState(1)
@@ -114,7 +111,7 @@ export function useCheckout(options: UseCheckoutOptions) {
 
   // Derived values
   const { method: deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime } = deliveryState
-  const { isProcessing, mounted, saveAsDefaultAddress, isEditingOrderer } = flags
+  const { isProcessing, mounted, saveAsDefaultAddress } = flags
   const isGiftFinalStep = !isGiftMode || currentStep === TOTAL_GIFT_STEPS
   const gridColumnsClass = isGiftFinalStep ? 'lg:grid-cols-3' : 'lg:grid-cols-1'
 
@@ -194,7 +191,6 @@ export function useCheckout(options: UseCheckoutOptions) {
   }, [])
 
   const initOnMount = useCallback(() => {
-    initKakaoSDK()
     restoreDeliveryFromSession()
     setFlags(prev => ({ ...prev, mounted: true }))
     if (isGiftMode) {
@@ -282,7 +278,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       used_points: usedPoints,
       is_gift: isGiftMode,
       gift_message: null,
-      gift_card_design: null,
+      gift_recipient_phone: isGiftMode ? (giftData.recipientPhone || '').replace(/\D/g, '').slice(0, 13) : undefined,
       items: items.map(item => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -328,7 +324,8 @@ export function useCheckout(options: UseCheckoutOptions) {
       used_points: usedPoints,
       is_gift: isGiftMode,
       gift_message: isGiftMode ? giftData.message : null,
-      gift_card_design: isGiftMode ? giftData.cardDesign : null,
+      gift_recipient_phone: isGiftMode ? (giftData.recipientPhone || '').replace(/\D/g, '').slice(0, 13) : undefined,
+      gift_sender_name: isGiftMode ? (formData.name || '').trim() || undefined : undefined,
       payment_method: paymentMethod,
       items: items.map(item => ({
         productId: item.productId,
@@ -349,7 +346,7 @@ export function useCheckout(options: UseCheckoutOptions) {
     selectedCoupon?.id,
     usedPoints,
     giftData.message,
-    giftData.cardDesign,
+    giftData.recipientPhone,
     paymentMethod,
     items,
   ])
@@ -479,14 +476,27 @@ export function useCheckout(options: UseCheckoutOptions) {
     }
 
     if (currentStep === 1) {
+      // 1단계: 금액만 확인 (보내는 분은 2단계에서 입력)
+    }
+
+    if (currentStep === 2) {
       if (!formData.name.trim() || !formData.phone.trim()) {
         toast.error('보내는 분 정보를 입력해주세요.', { icon: '⚠️' })
+        return
+      }
+      const phone = (giftData.recipientPhone || '').replace(/\D/g, '')
+      if (phone.length < 10) {
+        toast.error('받는 분 휴대폰 번호를 입력해주세요.', { icon: '⚠️' })
+        return
+      }
+      if (!(giftData.message || '').trim()) {
+        toast.error('선물 메시지를 입력해주세요.', { icon: '⚠️' })
         return
       }
     }
 
     setCurrentStep(prev => Math.min(prev + 1, TOTAL_GIFT_STEPS))
-  }, [isGiftMode, currentStep, displayFinalTotal, displayShipping, formData.name, formData.phone])
+  }, [isGiftMode, currentStep, displayFinalTotal, displayShipping, formData.name, formData.phone, giftData.recipientPhone, giftData.message])
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
@@ -501,6 +511,22 @@ export function useCheckout(options: UseCheckoutOptions) {
       if (isGiftMode && currentStep < TOTAL_GIFT_STEPS) {
         showInfo('다음 단계를 진행해주세요.', { icon: '➡️' })
         return false
+      }
+
+      if (isGiftMode) {
+        const recipientPhone = (giftData.recipientPhone || '').replace(/\D/g, '')
+        if (recipientPhone.length < 10) {
+          showError({ message: '받는 분 휴대폰 번호를 입력해주세요.' }, { icon: '⚠️' })
+          return false
+        }
+        if (!(giftData.message || '').trim()) {
+          showError({ message: '선물 메시지를 입력해주세요.' }, { icon: '⚠️' })
+          return false
+        }
+        if (!formData.name?.trim() || !formData.phone?.trim()) {
+          showError({ message: '보내는 분 정보를 입력해주세요.' }, { icon: '⚠️' })
+          return false
+        }
       }
 
       if (!isGiftMode) {
@@ -945,7 +971,6 @@ export function useCheckout(options: UseCheckoutOptions) {
       pricingLoading,
       mounted,
       saveAsDefaultAddress,
-      isEditingOrderer,
       isGiftFinalStep,
       gridColumnsClass,
       originalTotal: displayOriginalTotal,

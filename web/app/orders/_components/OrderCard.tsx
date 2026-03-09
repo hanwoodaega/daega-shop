@@ -1,10 +1,16 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import { OrderWithItems } from '@/lib/order/order-types'
 import { formatPrice } from '@/lib/utils/utils'
-import { formatPhoneNumber } from '@/lib/utils/format-phone'
-import { getStatusText, getDeliveryTypeText, getStatusTextColor, getRefundStatusText } from '@/lib/order/order-utils'
+import {
+  getStatusText,
+  getDeliveryTypeText,
+  getStatusTextColor,
+  formatOrderDeliveryDisplay,
+} from '@/lib/order/order-utils'
+import { useCartStore } from '@/lib/store'
 
 interface OrderCardProps {
   order: OrderWithItems
@@ -17,6 +23,8 @@ interface OrderCardProps {
   onTrackDelivery: (order: OrderWithItems) => void
 }
 
+const PREVIEW_ITEMS = 3
+
 export default function OrderCard({
   order,
   expandedOrders,
@@ -28,212 +36,181 @@ export default function OrderCard({
   onTrackDelivery,
 }: OrderCardProps) {
   const router = useRouter()
+  const addToCart = useCartStore((state) => state.addItem)
   const isExpanded = expandedOrders.has(order.id)
+  const items = order.order_items || []
+  const totalItems = items.length
+  const displayItems = isExpanded ? items : items.slice(0, PREVIEW_ITEMS)
+
+  const copyOrderNumber = () => {
+    if (order.order_number) {
+      navigator.clipboard.writeText(order.order_number)
+      toast.success('주문번호가 복사되었습니다.')
+    }
+  }
+
+  const deliveryTypeLabel = getDeliveryTypeText(order.delivery_type)
+  const statusColorClass = getStatusTextColor(order.status)
+
+  const handleAddToCart = (item: NonNullable<OrderWithItems['order_items']>[number]) => {
+    addToCart({
+      productId: item.product_id,
+      name: item.product?.name || '상품',
+      price: item.price,
+      quantity: 1,
+      imageUrl: item.product?.image_url ?? null,
+      status: 'active',
+    })
+    toast.success('장바구니에 담았어요.')
+  }
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      {/* 주문 헤더 */}
-      <div className="bg-gray-50 px-4 py-3 border-b">
-        <p className="text-sm text-gray-600 mb-1">
-          주문일시: {new Date(order.created_at).toLocaleDateString('ko-KR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </p>
-        {order.order_number && (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              주문번호: <span className="font-mono text-primary-900 font-semibold">{order.order_number}</span>
-            </p>
-            <span className={`text-sm font-semibold ${getStatusTextColor(order.status)}`}>
-              {getStatusText(order.status, order.delivery_type)}
-            </span>
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+      {/* 헤더: 왼쪽 주문일/번호, 오른쪽 상태 */}
+      <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-base font-semibold text-gray-900 mb-0.5">
+            {new Date(order.created_at).toLocaleDateString('ko-KR', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+            }).replace(/\. /g, '.').replace(/\.$/, '')}
+          </p>
+          {order.order_number && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm text-gray-500">주문번호 {order.order_number}</span>
+              <button
+                type="button"
+                onClick={copyOrderNumber}
+                aria-label="주문번호 복사"
+                className="p-0.5 text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col items-end">
+          <span className={`text-base font-semibold ${statusColorClass}`}>
+            {getStatusText(order.status, order.delivery_type)}
+          </span>
+        </div>
+      </div>
+
+      {/* 상품 목록 */}
+      <div className="border-t border-gray-100">
+        {displayItems.map((item) => (
+          <div
+            key={item.id}
+            className="px-5 py-4 flex gap-4 border-b border-gray-100 last:border-b-0"
+          >
+            <div className="w-20 h-20 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden relative">
+              {item.product?.image_url ? (
+                <img
+                  src={item.product.image_url}
+                  alt={item.product?.name || '상품'}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                  <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-500 mb-0.5">{deliveryTypeLabel}</p>
+              <p className="text-sm font-semibold text-gray-900 leading-snug">
+                {item.product?.name || '상품'}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                <span className="font-semibold text-gray-900">{formatPrice(item.price)}원</span>
+                <span className="text-gray-500"> | {item.quantity}개</span>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleAddToCart(item)}
+              aria-label="장바구니 담기"
+              className="self-center p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition shrink-0"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </button>
           </div>
+        ))}
+
+        {/* 총 N건 주문 펼쳐보기 / 접기 */}
+        {totalItems > PREVIEW_ITEMS && (
+          <button
+            type="button"
+            onClick={() => onToggleExpand(order.id)}
+            className="w-full py-3 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-1 transition"
+          >
+            {isExpanded ? (
+              <>접기</>
+            ) : (
+              <>총 {totalItems}건 주문 펼쳐보기</>
+            )}
+            <svg
+              className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
         )}
       </div>
 
-      {/* 주문 상품 목록 */}
-      <div className="p-4">
-        {order.order_items && order.order_items.length > 0 && (
-          <div className="mb-4">
-            {/* 첫 번째 상품만 표시 */}
-            {!isExpanded ? (
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="w-16 h-16 bg-gray-200 rounded flex-shrink-0"></div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {order.order_items[0].product?.name || '상품'}
-                    {order.order_items.length > 1 && (
-                      <span className="text-gray-500 ml-1">
-                        외 {order.order_items.length - 1}개 상품
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {formatPrice(order.order_items[0].price)}원 × {order.order_items[0].quantity}개
-                  </p>
-                </div>
-              </div>
-            ) : (
-              /* 모든 상품 표시 */
-              <div className="space-y-3 mb-3">
-                {order.order_items.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-3">
-                    <div className="w-16 h-16 bg-gray-200 rounded flex-shrink-0"></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">
-                        {item.product?.name || '상품'}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {formatPrice(item.price)}원 × {item.quantity}개
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            {/* 자세히 보기 버튼 */}
-            <button
-              onClick={() => onToggleExpand(order.id)}
-              className="w-full py-2 text-sm text-primary-800 font-medium hover:bg-gray-50 rounded transition"
-            >
-              {isExpanded ? '접기 ▲' : '자세히 보기 ▼'}
-            </button>
-          </div>
+      {/* 하단 버튼: 반품 접수, 후기 작성 / 배송조회, 구매확정 등 */}
+      <div className="px-5 py-4 border-t border-gray-100 flex gap-2 flex-wrap">
+        {order.tracking_number && (order.status === 'IN_TRANSIT' || order.status === 'DELIVERED') && (
+          <button
+            type="button"
+            onClick={() => onTrackDelivery(order)}
+            className="flex-1 min-w-[100px] py-2.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+          >
+            배송조회
+          </button>
         )}
-
-        {/* 주문 정보 - 펼쳤을 때만 표시 */}
-        {isExpanded && (
-          <div className="border-t pt-3 space-y-2">
-            <div className="text-sm">
-              <span className="text-gray-600">배달 유형: </span>
-              <span className="text-gray-900 font-medium">{getDeliveryTypeText(order.delivery_type)}</span>
-            </div>
-            {order.delivery_time && (order.delivery_type === 'pickup' || order.delivery_type === 'quick') && (
-              <div className="text-sm">
-                <span className="text-gray-600">
-                  {order.delivery_type === 'pickup' ? '픽업 시간: ' : '배달 시간: '}
-                </span>
-                <span className="text-gray-900 font-medium">{order.delivery_time}</span>
-              </div>
-            )}
-            {/* 선물 주문인 경우 배송 정보 대신 상태 메시지 표시 */}
-            {order.gift_token ? (
-              <div className="text-sm pt-2">
-                <span className="text-gray-900 font-medium">
-                  {order.status === 'DELIVERED'
-                    ? '선물이 전달되었습니다.' 
-                    : '선물 받은 분에게 선물을 전달 중입니다.'}
-                </span>
-              </div>
-            ) : (
-              <>
-                <div className="text-sm">
-                  <span className="text-gray-600">배송지: </span>
-                  <span className="text-gray-900">{order.shipping_address}</span>
-                </div>
-                <div className="text-sm">
-                  <span className="text-gray-600">수령인: </span>
-                  <span className="text-gray-900">{order.shipping_name}</span>
-                </div>
-                <div className="text-sm">
-                  <span className="text-gray-600">연락처: </span>
-                  <span className="text-gray-900">{formatPhoneNumber(order.shipping_phone)}</span>
-                </div>
-                {order.delivery_note && (
-                  <div className="text-sm">
-                    <span className="text-gray-600">요청사항: </span>
-                    <span className="text-gray-900">{order.delivery_note}</span>
-                  </div>
-                )}
-              </>
-            )}
-            
-            {/* 환불 정보 */}
-            {order.refund_status && (
-              <div className="text-sm pt-2 border-t">
-                <span className="text-gray-600">환불 상태: </span>
-                <span className={`font-medium ${
-                  order.refund_status === 'completed' ? 'text-green-600' :
-                  order.refund_status === 'processing' ? 'text-blue-600' :
-                  'text-orange-600'
-                }`}>
-                  {getRefundStatusText(order.refund_status)}
-                </span>
-              </div>
-            )}
-            {order.refund_amount && (
-              <div className="text-sm">
-                <span className="text-gray-600">환불 금액: </span>
-                <span className="text-red-600 font-semibold">{formatPrice(order.refund_amount)}원</span>
-              </div>
-            )}
-          </div>
+        {order.status === 'ORDER_RECEIVED' && (
+          <button
+            type="button"
+            onClick={() => onCancelOrder(order.id)}
+            disabled={cancelingOrderId === order.id}
+            className="flex-1 min-w-[100px] py-2.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition disabled:opacity-50"
+          >
+            {cancelingOrderId === order.id ? '취소 중...' : '주문취소'}
+          </button>
         )}
-
-        {/* 결제 금액 */}
-        <div className="border-t mt-3 pt-3">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-base font-semibold text-gray-900">총 결제금액</span>
-            <span className="text-xl font-bold text-primary-900">
-              {formatPrice(order.total_amount)}원
-            </span>
-          </div>
-
-          {/* 버튼 영역 */}
-          <div className="flex gap-2">
-            {/* 배송조회 버튼 - 송장번호가 있고 배송 중이거나 배송 완료일 때만 표시 */}
-            {order.tracking_number && (
-              (order.status === 'IN_TRANSIT' ||
-               order.status === 'DELIVERED') && (
-                <button
-                  onClick={() => onTrackDelivery(order)}
-                  className="flex-1 bg-white border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
-                >
-                  배송조회
-                </button>
-              )
-            )}
-            
-            {/* 구매확정 버튼 - 배송완료 상태이고 아직 구매확정하지 않은 경우만 표시 */}
-            {order.status === 'DELIVERED' && !order.is_confirmed && (
-              <button
-                onClick={() => onConfirmPurchase(order.id)}
-                disabled={confirmingOrderId === order.id}
-                className="flex-1 bg-white text-red-600 border border-red-600 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition disabled:opacity-50"
-              >
-                {confirmingOrderId === order.id ? '처리 중...' : '구매확정'}
-              </button>
-            )}
-            
-            {/* 구매확정 완료 후: 리뷰 작성 유도 버튼 */}
-            {order.status === 'DELIVERED' && order.is_confirmed && (
-              <button
-                onClick={() => router.push('/profile/reviews')}
-                className="flex-1 bg-white border border-blue-300 text-blue-700 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition"
-              >
-                리뷰 작성하기
-              </button>
-            )}
-            
-            {/* 주문취소 버튼 - 주문완료 상태일 때만 표시 */}
-            {order.status === 'ORDER_RECEIVED' && (
-              <button
-                onClick={() => onCancelOrder(order.id)}
-                disabled={cancelingOrderId === order.id}
-                className="flex-1 bg-white border border-red-300 text-red-600 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition disabled:opacity-50"
-              >
-                {cancelingOrderId === order.id ? '취소 중...' : '주문취소'}
-              </button>
-            )}
-          </div>
-        </div>
+        {order.status === 'DELIVERED' && !order.is_confirmed && (
+          <button
+            type="button"
+            onClick={() => onConfirmPurchase(order.id)}
+            disabled={confirmingOrderId === order.id}
+            className="flex-1 min-w-[100px] py-2.5 rounded-lg text-sm font-medium bg-primary-100 text-primary-900 hover:bg-primary-200 transition disabled:opacity-50"
+          >
+            {confirmingOrderId === order.id ? '처리 중...' : '구매확정'}
+          </button>
+        )}
+        {order.status === 'DELIVERED' && (
+          <button
+            type="button"
+            onClick={() => router.push('/profile/reviews')}
+            className="flex-1 min-w-[100px] py-2.5 rounded-lg text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 transition"
+          >
+            후기 작성
+          </button>
+        )}
       </div>
     </div>
   )
 }
-

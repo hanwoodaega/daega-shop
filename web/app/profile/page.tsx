@@ -1,17 +1,34 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import Header from '@/components/layout/Header'
-import Footer from '@/components/layout/Footer'
-import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useCartStore } from '@/lib/store'
+import { useOrders } from '@/lib/order'
+import OrdersList from '@/app/orders/_components/OrdersList'
+import OrderSkeleton from '@/app/orders/_components/OrderSkeleton'
+import GiftShareBox from '@/app/orders/_components/GiftShareBox'
 
-export default function ProfilePage() {
+function ProfilePageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, loading, signOut } = useAuth()
+  const giftToken = searchParams?.get('giftToken')
+  const {
+    orders,
+    loadingOrders,
+    cancelingOrderId,
+    confirmingOrderId,
+    expandedOrders,
+    giftOrder,
+    orderPeriodMonths,
+    setOrderPeriodMonths,
+    toggleOrderExpand,
+    handleCancelOrder,
+    handleTrackDelivery,
+    handleConfirmPurchase,
+  } = useOrders({ userId: user?.id ?? undefined, giftToken: giftToken ?? undefined, orderPeriodMonths: 1 })
   const [userName, setUserName] = useState<string>('')
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [orderCount, setOrderCount] = useState(0)
@@ -184,14 +201,9 @@ export default function ProfilePage() {
             </div>
           </header>
         </div>
-        <div className="hidden lg:block">
-          <Header showCartButton />
-        </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>
-        <Footer />
-        <BottomNavbar />
       </div>
     )
   }
@@ -217,13 +229,74 @@ export default function ProfilePage() {
           </div>
         </header>
       </div>
-      {/* PC: 메인 헤더 + 메인메뉴 */}
-      <div className="hidden lg:block">
-        <Header showCartButton />
-      </div>
 
-      <main className="flex-1 container mx-auto max-w-2xl px-4 py-6 pb-24 lg:pb-6">
-        <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">마이페이지</h2>
+      <main className="flex-1 container mx-auto max-w-2xl px-4 py-6 pb-24 lg:pb-6 lg:max-w-none">
+        {/* PC 전용: 오른쪽 영역 디폴트 = 주문 내역 */}
+        <div className="hidden lg:block">
+          {user ? (
+            <>
+              {/* 상단 카드: 제목 + 기간/검색 */}
+              <div className="bg-white rounded-lg border border-gray-200 p-5 pb-4 mb-4">
+                <h2 className="text-2xl font-bold text-primary-900 mb-4 text-center">주문 내역</h2>
+                <div className="border-t border-gray-200 pt-4 flex flex-wrap items-center gap-3">
+                  <select
+                    value={orderPeriodMonths}
+                    onChange={(e) => setOrderPeriodMonths(Number(e.target.value))}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  >
+                    <option value={1}>1개월</option>
+                    <option value={3}>3개월</option>
+                    <option value={6}>6개월</option>
+                    <option value={12}>1년</option>
+                    <option value={36}>3년</option>
+                  </select>
+                  <div className="flex-1 min-w-[200px] relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </span>
+                    <input
+                      type="search"
+                      placeholder="상품명으로 검색해보세요"
+                      className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm text-gray-900 placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+              </div>
+              {giftToken && (
+                <GiftShareBox giftToken={giftToken} giftOrder={giftOrder} />
+              )}
+              <OrdersList
+                orders={orders}
+                loadingOrders={loadingOrders}
+                expandedOrders={expandedOrders}
+                cancelingOrderId={cancelingOrderId}
+                confirmingOrderId={confirmingOrderId}
+                onToggleExpand={toggleOrderExpand}
+                onCancelOrder={handleCancelOrder}
+                onConfirmPurchase={handleConfirmPurchase}
+                onTrackDelivery={handleTrackDelivery}
+              />
+            </>
+          ) : (
+            <div className="bg-pink-100 rounded-lg shadow-md px-6 pt-6 pb-4">
+              <Link href="/auth/login?next=/profile" className="flex items-center gap-2 hover:opacity-80 transition">
+                <h1 className="text-lg font-medium text-black">로그인</h1>
+                <span className="text-4xl font-medium text-black leading-none">·</span>
+                <h1 className="text-lg font-medium text-black">회원가입</h1>
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+              <p className="text-sm text-black mt-3">회원가입하고 혜택 받아가세요!</p>
+              <Link href="/auth/signup" className="inline-block mt-2 px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-blue-950 transition">신규 회원 가입 혜택 보기</Link>
+            </div>
+          )}
+        </div>
+
+        {/* 모바일 전용: 마이페이지 대시보드 + 메뉴 */}
+        <div className="lg:hidden">
         {user ? (
           <>
             {loadingProfile ? (
@@ -324,24 +397,6 @@ export default function ProfilePage() {
                 </svg>
               </Link>
 
-              {/* 알림 설정 */}
-              <Link
-                href="/notifications"
-                className="flex items-center justify-between p-4 hover:bg-gray-50 transition"
-              >
-                <div className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  <span className="text-base font-medium text-gray-900">알림 설정</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-red-600">알림 설정하고 혜택받기</span>
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </Link>
 
               {/* 고객센터 */}
               <div className="px-4 pt-8 pb-2">
@@ -489,11 +544,25 @@ export default function ProfilePage() {
             </div>
           </>
         )}
+        </div>
       </main>
-
-      <Footer />
-      <BottomNavbar />
     </div>
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex flex-col bg-white">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800" />
+          </div>
+        </div>
+      }
+    >
+      <ProfilePageContent />
+    </Suspense>
   )
 }
 

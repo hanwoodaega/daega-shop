@@ -22,7 +22,9 @@ export interface OrderInput {
   used_points: number
   is_gift: boolean
   gift_message: string | null
-  gift_card_design: string | null
+  gift_recipient_phone?: string
+  /** 선물 알림톡 발송 시 사용 (보내는 분 이름) */
+  gift_sender_name?: string
   payment_method?: string | null
 }
 
@@ -37,6 +39,7 @@ export interface PricingResult {
 
 export interface OrderItemSnapshot {
   product_id: string
+  product_name?: string
   quantity: number
   price: number
   final_unit_price: number
@@ -146,6 +149,7 @@ export async function calculateOrderPricing({
     discountedTotal += pricing.finalPrice * item.quantity
     itemSnapshots.push({
       product_id: item.productId,
+      product_name: product.name,
       quantity: item.quantity,
       price: product.price,
       final_unit_price: pricing.finalPrice,
@@ -168,6 +172,7 @@ export async function calculateOrderPricing({
         discountedTotal += pricing.finalPrice * item.quantity
         itemSnapshots.push({
           product_id: item.productId,
+          product_name: product.name,
           quantity: item.quantity,
           price: product.price,
           final_unit_price: pricing.finalPrice,
@@ -206,6 +211,7 @@ export async function calculateOrderPricing({
       discountedTotal += paidTotal
       itemSnapshots.push({
         product_id: item.productId,
+        product_name: product.name,
         quantity: item.quantity,
         price: product.price,
         final_unit_price: finalUnitPrice,

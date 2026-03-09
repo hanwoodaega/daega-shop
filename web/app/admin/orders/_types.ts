@@ -35,9 +35,6 @@ export interface Order {
   couponDiscount?: number
   usedPoints?: number
   shipping?: number
-  refund_status?: 'pending' | 'processing' | 'completed' | null
-  refund_amount?: number | null
-  refund_requested_at?: string | null
   refund_completed_at?: string | null
   tracking_number?: string | null
   is_gift?: boolean

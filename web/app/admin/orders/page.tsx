@@ -19,7 +19,6 @@ export default function AdminOrdersPage() {
     trackingInputs,
     setTrackingNumber,
     handleStatusChange,
-    handleRefundComplete,
     handleAutoConfirm,
   } = useAdminOrders()
 
@@ -75,7 +74,6 @@ export default function AdminOrdersPage() {
         trackingInputs={trackingInputs}
         setTrackingNumber={setTrackingNumber}
         onStatusChange={handleStatusChange}
-        onRefundComplete={handleRefundComplete}
       />
     </AdminPageLayout>
   )

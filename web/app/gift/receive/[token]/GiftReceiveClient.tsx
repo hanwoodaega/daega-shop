@@ -20,12 +20,11 @@ interface Order {
   id: string
   total_amount: number
   gift_message: string | null
-  gift_card_design: string | null
   order_items: OrderItem[]
   created_at: string
   gift_expires_at?: string | null
   shipping_address?: string | null
-  gift_status?: string | null
+  status?: string
   users?: {
     name: string
     email: string
@@ -99,15 +98,17 @@ export default function GiftReceiveClient() {
       setExpiresAt(data.expires_at || null)
       
       // 이미 수령된 선물인 경우
-      if (data.alreadyReceived || data.order.gift_status === 'used') {
+      if (data.alreadyReceived || data.order.status === 'gift_received') {
         setError('이미 수령된 선물입니다.')
         setLoading(false)
         return
       }
       
-      // 만료 상태 체크
-      if (data.order.gift_status === 'expired' || (data.expires_at && new Date(data.expires_at) < new Date())) {
-        setIsExpired(true)
+      // 만료 상태 체크 (수령 완료가 아니고 만료일 지남)
+      if (!data.order.status || data.order.status !== 'gift_received') {
+        if (data.expires_at && new Date(data.expires_at) < new Date()) {
+          setIsExpired(true)
+        }
       }
     } catch (error) {
       console.error('주문 조회 실패:', error)
@@ -255,7 +256,7 @@ export default function GiftReceiveClient() {
   }
 
   // 만료된 경우 만료 안내 화면 표시
-  if (isExpired || order.gift_status === 'expired') {
+  if (isExpired) {
     return (
       <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F7F3ED' }}>
         <main className="flex-1 container mx-auto px-4 py-8">
@@ -265,7 +266,7 @@ export default function GiftReceiveClient() {
                 이 선물은 유효기간이 만료되었습니다.
               </h1>
               <p className="text-sm text-gray-700 leading-relaxed mb-4">
-                5일 이내에 수령이 완료되지 않아 주문이 자동으로 취소되었어요.
+                7일 이내에 수령이 완료되지 않아 주문이 자동으로 취소되었어요.
               </p>
               <p className="text-sm text-gray-700 leading-relaxed">
                 궁금한 점이 있으시면 고객센터로 문의해주세요.
@@ -280,7 +281,7 @@ export default function GiftReceiveClient() {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F7F3ED' }}>
       {/* 상단 고정 메시지 */}
-      {order.users?.name && (
+      {(order.users?.name) && (
         <div className="sticky top-0 z-30 bg-white border-b-2 py-3" style={{ borderColor: '#D4C6A8' }}>
           <div className="container mx-auto px-4 max-w-2xl">
             <p className="text-center text-gray-800 font-medium">
@@ -292,123 +293,11 @@ export default function GiftReceiveClient() {
       
       <main className="flex-1 container mx-auto px-4 py-8 pb-24">
         <div className="max-w-2xl mx-auto">
-          {/* 선물 카드 */}
-          {order.gift_card_design && (
-            <div className="mb-6">
-              <div className="relative overflow-hidden border-2 shadow-lg" style={{ aspectRatio: '1/1', borderColor: '#D4C6A8' }}>
-                <img
-                  src={`/images/gift-cards/${order.gift_card_design}.jpg`}
-                  alt="선물 카드"
-                  className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // 이미지가 없을 경우 그라데이션 배경으로 폴백
-                      const target = e.target as HTMLImageElement
-                      target.style.display = 'none'
-                      const parent = target.parentElement!
-                      const cardDesign = order.gift_card_design || ''
-                      const cardType = cardDesign.startsWith('birthday') 
-                        ? 'birthday'
-                        : cardDesign.startsWith('thanks')
-                        ? 'thanks'
-                        : cardDesign.startsWith('celebration')
-                        ? 'celebration'
-                        : cardDesign.startsWith('anniversary')
-                        ? 'anniversary'
-                        : 'default'
-                    const gradient = cardType === 'birthday' 
-                      ? 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)'
-                      : cardType === 'anniversary'
-                      ? 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)'
-                      : cardType === 'thanks'
-                      ? 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'
-                      : 'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)'
-                    parent.innerHTML = `
-                      <div class="w-full h-full flex items-center justify-center" style="background: ${gradient}">
-                        <div class="text-center p-6">
-                          <div class="text-4xl mb-2">
-                            ${cardType === 'birthday' ? '🎂' : cardType === 'anniversary' ? '💝' : cardType === 'thanks' ? '🙏' : '🎁'}
-                          </div>
-                          <p class="text-lg font-bold text-gray-800 mb-2">
-                            ${cardType === 'birthday' ? '생일 축하' : cardType === 'anniversary' ? '기념일' : cardType === 'thanks' ? '감사 인사' : '특별한 선물'}
-                          </p>
-                        </div>
-                      </div>
-                    `
-                  }}
-                />
-                {/* 메시지 오버레이 */}
-                {order.gift_message && (
-                  <div 
-                    className="absolute inset-0 flex items-center justify-center p-8"
-                    style={{
-                      top: order.gift_card_design === 'celebration-2' 
-                        ? '28%' 
-                        : order.gift_card_design === 'thanks-1'
-                        ? '25%' // thanks-1은 텍스트 더 아래로
-                        : order.gift_card_design === 'birthday-1'
-                        ? '24%' // birthday-1은 텍스트 조금 더 아래로
-                        : order.gift_card_design === 'thanks-2'
-                        ? '24%' // thanks-2는 텍스트 아래로
-                        : '22%',
-                      height: '60%',
-                      alignItems: 'flex-start',
-                      justifyContent: 'flex-start'
-                    }}
-                  >
-                    <div 
-                      className="w-full h-full flex items-start justify-start"
-                      style={{
-                        paddingLeft: order.gift_card_design === 'celebration-1' 
-                          ? '6%' 
-                          : order.gift_card_design === 'thanks-2' 
-                          ? '10%' 
-                          : order.gift_card_design === 'celebration-2'
-                          ? '5%'
-                          : '1rem',
-                        paddingRight: order.gift_card_design === 'celebration-1' 
-                          ? '6%' 
-                          : order.gift_card_design === 'thanks-2' 
-                          ? '10%' 
-                          : order.gift_card_design === 'celebration-2'
-                          ? '5%'
-                          : '1rem',
-                        paddingTop: '1rem',
-                        paddingBottom: '1rem'
-                      }}
-                    >
-                      <p 
-                        className="text-left whitespace-pre-wrap break-words w-full"
-                        style={{ 
-                          fontSize: order.gift_card_design === 'celebration-1' 
-                            ? 'clamp(16px, 3.2vw, 26px)' 
-                            : order.gift_card_design === 'celebration-2'
-                            ? 'clamp(16px, 3.2vw, 26px)' // 텍스트 크기 줄임
-                            : order.gift_card_design === 'thanks-1'
-                            ? 'clamp(16px, 3.2vw, 26px)' // thanks-1은 텍스트 더 크게
-                            : order.gift_card_design === 'birthday-1'
-                            ? 'clamp(16px, 3.2vw, 25px)' // birthday-1은 텍스트 조금 더 크게
-                            : 'clamp(14px, 2.8vw, 22px)',
-                          lineHeight: order.gift_card_design === 'celebration-2' ? '1.4' : '1.6', // celebration-2는 위아래 간격 줄임
-                          color: '#000000',
-                          fontFamily: 'S-CoreDream, S-Core Dream, Noto Sans KR, sans-serif',
-                          fontWeight: 500,
-                          textShadow: 'none'
-                        }}
-                      >
-                        {order.gift_message}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* 선물 메시지 (카드 디자인이 없는 경우) */}
-          {order.gift_message && !order.gift_card_design && (
+          {/* 선물 메시지 */}
+          {order.gift_message && (
             <div className="mb-6 p-4 bg-white shadow-md border-2" style={{ borderColor: '#D4C6A8' }}>
               <p className="text-sm text-gray-800 mb-1">선물 메시지</p>
-              <p className="text-gray-800">{order.gift_message}</p>
+              <p className="text-gray-800 whitespace-pre-wrap">{order.gift_message}</p>
             </div>
           )}
 
@@ -441,12 +330,12 @@ export default function GiftReceiveClient() {
             </div>
           </div>
 
-          {/* 이미 수령된 선물인 경우 (gift_status === 'used') */}
-          {order.gift_status === 'used' ? (
+          {/* 이미 수령된 선물인 경우 (status === 'gift_received') */}
+          {order.status === 'gift_received' ? (
             <div className="bg-white shadow-md p-6 border-2" style={{ borderColor: '#D4C6A8' }}>
               <p className="text-gray-800 text-center">이미 배송 정보가 입력되었습니다.</p>
             </div>
-          ) : (order.gift_status === 'pending' || !order.gift_status) ? (
+          ) : (
             <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="bg-white shadow-md p-6 border-2" style={{ borderColor: '#D4C6A8' }}>
             <h2 className="text-xl font-bold mb-4 text-gray-800 text-center">배송 정보</h2>
 
@@ -565,10 +454,10 @@ export default function GiftReceiveClient() {
               </div>
             </div>
           </form>
-          ) : null}
+          )}
 
           {/* 선물 링크 유효기간 정보 */}
-          {expiresAt && order.gift_status !== 'expired' && order.gift_status !== 'used' && (
+          {expiresAt && !isExpired && order.status !== 'gift_received' && (
             <div className="mt-6 p-4 bg-gray-50 border-2 text-center" style={{ borderColor: '#D4C6A8' }}>
               <p className="text-sm text-gray-800">
                 선물 링크는 <strong className="text-gray-800">{new Date(expiresAt).toLocaleDateString('ko-KR')}</strong>까지 유효합니다.
@@ -578,9 +467,8 @@ export default function GiftReceiveClient() {
         </div>
       </main>
 
-      {/* 하단 고정 버튼 영역 (pending 상태일 때만 표시) */}
-      {order && 
-       (order.gift_status === 'pending' || !order.gift_status) && (
+      {/* 하단 고정 버튼 영역 (수령 대기 상태일 때만 표시) */}
+      {order && order.status !== 'gift_received' && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 z-50" style={{ borderColor: '#D4C6A8' }}>
           <div className="container mx-auto px-4 py-3 max-w-2xl">
             {/* 선물 수령하기 버튼 */}

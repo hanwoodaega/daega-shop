@@ -1,0 +1,65 @@
+'use client'
+
+/** 숫자만 있는 휴대폰 번호를 010-1234-5678 형식으로 포맷 */
+function formatPhoneWithHyphen(digits: string): string {
+  const d = digits.replace(/\D/g, '').slice(0, 11)
+  if (d.length <= 3) return d
+  if (d.length <= 7) return `${d.slice(0, 3)}-${d.slice(3)}`
+  return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`
+}
+
+interface GiftRecipientFormProps {
+  giftData: {
+    message: string
+    recipientPhone: string
+  }
+  /** true면 상위 카드 안에 넣을 때 (상단 구분선만) */
+  embedded?: boolean
+  onRecipientPhoneChange: (value: string) => void
+  onMessageChange: (message: string) => void
+}
+
+export default function GiftRecipientForm({
+  giftData,
+  embedded = false,
+  onRecipientPhoneChange,
+  onMessageChange,
+}: GiftRecipientFormProps) {
+  return (
+    <div className={embedded ? 'pt-6 border-t border-gray-200' : 'bg-white'}>
+      <div className="space-y-4 mb-6">
+        <div>
+          <label className="block text-base font-medium mb-2">
+            받는 분 휴대폰 번호 <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="tel"
+            value={formatPhoneWithHyphen(giftData.recipientPhone)}
+            onChange={(e) => {
+              const numbers = e.target.value.replace(/[^0-9]/g, '').slice(0, 11)
+              onRecipientPhoneChange(numbers)
+            }}
+            placeholder="휴대폰 번호를 입력해주세요"
+            maxLength={13}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
+        </div>
+
+        <div>
+          <label className="block text-base font-medium mb-2">
+            선물 메시지 <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            value={giftData.message}
+            onChange={(e) => onMessageChange(e.target.value)}
+            rows={4}
+            maxLength={150}
+            placeholder="받는 분께 전달할 메시지를 작성해주세요"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
+          <p className="text-xs text-gray-500 mt-1">{giftData.message.length}/150</p>
+        </div>
+      </div>
+    </div>
+  )
+}

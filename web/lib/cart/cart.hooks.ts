@@ -35,6 +35,8 @@ export function useCart() {
   const [quickDeliveryArea, setQuickDeliveryArea] = useState('')
   const [quickDeliveryTime, setQuickDeliveryTime] = useState('')
   const [isKakaoGiftAvailable, setIsKakaoGiftAvailable] = useState(true)
+  /** 로그인 모달에서 비회원으로 주문 시 이동할 체크아웃 모드 (선물하기로 연 경우 'gift') */
+  const [pendingGuestCheckoutMode, setPendingGuestCheckoutMode] = useState<'gift' | null>(null)
 
   // Hooks
   const { address: defaultAddress, loading: loadingAddress, reload: reloadDefaultAddress } = useDefaultAddress(true)
@@ -181,6 +183,29 @@ export function useCart() {
   const handleGuestCheckout = useCallback(() => {
     const selectedItems = getSelectedItems()
 
+    if (pendingGuestCheckoutMode === 'gift') {
+      const validation = validateGiftCheckout({
+        selectedItems,
+        deliveryMethod,
+        pickupTime,
+        quickDeliveryArea,
+        quickDeliveryTime,
+        isGift: true,
+      })
+      if (!validation.valid) {
+        toast.error(validation.error || '주문 정보를 확인해주세요.', { icon: validation.errorIcon })
+        return
+      }
+      setShowLoginPrompt(false)
+      setPendingGuestCheckoutMode(null)
+      sessionStorage.setItem('deliveryMethod', deliveryMethod)
+      sessionStorage.setItem('pickupTime', pickupTime)
+      sessionStorage.setItem('quickDeliveryArea', quickDeliveryArea)
+      sessionStorage.setItem('quickDeliveryTime', quickDeliveryTime)
+      router.push('/checkout?mode=gift')
+      return
+    }
+
     const validation = validateCheckout({
       selectedItems,
       deliveryMethod,
@@ -197,7 +222,7 @@ export function useCart() {
     }
 
     goToCheckout()
-  }, [getSelectedItems, deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime, goToCheckout])
+  }, [getSelectedItems, pendingGuestCheckoutMode, deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime, goToCheckout, router])
 
   const handleGiftCheckout = useCallback(() => {
     if (!ensureKakaoGiftAvailability()) {
@@ -221,8 +246,9 @@ export function useCart() {
       })
       return
     }
-    
+
     if (!user) {
+      setPendingGuestCheckoutMode('gift')
       setShowLoginPrompt(true)
       return
     }
@@ -239,6 +265,11 @@ export function useCart() {
     setSelectedAddressId(defaultAddress?.id || null)
     setShowAddressModal(true)
   }, [defaultAddress?.id, loadAllAddresses])
+
+  const closeLoginPrompt = useCallback(() => {
+    setShowLoginPrompt(false)
+    setPendingGuestCheckoutMode(null)
+  }, [])
 
   return {
     // State
@@ -274,6 +305,7 @@ export function useCart() {
     setShowLoginPrompt,
     setShowAddressModal,
     setSelectedAddressId,
+    closeLoginPrompt,
     handleSelectAddress,
     confirmAddressSelection,
     handleCheckout,

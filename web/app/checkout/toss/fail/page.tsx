@@ -3,11 +3,14 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
+const USER_CANCEL_CODES = ['PAY_PROCESS_CANCELED', 'USER_CANCEL', 'REJECTED_PAYMENT']
+
 function TossFailContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [message, setMessage] = useState('결제에 실패했습니다.')
   const [code, setCode] = useState<string | null>(null)
+  const [isUserCancel, setIsUserCancel] = useState(false)
 
   useEffect(() => {
     const errorMessage = searchParams.get('message')
@@ -21,10 +24,40 @@ function TossFailContent() {
       setCode(errorCode)
     }
 
+    const canceled = errorCode && USER_CANCEL_CODES.includes(errorCode)
+    if (canceled) {
+      setIsUserCancel(true)
+      let redirectUrl = '/checkout'
+      if (orderId) {
+        try {
+          const raw = sessionStorage.getItem(`toss_checkout_${orderId}`)
+          if (raw) {
+            const meta = JSON.parse(raw)
+            if (meta?.isGiftMode) {
+              redirectUrl = '/checkout?mode=gift'
+            }
+            sessionStorage.removeItem(`toss_checkout_${orderId}`)
+          }
+        } catch {
+          // ignore
+        }
+      }
+      router.replace(redirectUrl)
+      return
+    }
+
     if (orderId) {
       sessionStorage.removeItem(`toss_checkout_${orderId}`)
     }
-  }, [searchParams])
+  }, [searchParams, router])
+
+  if (isUserCancel) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-sm text-gray-500">결제창으로 이동 중...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">

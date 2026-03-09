@@ -57,14 +57,14 @@ export default function GiftStep1Summary({
               key={`${item.productId}-${itemIndex}`} 
               className="pb-3"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0 flex items-baseline gap-1.5 overflow-hidden">
                   {item.brand && (
-                    <div className="text-base font-semibold text-gray-900 mb-0.5">{item.brand}</div>
+                    <span className="text-base font-semibold text-gray-900 shrink-0">{item.brand}</span>
                   )}
-                  <h3 className="text-base font-semibold text-gray-900 line-clamp-2">{item.name}</h3>
+                  <span className="text-base font-normal text-gray-900 truncate min-w-0">{item.name}</span>
                 </div>
-                <div className="text-base font-semibold text-gray-900 ml-4">x{item.quantity}</div>
+                <div className="text-base font-semibold text-gray-900 shrink-0">x{item.quantity}</div>
               </div>
             </div>
           ))
@@ -78,14 +78,14 @@ export default function GiftStep1Summary({
               key={`${item.productId}-${index}`} 
               className="pb-3"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0 flex items-baseline gap-1.5 overflow-hidden">
                   {item.brand && (
-                    <div className="text-base font-semibold text-gray-900 mb-0.5">{item.brand}</div>
+                    <span className="text-base font-semibold text-gray-900 shrink-0">{item.brand}</span>
                   )}
-                  <h3 className="text-base font-semibold text-gray-900 line-clamp-2">{item.name}</h3>
+                  <span className="text-base font-normal text-gray-900 truncate min-w-0">{item.name}</span>
                 </div>
-                <div className="text-base font-semibold text-gray-900 ml-4">x{item.quantity}</div>
+                <div className="text-base font-semibold text-gray-900 shrink-0">x{item.quantity}</div>
               </div>
             </div>
           ))

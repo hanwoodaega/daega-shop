@@ -17,6 +17,6 @@ export interface OrderWithItems extends Order {
   gift_message?: string | null
   tracking_number?: string | null
   tracking_company?: string | null
-  refund_status?: 'pending' | 'processing' | 'completed' | null
+  refund_completed_at?: string | null
 }
 

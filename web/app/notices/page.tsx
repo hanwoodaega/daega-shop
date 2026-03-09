@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
@@ -9,7 +10,14 @@ export default function NoticesPage() {
   const router = useRouter()
   const cartCount = useCartStore((state) => state.getTotalItems())
 
-  // 임시 공지사항 데이터 (나중에 DB에서 가져올 수 있음)
+  // PC는 /profile/notices 사용 → 이 페이지는 모바일 전용
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+      router.replace('/profile/notices')
+    }
+  }, [router])
+
   const notices = [
     {
       id: 1,
@@ -28,11 +36,10 @@ export default function NoticesPage() {
   ]
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* 헤더 */}
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* 모바일 전용 헤더 */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
-          {/* 왼쪽: 뒤로가기 */}
           <button
             onClick={() => router.back()}
             aria-label="뒤로가기"
@@ -42,15 +49,9 @@ export default function NoticesPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          
-          {/* 중앙: 제목 */}
           <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">
-              공지사항
-            </h1>
+            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">공지사항</h1>
           </div>
-          
-          {/* 오른쪽: 장바구니 버튼 */}
           <div className="ml-auto flex items-center">
             <button
               onClick={() => router.push('/cart')}
@@ -73,9 +74,8 @@ export default function NoticesPage() {
           </div>
         </div>
       </header>
-      
-      <main className="flex-1 container mx-auto px-4 py-4 pb-24">
 
+      <main className="flex-1 container mx-auto px-4 py-4 pb-24">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-lg font-bold mb-4 flex items-center">
             <svg className="w-6 h-6 mr-2 text-primary-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,9 +85,7 @@ export default function NoticesPage() {
           </h2>
           <div className="space-y-4">
             {notices.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                공지사항이 없습니다.
-              </div>
+              <div className="text-center py-12 text-gray-500">공지사항이 없습니다.</div>
             ) : (
               notices.map((notice) => (
                 <div
@@ -97,15 +95,13 @@ export default function NoticesPage() {
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       {notice.isImportant && (
-                        <span className="bg-red-100 text-red-600 text-xs font-semibold px-2 py-1 rounded">
-                          중요
-                        </span>
+                        <span className="bg-red-100 text-red-600 text-xs font-semibold px-2 py-1 rounded">중요</span>
                       )}
-                      <h2 className="text-lg font-semibold text-gray-900">{notice.title}</h2>
+                      <h3 className="text-base font-semibold text-gray-900">{notice.title}</h3>
                     </div>
                     <span className="text-sm text-gray-500">{notice.date}</span>
                   </div>
-                  <p className="text-gray-600 mt-2">{notice.content}</p>
+                  <p className="text-sm text-gray-600 mt-2">{notice.content}</p>
                 </div>
               ))
             )}
@@ -118,4 +114,3 @@ export default function NoticesPage() {
     </div>
   )
 }
-

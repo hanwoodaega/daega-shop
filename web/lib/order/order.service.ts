@@ -1,7 +1,9 @@
 import { OrderWithItems } from './order-types'
 
-export async function fetchOrders(): Promise<OrderWithItems[]> {
-  const res = await fetch('/api/orders')
+export async function fetchOrders(months: number = 1): Promise<OrderWithItems[]> {
+  const params = new URLSearchParams()
+  params.set('months', String(months))
+  const res = await fetch(`/api/orders?${params.toString()}`)
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}))

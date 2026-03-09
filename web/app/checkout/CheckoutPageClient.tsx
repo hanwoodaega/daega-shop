@@ -3,6 +3,8 @@
 import { Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
+import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
 import { formatPrice } from '@/lib/utils/utils'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useDaumPostcodeScript } from '@/lib/postcode/useDaumPostcode'
@@ -16,8 +18,7 @@ import {
   OrdererInfo,
   DeliveryFormQuick,
   DeliveryFormRegular,
-  GiftMessageCard,
-  PaymentMethodSelector,
+  GiftRecipientForm,
   OrderSummaryBox,
   CheckoutBottomBar,
 } from './_components'
@@ -82,7 +83,6 @@ function CheckoutPageContent() {
     isProcessing,
     mounted,
     saveAsDefaultAddress,
-    isEditingOrderer,
     isGiftFinalStep,
     gridColumnsClass,
     originalTotal,
@@ -178,17 +178,27 @@ function CheckoutPageContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <CheckoutHeader
-        isGiftMode={isGiftMode}
-        currentStep={currentStep}
-        totalGiftSteps={totalGiftSteps}
-      />
-      
+      {/* 모바일: 기존 주문/결제 헤더 */}
+      <div className="lg:hidden">
+        <CheckoutHeader
+          isGiftMode={isGiftMode}
+          currentStep={currentStep}
+          totalGiftSteps={totalGiftSteps}
+        />
+      </div>
+      {/* PC: 메인 헤더 + 메인메뉴 */}
+      <div className="hidden lg:block">
+        <Header showCartButton />
+      </div>
+
       <main
-        className={`flex-1 container mx-auto px-4 py-4 ${
+        className={`flex-1 container mx-auto max-w-4xl px-2 pt-4 pb-10 md:pb-32 lg:pb-40 ${
           isGiftMode ? 'bg-gray-50' : ''
-        } ${isGiftMode && currentStep === 1 ? 'pb-24 md:pb-32' : ''}`}
+        } ${isGiftMode && currentStep < totalGiftSteps ? 'pb-24 md:pb-32' : ''}`}
       >
+        <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">
+          {isGiftMode ? '선물하기' : '주문/결제'}
+        </h2>
         <form id="checkout-form" onSubmit={handleSubmit}>
           <div className={`grid grid-cols-1 ${gridColumnsClass} ${isGiftFinalStep ? 'gap-4' : 'gap-8'}`}>
             <div className={`space-y-3 ${isGiftFinalStep ? 'lg:col-span-2' : 'lg:col-span-1'}`}>
@@ -202,20 +212,21 @@ function CheckoutPageContent() {
                 />
               )}
 
-              {isGiftMode && currentStep === 1 && (
-                <GiftSenderInfo
-                  formData={formData}
-                  isEditingOrderer={isEditingOrderer}
-                  onEdit={() => setFlags(prev => ({ ...prev, isEditingOrderer: true }))}
-                  onCancel={() => setFlags(prev => ({ ...prev, isEditingOrderer: false }))}
-                  onSave={() => {
-                    if (formData.name && formData.phone) {
-                      setFlags(prev => ({ ...prev, isEditingOrderer: false }))
-                    }
-                  }}
-                  onInputChange={handleInputChange}
-                  onPhoneChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
-                />
+              {isGiftMode && currentStep === 2 && (
+                <div className="bg-white rounded-lg shadow-md p-6 mb-10">
+                  <GiftSenderInfo
+                    embedded
+                    formData={formData}
+                    onInputChange={handleInputChange}
+                    onPhoneChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
+                  />
+                  <GiftRecipientForm
+                    embedded
+                    giftData={giftData}
+                    onRecipientPhoneChange={(value) => setGiftData(prev => ({ ...prev, recipientPhone: value }))}
+                    onMessageChange={(message) => setGiftData(prev => ({ ...prev, message }))}
+                  />
+                </div>
               )}
 
               {!isGiftMode && (
@@ -248,15 +259,6 @@ function CheckoutPageContent() {
                   onSearchAddress={handleSearchAddress}
                   onInputChange={handleInputChange}
                   onSaveAsDefaultChange={(checked) => setFlags(prev => ({ ...prev, saveAsDefaultAddress: checked }))}
-                />
-              )}
-
-              {isGiftMode && currentStep === 2 && (
-                <GiftMessageCard
-                  giftData={giftData}
-                  onWithMessageChange={(withMessage) => setGiftData(prev => ({ ...prev, withMessage }))}
-                  onCardDesignChange={(design) => setGiftData(prev => ({ ...prev, cardDesign: design as any }))}
-                  onMessageChange={(message) => setGiftData(prev => ({ ...prev, message }))}
                 />
               )}
 
@@ -369,12 +371,6 @@ function CheckoutPageContent() {
               </div>
               )}
 
-              {isPaymentStepVisible && (
-                <PaymentMethodSelector
-                  paymentMethod={paymentMethod}
-                  onPaymentMethodChange={setPaymentMethod}
-                />
-              )}
             </div>
 
             {isGiftFinalStep && (
@@ -455,6 +451,8 @@ function CheckoutPageContent() {
         loadingCoupons={loadingCoupons}
         subtotal={subtotal}
       />
+
+      <Footer />
     </div>
   )
 }

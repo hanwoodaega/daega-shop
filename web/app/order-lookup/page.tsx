@@ -9,7 +9,7 @@ import BottomNavbar from '@/components/layout/BottomNavbar'
 import { OrderWithItems } from '@/lib/order/order-types'
 import { formatPrice } from '@/lib/utils/utils'
 import { formatPhoneNumber } from '@/lib/utils/format-phone'
-import { getStatusText, getDeliveryTypeText, getStatusTextColor, getRefundStatusText } from '@/lib/order/order-utils'
+import { getStatusText, getDeliveryTypeText, getStatusTextColor } from '@/lib/order/order-utils'
 
 function getTrackingUrl(trackingNumber: string): string {
   return `https://www.lotteglogis.com/home/reservation/tracking/index?InvNo=${trackingNumber}`
@@ -244,10 +244,9 @@ function OrderLookupResult({ order }: { order: OrderWithItems }) {
                 )}
               </>
             )}
-            {order.refund_status && (
+            {order.status === 'cancelled' && (
               <div className="text-sm pt-2 border-t">
-                <span className="text-gray-600">환불 상태: </span>
-                <span className="font-medium text-orange-600">{getRefundStatusText(order.refund_status)}</span>
+                <span className="text-gray-600">취소·환불</span>
               </div>
             )}
           </div>

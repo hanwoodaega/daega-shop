@@ -21,13 +21,11 @@ export interface Flags {
   isProcessing: boolean
   mounted: boolean
   saveAsDefaultAddress: boolean
-  isEditingOrderer: boolean
 }
 
 export interface GiftData {
   message: string
-  cardDesign: string
-  withMessage: boolean
+  recipientPhone: string
 }
 
 

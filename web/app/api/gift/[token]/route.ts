@@ -27,9 +27,7 @@ export async function GET(
         is_gift,
         gift_token,
         gift_message,
-        gift_card_design,
         gift_expires_at,
-        gift_status,
         shipping_address,
         shipping_name,
         shipping_phone,
@@ -69,8 +67,8 @@ export async function GET(
       }
     }
 
-    // 이미 수령된 선물인 경우 (gift_status === 'used')
-    if (orders.gift_status === 'used') {
+    // 이미 수령된 선물인 경우 (status === 'gift_received')
+    if (orders.status === 'gift_received') {
       return NextResponse.json({ 
         order: {
           ...orders,
@@ -86,10 +84,10 @@ export async function GET(
       expiresAt = new Date(orders.gift_expires_at)
     }
 
-    // 만료된 선물인 경우 (gift_status === 'expired' 또는 만료일 지남)
-    if (orders.gift_status === 'expired' || (expiresAt && expiresAt < new Date())) {
+    // 만료된 선물인 경우 (만료일 지남)
+    if (orders.status !== 'gift_received' && expiresAt && expiresAt < new Date()) {
       return NextResponse.json({ 
-        error: '선물 링크가 만료되었습니다. (5일 경과)',
+        error: '선물 링크가 만료되었습니다. (7일 경과)',
         expired: true,
         expires_at: expiresAt?.toISOString() || orders.gift_expires_at,
         order: {
@@ -144,7 +142,7 @@ export async function POST(
     const { supabaseAdmin } = await import('@/lib/supabase/supabase-admin')
     const { data: order, error: tokenError } = await supabaseAdmin
       .from('orders')
-      .select('id, shipping_address, status, gift_token, gift_expires_at, gift_status, user_id, total_amount, created_at, is_gift')
+      .select('id, shipping_address, status, gift_token, gift_expires_at, user_id, total_amount, created_at, is_gift')
       .eq('gift_token', token)
       .maybeSingle()
 
@@ -152,8 +150,8 @@ export async function POST(
       return NextResponse.json({ error: '유효하지 않은 선물 링크입니다.' }, { status: 404 })
     }
 
-    // 이미 수령된 선물인 경우 (gift_status === 'used')
-    if (order.gift_status === 'used') {
+    // 이미 수령된 선물인 경우 (status === 'gift_received')
+    if (order.status === 'gift_received') {
       return NextResponse.json({ error: '이미 수령된 선물입니다.' }, { status: 400 })
     }
 
@@ -163,10 +161,10 @@ export async function POST(
       expiresAt = new Date(order.gift_expires_at)
     }
 
-    // 만료된 선물인 경우 (gift_status === 'expired' 또는 만료일 지남)
-    if (order.gift_status === 'expired' || (expiresAt && expiresAt < new Date())) {
+    // 만료된 선물인 경우 (만료일 지남)
+    if (order.status !== 'gift_received' && expiresAt && expiresAt < new Date()) {
       return NextResponse.json({ 
-        error: '선물 링크가 만료되었습니다. (5일 경과)',
+        error: '선물 링크가 만료되었습니다. (7일 경과)',
         expired: true,
         expires_at: expiresAt?.toISOString() || order.gift_expires_at
       }, { status: 410 })
@@ -181,8 +179,7 @@ export async function POST(
         shipping_phone: recipient_phone,
         shipping_address: shippingAddress,
         delivery_note: delivery_note || null,
-        status: 'paid',
-        gift_status: 'used'
+        status: 'gift_received',
       })
       .eq('id', order.id)
       .select()

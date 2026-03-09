@@ -61,7 +61,7 @@ export interface Order {
   order_number?: string | null  // 고객용 주문번호 (YYYYMMDD-####)
   user_id: string | null
   total_amount: number
-  status: 'pending' | 'ORDER_RECEIVED' | 'PREPARING' | 'IN_TRANSIT' | 'DELIVERED' | 'cancelled'
+  status: 'pending' | 'paid' | 'ORDER_RECEIVED' | 'PREPARING' | 'IN_TRANSIT' | 'DELIVERED' | 'gift_received' | 'cancelled'
   delivery_type: 'pickup' | 'quick' | 'regular'
   delivery_time?: string | null
   shipping_address: string
@@ -69,9 +69,6 @@ export interface Order {
   shipping_phone: string
   delivery_note?: string | null
   tracking_number?: string | null  // 송장번호
-  refund_status?: 'pending' | 'processing' | 'completed' | null
-  refund_amount?: number | null
-  refund_requested_at?: string | null
   refund_completed_at?: string | null
   created_at: string
   updated_at: string

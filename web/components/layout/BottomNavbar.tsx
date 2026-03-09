@@ -146,9 +146,15 @@ export default function BottomNavbar() {
             </Link>
 
             {/* 마이 */}
-            <Link
-              href="/profile"
-              prefetch={false}
+            <button
+              type="button"
+              onClick={() => {
+                if (user) {
+                  router.push('/profile')
+                } else {
+                  router.push('/auth/login?next=/profile')
+                }
+              }}
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
                 pathname?.startsWith('/auth') || pathname?.startsWith('/profile') ? 'text-red-600' : 'text-black'
               }`}
@@ -157,7 +163,7 @@ export default function BottomNavbar() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
               <span className="text-xs">마이</span>
-            </Link>
+            </button>
             </div>
           </div>
         </div>

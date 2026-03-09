@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useCartStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase/supabase'
@@ -377,7 +376,6 @@ function ProfileEditContent() {
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>
-        <BottomNavbar />
       </div>
     )
   }
@@ -687,7 +685,6 @@ function ProfileEditContent() {
 
       </main>
 
-      <BottomNavbar />
     </div>
   )
 }
@@ -706,7 +703,6 @@ export default function ProfileEditPage() {
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>
-        <BottomNavbar />
       </div>
     }>
       <ProfileEditContent />

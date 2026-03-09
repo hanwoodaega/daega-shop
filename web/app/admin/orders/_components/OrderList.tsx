@@ -8,7 +8,6 @@ interface OrderListProps {
   trackingInputs: Record<string, { number: string }>
   setTrackingNumber: (orderId: string, number: string) => void
   onStatusChange: (orderId: string, newStatus: OrderStatus, trackingNumber?: string) => Promise<boolean>
-  onRefundComplete: (orderId: string) => Promise<boolean>
 }
 
 export default function OrderList({
@@ -18,7 +17,6 @@ export default function OrderList({
   trackingInputs,
   setTrackingNumber,
   onStatusChange,
-  onRefundComplete,
 }: OrderListProps) {
   if (loading) {
     return (
@@ -47,7 +45,6 @@ export default function OrderList({
           trackingInput={trackingInputs[order.id]?.number || ''}
           onTrackingChange={(num) => setTrackingNumber(order.id, num)}
           onStatusChange={onStatusChange}
-          onRefundComplete={onRefundComplete}
         />
       ))}
     </div>

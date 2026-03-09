@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { CATEGORIES } from '@/lib/utils/constants'
@@ -12,7 +12,7 @@ const MAIN_MENUS = [
   { name: '베스트', href: '/best' },
   { name: '특가', href: '/sale' },
   { name: '선물관', href: '/gift' },
-  { name: '한우대가 NO.9', href: '/no9' },
+  { name: '한우대가No.9', href: '/no9' },
   { name: '리뷰이벤트', href: '/review-event' },
 ]
 
@@ -24,6 +24,25 @@ const menuLinkClass = (isActive: boolean) =>
 export default function MainMenu() {
   const pathname = usePathname()
   const [categoryOpen, setCategoryOpen] = useState(false)
+  const closeTimeoutRef = useRef<number | null>(null)
+
+  const handleCategoryMouseEnter = () => {
+    if (closeTimeoutRef.current) {
+      window.clearTimeout(closeTimeoutRef.current)
+      closeTimeoutRef.current = null
+    }
+    setCategoryOpen(true)
+  }
+
+  const handleCategoryMouseLeave = () => {
+    if (closeTimeoutRef.current) {
+      window.clearTimeout(closeTimeoutRef.current)
+    }
+    closeTimeoutRef.current = window.setTimeout(() => {
+      setCategoryOpen(false)
+      closeTimeoutRef.current = null
+    }, 150)
+  }
 
   return (
     <div className="bg-white border-b border-gray-200 lg:border-b-2 lg:border-red-600 lg:pt-4">
@@ -34,8 +53,8 @@ export default function MainMenu() {
           {/* PC 전용: 카테고리 (햄버거 + 텍스트, 드롭다운) */}
           <div
             className="relative hidden lg:block"
-            onMouseEnter={() => setCategoryOpen(true)}
-            onMouseLeave={() => setCategoryOpen(false)}
+            onMouseEnter={handleCategoryMouseEnter}
+            onMouseLeave={handleCategoryMouseLeave}
           >
             <button
               type="button"

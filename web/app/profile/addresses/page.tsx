@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import Footer from '@/components/layout/Footer'
-import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useAuth } from '@/lib/auth/auth-context'
 import { Address } from '@/lib/supabase/supabase'
 import { formatPhoneNumber } from '@/lib/utils/format-phone'
@@ -214,7 +212,7 @@ export default function AddressesPage() {
 
   if (loading || loadingAddresses) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-white">
         <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
           <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
             <button
@@ -254,8 +252,6 @@ export default function AddressesPage() {
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
         </div>
-        <Footer />
-        <BottomNavbar />
       </div>
     )
   }
@@ -265,11 +261,10 @@ export default function AddressesPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* 헤더 */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* 모바일 전용 헤더 */}
+      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
-          {/* 왼쪽: 뒤로가기 */}
           <button
             onClick={() => router.back()}
             aria-label="뒤로가기"
@@ -279,99 +274,178 @@ export default function AddressesPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          
-          {/* 중앙: 제목 */}
           <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">
-              배송지 관리
-            </h1>
+            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">배송지 관리</h1>
           </div>
-          
         </div>
       </header>
-      
-      <main className="flex-1 container mx-auto px-4 py-4 pb-24">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center text-base font-semibold text-gray-900">
-            배송지 목록
-          </div>
-          <button
-            onClick={handleOpenAddModal}
-            className="bg-white text-red-600 border border-red-600 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-blue-50 transition"
-          >
-            + 배송지추가
-          </button>
-        </div>
 
-        {/* 배송지 목록 */}
-        {addresses.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">📍</div>
-            <p className="text-xl text-gray-600 mb-6">등록된 배송지가 없습니다.</p>
+      <main className="flex-1 container mx-auto px-4 py-4 pb-24 lg:py-6 lg:pb-6 lg:max-w-none">
+        {/* PC 전용: 상단 카드 + 본문 */}
+        <div className="hidden lg:block">
+          <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4 shadow-sm">
+            <h2 className="text-2xl font-bold text-primary-900 text-center">배송지 관리</h2>
+          </div>
+
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-base font-semibold text-gray-900">배송지 목록</div>
             <button
               onClick={handleOpenAddModal}
-              className="bg-white text-red-600 border border-red-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
+              className="bg-white text-red-600 border border-red-600 px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-50 transition"
             >
-              배송지 추가하기
+              + 배송지추가
             </button>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {addresses.map((address) => (
-              <div key={address.id} className="bg-white rounded-lg shadow-md p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-gray-900">
-                      {address.address.split('(')[0].trim()}
-                    </h3>
-                    {address.is_default && (
-                      <span className="bg-primary-800 text-white text-xs px-2 py-0.5 rounded">
-                        기본
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEditAddress(address)}
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      수정
-                    </button>
-                    {!address.is_default && (
+
+          {addresses.length === 0 ? (
+            <div className="bg-white rounded-lg border border-gray-200 p-8 text-center shadow-sm">
+              <svg className="w-10 h-10 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <p className="text-gray-600 mb-6">등록된 배송지가 없습니다.</p>
+              <button
+                onClick={handleOpenAddModal}
+                className="bg-white text-red-600 border border-red-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
+              >
+                배송지 추가하기
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {addresses.map((address) => (
+                <div key={address.id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-gray-900">
+                        {address.address.split('(')[0].trim()}
+                      </h3>
+                      {address.is_default && (
+                        <span className="bg-primary-800 text-white text-xs px-2 py-0.5 rounded">기본</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => handleDeleteAddress(address.id)}
-                        className="text-sm text-red-600 hover:underline"
+                        onClick={() => handleEditAddress(address)}
+                        className="text-sm text-blue-600 hover:underline"
                       >
-                        삭제
+                        수정
                       </button>
-                    )}
+                      {!address.is_default && (
+                        <button
+                          onClick={() => handleDeleteAddress(address.id)}
+                          className="text-sm text-red-600 hover:underline"
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-                
-                <div className="space-y-1 text-sm text-gray-700">
-                  <p className="text-gray-600">
-                    {address.zipcode && `(${address.zipcode}) `}
-                    {address.address}
-                    {address.address_detail && `, ${address.address_detail}`}
+                  <div className="space-y-1 text-sm text-gray-700">
+                    <p className="text-gray-600">
+                      {address.zipcode && `(${address.zipcode}) `}
+                      {address.address}
+                      {address.address_detail && `, ${address.address_detail}`}
+                    </p>
+                  </div>
+                  <p className="mt-2 text-sm font-medium text-gray-900">
+                    {address.recipient_name} | {formatPhoneNumber(address.recipient_phone)}
                   </p>
+                  {!address.is_default && (
+                    <button
+                      onClick={() => handleSetDefault(address.id)}
+                      className="mt-3 w-full border border-red-600 text-red-600 py-2 rounded-lg text-sm hover:bg-blue-50 transition"
+                    >
+                      기본 배송지로 설정
+                    </button>
+                  )}
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-                <p className="mt-2 text-sm font-medium text-gray-900">
-                  {address.recipient_name} | {formatPhoneNumber(address.recipient_phone)}
-                </p>
-
-                {!address.is_default && (
-                  <button
-                    onClick={() => handleSetDefault(address.id)}
-                    className="mt-3 w-full border border-red-600 text-red-600 py-2 rounded-lg text-sm hover:bg-blue-50 transition"
-                  >
-                    기본 배송지로 설정
-                  </button>
-                )}
-              </div>
-            ))}
+        {/* 모바일 전용 */}
+        <div className="lg:hidden">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center text-base font-semibold text-gray-900">배송지 목록</div>
+            <button
+              onClick={handleOpenAddModal}
+              className="bg-white text-red-600 border border-red-600 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-blue-50 transition"
+            >
+              + 배송지추가
+            </button>
           </div>
-        )}
+
+          {addresses.length === 0 ? (
+            <div className="text-center py-20">
+              <div className="text-6xl mb-4">📍</div>
+              <p className="text-xl text-gray-600 mb-6">등록된 배송지가 없습니다.</p>
+              <button
+                onClick={handleOpenAddModal}
+                className="bg-white text-red-600 border border-red-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition"
+              >
+                배송지 추가하기
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {addresses.map((address) => (
+                <div key={address.id} className="bg-white rounded-lg shadow-md p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-gray-900">
+                        {address.address.split('(')[0].trim()}
+                      </h3>
+                      {address.is_default && (
+                        <span className="bg-primary-800 text-white text-xs px-2 py-0.5 rounded">
+                          기본
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditAddress(address)}
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        수정
+                      </button>
+                      {!address.is_default && (
+                        <button
+                          onClick={() => handleDeleteAddress(address.id)}
+                          className="text-sm text-red-600 hover:underline"
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-1 text-sm text-gray-700">
+                    <p className="text-gray-600">
+                      {address.zipcode && `(${address.zipcode}) `}
+                      {address.address}
+                      {address.address_detail && `, ${address.address_detail}`}
+                    </p>
+                  </div>
+
+                  <p className="mt-2 text-sm font-medium text-gray-900">
+                    {address.recipient_name} | {formatPhoneNumber(address.recipient_phone)}
+                  </p>
+
+                  {!address.is_default && (
+                    <button
+                      onClick={() => handleSetDefault(address.id)}
+                      className="mt-3 w-full border border-red-600 text-red-600 py-2 rounded-lg text-sm hover:bg-blue-50 transition"
+                    >
+                      기본 배송지로 설정
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </main>
 
       {/* 배송지 추가/수정 모달 */}
@@ -532,8 +606,6 @@ export default function AddressesPage() {
         </div>
       )}
 
-      <Footer />
-      <BottomNavbar />
     </div>
   )
 }

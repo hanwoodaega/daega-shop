@@ -8,7 +8,7 @@ export type ProductDescriptionComponent = ComponentType<{ productId: string; pro
 
 /**
  * 상품 이름을 slug로 변환합니다.
- * 예: "한우대가 NO.9 프리미엄 세트" → "hanwoo-daega-no9-premium-set"
+ * 예: "한우대가No.9 프리미엄 세트" → "hanwoo-daega-no9-premium-set"
  */
 export function nameToSlug(name: string): string {
   return name

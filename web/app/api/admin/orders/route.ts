@@ -234,11 +234,11 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { orderId, status, trackingNumber, refundStatus, refundCompletedAt } = body
+    const { orderId, status, trackingNumber } = body
 
-    // 필수 필드 검증 (status 또는 refundStatus 중 하나는 필수)
-    if (!orderId || (!status && !refundStatus)) {
-      return NextResponse.json({ error: 'orderId와 status 또는 refundStatus는 필수입니다.' }, { status: 400 })
+    // 필수 필드 검증 (status 또는 trackingNumber 중 하나는 필수)
+    if (!orderId || (!status && !trackingNumber?.trim())) {
+      return NextResponse.json({ error: 'orderId와 status 또는 trackingNumber는 필수입니다.' }, { status: 400 })
     }
 
     // 상태 유효성 검증 (status가 있는 경우에만)
@@ -248,19 +248,12 @@ export async function PATCH(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // 환불 상태 유효성 검증 (refundStatus가 있는 경우에만)
-    if (refundStatus && !['pending', 'completed'].includes(refundStatus)) {
-      return NextResponse.json({ 
-        error: `올바른 환불 상태를 선택해주세요. (pending, completed)` 
-      }, { status: 400 })
-    }
-
     const supabase = createSupabaseAdminClient()
     
     // 이전 상태 확인
     const { data: oldOrder } = await supabase
       .from('orders')
-      .select('status, user_id, order_number, total_amount, refund_status, refund_amount')
+      .select('status, user_id, order_number, total_amount')
       .eq('id', orderId)
       .single()
 
@@ -270,6 +263,9 @@ export async function PATCH(request: NextRequest) {
     // 주문 상태 변경
     if (status) {
       updateData.status = status
+      if (status === 'cancelled') {
+        updateData.refund_completed_at = new Date().toISOString()
+      }
     }
     
     // 송장번호 입력 시 배송중 상태로 자동 변경
@@ -278,16 +274,6 @@ export async function PATCH(request: NextRequest) {
       // 송장번호가 입력되면 자동으로 배송중 상태로 변경
       if (status === 'PREPARING' || !status || status === 'ORDER_RECEIVED') {
         updateData.status = 'IN_TRANSIT'
-      }
-    }
-    
-    // 환불 상태 변경
-    if (refundStatus) {
-      updateData.refund_status = refundStatus
-      if (refundStatus === 'completed' && refundCompletedAt) {
-        updateData.refund_completed_at = refundCompletedAt
-      } else if (refundStatus === 'completed' && !refundCompletedAt) {
-        updateData.refund_completed_at = new Date().toISOString()
       }
     }
 
@@ -303,14 +289,12 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: '주문 상태 변경에 실패했습니다.' }, { status: 500 })
     }
 
-    // 환불 완료 시 알림 발송
-    if (refundStatus === 'completed' && oldOrder && oldOrder.refund_status !== 'completed') {
+    // 관리자가 주문을 취소로 변경한 경우 알림 발송
+    if (status === 'cancelled' && oldOrder && oldOrder.status !== 'cancelled') {
       try {
         const orderNumber = oldOrder.order_number || orderId.slice(0, 8)
-        const refundAmount = data?.refund_amount || oldOrder.refund_amount || oldOrder.total_amount
-        
         const notificationTitle = '환불 완료'
-        const notificationContent = `주문번호 ${orderNumber}의 환불이 완료되었습니다. 환불 금액: ${refundAmount.toLocaleString()}원`
+        const notificationContent = `주문번호 ${orderNumber}의 환불이 완료되었습니다. 환불 금액: ${oldOrder.total_amount.toLocaleString()}원`
         
         const { error: notificationError } = await supabase
           .from('notifications')

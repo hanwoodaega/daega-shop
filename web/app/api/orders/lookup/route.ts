@@ -52,11 +52,7 @@ export async function GET(request: NextRequest) {
         tracking_number,
         is_gift,
         gift_message,
-        gift_status,
         gift_expires_at,
-        refund_status,
-        refund_amount,
-        refund_requested_at,
         refund_completed_at,
         created_at,
         updated_at
@@ -103,14 +99,15 @@ export async function GET(request: NextRequest) {
     if (productIds.length > 0) {
       const { data: imagesData } = await supabase
         .from('product_images')
-        .select('product_id, image_url')
+        .select('product_id, image_url, priority')
         .in('product_id', productIds)
-        .eq('is_primary', true)
-      if (imagesData) {
-        productImages = imagesData.reduce((acc: Record<string, string>, img: any) => {
-          acc[img.product_id] = img.image_url
-          return acc
-        }, {})
+        .order('priority', { ascending: true })
+      if (imagesData && imagesData.length > 0) {
+        const byProduct = new Map<string, string>()
+        for (const img of imagesData) {
+          if (!byProduct.has(img.product_id)) byProduct.set(img.product_id, img.image_url)
+        }
+        productImages = Object.fromEntries(byProduct)
       }
     }
 

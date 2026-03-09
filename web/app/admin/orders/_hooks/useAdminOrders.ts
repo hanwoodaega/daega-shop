@@ -128,38 +128,6 @@ export function useAdminOrders() {
     }
   }
 
-  const handleRefundComplete = async (orderId: string) => {
-    setUpdatingOrderId(orderId)
-    try {
-      const response = await fetch('/api/admin/orders', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          orderId, 
-          refundStatus: 'completed',
-          refundCompletedAt: new Date().toISOString()
-        })
-      })
-
-      if (response.status === 401) {
-        redirectToLogin()
-        return false
-      }
-
-      if (!response.ok) throw new Error('환불 완료 처리 실패')
-
-      await fetchOrders()
-      toast.success('환불이 완료 처리되었습니다.')
-      return true
-    } catch (error) {
-      console.error('환불 완료 처리 실패:', error)
-      toast.error('환불 완료 처리에 실패했습니다.')
-      return false
-    } finally {
-      setUpdatingOrderId(null)
-    }
-  }
-
   const handleAutoConfirm = async () => {
     setProcessingAutoConfirm(true)
     try {
@@ -201,7 +169,6 @@ export function useAdminOrders() {
     trackingInputs,
     setTrackingNumber,
     handleStatusChange,
-    handleRefundComplete,
     handleAutoConfirm,
     refresh: fetchOrders
   }

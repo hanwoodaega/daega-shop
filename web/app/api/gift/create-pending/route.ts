@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import crypto from 'crypto'
+import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 
 /**
  * 선물 주문 미리 생성 (결제 전 상태)
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
     const {
       items,
       gift_message = null,
-      gift_card_design = null,
+      gift_recipient_phone = null,
       used_coupon_id = null,
       used_points = 0,
     } = body
@@ -38,11 +39,10 @@ export async function POST(request: NextRequest) {
     // 선물 토큰 생성
     const giftToken = crypto.randomBytes(32).toString('hex')
     
-    // 만료일 설정 (5일 후)
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 5)
+    // 만료일 설정 (7일째 되는 날 23:59:59 KST까지)
+    const expiresAtISO = getGiftExpiresAtEndOfDayKST()
 
-    // 주문 생성 (결제 전 상태)
+    // 선물 주문 (결제 전 상태)
     const orderData: {
       user_id: string
       total_amount: number
@@ -54,9 +54,8 @@ export async function POST(request: NextRequest) {
       is_gift: boolean
       gift_token: string
       gift_message: string | null
-      gift_card_design: string | null
+      gift_recipient_phone?: string | null
       gift_expires_at: string
-      gift_status: string
     } = {
       user_id: user.id,
       total_amount: finalAmount,
@@ -68,9 +67,8 @@ export async function POST(request: NextRequest) {
       is_gift: true,
       gift_token: giftToken,
       gift_message: gift_message,
-      gift_card_design: gift_card_design,
-      gift_expires_at: expiresAt.toISOString(),
-      gift_status: 'pending',
+      gift_recipient_phone: gift_recipient_phone ? String(gift_recipient_phone).replace(/\D/g, '').slice(0, 13) : null,
+      gift_expires_at: expiresAtISO,
     }
 
     const { data: order, error: orderError } = await supabase

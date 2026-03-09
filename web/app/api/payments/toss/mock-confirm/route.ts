@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getUserFromServer } from '@/lib/auth/auth-server'
 import { usePoints } from '@/lib/point/points'
-import { sendOrderCompleteSms } from '@/lib/sms/send'
+import { sendOrderCompleteAlimtalk } from '@/lib/sms/send'
 import { getServerBaseUrl } from '@/lib/utils/server-url'
+import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 import crypto from 'crypto'
 import { calculateOrderPricing, OrderInput } from '@/lib/order/order-pricing.server'
 
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
     const payload: OrderInput = orderInput
     const normalizedPhone = String(payload.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
     const giftToken = payload.is_gift ? crypto.randomBytes(32).toString('hex') : null
-    const giftExpiresAt = payload.is_gift ? new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString() : null
+    const giftExpiresAt = payload.is_gift ? getGiftExpiresAtEndOfDayKST() : null
 
     const orderInsertData: any = {
       user_id: user?.id ?? null,
@@ -101,7 +102,6 @@ export async function POST(request: NextRequest) {
       delivery_note: payload.delivery_note,
       is_gift: payload.is_gift,
       gift_message: payload.gift_message,
-      gift_card_design: payload.gift_card_design,
       payment_method: payload.payment_method || 'toss_card',
     }
     orderInsertData.toss_order_id = orderId
@@ -109,8 +109,10 @@ export async function POST(request: NextRequest) {
 
     if (payload.is_gift) {
       orderInsertData.gift_token = giftToken
-      orderInsertData.gift_status = 'pending'
       orderInsertData.gift_expires_at = giftExpiresAt
+      if (payload.gift_recipient_phone) {
+        orderInsertData.gift_recipient_phone = String(payload.gift_recipient_phone).replace(/\D/g, '').slice(0, 13)
+      }
     }
 
     const { data: order, error: orderError } = await supabaseAdmin
@@ -203,14 +205,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 주문 완료 안내 문자 (비회원일 때만, 수령인 연락처 있으면 발송)
+    // 주문 완료 알림톡 (비회원일 때만, 수령인 연락처 있으면 발송)
     if (!user && !payload.is_gift && normalizedPhone.length >= 10) {
       try {
-        const baseUrl = (await getServerBaseUrl()) || process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin
-        const orderLookupUrl = `${baseUrl.replace(/\/$/, '')}/o`
-        await sendOrderCompleteSms(normalizedPhone, orderNumber, orderLookupUrl)
+        const totalQty = itemSnapshots.reduce((sum, s) => sum + s.quantity, 0)
+        const sortedByPrice = [...itemSnapshots].sort((a, b) => (b.final_unit_price ?? 0) - (a.final_unit_price ?? 0))
+        const topProductName = sortedByPrice[0]?.product_name || '상품'
+        const productName = totalQty <= 1 ? topProductName : `${topProductName} 외 ${totalQty - 1}개`
+        const result = await sendOrderCompleteAlimtalk({
+          to: normalizedPhone,
+          orderNumber,
+          productName,
+        })
+        if (!result.success) {
+          console.error('[Alimtalk] 주문 완료 알림톡 발송 실패 (SMS fallback은 알리고에서 처리):', result.detail)
+        }
       } catch (e) {
-        console.error('주문 완료 문자 발송 실패:', e)
+        console.error('주문 완료 알림톡 발송 실패:', e)
       }
     }
 

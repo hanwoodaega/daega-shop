@@ -63,7 +63,7 @@ export default function No9PageClient({ initialProducts }: No9PageClientProps) {
     return () => clearInterval(interval)
   }, [totalSlides])
 
-  // 한우대가 NO.9 카테고리 상품 조회
+  // 한우대가No.9 카테고리 상품 조회
   const [fetchError, setFetchError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -147,7 +147,7 @@ export default function No9PageClient({ initialProducts }: No9PageClientProps) {
         <div className="container mx-auto pl-5 md:pl-7 lg:pl-9 pr-8 md:pr-12 lg:pr-16 pt-8 md:pt-12 pb-16 md:pb-24">
           <div className="text-left">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white">
-              한우대가 NO.9
+              한우대가No.9
             </h1>
             <p className="text-3xl md:text-4xl lg:text-5xl font-normal text-white mt-5 md:mt-6">
               한우의 절정
@@ -235,7 +235,7 @@ export default function No9PageClient({ initialProducts }: No9PageClientProps) {
             <div className="w-1/2 aspect-square relative">
               <Image
                 src="/images/hanwoo-packaging/hanwoo-premium-packaging.jpg"
-                alt="한우대가 NO.9 고급 포장 이미지"
+                alt="한우대가No.9 고급 포장 이미지"
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 50vw, 50vw"
@@ -260,7 +260,7 @@ export default function No9PageClient({ initialProducts }: No9PageClientProps) {
       <section className="bg-gray-100 pt-16 md:pt-24 pb-16 md:pb-24 relative">
         <div className="container mx-auto px-4 md:px-8">
           <h2 className="text-xl md:text-2xl lg:text-3xl font-normal mb-6 md:mb-8 text-center text-black">
-            한우대가 NO.9<br />
+            한우대가No.9<br />
             부위별 설명서
           </h2>
           
@@ -427,12 +427,12 @@ export default function No9PageClient({ initialProducts }: No9PageClientProps) {
         </div>
       </section>
       
-      {/* 한우대가 NO.9 상품 섹션 */}
+      {/* 한우대가No.9 상품 섹션 */}
       {(products.length > 0 || loading || fetchError) && (
         <section className="bg-white py-16 md:py-24">
           <div className="container mx-auto px-4 md:px-8">
             <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 md:mb-12 text-black">
-              한우대가 NO.9 상품
+              한우대가No.9 상품
             </h2>
             {fetchError ? (
               <div className="text-center py-12">

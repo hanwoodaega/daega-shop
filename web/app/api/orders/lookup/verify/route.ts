@@ -113,11 +113,7 @@ export async function POST(request: NextRequest) {
         tracking_number,
         is_gift,
         gift_message,
-        gift_status,
         gift_expires_at,
-        refund_status,
-        refund_amount,
-        refund_requested_at,
         refund_completed_at,
         created_at,
         updated_at

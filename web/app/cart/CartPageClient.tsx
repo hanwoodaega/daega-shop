@@ -54,6 +54,7 @@ function CartPageContent() {
     setShowLoginPrompt,
     setShowAddressModal,
     setSelectedAddressId,
+    closeLoginPrompt,
     handleSelectAddress,
     confirmAddressSelection,
     handleCheckout,
@@ -75,18 +76,18 @@ function CartPageContent() {
         <Header showCartButton />
       </div>
 
-      <main className="flex-1 container mx-auto max-w-4xl px-2 pt-2 lg:pt-6 pb-0 md:pb-32">
+      <main className="flex-1 container mx-auto max-w-4xl px-2 pt-2 lg:pt-6 pb-10 md:pb-32 lg:pb-40">
         <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">장바구니</h2>
         {/* 배송지 정보 */}
         {!loadingAddress && user && items.length > 0 && (
-          <div className="mb-3 bg-white rounded-lg px-3 py-2">
+          <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             {defaultAddress ? (
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-base font-bold text-gray-900">
+                    <span className="text-base font-bold text-gray-900">
                       {defaultAddress.address.split('(')[0].trim()}
-                    </h3>
+                    </span>
                     {defaultAddress.is_default && (
                       <span className="text-xs bg-primary-100 text-primary-800 px-2 py-0.5 rounded">기본</span>
                     )}
@@ -131,9 +132,9 @@ function CartPageContent() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
             {/* 장바구니 아이템 */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
               <DeliveryMethodSelector
                 deliveryMethod={deliveryMethod}
                 onDeliveryMethodChange={setDeliveryMethod}
@@ -182,7 +183,7 @@ function CartPageContent() {
             </div>
 
             {/* 주문 요약 */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-2">
               <OrderSummary
                 selectedItems={getSelectedItems()}
                 deliveryMethod={deliveryMethod}
@@ -190,10 +191,22 @@ function CartPageContent() {
                 quickDeliveryArea={quickDeliveryArea}
                 quickDeliveryTime={quickDeliveryTime}
               />
-              <div className="hidden lg:block mt-2">
+              <div className="hidden lg:flex mt-2">
+                {deliveryMethod === 'regular' && (
+                  <button
+                    type="button"
+                    onClick={handleGiftCheckout}
+                    className="flex-[0.3] shrink-0 bg-gray-900 text-white py-3 text-base font-medium hover:bg-gray-800 flex items-center justify-center gap-2 border-0"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                    </svg>
+                    선물하기
+                  </button>
+                )}
                 <button
                   onClick={handleCheckout}
-                  className="w-full bg-red-600 text-white py-3 text-base font-medium hover:bg-red-600"
+                  className={`shrink-0 bg-red-600 text-white py-3 text-base font-medium hover:bg-red-600 border-0 ${deliveryMethod === 'regular' ? 'flex-[0.7] border-l border-white/30' : 'flex-1 min-w-0'}`}
                   suppressHydrationWarning
                 >
                   주문하기 ({mounted ? getSelectedItems().filter(item => !isSoldOut(item.status)).reduce((total, item) => total + item.quantity, 0) : 0})
@@ -207,13 +220,12 @@ function CartPageContent() {
       {/* 하단 고정 액션 바 */}
       <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
         <div className="w-full flex justify-center">
-          <div className="w-full max-w-[480px] bg-white shadow-lg px-0 pb-0 flex gap-0">
+          <div className="w-full max-w-[480px] bg-white shadow-lg flex">
             {deliveryMethod === 'regular' && (
               <button
                 type="button"
                 onClick={handleGiftCheckout}
-                className="bg-gray-900 text-white py-3 text-base font-medium flex items-center justify-center gap-1 hover:bg-gray-800"
-                style={{ width: '35%' }}
+                className="flex-[0.3] shrink-0 bg-gray-900 text-white py-3 text-base font-medium flex items-center justify-center gap-1 hover:bg-gray-800 border-0"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
@@ -223,8 +235,7 @@ function CartPageContent() {
             )}
             <button
               onClick={handleCheckout}
-              className={`bg-red-600 text-white py-3 text-base font-medium hover:bg-red-600 ${deliveryMethod === 'regular' && isMobile ? '' : 'w-full'}`}
-              style={{ width: deliveryMethod === 'regular' && isMobile ? '65%' : '100%' }}
+              className={`shrink-0 bg-red-600 text-white py-3 text-base font-medium hover:bg-red-600 border-0 ${deliveryMethod === 'regular' ? 'flex-[0.7] border-l border-white/30' : 'flex-1 min-w-0'}`}
               suppressHydrationWarning
             >
               주문하기 ({mounted ? getSelectedItems().filter(item => !isSoldOut(item.status)).reduce((total, item) => total + item.quantity, 0) : 0})
@@ -250,7 +261,7 @@ function CartPageContent() {
 
       <LoginPromptModal
         show={showLoginPrompt}
-        onClose={() => setShowLoginPrompt(false)}
+        onClose={closeLoginPrompt}
         onGuestCheckout={handleGuestCheckout}
       />
 

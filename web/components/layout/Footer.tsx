@@ -33,7 +33,7 @@ export default function Footer() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col space-y-4">
             <div className="flex items-center justify-between">
-              <h4 className="font-semibold text-base">(주)한우대가 고객센터</h4>
+              <h4 className="font-semibold text-lg">(주)한우대가 고객센터</h4>
               <div className="flex">
                 {CUSTOMER_SERVICE_BUTTONS.map((button, index) => (
                   <a 
@@ -49,8 +49,8 @@ export default function Footer() {
                 ))}
               </div>
             </div>
-            <ul className="space-y-1 text-xs text-gray-600">
-              <li>061-724-1223/ekals010829@naver.com</li>
+            <ul className="space-y-1 text-sm text-gray-600">
+              <li>061-724-1223 / ekals010829@naver.com</li>
             </ul>
           </div>
         </div>
@@ -62,7 +62,7 @@ export default function Footer() {
       <div>
         <div className="container mx-auto px-4 py-8 pb-16">
           <div className="mb-6">
-            <ul className="space-y-1 text-xs text-gray-600">
+            <ul className="space-y-1 text-sm text-gray-600">
               {COMPANY_INFO.map((info, index) => (
                 <li key={index} className={info.bold ? 'font-bold text-gray-900' : ''}>
                   {info.value}

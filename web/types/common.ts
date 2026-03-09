@@ -31,9 +31,6 @@ export interface OrderWithItems {
   shipping_phone: string
   delivery_note?: string | null
   tracking_number?: string | null  // 송장번호
-  refund_status?: RefundStatus | null
-  refund_amount?: number | null
-  refund_requested_at?: string | null
   refund_completed_at?: string | null
   created_at: string
   updated_at?: string

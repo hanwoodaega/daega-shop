@@ -5,8 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
 import { removeFromCartDB, setCartItems } from '@/lib/cart/cart-db'
 import { useAuth } from '@/lib/auth/auth-context'
-import { initKakaoSDK } from '@/lib/order/gift/initKakao'
-import { shareGiftToKakao } from '@/lib/order/gift/kakaoShare'
 
 interface CheckoutMeta {
   isDirectPurchase: boolean
@@ -15,7 +13,6 @@ interface CheckoutMeta {
   deliveryMethod: string
   giftData?: {
     message: string
-    cardDesign: string
   }
   formData: {
     name: string
@@ -44,7 +41,6 @@ interface CheckoutMeta {
     used_points: number
     is_gift: boolean
     gift_message: string | null
-    gift_card_design: string | null
     items: Array<{
       productId: string
       quantity: number
@@ -61,6 +57,7 @@ function TossSuccessContent() {
   const clearDirectPurchase = useDirectPurchaseStore((state) => state.clearItems)
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
   const [message, setMessage] = useState('')
+  const [successMeta, setSuccessMeta] = useState<{ isGift?: boolean; giftToken?: string } | null>(null)
   const confirmStartedRef = useRef(false)
 
   useEffect(() => {
@@ -112,19 +109,9 @@ function TossSuccessContent() {
           await saveAddressIfNeeded(meta)
           await cleanupCart(meta)
 
-          if (meta.isGiftMode && data?.gift_token) {
-            initKakaoSDK()
-            await shareGiftToKakao({
-              orderId: data.order?.id,
-              giftToken: data.gift_token,
-              cardDesign: meta.giftData?.cardDesign || 'birthday-1',
-              message: meta.giftData?.message || '',
-              items: meta.items.map((item) => ({ imageUrl: undefined })),
-            })
-          }
-
           sessionStorage.removeItem(metaKey)
           setStatus('success')
+          setSuccessMeta(meta.isGiftMode && data?.gift_token ? { isGift: true, giftToken: data.gift_token } : null)
 
           const isGuestOrder = data?.order && data.order.user_id == null
           const redirectUrl = meta.isGiftMode && data?.gift_token
@@ -158,20 +145,10 @@ function TossSuccessContent() {
         await saveAddressIfNeeded(meta)
         await cleanupCart(meta)
 
-        if (meta.isGiftMode && data?.gift_token) {
-          initKakaoSDK()
-          await shareGiftToKakao({
-            orderId: data.order?.id,
-            giftToken: data.gift_token,
-            cardDesign: meta.giftData?.cardDesign || 'birthday-1',
-            message: meta.giftData?.message || '',
-            items: meta.items.map((item) => ({ imageUrl: undefined })),
-          })
-        }
-
         sessionStorage.removeItem(metaKey)
 
         setStatus('success')
+        setSuccessMeta(meta.isGiftMode && data?.gift_token ? { isGift: true, giftToken: data.gift_token } : null)
 
         const isGuestOrder = data?.order && data.order.user_id == null
         const redirectUrl = meta.isGiftMode && data?.gift_token
@@ -289,6 +266,17 @@ function TossSuccessContent() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
+      {status === 'success' && (
+        <div className="max-w-md w-full bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">
+          <p className="text-lg font-medium text-gray-800 mb-2">결제가 완료되었습니다.</p>
+          {successMeta?.isGift && (
+            <p className="text-sm text-gray-600 mb-2">
+              선물 알림이 받는 분 휴대폰으로 발송되었습니다.
+            </p>
+          )}
+          <p className="text-xs text-gray-500">잠시 후 이동합니다...</p>
+        </div>
+      )}
       {status === 'error' && (
         <div className="max-w-md w-full bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">
           <p className="text-sm text-red-600">{message || '결제 승인에 실패했습니다.'}</p>

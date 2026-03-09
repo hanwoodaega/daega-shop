@@ -7,6 +7,8 @@ import { formatPrice } from '@/lib/utils/utils'
 interface UseOrdersParams {
   userId?: string | null
   giftToken?: string | null
+  /** 기간(개월). 기본 1. 1,3,6,12,36 등 */
+  orderPeriodMonths?: number
 }
 
 interface UseOrdersReturn {
@@ -16,25 +18,28 @@ interface UseOrdersReturn {
   confirmingOrderId: string | null
   expandedOrders: Set<string>
   giftOrder: OrderWithItems | null
+  orderPeriodMonths: number
+  setOrderPeriodMonths: (months: number) => void
   toggleOrderExpand: (orderId: string) => void
   handleCancelOrder: (orderId: string) => Promise<void>
   handleTrackDelivery: (order: OrderWithItems) => void
   handleConfirmPurchase: (orderId: string) => Promise<void>
 }
 
-export function useOrders({ userId, giftToken }: UseOrdersParams): UseOrdersReturn {
+export function useOrders({ userId, giftToken, orderPeriodMonths: initialMonths = 1 }: UseOrdersParams): UseOrdersReturn {
   const [orders, setOrders] = useState<OrderWithItems[]>([])
   const [loadingOrders, setLoadingOrders] = useState(true)
   const [cancelingOrderId, setCancelingOrderId] = useState<string | null>(null)
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null)
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set())
   const [giftOrder, setGiftOrder] = useState<OrderWithItems | null>(null)
+  const [orderPeriodMonths, setOrderPeriodMonths] = useState(initialMonths)
 
-  const loadOrders = useCallback(async () => {
+  const loadOrders = useCallback(async (months: number) => {
     if (!userId) return
 
     try {
-      const data = await fetchOrders()
+      const data = await fetchOrders(months)
       setOrders(data)
     } catch (error) {
       showError(error)
@@ -45,8 +50,8 @@ export function useOrders({ userId, giftToken }: UseOrdersParams): UseOrdersRetu
 
   useEffect(() => {
     setLoadingOrders(true)
-    loadOrders()
-  }, [loadOrders])
+    loadOrders(orderPeriodMonths)
+  }, [loadOrders, orderPeriodMonths])
 
   useEffect(() => {
     if (giftToken && orders.length > 0) {
@@ -73,9 +78,7 @@ export function useOrders({ userId, giftToken }: UseOrdersParams): UseOrdersRetu
           ? { 
               ...o, 
               status: 'cancelled',
-              refund_status: 'pending',
-              refund_amount: order.total_amount,
-              refund_requested_at: new Date().toISOString()
+              refund_completed_at: new Date().toISOString()
             } 
           : o
       ))
@@ -136,7 +139,7 @@ export function useOrders({ userId, giftToken }: UseOrdersParams): UseOrdersRetu
 
       setTimeout(async () => {
         try {
-          const refreshed = await fetchOrders()
+          const refreshed = await fetchOrders(orderPeriodMonths)
           setOrders(prevOrders => {
             const serverOrdersMap = new Map<string, OrderWithItems>(
               (refreshed || []).map((o) => [o.id, o])
@@ -161,7 +164,7 @@ export function useOrders({ userId, giftToken }: UseOrdersParams): UseOrdersRetu
     } finally {
       setConfirmingOrderId(null)
     }
-  }, [orders])
+  }, [orders, orderPeriodMonths])
 
   const toggleOrderExpand = useCallback((orderId: string) => {
     setExpandedOrders(prev => {
@@ -182,6 +185,8 @@ export function useOrders({ userId, giftToken }: UseOrdersParams): UseOrdersRetu
     confirmingOrderId,
     expandedOrders,
     giftOrder,
+    orderPeriodMonths,
+    setOrderPeriodMonths,
     toggleOrderExpand,
     handleCancelOrder,
     handleTrackDelivery,

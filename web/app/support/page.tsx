@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import Footer from '@/components/layout/Footer'
 import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import { useCartStore } from '@/lib/store'
 
@@ -16,10 +16,9 @@ export default function SupportPage() {
       <div className="hidden lg:block">
         <Header showCartButton />
       </div>
-      {/* 모바일: 간단 헤더 */}
+      {/* 모바일 전용 헤더 */}
       <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
-          {/* 왼쪽: 뒤로가기 */}
           <button
             onClick={() => router.back()}
             aria-label="뒤로가기"
@@ -29,15 +28,9 @@ export default function SupportPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          
-          {/* 중앙: 제목 */}
           <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">
-              고객센터
-            </h1>
+            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">고객센터</h1>
           </div>
-          
-          {/* 오른쪽: 장바구니 버튼 */}
           <div className="ml-auto flex items-center">
             <button
               onClick={() => router.push('/cart')}
@@ -60,12 +53,13 @@ export default function SupportPage() {
           </div>
         </div>
       </header>
-      
-      <main className="flex-1 container mx-auto px-4 py-4 pb-24 lg:pb-6">
-        <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">고객센터</h2>
 
-        <div className="space-y-4 w-full lg:max-w-lg lg:mx-auto">
-          {/* 고객센터 연락처 */}
+      <main className="flex-1 container mx-auto px-4 py-4 pb-24">
+        {/* PC 전용 제목 */}
+        <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">
+          고객센터
+        </h2>
+        <div className="space-y-4 w-full lg:max-w-2xl lg:mx-auto">
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-lg font-bold mb-4 flex items-center">
               <svg className="w-6 h-6 mr-2 text-primary-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,7 +73,6 @@ export default function SupportPage() {
             </div>
           </div>
 
-          {/* 매장 정보 */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-lg font-bold mb-4 flex items-center">
               <svg className="w-6 h-6 mr-2 text-primary-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,10 +91,7 @@ export default function SupportPage() {
       </main>
 
       <Footer />
-      <div className="lg:hidden">
-        <BottomNavbar />
-      </div>
+      <BottomNavbar />
     </div>
   )
 }
-

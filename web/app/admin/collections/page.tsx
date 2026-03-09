@@ -51,15 +51,16 @@ async function getProducts(): Promise<Product[]> {
     if (productIds.length > 0) {
       const { data: imagesData } = await supabase
         .from('product_images')
-        .select('product_id, image_url')
+        .select('product_id, image_url, priority')
         .in('product_id', productIds)
-        .eq('is_primary', true)
+        .order('priority', { ascending: true })
 
-      if (imagesData) {
-        imageMap = imagesData.reduce((acc: Record<string, string | null>, img: any) => {
-          acc[img.product_id] = img.image_url
-          return acc
-        }, {})
+      if (imagesData && imagesData.length > 0) {
+        const byProduct = new Map<string, string>()
+        for (const img of imagesData) {
+          if (!byProduct.has(img.product_id)) byProduct.set(img.product_id, img.image_url)
+        }
+        imageMap = Object.fromEntries(byProduct)
       }
     }
 
