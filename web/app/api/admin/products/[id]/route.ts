@@ -80,12 +80,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   
   const body = await request.json().catch(() => ({}))
-  const allowed = ['brand','name','slug','price','category','weight_gram','status'] as const
+  const allowed = ['brand','name','slug','price','category','weight_gram','status','tax_type'] as const
   const updates: Record<string, any> = {}
   
   for (const key of allowed) {
     if (key in body) {
       updates[key] = body[key]
+    }
+  }
+
+  // tax_type 값 검증 (과세/면세)
+  if ('tax_type' in updates) {
+    if (updates.tax_type !== 'taxable' && updates.tax_type !== 'tax_free') {
+      // 잘못된 값이면 무시하고 기본값 taxable 유지
+      delete updates.tax_type
     }
   }
   

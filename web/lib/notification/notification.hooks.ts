@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { NotificationItem } from './notification.types'
 import { fetchNotifications, markAllNotificationsRead } from './notification.service'
+import { mutateUnreadCount } from '@/lib/swr'
 
 type Tab = 'general' | 'earned'
 
@@ -62,6 +63,7 @@ export function useNotifications({ userId }: UseNotificationsOptions): UseNotifi
     markAllNotificationsRead().catch((err) => {
       console.error('알림 전체 읽음 처리 실패:', err)
     })
+    mutateUnreadCount().catch(() => {})
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
   }, [userId, notifications])
 

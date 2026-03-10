@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/supabase'
+import { mutateUnreadCount } from '@/lib/swr'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 
@@ -16,6 +17,7 @@ function LoginForm() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [socialLoading, setSocialLoading] = useState<'kakao' | 'naver' | 'google' | null>(null)
   const [error, setError] = useState(urlError || '')
   const [showSignupSuccess, setShowSignupSuccess] = useState(fromSignup)
 
@@ -116,6 +118,7 @@ function LoginForm() {
         : redirectAfterLogin
 
       await waitForSession()
+      mutateUnreadCount().catch(() => {})
       router.push(targetPath)
       router.refresh()
     } catch (error: any) {
@@ -127,15 +130,17 @@ function LoginForm() {
   const handleSocialLogin = async (provider: 'kakao' | 'google' | 'naver') => {
     try {
       if (provider === 'kakao') {
-        handleKakaoLogin()
+        setSocialLoading('kakao')
+        await handleKakaoLogin()
         return
       }
       if (provider === 'naver') {
-        // 네이버는 커스텀 OAuth 처리
-        handleNaverLogin()
+        setSocialLoading('naver')
+        await handleNaverLogin()
         return
       }
       
+      setSocialLoading(provider)
       const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -147,6 +152,7 @@ function LoginForm() {
       if (error) throw error
     } catch (error: any) {
       setError(error.message || '소셜 로그인에 실패했습니다.')
+      setSocialLoading(null)
     }
   }
   
@@ -155,8 +161,7 @@ function LoginForm() {
       process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID || process.env.NEXT_PUBLIC_KAKAO_APP_KEY
 
     if (!clientId) {
-      setError('카카오 로그인이 설정되지 않았습니다.')
-      return
+      throw new Error('카카오 로그인이 설정되지 않았습니다.')
     }
 
     // 기존 세션이 남아있으면 콜백에서 갱신이 스킵됨
@@ -200,8 +205,7 @@ function LoginForm() {
     const clientId = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID
     
     if (!clientId) {
-      setError('네이버 로그인이 설정되지 않았습니다.')
-      return
+      throw new Error('네이버 로그인이 설정되지 않았습니다.')
     }
 
     // 기존 세션이 남아있으면 콜백에서 갱신이 스킵됨
@@ -356,23 +360,45 @@ function LoginForm() {
             {/* 소셜 로그인 */}
             <div className="space-y-3 mb-6">
               <button
+                type="button"
                 onClick={() => handleSocialLogin('kakao')}
-                className="w-full bg-[#FEE500] text-[#000000] py-3 rounded-lg font-semibold hover:bg-[#FDD835] transition flex items-center justify-center space-x-2"
+                disabled={!!socialLoading}
+                className="w-full bg-[#FEE500] text-[#000000] py-3 rounded-lg font-semibold hover:bg-[#FDD835] transition flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <img 
-                  src="/images/kakao-logo.png" 
-                  alt="카카오" 
-                  className="w-6 h-6 flex-shrink-0 object-contain"
-                />
-                <span>카카오로 회원가입/로그인</span>
+                {socialLoading === 'kakao' ? (
+                  <>
+                    <span className="inline-block w-5 h-5 border-2 border-[#000000] border-t-transparent rounded-full animate-spin" aria-hidden />
+                    <span>이동 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <img 
+                      src="/images/kakao-logo.png" 
+                      alt="카카오" 
+                      className="w-6 h-6 flex-shrink-0 object-contain"
+                    />
+                    <span>카카오로 회원가입/로그인</span>
+                  </>
+                )}
               </button>
               
               <button
+                type="button"
                 onClick={() => handleSocialLogin('naver')}
-                className="w-full bg-[#03C75A] text-white py-3 rounded-lg font-semibold hover:bg-[#02B350] transition flex items-center justify-center space-x-2"
+                disabled={!!socialLoading}
+                className="w-full bg-[#03C75A] text-white py-3 rounded-lg font-semibold hover:bg-[#02B350] transition flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <span className="text-white font-bold text-lg">N</span>
-                <span>네이버로 회원가입/로그인</span>
+                {socialLoading === 'naver' ? (
+                  <>
+                    <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden />
+                    <span>이동 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-white font-bold text-lg">N</span>
+                    <span>네이버로 회원가입/로그인</span>
+                  </>
+                )}
               </button>
             </div>
 

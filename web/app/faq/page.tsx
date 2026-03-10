@@ -76,9 +76,9 @@ export default function FAQPage() {
                 </svg>
               </summary>
               <div className="mt-2 px-3 py-2 text-sm text-gray-700">
-                <p className="mb-2">• <strong>택배배송:</strong> 주문 후 2~3일 소요 (영업일 기준)</p>
-                <p className="mb-2">• <strong>퀵배달:</strong> 1~2시간 내 신속 배달 (연향동, 조례동, 풍덕동, 해룡면)</p>
-                <p>• <strong>매장 픽업:</strong> 당일 픽업 가능 (오전 10시 ~ 오후 8시)</p>
+                <p className="mb-2">• <strong>택배배송:</strong> 주문 후 1~2일 소요 (영업일 기준)</p>
+                <p className="mb-2">• <strong>퀵배달:</strong> 선택한 시간대 내 신속 배달 (연향동, 조례동, 풍덕동, 해룡면)</p>
+                <p>• <strong>매장 픽업:</strong> 당일 픽업 가능 (오전 9시 ~ 오후 9시)</p>
               </div>
             </details>
 
@@ -128,7 +128,7 @@ export default function FAQPage() {
                 <p className="mb-2"><strong>매장 위치:</strong></p>
                 <p className="mb-2">전라남도 순천시 해룡면 상성길 183 대가정육마트</p>
                 <p className="mb-2"><strong>픽업 가능 시간:</strong></p>
-                <p className="mb-2">오전 10:00 ~ 오후 8:00 (매일)</p>
+                <p className="mb-2">오전 9:00 ~ 오후 9:00 (매일)</p>
                 <p className="mb-2"><strong>픽업 방법:</strong></p>
                 <p>주문 시 선택한 시간에 방문하여 주문자 이름으로 찾아주시면 됩니다.</p>
               </div>
@@ -167,7 +167,7 @@ export default function FAQPage() {
                 <p className="mb-2">• 조례동</p>
                 <p className="mb-2">• 풍덕동</p>
                 <p className="mb-2">• 해룡면</p>
-                <p className="mb-2"><strong>배달 시간:</strong> 오전 10시 ~ 오후 10시</p>
+                <p className="mb-2"><strong>배달 시간:</strong> 오후 3시 ~ 오후 5시</p>
                 <p><strong>배달비:</strong> 5,000원 (고정)</p>
               </div>
             </details>
@@ -207,37 +207,7 @@ export default function FAQPage() {
                 <p>모든 상품 페이지에서 원산지를 확인할 수 있습니다.</p>
               </div>
             </details>
-
-            {/* 할인 */}
-            <details className="group">
-              <summary className="flex justify-between items-center cursor-pointer list-none p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                <span className="font-medium text-gray-900">할인 상품은 언제 나오나요?</span>
-                <svg className="w-5 h-5 text-gray-500 group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </summary>
-              <div className="mt-2 px-3 py-2 text-sm text-gray-700">
-                <p className="mb-2">할인 상품은 수시로 업데이트됩니다:</p>
-                <p className="mb-2">• 매주 금요일 특가 상품 공개</p>
-                <p className="mb-2">• 명절 전후 할인 이벤트</p>
-                <p>• 홈페이지에서 할인율이 표시된 상품을 확인하세요!</p>
-              </div>
-            </details>
-
-            {/* 재고 */}
-            <details className="group">
-              <summary className="flex justify-between items-center cursor-pointer list-none p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                <span className="font-medium text-gray-900">품절된 상품은 언제 재입고되나요?</span>
-                <svg className="w-5 h-5 text-gray-500 group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </summary>
-              <div className="mt-2 px-3 py-2 text-sm text-gray-700">
-                <p className="mb-2">품절 상품은 보통 2~3일 내 재입고됩니다.</p>
-                <p className="mb-2">재입고 알림을 원하시면 고객센터로 문의해주세요.</p>
-                <p>• 전화: 1234-5678</p>
-              </div>
-            </details>
+          
           </div>
         </div>
       </main>

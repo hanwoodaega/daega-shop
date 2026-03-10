@@ -77,6 +77,7 @@ export type OrderStatus =
   | 'IN_TRANSIT'          // 배송중 (관리자가 송장번호 입력 시 자동 변경)
   | 'DELIVERED'           // 배송완료 (관리자가 수동으로 변경)
   | 'cancelled'
+  | 'payment_error'      // 결제 검증 실패 (금액 불일치 등)
 export type DeliveryType = 'pickup' | 'quick' | 'regular'
 export type RefundStatus = 'pending' | 'processing' | 'completed'
 
@@ -86,7 +87,8 @@ export const VALID_ORDER_STATUSES: OrderStatus[] = [
   'PREPARING',           // 상품준비중
   'IN_TRANSIT',          // 배송중
   'DELIVERED',           // 배송완료
-  'cancelled'
+  'cancelled',
+  'payment_error'
 ]
 export const VALID_DELIVERY_TYPES: DeliveryType[] = ['pickup', 'quick', 'regular']
 export const VALID_REFUND_STATUSES: RefundStatus[] = ['pending', 'processing', 'completed']

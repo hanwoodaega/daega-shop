@@ -1,40 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { handleOrderCancellationPoints } from '@/lib/point/points'
-
-/**
- * 토스 결제 전액 취소 API 호출
- * 성공 시 true, 실패 시 false (에러 내용은 로그)
- */
-async function cancelTossPayment(paymentKey: string, cancelReason: string): Promise<{ ok: boolean; error?: string }> {
-  const secretKey = process.env.TOSS_SECRET_KEY
-  if (!secretKey) {
-    console.warn('[orders/cancel] TOSS_SECRET_KEY 없음')
-    return { ok: false, error: '결제 취소 설정이 없습니다.' }
-  }
-  const auth = Buffer.from(`${secretKey}:`).toString('base64')
-  try {
-    const res = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}/cancel`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ cancelReason }),
-    })
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}))
-      const msg = errBody?.message || errBody?.code || res.statusText
-      console.error('[orders/cancel] 토스 취소 실패:', res.status, msg)
-      return { ok: false, error: msg || '결제 취소에 실패했습니다.' }
-    }
-    return { ok: true }
-  } catch (e: unknown) {
-    const err = e instanceof Error ? e.message : String(e)
-    console.error('[orders/cancel] 토스 취소 요청 예외:', err)
-    return { ok: false, error: '결제 취소 요청 중 오류가 발생했습니다.' }
-  }
-}
+import { cancelTossPayment } from '@/lib/payments/toss-server'
 
 /**
  * 주문 취소 API

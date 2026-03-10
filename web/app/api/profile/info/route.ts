@@ -72,12 +72,15 @@ export async function GET(request: NextRequest) {
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id),
       
-      // 쿠폰 조회 (쿠폰 정보도 함께 가져와서 유효기간 체크)
+      // 쿠폰 조회 (유효기간 판단에 필요한 필드만: user_coupons.id, expires_at, created_at + coupon.validity_days)
       supabase
         .from('user_coupons')
         .select(`
-          *,
-          coupon:coupons (*)
+          id,
+          expires_at,
+          created_at,
+          is_used,
+          coupon:coupons!left (validity_days)
         `)
         .eq('user_id', user.id)
         .eq('is_used', false),
@@ -99,9 +102,10 @@ export async function GET(request: NextRequest) {
     // 쿠폰 유효기간 체크하여 유효한 쿠폰만 카운트
     let validCouponCount = 0
     if (couponData.data && !couponData.error) {
-      validCouponCount = couponData.data.filter((uc: UserCoupon) => {
-        const coupon = uc.coupon as Coupon
-        return isCouponValid(uc, coupon)
+      validCouponCount = couponData.data.filter((uc) => {
+        const couponRaw = Array.isArray(uc.coupon) ? uc.coupon[0] : uc.coupon
+        const coupon = couponRaw as unknown as Coupon
+        return isCouponValid(uc as unknown as UserCoupon, coupon)
       }).length
     }
 

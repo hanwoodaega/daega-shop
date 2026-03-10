@@ -7,27 +7,9 @@ export default function ProfileSupportPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      {/* 모바일 전용 헤더 */}
-      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
-        <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
-          <button
-            onClick={() => router.back()}
-            aria-label="뒤로가기"
-            className="p-2 text-gray-700 hover:text-gray-900"
-          >
-            <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">고객센터</h1>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 container mx-auto px-4 py-4 pb-24 lg:py-6 lg:pb-6 lg:max-w-none">
-        {/* PC 전용: 카드 레이아웃 (다른 마이페이지 카드들과 동일 폭) */}
-        <div className="hidden lg:block">
+      {/* PC 전용: DOM 순서상 먼저 배치해 PC에서 모바일 UI 플래시 방지 */}
+      <div className="hidden lg:block flex-1 w-full">
+        <div className="container mx-auto px-4 py-6 pb-6 max-w-none">
           <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4 shadow-sm">
             <h2 className="text-2xl font-bold text-primary-900 text-center">고객센터</h2>
           </div>
@@ -79,7 +61,27 @@ export default function ProfileSupportPage() {
             </div>
           </div>
         </div>
+      </div>
 
+      {/* 모바일 전용 헤더 */}
+      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+        <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
+          <button
+            onClick={() => router.back()}
+            aria-label="뒤로가기"
+            className="p-2 text-gray-700 hover:text-gray-900"
+          >
+            <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">고객센터</h1>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 container mx-auto px-4 py-4 pb-24 lg:py-6 lg:pb-6 lg:max-w-none">
         {/* 모바일 전용 콘텐츠 */}
         <div className="lg:hidden">
           <div className="space-y-4 w-full">

@@ -132,6 +132,10 @@ export async function useCoupon(
     }
 
     const data = await res.json()
+    if (data.success) {
+      const { mutateProfileRelated } = await import('@/lib/swr')
+      mutateProfileRelated().catch(() => {})
+    }
     return { success: data.success, discountAmount: data.discountAmount || 0 }
   } catch (error) {
     console.error('쿠폰 사용 실패:', error)

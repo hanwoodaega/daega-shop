@@ -82,10 +82,11 @@ function ProfileEditContent() {
     }
   }
 
-  // 로그아웃 처리
+  // 로그아웃 처리 (재로그인 시 홈으로 보내기 위해 플래그 설정)
   const handleSignOut = async () => {
     if (confirm('로그아웃 하시겠습니까?')) {
       isSigningOutRef.current = true
+      if (typeof window !== 'undefined') sessionStorage.setItem('logout_redirect', '1')
       await signOut()
       router.push('/auth/login')
     }
@@ -337,7 +338,7 @@ function ProfileEditContent() {
   if (loading || loadingData) {
     return (
       <div className="min-h-screen flex flex-col">
-        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200 lg:hidden">
           <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
             <button
               onClick={() => router.back()}
@@ -385,9 +386,9 @@ function ProfileEditContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* 회원정보 수정 전용 헤더 */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* 모바일 전용: 회원정보 수정 헤더 */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200 lg:hidden">
         <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
           {/* 왼쪽: 뒤로가기 */}
           <button
@@ -410,8 +411,16 @@ function ProfileEditContent() {
         </div>
       </header>
       
-      <main className="flex-1 container mx-auto px-4 py-4 pb-24">
+      <main className="flex-1 container mx-auto px-4 py-4 pb-24 lg:pb-6 lg:max-w-2xl lg:px-6 lg:pt-6">
+        {/* PC: 배송지 관리처럼 상단 제목 카드 */}
+        <div className="hidden lg:block">
+          <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4 shadow-sm">
+            <h2 className="text-2xl font-bold text-primary-900 text-center">회원 정보 관리</h2>
+          </div>
+        </div>
 
+        {/* 본문 카드 (모바일·PC 공통) */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 lg:p-5 shadow-sm">
         {/* 메시지 표시 */}
         {message && (
           <div className={`mb-4 p-4 rounded-lg ${
@@ -683,6 +692,7 @@ function ProfileEditContent() {
           )}
         </div>
 
+        </div>
       </main>
 
     </div>

@@ -23,10 +23,10 @@ export async function GET(request: NextRequest) {
     // RLS 우회를 위해 admin client 사용 (다른 API와 동일한 방식)
     const supabase = createSupabaseAdminClient()
 
-    // 포인트 히스토리 조회
+    // 포인트 히스토리 조회 (목록 표시에 필요한 필드만)
     const { data: history, error } = await supabase
       .from('point_history')
-      .select('*')
+      .select('id, type, description, points, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)

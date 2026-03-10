@@ -26,6 +26,7 @@ export async function GET(request: Request) {
     review_count,
     weight_gram,
     status,
+    tax_type,
     created_at,
     updated_at,
     promotion_products (
@@ -149,6 +150,13 @@ export async function POST(request: Request) {
     price: Number(body.price),
     category: String(body.category),
     status: 'active', // 기본값: active
+  }
+
+  // 과세/면세 구분 (기본: taxable)
+  if (body.tax_type === 'tax_free' || body.tax_type === 'taxable') {
+    payload.tax_type = body.tax_type
+  } else {
+    payload.tax_type = 'taxable'
   }
 
   // 선택적 필드 추가 (unit, origin, weight_gram 등 - 테이블에 컬럼이 있는 경우에만)

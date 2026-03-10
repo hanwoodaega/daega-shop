@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { generateOtpCode, hashOtp, normalizePhone } from '@/lib/auth/otp-utils'
+import { sendOrderLookupOtpSms } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,39 +9,12 @@ const OTP_EXPIRES_MINUTES = 5
 const RESEND_COOLDOWN_SECONDS = 60
 const MAX_DAILY_SENDS = 20
 
-function normalizePhoneLookup(value: string): string {
-  return value.replace(/\D/g, '').slice(-11).padStart(10, '0').slice(0, 11)
+async function sendOtpSms(phone: string, code: string): Promise<{ success: boolean; detail?: string }> {
+  return sendOrderLookupOtpSms(phone, code)
 }
 
-async function sendOtpSms(phone: string, code: string): Promise<{ success: boolean; detail?: string }> {
-  const SMS_SERVICE_URL = process.env.SMS_SERVICE_URL
-  const SMS_SERVICE_TOKEN = process.env.SMS_SERVICE_TOKEN
-  if (!SMS_SERVICE_URL || !SMS_SERVICE_TOKEN) {
-    return { success: false, detail: 'sms_config_missing' }
-  }
-  try {
-    const url = `${SMS_SERVICE_URL.replace(/\/$/, '')}/sms/send-otp`
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${SMS_SERVICE_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        to: phone,
-        text: `[대가정육마트] 주문조회 인증번호는 ${code}입니다.\n(타인에게 공유하지 마세요)`,
-      }),
-    })
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}))
-      return { success: false, detail: err?.error || err?.message || `http_${response.status}` }
-    }
-    return { success: true }
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('[order-lookup send-otp] SMS 발송 예외:', msg)
-    return { success: false, detail: msg || 'fetch_error' }
-  }
+function normalizePhoneLookup(value: string): string {
+  return value.replace(/\D/g, '').slice(-11).padStart(10, '0').slice(0, 11)
 }
 
 /**

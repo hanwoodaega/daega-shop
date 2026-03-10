@@ -22,7 +22,7 @@ export default function ProductsCategoryNav({ selectedCategory, hasCategory }: P
     <nav className="sticky top-0 z-50 shadow-sm bg-white">
       <div className="bg-white border-b border-gray-200 lg:border-b-2 lg:border-red-600 lg:pt-4">
         <div className="w-full max-w-[1000px] mx-auto px-3">
-          <div className="flex items-center justify-start space-x-5 sm:space-x-7 md:space-x-14 lg:justify-between lg:space-x-0 pt-2 pb-0.5 pl-1.5 pr-1.5 overflow-x-auto whitespace-nowrap scrollbar-hide">
+          <div className="flex items-center justify-start space-x-5 sm:space-x-7 md:space-x-10 lg:justify-center lg:space-x-14 pt-2 pb-0.5 pl-1.5 pr-1.5 overflow-x-auto whitespace-nowrap scrollbar-hide">
             {CATEGORIES.map((cat) => {
               const isActive = selectedCategory === cat
               return (

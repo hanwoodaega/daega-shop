@@ -22,6 +22,7 @@ export default function ProductTable({
           <tr>
             <th className="p-3 text-left">상품명</th>
             <th className="p-3 text-left">카테고리</th>
+            <th className="p-3 text-center">과세/면세</th>
             <th className="p-3 text-right">가격</th>
             <th className="p-3 text-center">작업</th>
           </tr>
@@ -34,6 +35,17 @@ export default function ProductTable({
                 <p className="text-xs text-neutral-500">{product.brand || '브랜드미지정'}</p>
               </td>
               <td className="p-3 text-neutral-600">{product.category}</td>
+              <td className="p-3 text-center">
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    product.tax_type === 'tax_free'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                      : 'bg-slate-50 text-slate-700 border border-slate-100'
+                  }`}
+                >
+                  {product.tax_type === 'tax_free' ? '면세' : '과세'}
+                </span>
+              </td>
               <td className="p-3 text-right">
                 {Number(product.price).toLocaleString('ko-KR')}원
               </td>

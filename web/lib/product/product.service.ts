@@ -15,6 +15,7 @@ export const PRODUCT_SELECT_FIELDS = `
   review_count,
   weight_gram,
   status,
+  tax_type,
   created_at,
   updated_at,
   promotion_products (

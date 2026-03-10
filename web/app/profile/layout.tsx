@@ -2,8 +2,9 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useAuth } from '@/lib/auth/auth-context'
+import { useProfileInfo } from '@/lib/swr'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
@@ -12,8 +13,12 @@ const sidebarMenus = [
   { href: '/profile', label: '주문 내역', icon: 'document' },
   { href: '/profile/coupons', label: '쿠폰', icon: 'coupon' },
   { href: '/profile/points', label: '포인트', icon: 'points' },
+]
+
+const sidebarInfo = [
   { href: '/profile/addresses', label: '배송지 관리', icon: 'address' },
   { href: '/profile/reviews', label: '나의 리뷰', icon: 'review' },
+  { href: '/profile/edit', label: '회원 정보 관리', icon: 'user' },
 ]
 
 const sidebarSecondary = [
@@ -56,6 +61,12 @@ function SidebarIcon({ type }: { type: string }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
         </svg>
       )
+    case 'user':
+      return (
+        <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      )
     default:
       return null
   }
@@ -69,41 +80,26 @@ export default function ProfileLayout({
   const pathname = usePathname()
   const router = useRouter()
   const { user, loading } = useAuth()
-  const [displayName, setDisplayName] = useState<string | null>(null)
+  const { data: profileInfo } = useProfileInfo()
+  const displayName = profileInfo?.name ?? user?.user_metadata?.name ?? '회원'
 
-  // 비회원은 profile/* 페이지 접근 막기
+  // 비회원은 profile/* 페이지 접근 막기 (로그아웃 후 재진입 시 next 없이 로그인 페이지로)
   useEffect(() => {
     if (loading) return
     if (!user) {
       const next = pathname || '/profile'
+      if (typeof window !== 'undefined' && sessionStorage.getItem('logout_redirect')) {
+        sessionStorage.removeItem('logout_redirect')
+        router.replace('/auth/login')
+        return
+      }
       router.replace(`/auth/login?next=${encodeURIComponent(next)}`)
     }
   }, [loading, user, pathname, router])
 
-  useEffect(() => {
-    if (!user) {
-      setDisplayName(null)
-      return
-    }
-    const nameFromMeta = user.user_metadata?.name
-    if (nameFromMeta) {
-      setDisplayName(nameFromMeta)
-      return
-    }
-    fetch('/api/profile/info')
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (data?.name) setDisplayName(data.name)
-        else setDisplayName(user.user_metadata?.name || '회원')
-      })
-      .catch(() => setDisplayName(user.user_metadata?.name || '회원'))
-  }, [user])
-
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <div className="lg:hidden">
-        {/* 모바일: 헤더는 각 페이지에서 처리 */}
-      </div>
+      {/* PC 전용: DOM 순서상 먼저 배치해 PC에서 모바일 플래시 방지 */}
       <div className="hidden lg:block">
         <Header showCartButton />
       </div>
@@ -115,7 +111,7 @@ export default function ProfileLayout({
             {user && (
               <div className="mb-5 pb-4 border-b border-gray-200">
                 <p className="text-base font-medium text-gray-900">
-                  안녕하세요, {displayName || user.user_metadata?.name || '회원'}님
+                  안녕하세요, {displayName}님
                 </p>
               </div>
             )}
@@ -141,6 +137,28 @@ export default function ProfileLayout({
                 )
               })}
             </nav>
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">내 정보관리</h2>
+              <nav className="space-y-0.5">
+                {sidebarInfo.map((item) => {
+                  const isActive = pathname === item.href
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-medium transition ${
+                        isActive
+                          ? 'bg-primary-100 text-primary-900'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <SidebarIcon type={item.icon} />
+                      {item.label}
+                    </Link>
+                  )
+                })}
+              </nav>
+            </div>
             <div className="mt-6 pt-4 border-t border-gray-200">
               <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">고객센터</h2>
               <nav className="space-y-0.5">

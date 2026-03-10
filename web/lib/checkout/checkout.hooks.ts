@@ -10,7 +10,8 @@ import { useDefaultAddress, useUserProfile } from '@/lib/address/useAddress'
 import { openDaumPostcode, AddressSearchResult } from '@/lib/postcode/useDaumPostcode'
 import { calculateOrderTotal } from '@/lib/order/order-calc'
 import { SHIPPING, GIFT_MIN_AMOUNT } from '@/lib/utils/constants'
-import { getUserCoupons, isCouponValid } from '@/lib/coupon/coupons'
+import { useCoupons } from '@/lib/swr'
+import { isCouponValid } from '@/lib/coupon/coupons'
 import { UserCoupon, Coupon } from '@/lib/supabase/supabase'
 import { removeFromCartDB } from '@/lib/cart/cart-db'
 import { showError, showSuccess, showInfo } from '@/lib/utils/error-handler'
@@ -68,10 +69,15 @@ export function useCheckout(options: UseCheckoutOptions) {
     saveAsDefaultAddress: false,
   })
 
-  const [availableCoupons, setAvailableCoupons] = useState<UserCoupon[]>([])
+  const { coupons: couponsFromApi, isLoading: loadingCoupons } = useCoupons(false)
+  const availableCoupons = useMemo(
+    () =>
+      couponsFromApi.filter((uc) => isCouponValid(uc, (uc.coupon as Coupon))),
+    [couponsFromApi]
+  )
+
   const [selectedCoupon, setSelectedCoupon] = useState<UserCoupon | null>(null)
   const [showCouponModal, setShowCouponModal] = useState(false)
-  const [loadingCoupons, setLoadingCoupons] = useState(false)
 
   const [userPoints, setUserPoints] = useState(0)
   const [usedPoints, setUsedPoints] = useState(0)
@@ -223,7 +229,6 @@ export function useCheckout(options: UseCheckoutOptions) {
 
   useEffect(() => {
     if (user?.id) {
-      loadAvailableCoupons()
       loadUserPoints()
     }
   }, [user?.id])
@@ -325,6 +330,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       is_gift: isGiftMode,
       gift_message: isGiftMode ? giftData.message : null,
       gift_recipient_phone: isGiftMode ? (giftData.recipientPhone || '').replace(/\D/g, '').slice(0, 13) : undefined,
+      orderer_phone: isGiftMode ? normalizedPhone : undefined,
       gift_sender_name: isGiftMode ? (formData.name || '').trim() || undefined : undefined,
       payment_method: paymentMethod,
       items: items.map(item => ({
@@ -419,24 +425,6 @@ export function useCheckout(options: UseCheckoutOptions) {
     isGiftMode,
     buildPricingInput,
   ])
-
-  const loadAvailableCoupons = useCallback(async () => {
-    if (!user?.id) return
-
-    setLoadingCoupons(true)
-    try {
-      const coupons = await getUserCoupons(false)
-      const validCoupons = coupons.filter(uc => {
-        const coupon = uc.coupon as Coupon
-        return isCouponValid(uc, coupon)
-      })
-      setAvailableCoupons(validCoupons)
-    } catch (error) {
-      console.error('쿠폰 조회 실패:', error)
-    } finally {
-      setLoadingCoupons(false)
-    }
-  }, [user?.id])
 
   const applyAddress = useCallback((address: {
     recipient_name?: string | null
@@ -676,6 +664,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       if (!Number.isFinite(amount) || amount < 0) {
         throw new Error('결제 금액을 불러오지 못했습니다.')
       }
+      const taxFreeAmount = Number(prepareData.pricing?.taxFreeAmount ?? 0)
       const meta = {
         isDirectPurchase,
         isGiftMode,
@@ -735,6 +724,9 @@ export function useCheckout(options: UseCheckoutOptions) {
         customerName: formData.name.trim(),
         customerEmail: normalizedEmail && !isInternalEmail ? normalizedEmail : undefined,
         customerMobilePhone: sanitizedPhone,
+      }
+      if (Number.isFinite(taxFreeAmount) && taxFreeAmount >= 0) {
+        paymentOptions.taxFreeAmount = taxFreeAmount
       }
       if (methodConfig.easyPay) {
         paymentOptions.easyPay = methodConfig.easyPay
@@ -957,7 +949,6 @@ export function useCheckout(options: UseCheckoutOptions) {
       handleSubmit,
       handleNextStep,
       handleSearchAddress,
-      loadAvailableCoupons,
       loadUserPoints,
       applyAddress,
       handleInputChange,

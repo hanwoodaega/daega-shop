@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { OrderWithItems } from './order-types'
-import { fetchOrders, cancelOrder, confirmOrder } from './order.service'
+import { cancelOrder, confirmOrder } from './order.service'
+import { useOrdersSWR } from '@/lib/swr'
 import { showError, showSuccess } from '@/lib/utils/error-handler'
 import { formatPrice } from '@/lib/utils/utils'
 
@@ -27,39 +28,16 @@ interface UseOrdersReturn {
 }
 
 export function useOrders({ userId, giftToken, orderPeriodMonths: initialMonths = 1 }: UseOrdersParams): UseOrdersReturn {
-  const [orders, setOrders] = useState<OrderWithItems[]>([])
-  const [loadingOrders, setLoadingOrders] = useState(true)
+  const [orderPeriodMonths, setOrderPeriodMonths] = useState(initialMonths)
   const [cancelingOrderId, setCancelingOrderId] = useState<string | null>(null)
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null)
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set())
-  const [giftOrder, setGiftOrder] = useState<OrderWithItems | null>(null)
-  const [orderPeriodMonths, setOrderPeriodMonths] = useState(initialMonths)
 
-  const loadOrders = useCallback(async (months: number) => {
-    if (!userId) return
+  const { orders, isLoading: loadingOrders, mutate } = useOrdersSWR(orderPeriodMonths)
 
-    try {
-      const data = await fetchOrders(months)
-      setOrders(data)
-    } catch (error) {
-      showError(error)
-    } finally {
-      setLoadingOrders(false)
-    }
-  }, [userId])
-
-  useEffect(() => {
-    setLoadingOrders(true)
-    loadOrders(orderPeriodMonths)
-  }, [loadOrders, orderPeriodMonths])
-
-  useEffect(() => {
-    if (giftToken && orders.length > 0) {
-      const order = orders.find(o => o.gift_token === giftToken)
-      if (order) {
-        setGiftOrder(order)
-      }
-    }
+  const giftOrder = useMemo(() => {
+    if (!giftToken || orders.length === 0) return null
+    return orders.find((o) => o.gift_token === giftToken) ?? null
   }, [giftToken, orders])
 
   const handleCancelOrder = useCallback(async (orderId: string) => {
@@ -73,15 +51,15 @@ export function useOrders({ userId, giftToken, orderPeriodMonths: initialMonths 
     setCancelingOrderId(orderId)
     try {
       await cancelOrder(orderId)
-      setOrders(orders.map(o => 
-        o.id === orderId 
-          ? { 
-              ...o, 
-              status: 'cancelled',
-              refund_completed_at: new Date().toISOString()
-            } 
-          : o
-      ))
+      await mutate(
+        { orders: orders.map(o =>
+          o.id === orderId
+            ? { ...o, status: 'cancelled' as const, refund_completed_at: new Date().toISOString() }
+            : o
+        )},
+        false
+      )
+      mutate() // revalidate
 
       showSuccess('주문이 취소되었습니다.\n환불은 영업일 기준 3-5일이 소요될 수 있습니다.', {
         duration: 5000,
@@ -91,7 +69,7 @@ export function useOrders({ userId, giftToken, orderPeriodMonths: initialMonths 
     } finally {
       setCancelingOrderId(null)
     }
-  }, [orders])
+  }, [orders, mutate])
 
   const handleTrackDelivery = useCallback((order: OrderWithItems) => {
     if (!order.tracking_number) {
@@ -129,42 +107,19 @@ export function useOrders({ userId, giftToken, orderPeriodMonths: initialMonths 
         { duration: 5000 }
       )
 
-      setOrders(prevOrders => 
-        prevOrders.map(o => 
-          o.id === orderId 
-            ? { ...o, is_confirmed: true }
-            : o
-        )
+      await mutate(
+        { orders: orders.map(o =>
+          o.id === orderId ? { ...o, is_confirmed: true } : o
+        )},
+        false
       )
-
-      setTimeout(async () => {
-        try {
-          const refreshed = await fetchOrders(orderPeriodMonths)
-          setOrders(prevOrders => {
-            const serverOrdersMap = new Map<string, OrderWithItems>(
-              (refreshed || []).map((o) => [o.id, o])
-            )
-            return prevOrders.map(order => {
-              const serverOrder = serverOrdersMap.get(order.id)
-              if (serverOrder) {
-                return {
-                  ...serverOrder,
-                  is_confirmed: order.is_confirmed ?? serverOrder.is_confirmed,
-                } as OrderWithItems
-              }
-              return order
-            })
-          })
-        } catch (err) {
-          console.error('주문 목록 새로고침 실패:', err)
-        }
-      }, 1000)
+      mutate() // revalidate to get server state
     } catch (error) {
       showError(error)
     } finally {
       setConfirmingOrderId(null)
     }
-  }, [orders, orderPeriodMonths])
+  }, [orders, mutate])
 
   const toggleOrderExpand = useCallback((orderId: string) => {
     setExpandedOrders(prev => {

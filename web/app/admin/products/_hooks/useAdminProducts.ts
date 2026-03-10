@@ -17,6 +17,7 @@ const INITIAL_FORM_STATE: ProductFormData = {
   price: '',
   category: ADMIN_CATEGORIES[0],
   weight_gram: '',
+  tax_type: 'taxable',
 }
 
 export function useAdminProducts() {
@@ -107,6 +108,7 @@ export function useAdminProducts() {
         price: Number(form.price),
         category: form.category,
         weight_gram: form.weight_gram ? parseInt(form.weight_gram.toString(), 10) : null,
+        tax_type: form.tax_type,
       }
       const res = await fetch('/api/admin/products', {
         method: 'POST',
@@ -216,6 +218,7 @@ export function useAdminProducts() {
           price: Number(editing.price),
           category: editing.category,
           weight_gram: editing.weight_gram ? parseInt(editing.weight_gram.toString(), 10) : null,
+          tax_type: editing.tax_type ?? 'taxable',
         }),
       })
       if (res.ok) {

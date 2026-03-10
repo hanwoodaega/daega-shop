@@ -167,7 +167,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST: 주문 생성
+// POST: 주문 생성 (금액은 서버에서 상품/수량/옵션 기준으로만 계산)
 export async function POST(request: NextRequest) {
   try {
     const { createSupabaseAdminClient } = await import('@/lib/supabase/supabase-server')
@@ -183,7 +183,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const {
-      total_amount,
       delivery_type,
       delivery_time,
       shipping_address,
@@ -201,27 +200,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '주문 상품이 없습니다.' }, { status: 400 })
     }
 
-    // 주문 번호 생성
-    const today = new Date()
-    const orderNumber = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+    const orderInput = {
+      items: rawItems.map((item: { productId: string; quantity: number; promotion_group_id?: string | null }) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        promotion_group_id: item.promotion_group_id ?? null,
+      })),
+      delivery_type: delivery_type || 'regular',
+      delivery_time: delivery_time ?? null,
+      shipping_address: shipping_address || '',
+      shipping_name: shipping_name || '',
+      shipping_phone: shipping_phone || '',
+      delivery_note: delivery_note ?? null,
+      used_coupon_id: used_coupon_id ?? null,
+      used_points: Number(used_points) || 0,
+      is_gift: !!is_gift,
+      gift_message: gift_message ?? null,
+    } as import('@/lib/order/order-pricing.server').OrderInput
 
-    // 주문 데이터 준비
+    const { calculateOrderPricing } = await import('@/lib/order/order-pricing.server')
+    const { pricing, itemSnapshots } = await calculateOrderPricing({
+      supabaseAdmin,
+      userId: user.id,
+      input: orderInput,
+    })
+
+    const orderNumber = `${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+
     const orderInsertData: any = {
       user_id: user.id,
       order_number: orderNumber,
-      total_amount: total_amount,
+      total_amount: pricing.finalTotal,
+      tax_free_amount: pricing.taxFreeAmount ?? 0,
+      points_used: pricing.appliedPoints ?? 0,
+      coupon_discount_amount: pricing.couponDiscount ?? 0,
       status: 'ORDER_RECEIVED',
-      delivery_type,
-      delivery_time,
-      shipping_address,
-      shipping_name,
-      shipping_phone,
-      delivery_note,
-      is_gift: is_gift || false,
-      gift_message,
+      delivery_type: orderInput.delivery_type,
+      delivery_time: orderInput.delivery_time,
+      shipping_address: orderInput.shipping_address,
+      shipping_name: orderInput.shipping_name,
+      shipping_phone: orderInput.shipping_phone,
+      delivery_note: orderInput.delivery_note,
+      is_gift: orderInput.is_gift,
+      gift_message: orderInput.gift_message,
     }
 
-    if (is_gift) {
+    if (orderInput.is_gift) {
       orderInsertData.gift_token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
       orderInsertData.gift_expires_at = getGiftExpiresAtEndOfDayKST()
     }
@@ -256,12 +280,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. 포인트 사용 처리
-    if (used_points && used_points > 0) {
-      await usePoints(user.id, used_points, order.id, `주문 #${orderNumber} 포인트 사용`, supabaseAdmin)
+    if (pricing.appliedPoints > 0) {
+      await usePoints(user.id, pricing.appliedPoints, order.id, `주문 #${orderNumber} 포인트 사용`, supabaseAdmin)
     }
 
     // 4. 쿠폰 사용 처리
-    if (used_coupon_id) {
+    if (used_coupon_id && pricing.couponDiscount > 0) {
       await supabaseAdmin
         .from('user_coupons')
         .update({

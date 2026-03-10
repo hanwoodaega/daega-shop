@@ -133,6 +133,36 @@ export default function ProductCreateModal({
                 상품 무게를 그램 단위로 입력해주세요 (예: 300g, 700g)
               </p>
             </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-neutral-600">
+                과세 구분 *
+              </label>
+              <div className="flex gap-4 text-sm">
+                <label className="inline-flex items-center gap-1">
+                  <input
+                    type="radio"
+                    name="tax_type"
+                    value="taxable"
+                    checked={form.tax_type === 'taxable'}
+                    onChange={() => onUpdateField('tax_type', 'taxable')}
+                  />
+                  <span>과세</span>
+                </label>
+                <label className="inline-flex items-center gap-1">
+                  <input
+                    type="radio"
+                    name="tax_type"
+                    value="tax_free"
+                    checked={form.tax_type === 'tax_free'}
+                    onChange={() => onUpdateField('tax_type', 'tax_free')}
+                  />
+                  <span>면세</span>
+                </label>
+              </div>
+              <p className="text-xs text-neutral-500 mt-1">
+                기본값은 과세이며, 비과세 상품은 면세를 선택해주세요.
+              </p>
+            </div>
             <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/80 px-3 py-4 text-sm text-neutral-600">
               <p className="font-semibold text-neutral-700 mb-1">재고 입력 없이 운영합니다.</p>
               <p>등록 후 목록에서 "품절처리/판매재개" 버튼으로 상태를 직접 전환하세요.</p>

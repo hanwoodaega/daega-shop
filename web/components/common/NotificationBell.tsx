@@ -1,41 +1,14 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/auth-context'
-import { supabase } from '@/lib/supabase/supabase'
+import { useUnreadCount } from '@/lib/swr'
 
 export default function NotificationBell() {
   const router = useRouter()
   const pathname = usePathname()
   const { user } = useAuth()
-  const [unreadCount, setUnreadCount] = useState(0)
-  const channelRef = useRef<any>(null)
-
-  // 읽지 않은 알림 개수 조회
-  const fetchUnreadCount = async () => {
-    if (!user?.id) {
-      setUnreadCount(0)
-      return
-    }
-
-    try {
-      const res = await fetch('/api/notifications/unread-count')
-      
-      if (!res.ok) {
-        // 서버 에러는 조용히 처리 (4xx, 5xx 등)
-        return
-      }
-      
-      const data = await res.json()
-      
-      if (typeof data.count === 'number') {
-        setUnreadCount(data.count)
-      }
-    } catch {
-      setUnreadCount(0)
-    }
-  }
+  const { unreadCount } = useUnreadCount()
 
   // 알림 페이지로 이동
   const handleClick = () => {
@@ -46,62 +19,6 @@ export default function NotificationBell() {
     }
     router.push('/notifications')
   }
-
-  // 읽지 않은 개수 갱신 (포커스/가시성 + realtime)
-  useEffect(() => {
-    if (!user?.id) {
-      setUnreadCount(0)
-      return
-    }
-
-    fetchUnreadCount()
-
-    const handleFocus = () => {
-      fetchUnreadCount()
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        fetchUnreadCount()
-      }
-    }
-
-    window.addEventListener('focus', handleFocus)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    // Supabase Realtime: 알림 변화 감지 시 재확인
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current)
-      channelRef.current = null
-    }
-
-    const channel = supabase
-      .channel(`notifications-unread-${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`
-        },
-        () => {
-          fetchUnreadCount()
-        }
-      )
-      .subscribe()
-
-    channelRef.current = channel
-
-    return () => {
-      window.removeEventListener('focus', handleFocus)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
-        channelRef.current = null
-      }
-    }
-  }, [user?.id])
 
   return (
     <button

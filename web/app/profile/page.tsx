@@ -1,9 +1,10 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth/auth-context'
+import { useProfileInfo } from '@/lib/swr'
 import { useCartStore } from '@/lib/store'
 import { useOrders } from '@/lib/order'
 import OrdersList from '@/app/orders/_components/OrdersList'
@@ -14,6 +15,7 @@ function ProfilePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading, signOut } = useAuth()
+  const { data: profileInfo, isLoading: loadingProfileInfo } = useProfileInfo()
   const giftToken = searchParams?.get('giftToken')
   const {
     orders,
@@ -29,153 +31,16 @@ function ProfilePageContent() {
     handleTrackDelivery,
     handleConfirmPurchase,
   } = useOrders({ userId: user?.id ?? undefined, giftToken: giftToken ?? undefined, orderPeriodMonths: 1 })
-  const [userName, setUserName] = useState<string>('')
-  const [loadingProfile, setLoadingProfile] = useState(true)
-  const [orderCount, setOrderCount] = useState(0)
-  const [points, setPoints] = useState(0)
-  const [couponCount, setCouponCount] = useState(0)
-  const [giftCount, setGiftCount] = useState(0)
+  const userName = profileInfo?.name ?? user?.user_metadata?.name ?? '사용자'
+  const orderCount = profileInfo?.orders_count ?? 0
+  const points = profileInfo?.points ?? 0
+  const couponCount = profileInfo?.coupons_count ?? 0
+  const giftCount = 0
   const cartCount = useCartStore((state) => state.getTotalItems())
-
-  useEffect(() => {
-    let isMounted = true
-    let maxWaitTimeout: NodeJS.Timeout | null = null
-
-    if (loading) {
-      setLoadingProfile(false)
-      return
-    }
-
-    if (user?.id) {
-      const currentUser = user
-      const userId = user.id
-      
-      setLoadingProfile(true)
-      
-      // 최대 대기 시간 설정 (3초 후 강제로 로딩 해제)
-      maxWaitTimeout = setTimeout(() => {
-        setLoadingProfile(false)
-      }, 3000)
-        
-      const loadUserProfile = async () => {
-        if (!userId || !isMounted) {
-          setLoadingProfile(false)
-          return
-        }
-
-        // 통합 서버 API로 모든 데이터 조회
-        const fetchProfileInfo = async () => {
-          try {
-            const res = await fetch('/api/profile/info')
-            
-            if (!res.ok) {
-              if (res.status !== 401 && res.status !== 403) {
-                console.error('마이페이지 정보 조회 실패:', res.status)
-              }
-              return { 
-                name: null, 
-                orders_count: 0, 
-                coupons_count: 0, 
-                points: 0,
-                error: { message: `HTTP ${res.status}` } 
-              }
-            }
-            
-            const data = await res.json()
-            return data
-          } catch (error) {
-            console.error('마이페이지 정보 조회 예외:', error)
-            return { 
-              name: null, 
-              orders_count: 0, 
-              coupons_count: 0, 
-              points: 0,
-              error: error 
-            }
-          }
-        }
-
-        // 타임아웃 설정
-        const timeout = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-        
-        try {
-          const profileInfo = await Promise.race([
-            fetchProfileInfo(),
-            timeout(3000).then(() => ({ 
-              name: null, 
-              orders_count: 0, 
-              coupons_count: 0, 
-              points: 0,
-              error: { message: 'timeout' } 
-            }))
-          ])
-
-          if (!isMounted) return
-
-          // 사용자 이름 설정
-          const userName = profileInfo?.name || null
-          if (userName) {
-            setUserName(userName)
-          } else {
-            setUserName(currentUser.user_metadata?.name || '사용자')
-          }
-
-          // 주문 개수 설정
-          const orderCountValue = profileInfo?.orders_count ?? 0
-          setOrderCount(orderCountValue)
-          
-          // 포인트 설정
-          const pointsValue = profileInfo?.points ?? 0
-          setPoints(pointsValue)
-          
-          // 쿠폰 개수 설정
-          const couponCountValue = profileInfo?.coupons_count ?? 0
-          setCouponCount(couponCountValue)
-          
-          // 선물함 개수
-          setGiftCount(0)
-        } catch (error) {
-          console.error('사용자 정보 조회 실패:', error)
-          if (!isMounted) return
-          // 기본값 설정
-          setUserName(currentUser.user_metadata?.name || '사용자')
-          setOrderCount(0)
-          setPoints(0)
-          setCouponCount(0)
-          setGiftCount(0)
-        } finally {
-          if (isMounted) {
-            if (maxWaitTimeout) {
-              clearTimeout(maxWaitTimeout)
-            }
-            setLoadingProfile(false)
-          }
-        }
-      }
-        
-      loadUserProfile().catch(error => {
-        console.error('loadUserProfile 에러:', error)
-        if (isMounted) {
-          if (maxWaitTimeout) {
-            clearTimeout(maxWaitTimeout)
-          }
-          setLoadingProfile(false)
-        }
-      })
-    } else {
-      setLoadingProfile(false)
-    }
-
-    return () => {
-      isMounted = false
-      if (maxWaitTimeout) {
-        clearTimeout(maxWaitTimeout)
-      }
-      setLoadingProfile(false)
-    }
-  }, [user?.id, loading])
+  const loadingProfile = loading || (!!user?.id && loadingProfileInfo && !profileInfo)
 
   const handleSignOut = async () => {
+    if (typeof window !== 'undefined') sessionStorage.setItem('logout_redirect', '1')
     await signOut()
     router.push('/auth/login')
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getUserFromServer } from '@/lib/auth/auth-server'
 import { generateOtpCode, hashOtp, normalizePhone, normalizeUsername } from '@/lib/auth/otp-utils'
+import { sendOtpSms } from '@/lib/notifications'
 
 const OTP_EXPIRES_MINUTES = 3
 const RESEND_COOLDOWN_SECONDS = 60
@@ -186,7 +187,7 @@ export async function POST(request: NextRequest) {
     let sendDetail: string | null = null
 
     try {
-      const result = await sendSMS(phoneNumber, verificationCode)
+      const result = await sendOtpSms(phoneNumber, verificationCode)
       sendSuccess = result.success
       sendDetail = result.detail || null
     } catch (smsError: any) {
@@ -235,50 +236,6 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('인증번호 발송 오류:', error)
     return NextResponse.json({ error: error.message || '서버 오류가 발생했습니다.' }, { status: 500 })
-  }
-}
-
-/**
- * SMS 발송 (fallback)
- */
-async function sendSMS(
-  phone: string,
-  code: string
-): Promise<{ success: boolean; detail?: string }> {
-  try {
-    const SMS_SERVICE_URL = process.env.SMS_SERVICE_URL
-    const SMS_SERVICE_TOKEN = process.env.SMS_SERVICE_TOKEN
-
-    if (!SMS_SERVICE_URL || !SMS_SERVICE_TOKEN) {
-      console.warn('SMS 서비스 설정이 없습니다.')
-      return { success: false, detail: 'sms_config_missing' }
-    }
-
-    const response = await fetch(`${SMS_SERVICE_URL}/sms/send-otp`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${SMS_SERVICE_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        to: phone,
-        text: `[대가정육마트] 인증번호 ${code}\n(타인에게 절대 공유하지 마세요)`,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      console.error('SMS 발송 실패:', errorData)
-      return {
-        success: false,
-        detail: errorData?.error || errorData?.message || `sms_http_${response.status}`,
-      }
-    }
-
-    return { success: true }
-  } catch (error: any) {
-    console.error('SMS 발송 오류:', error)
-    return { success: false, detail: error?.message || 'sms_fetch_error' }
   }
 }
 

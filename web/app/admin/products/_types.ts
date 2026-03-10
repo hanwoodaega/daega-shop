@@ -7,6 +7,8 @@ export interface Product {
   category: string
   weight_gram: number | null
   status: 'active' | 'soldout' | 'deleted'
+  /** 과세/면세 구분 (taxable: 과세, tax_free: 면세) */
+  tax_type?: 'taxable' | 'tax_free' | null
   created_at?: string
   updated_at?: string
 }
@@ -18,6 +20,8 @@ export interface ProductFormData {
   price: string
   category: string
   weight_gram: string
+  /** 과세/면세 구분 */
+  tax_type: 'taxable' | 'tax_free'
 }
 
 export interface ProductListState {

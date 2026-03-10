@@ -18,46 +18,50 @@ export async function GET(request: NextRequest) {
     }
     const user = authResult.user
 
-    // 사용자 포인트 조회
+    // 사용자 포인트 조회 (클라이언트는 total_points만 사용)
     const { data: userPoints, error } = await supabase
       .from('user_points')
-      .select('*')
+      .select('total_points, purchase_count')
       .eq('user_id', user.id)
       .single()
 
     if (error) {
       if (error.code === 'PGRST116') {
         // 레코드가 없으면 초기화
-        const { data: newUserPoints, error: insertError } = await supabase
+        const { data: newRow, error: insertError } = await supabase
           .from('user_points')
           .insert({
             user_id: user.id,
             total_points: 0,
             purchase_count: 0,
           })
-          .select()
+          .select('total_points, purchase_count')
           .single()
 
         if (insertError) {
           console.error('포인트 초기화 실패:', insertError)
-          return NextResponse.json({ 
-            error: '포인트 초기화 실패', 
-            details: insertError.message 
+          return NextResponse.json({
+            error: '포인트 초기화 실패',
+            details: insertError.message
           }, { status: 500 })
         }
 
-        return NextResponse.json({ userPoints: newUserPoints })
+        return NextResponse.json({
+          userPoints: { total_points: newRow?.total_points ?? 0, purchase_count: newRow?.purchase_count ?? 0 }
+        })
       }
-      
+
       console.error('포인트 조회 실패:', error)
-      return NextResponse.json({ 
-        error: '포인트 조회 실패', 
+      return NextResponse.json({
+        error: '포인트 조회 실패',
         details: error.message,
-        code: error.code 
+        code: error.code
       }, { status: 500 })
     }
 
-    return NextResponse.json({ userPoints })
+    return NextResponse.json({
+      userPoints: { total_points: userPoints?.total_points ?? 0, purchase_count: userPoints?.purchase_count ?? 0 }
+    })
   } catch (error: any) {
     console.error('포인트 조회 오류:', error)
     return NextResponse.json({ 

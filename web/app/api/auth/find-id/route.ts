@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { hashToken, maskUsername, normalizePhone } from '@/lib/auth/otp-utils'
+import { sendSms } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,27 +64,14 @@ export async function POST(request: NextRequest) {
     })
     const maskedUsername = maskUsername(sortedUsers[0]?.username || '')
 
-    const SMS_SERVICE_URL = process.env.SMS_SERVICE_URL
-    const SMS_SERVICE_TOKEN = process.env.SMS_SERVICE_TOKEN
-    if (!SMS_SERVICE_URL || !SMS_SERVICE_TOKEN) {
-      return NextResponse.json({ error: '문자 발송 설정이 누락되었습니다.' }, { status: 500 })
-    }
+    const smsResult = await sendSms(
+      phoneNumber,
+      `[대가정육마트] 가입된 계정이 확인되었습니다.\n아이디: ${maskedUsername}`,
+      '아이디 찾기'
+    )
 
-    const smsResponse = await fetch(`${SMS_SERVICE_URL}/sms/send`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${SMS_SERVICE_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        to: phoneNumber,
-        text: `[대가정육마트] 가입된 계정이 확인되었습니다.\n아이디: ${maskedUsername}`,
-      }),
-    })
-
-    if (!smsResponse.ok) {
-      const smsError = await smsResponse.json().catch(() => ({}))
-      console.error('Find ID SMS error:', smsError)
+    if (!smsResult.success) {
+      console.error('Find ID SMS error:', smsResult.detail)
       return NextResponse.json({ error: '문자 발송에 실패했습니다.' }, { status: 500 })
     }
 

@@ -14,9 +14,11 @@ export function getStatusText(status: string, deliveryType?: string): string {
         return '상품준비중'
       case 'DELIVERED':
         return '완료'
-      case 'cancelled':
-        return '주문취소'
-      default:
+    case 'cancelled':
+      return '주문취소'
+    case 'payment_error':
+      return '결제검증오류'
+    default:
         return status
     }
   }
@@ -35,6 +37,8 @@ export function getStatusText(status: string, deliveryType?: string): string {
       return '배송완료'
     case 'cancelled':
       return '주문취소'
+    case 'payment_error':
+      return '결제검증오류'
     // 하위 호환성을 위한 기존 상태
     case 'paid':
       return '주문완료'
@@ -124,6 +128,8 @@ export function getStatusTextColor(status: string): string {
       return 'text-green-600'
     case 'cancelled':
       return 'text-red-600'
+    case 'payment_error':
+      return 'text-red-600'
     // 하위 호환성
     case 'paid':
       return 'text-blue-600'
@@ -152,6 +158,8 @@ export function getStatusColor(status: string): string {
     case 'DELIVERED':
       return 'bg-green-100 text-green-800'
     case 'cancelled':
+      return 'bg-red-100 text-red-800'
+    case 'payment_error':
       return 'bg-red-100 text-red-800'
     // 하위 호환성
     case 'paid':

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
 
-export const dynamic = 'force-dynamic'
+// 60초 간 캐시 후 재검증
+export const revalidate = 60
 
 // GET: 활성화된 히어로 슬라이드 목록 조회 (공개 API)
 export async function GET(request: NextRequest) {

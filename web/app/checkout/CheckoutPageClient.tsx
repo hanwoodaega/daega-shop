@@ -69,7 +69,6 @@ function CheckoutPageContent() {
     handleSubmit,
     handleNextStep,
     handleSearchAddress,
-    loadAvailableCoupons,
     loadUserPoints,
     applyAddress,
     handleInputChange,

@@ -36,7 +36,8 @@ export const VALID_ORDER_STATUSES = [
   'PREPARING',           // 상품준비중
   'IN_TRANSIT',          // 배송중
   'DELIVERED',           // 배송완료
-  'cancelled'
+  'cancelled',
+  'payment_error',       // 결제 검증 실패
 ] as const
 export const VALID_DELIVERY_TYPES = ['pickup', 'quick', 'regular'] as const
 
@@ -49,21 +50,20 @@ export const SHIPPING = {
   QUICK_FEE: 5000,          // 퀵배송 추가 요금
 } as const
 
-// 픽업 시간대 (오전 10시 ~ 오후 8시, 1시간 단위)
+// 픽업 시간대 (오전 9시 ~ 오후 9시, 1시간 단위)
 export const PICKUP_TIME_SLOTS = [
-  '10:00', '11:00', '12:00', '13:00', '14:00',
-  '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
+  '9:00', '10:00', '11:00', '12:00', '13:00', '14:00',
+  '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
 ]
 
 // 퀵배달 지역
 export const QUICK_DELIVERY_AREAS = [
-  '광진구', '성동구', '중랑구', '동대문구',
-  '강남구', '서초구', '송파구', '강동구'
+  '연향동', '조례동', '풍덕동', '해룡면'
 ]
 
 // 퀵배달 시간대
 export const QUICK_DELIVERY_TIME_SLOTS = [
-  '1시간 이내', '2시간 이내', '오전 배송', '오후 배송', '저녁 배송'
+  '오후 3시~5시'
 ]
 
 // ==================== Pagination ====================

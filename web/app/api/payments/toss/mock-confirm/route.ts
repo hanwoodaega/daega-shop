@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getUserFromServer } from '@/lib/auth/auth-server'
 import { usePoints } from '@/lib/point/points'
-import { sendOrderCompleteAlimtalk } from '@/lib/sms/send'
+import { sendOrderCompleteAlimtalk } from '@/lib/notifications'
 import { getServerBaseUrl } from '@/lib/utils/server-url'
 import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 import crypto from 'crypto'
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     const user = await getUserFromServer()
 
-    const { orderId, amount, orderInput } = await request.json()
+    const { orderId, orderInput } = await request.json()
     if (!orderId || !orderInput) {
       return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
     }
@@ -36,10 +36,6 @@ export async function POST(request: NextRequest) {
       userId: user?.id ?? null,
       input: orderInput as OrderInput,
     })
-
-    if (amount && Number(amount) !== pricing.finalTotal) {
-      return NextResponse.json({ error: '결제 금액이 일치하지 않습니다.' }, { status: 400 })
-    }
 
     const today = new Date()
     const datePrefix = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
@@ -93,6 +89,9 @@ export async function POST(request: NextRequest) {
       user_id: user?.id ?? null,
       order_number: orderNumber,
       total_amount: pricing.finalTotal,
+      tax_free_amount: pricing.taxFreeAmount ?? 0,
+      points_used: pricing.appliedPoints ?? 0,
+      coupon_discount_amount: pricing.couponDiscount ?? 0,
       status: 'ORDER_RECEIVED',
       delivery_type: payload.delivery_type,
       delivery_time: payload.delivery_time,
@@ -205,15 +204,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 주문 완료 알림톡 (비회원일 때만, 수령인 연락처 있으면 발송)
-    if (!user && !payload.is_gift && normalizedPhone.length >= 10) {
+    // 주문 완료 알림톡 (선물이면 주문자 연락처로, 아니면 수령인 연락처로 발송)
+    const orderCompletePhone = payload.is_gift
+      ? String(payload.orderer_phone ?? '').replace(/\D/g, '').slice(0, 13)
+      : normalizedPhone
+    if (orderCompletePhone.length >= 10) {
       try {
         const totalQty = itemSnapshots.reduce((sum, s) => sum + s.quantity, 0)
         const sortedByPrice = [...itemSnapshots].sort((a, b) => (b.final_unit_price ?? 0) - (a.final_unit_price ?? 0))
         const topProductName = sortedByPrice[0]?.product_name || '상품'
         const productName = totalQty <= 1 ? topProductName : `${topProductName} 외 ${totalQty - 1}개`
         const result = await sendOrderCompleteAlimtalk({
-          to: normalizedPhone,
+          to: orderCompletePhone,
           orderNumber,
           productName,
         })

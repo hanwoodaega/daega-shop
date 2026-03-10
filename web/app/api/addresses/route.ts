@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createSupabaseServerClient()
     const { data: addresses, error } = await supabase
       .from('addresses')
-      .select('*')
+      .select('id, user_id, name, recipient_name, recipient_phone, zipcode, address, address_detail, delivery_note, is_default, created_at, updated_at')
       .eq('user_id', user.id)
       .order('is_default', { ascending: false })
       .order('created_at', { ascending: false })
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
         delivery_note: delivery_note || null,
         is_default: is_default || false,
       })
-      .select()
+      .select('id, user_id, name, recipient_name, recipient_phone, zipcode, address, address_detail, delivery_note, is_default, created_at, updated_at')
       .single()
 
     if (error) {

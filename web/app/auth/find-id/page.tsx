@@ -143,7 +143,7 @@ export default function FindIdPage() {
           {step !== 3 && (
             <div className="space-y-4">
               <p className="text-sm lg:text-base text-gray-600 text-center mt-2 lg:whitespace-nowrap lg:mb-6">
-                가입 시 등록한 휴대폰 번호로
+                가입 시 등록한 휴대폰 번호로{' '}
                 <br className="lg:hidden" />
                 아이디를 확인하실 수 있습니다.
               </p>

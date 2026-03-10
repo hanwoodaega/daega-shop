@@ -7,27 +7,9 @@ export default function ProfileFAQPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      {/* 모바일 전용 헤더 */}
-      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
-        <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
-          <button
-            onClick={() => router.back()}
-            aria-label="뒤로가기"
-            className="p-2 text-gray-700 hover:text-gray-900"
-          >
-            <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">자주 묻는 질문</h1>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 container mx-auto px-4 py-4 pb-24 lg:py-6 lg:pb-6 lg:max-w-none">
-        {/* PC 전용: 카드 레이아웃 */}
-        <div className="hidden lg:block">
+      {/* PC 전용: DOM 순서상 먼저 배치해 PC에서 모바일 UI 플래시 방지 */}
+      <div className="hidden lg:block flex-1 w-full">
+        <div className="container mx-auto px-4 py-6 pb-6 max-w-none">
           <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4 shadow-sm">
             <h2 className="text-2xl font-bold text-primary-900 text-center">자주 묻는 질문</h2>
           </div>
@@ -61,13 +43,13 @@ export default function ProfileFAQPage() {
                 </summary>
                 <div className="mt-2 px-3 py-2 text-sm text-gray-700">
                   <p className="mb-2">
-                    • <strong>택배배송:</strong> 주문 후 2~3일 소요 (영업일 기준)
+                    • <strong>택배배송:</strong> 주문 후 1~2일 소요 (영업일 기준)
                   </p>
                   <p className="mb-2">
-                    • <strong>퀵배달:</strong> 1~2시간 내 신속 배달 (연향동, 조례동, 풍덕동, 해룡면)
+                    • <strong>퀵배달:</strong> 선택한 시간대 내 신속 배달 (연향동, 조례동, 풍덕동, 해룡면)
                   </p>
                   <p>
-                    • <strong>매장 픽업:</strong> 당일 픽업 가능 (오전 10시 ~ 오후 8시)
+                    • <strong>매장 픽업:</strong> 당일 픽업 가능 (오전 9시 ~ 오후 9시)
                   </p>
                 </div>
               </details>
@@ -147,7 +129,7 @@ export default function ProfileFAQPage() {
                   <p className="mb-2">
                     <strong>픽업 가능 시간:</strong>
                   </p>
-                  <p className="mb-2">오전 10:00 ~ 오후 8:00 (매일)</p>
+                  <p className="mb-2">오전 9:00 ~ 오후 9:00 (매일)</p>
                   <p className="mb-2">
                     <strong>픽업 방법:</strong>
                   </p>
@@ -205,7 +187,7 @@ export default function ProfileFAQPage() {
                   <p className="mb-2">• 풍덕동</p>
                   <p className="mb-2">• 해룡면</p>
                   <p className="mb-2">
-                    <strong>배달 시간:</strong> 오전 10시 ~ 오후 10시
+                    <strong>배달 시간:</strong> 오전 9시 ~ 오후 9시
                   </p>
                   <p>
                     <strong>배달비:</strong> 5,000원 (고정)
@@ -262,52 +244,30 @@ export default function ProfileFAQPage() {
                   <p>모든 상품 페이지에서 원산지를 확인할 수 있습니다.</p>
                 </div>
               </details>
-
-              {/* 할인 */}
-              <details className="group">
-                <summary className="flex justify-between items-center cursor-pointer list-none p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                  <span className="font-medium text-gray-900">할인 상품은 언제 나오나요?</span>
-                  <svg
-                    className="w-5 h-5 text-gray-500 group-open:rotate-180 transition"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </summary>
-                <div className="mt-2 px-3 py-2 text-sm text-gray-700">
-                  <p className="mb-2">할인 상품은 수시로 업데이트됩니다:</p>
-                  <p className="mb-2">• 매주 금요일 특가 상품 공개</p>
-                  <p className="mb-2">• 명절 전후 할인 이벤트</p>
-                  <p>• 홈페이지에서 할인율이 표시된 상품을 확인하세요!</p>
-                </div>
-              </details>
-
-              {/* 재고 */}
-              <details className="group">
-                <summary className="flex justify-between items-center cursor-pointer list-none p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                  <span className="font-medium text-gray-900">품절된 상품은 언제 재입고되나요?</span>
-                  <svg
-                    className="w-5 h-5 text-gray-500 group-open:rotate-180 transition"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </summary>
-                <div className="mt-2 px-3 py-2 text-sm text-gray-700">
-                  <p className="mb-2">품절 상품은 보통 2~3일 내 재입고됩니다.</p>
-                  <p className="mb-2">재입고 알림을 원하시면 고객센터로 문의해주세요.</p>
-                  <p>• 전화: 1234-5678</p>
-                </div>
-              </details>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* 모바일 전용 콘텐츠 */}
+      {/* 모바일 전용 헤더 */}
+      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+        <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
+          <button
+            onClick={() => router.back()}
+            aria-label="뒤로가기"
+            className="p-2 text-gray-700 hover:text-gray-900"
+          >
+            <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">자주 묻는 질문</h1>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 container mx-auto px-4 py-4 pb-24 lg:py-6 lg:pb-6 lg:max-w-none">
         <div className="lg:hidden">
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-lg font-bold mb-4 flex items-center">
@@ -338,13 +298,13 @@ export default function ProfileFAQPage() {
                 </summary>
                 <div className="mt-2 px-3 py-2 text-sm text-gray-700">
                   <p className="mb-2">
-                    • <strong>택배배송:</strong> 주문 후 2~3일 소요 (영업일 기준)
+                    • <strong>택배배송:</strong> 주문 후 1~2일 소요 (영업일 기준)
                   </p>
                   <p className="mb-2">
-                    • <strong>퀵배달:</strong> 1~2시간 내 신속 배달 (연향동, 조례동, 풍덕동, 해룡면)
+                    • <strong>퀵배달:</strong> 선택한 시간대 내 신속 배달 (연향동, 조례동, 풍덕동, 해룡면)
                   </p>
                   <p>
-                    • <strong>매장 픽업:</strong> 당일 픽업 가능 (오전 10시 ~ 오후 8시)
+                    • <strong>매장 픽업:</strong> 당일 픽업 가능 (오전 9시 ~ 오후 9시)
                   </p>
                 </div>
               </details>

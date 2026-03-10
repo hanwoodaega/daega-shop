@@ -34,6 +34,10 @@ export interface Order {
   immediateDiscount?: number
   couponDiscount?: number
   usedPoints?: number
+  /** 스냅샷: 주문 당시 사용 포인트 (있으면 이 값을 우선 사용) */
+  points_used?: number
+  /** 스냅샷: 주문 당시 쿠폰 할인 금액 (있으면 이 값을 우선 사용) */
+  coupon_discount_amount?: number
   shipping?: number
   refund_completed_at?: string | null
   tracking_number?: string | null
@@ -41,7 +45,7 @@ export interface Order {
   payment_method?: string | null
 }
 
-export type OrderStatus = 'all' | 'pending' | 'ORDER_RECEIVED' | 'PREPARING' | 'IN_TRANSIT' | 'DELIVERED' | 'cancelled'
+export type OrderStatus = 'all' | 'pending' | 'ORDER_RECEIVED' | 'PREPARING' | 'IN_TRANSIT' | 'DELIVERED' | 'cancelled' | 'payment_error'
 export type DeliveryType = 'all' | 'pickup' | 'quick' | 'regular'
 
 export interface OrderFilters {

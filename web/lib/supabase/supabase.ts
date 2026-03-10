@@ -36,6 +36,7 @@ export interface Product {
   promotion?: Promotion | null  // 활성 프로모션 정보
   weight_gram?: number | null  // 상품 무게 (그램 단위, 선택사항)
   status?: 'active' | 'soldout' | 'deleted' | null  // 상품 상태
+  tax_type?: 'taxable' | 'tax_free' | null  // 과세/비과세 (기본: taxable)
   created_at: string
   updated_at: string
 }
@@ -61,7 +62,12 @@ export interface Order {
   order_number?: string | null  // 고객용 주문번호 (YYYYMMDD-####)
   user_id: string | null
   total_amount: number
-  status: 'pending' | 'paid' | 'ORDER_RECEIVED' | 'PREPARING' | 'IN_TRANSIT' | 'DELIVERED' | 'gift_received' | 'cancelled'
+  tax_free_amount?: number  // 비과세 금액 (토스 검증용, 기본 0)
+  /** 이 주문에서 실제 사용된 포인트 합계 (스냅샷) */
+  points_used?: number
+  /** 이 주문에서 실제 적용된 쿠폰 할인 금액 (스냅샷) */
+  coupon_discount_amount?: number
+  status: 'pending' | 'paid' | 'ORDER_RECEIVED' | 'PREPARING' | 'IN_TRANSIT' | 'DELIVERED' | 'gift_received' | 'cancelled' | 'payment_error'
   delivery_type: 'pickup' | 'quick' | 'regular'
   delivery_time?: string | null
   shipping_address: string

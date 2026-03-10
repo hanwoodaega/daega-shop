@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/auth-context'
-import { PointHistory } from '@/lib/supabase/supabase'
+import { usePoints, usePointsHistory, usePointsPending } from '@/lib/swr'
 import { useCartStore } from '@/lib/store'
 import { formatPrice } from '@/lib/utils/utils'
 
@@ -11,56 +11,16 @@ export default function PointsPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const cartCount = useCartStore((state) => state.getTotalItems())
-  const [totalPoints, setTotalPoints] = useState(0)
-  const [history, setHistory] = useState<PointHistory[]>([])
-  const [loading, setLoading] = useState(true)
-  const [pendingPoints, setPendingPoints] = useState(0)
-  const [pendingCount, setPendingCount] = useState(0)
+  const { totalPoints, isLoading: loadingPoints } = usePoints()
+  const { history, isLoading: loadingHistory } = usePointsHistory(50)
+  const { pendingPoints, pendingCount, isLoading: loadingPending } = usePointsPending()
+  const loading = loadingPoints || loadingHistory || loadingPending
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth/login?next=/profile/points')
     }
   }, [user, authLoading, router])
-
-  useEffect(() => {
-    if (user?.id) {
-      loadPoints()
-    }
-  }, [user?.id])
-
-  const loadPoints = async () => {
-    if (!user?.id) return
-
-    setLoading(true)
-    try {
-      // 서버 API로 포인트 정보 조회
-      const [pointsRes, historyRes, pendingRes] = await Promise.all([
-        fetch('/api/points'),
-        fetch('/api/points/history?limit=50'),
-        fetch('/api/points/pending')
-      ])
-
-      const pointsData = pointsRes.ok ? await pointsRes.json() : null
-      const historyData = historyRes.ok ? await historyRes.json() : null
-      const pendingData = pendingRes.ok ? await pendingRes.json() : null
-
-      if (pointsData?.userPoints) {
-        setTotalPoints(pointsData.userPoints.total_points || 0)
-      }
-      
-      setHistory(historyData?.history || [])
-      
-      if (pendingData) {
-        setPendingPoints(pendingData.pendingPoints || 0)
-        setPendingCount(pendingData.pendingCount || 0)
-      }
-    } catch (error) {
-      console.error('포인트 조회 실패:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const getTypeText = (type: string) => {
     switch (type) {
@@ -142,27 +102,9 @@ export default function PointsPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      {/* 모바일 전용 헤더 */}
-      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
-        <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
-          <button
-            onClick={() => router.back()}
-            aria-label="뒤로가기"
-            className="p-2 text-gray-700 hover:text-gray-900"
-          >
-            <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">포인트</h1>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 container mx-auto px-4 py-4 pb-24 lg:py-6 lg:pb-6 lg:max-w-none">
-        {/* PC 전용: 상단 카드 + 본문 */}
-        <div className="hidden lg:block">
+      {/* PC 전용: DOM 순서상 먼저 배치해 PC에서 모바일 UI 플래시 방지 */}
+      <div className="hidden lg:block flex-1 w-full">
+        <div className="container mx-auto px-4 py-6 pb-6 max-w-none">
           <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4 shadow-sm">
             <h2 className="text-2xl font-bold text-primary-900 text-center">포인트</h2>
           </div>
@@ -223,7 +165,27 @@ export default function PointsPage() {
             )}
           </div>
         </div>
+      </div>
 
+      {/* 모바일 전용 헤더 */}
+      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+        <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
+          <button
+            onClick={() => router.back()}
+            aria-label="뒤로가기"
+            className="p-2 text-gray-700 hover:text-gray-900"
+          >
+            <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">포인트</h1>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 container mx-auto px-4 py-4 pb-24 lg:py-6 lg:pb-6 lg:max-w-none">
         {/* 모바일 전용 */}
         <div className="lg:hidden">
           <div className="bg-white rounded-lg shadow-md p-6 mb-4">

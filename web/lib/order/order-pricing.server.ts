@@ -23,6 +23,8 @@ export interface OrderInput {
   is_gift: boolean
   gift_message: string | null
   gift_recipient_phone?: string
+  /** 선물 주문 시 주문 완료 알림톡 받을 주문자 연락처 */
+  orderer_phone?: string
   /** 선물 알림톡 발송 시 사용 (보내는 분 이름) */
   gift_sender_name?: string
   payment_method?: string | null
@@ -35,6 +37,8 @@ export interface PricingResult {
   couponDiscount: number
   appliedPoints: number
   finalTotal: number
+  /** 비과세 금액 합계 (토스 검증용) */
+  taxFreeAmount: number
 }
 
 export interface OrderItemSnapshot {
@@ -44,6 +48,8 @@ export interface OrderItemSnapshot {
   price: number
   final_unit_price: number
   promotion_group_id?: string | null
+  /** 과세/비과세 구분 (기본 taxable) */
+  tax_type?: 'taxable' | 'tax_free'
 }
 
 function isCouponExpired(userCoupon: any, coupon: any): boolean {
@@ -146,6 +152,7 @@ export async function calculateOrderPricing({
       promotion: product.promotion,
       weightGram: product.weight_gram,
     })
+    const taxType = product.tax_type === 'tax_free' ? 'tax_free' : 'taxable'
     discountedTotal += pricing.finalPrice * item.quantity
     itemSnapshots.push({
       product_id: item.productId,
@@ -153,6 +160,7 @@ export async function calculateOrderPricing({
       quantity: item.quantity,
       price: product.price,
       final_unit_price: pricing.finalPrice,
+      tax_type: taxType,
     })
   })
 
@@ -169,6 +177,7 @@ export async function calculateOrderPricing({
           promotion: product.promotion,
           weightGram: product.weight_gram,
         })
+        const taxType = product.tax_type === 'tax_free' ? 'tax_free' : 'taxable'
         discountedTotal += pricing.finalPrice * item.quantity
         itemSnapshots.push({
           product_id: item.productId,
@@ -177,6 +186,7 @@ export async function calculateOrderPricing({
           price: product.price,
           final_unit_price: pricing.finalPrice,
           promotion_group_id: groupId,
+          tax_type: taxType,
         })
       })
       return
@@ -208,6 +218,7 @@ export async function calculateOrderPricing({
       const finalUnitPrice = item.quantity > 0
         ? Math.round(paidTotal / item.quantity)
         : product.price
+      const taxType = product.tax_type === 'tax_free' ? 'tax_free' : 'taxable'
       discountedTotal += paidTotal
       itemSnapshots.push({
         product_id: item.productId,
@@ -216,6 +227,7 @@ export async function calculateOrderPricing({
         price: product.price,
         final_unit_price: finalUnitPrice,
         promotion_group_id: groupId,
+        tax_type: taxType,
       })
     })
   })
@@ -281,6 +293,10 @@ export async function calculateOrderPricing({
 
   const finalTotal = Math.max(0, discountedTotal - couponDiscount - appliedPoints) + shipping
 
+  const taxFreeAmount = itemSnapshots
+    .filter((s) => s.tax_type === 'tax_free')
+    .reduce((sum, s) => sum + s.final_unit_price * s.quantity, 0)
+
   return {
     pricing: {
       originalTotal,
@@ -289,6 +305,7 @@ export async function calculateOrderPricing({
       couponDiscount,
       appliedPoints,
       finalTotal,
+      taxFreeAmount,
     },
     itemSnapshots,
   }

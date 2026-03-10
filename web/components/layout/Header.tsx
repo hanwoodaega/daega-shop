@@ -8,12 +8,12 @@ import MainMenu from '@/components/layout/MainMenu'
 import NotificationBell from '@/components/common/NotificationBell'
 import { useSearchUIStore, useCartStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth/auth-context'
+import { useProfileInfo } from '@/lib/swr'
 
 function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = false }: { hideMainMenu?: boolean, showCartButton?: boolean, sticky?: boolean }) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [mounted, setMounted] = useState(false)
-  const [profileName, setProfileName] = useState<string | null>(null)
   const [menuFixed, setMenuFixed] = useState(false)
   const [menuBarHeight, setMenuBarHeight] = useState(56)
   const headerAboveNavRef = useRef<HTMLDivElement>(null)
@@ -21,10 +21,8 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
   const { isSearchOpen, closeSearch } = useSearchUIStore()
   const cartCount = useCartStore((state) => state.getTotalItems())
   const { user, loading } = useAuth()
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const { data: profileInfo } = useProfileInfo()
+  const displayName = profileInfo?.name ?? (user as any)?.user_metadata?.name ?? ''
 
   const performSearch = useCallback(() => {
     const query = searchQuery.trim()
@@ -56,38 +54,9 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
     }
   }, [isSearchOpen])
 
-  // users 테이블의 name 우선 사용
   useEffect(() => {
-    let cancelled = false
-
-    if (!user) {
-      setProfileName(null)
-      return
-    }
-
-    const loadProfileName = async () => {
-      try {
-        const res = await fetch('/api/profile/info')
-        if (!res.ok) return
-        const data = await res.json().catch(() => null)
-        if (!cancelled) {
-          setProfileName(data?.name ?? null)
-        }
-      } catch {
-        if (!cancelled) {
-          setProfileName(null)
-        }
-      }
-    }
-
-    loadProfileName()
-
-    return () => {
-      cancelled = true
-    }
-  }, [user?.id])
-
-  const displayName = profileName || (user as any)?.user_metadata?.name || ''
+    setMounted(true)
+  }, [])
 
   // PC: 스크롤 시 메인메뉴만 상단 고정 (fixed)
   useEffect(() => {

@@ -2,17 +2,92 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getUserFromServer } from '@/lib/auth/auth-server'
 import { usePoints } from '@/lib/point/points'
-import { sendOrderCompleteAlimtalk, sendGiftNotification } from '@/lib/sms/send'
+import { sendOrderCompleteAlimtalk, sendGiftNotification } from '@/lib/notifications'
 import { getServerBaseUrl } from '@/lib/utils/server-url'
 import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 import crypto from 'crypto'
-import { calculateOrderPricing, OrderInput } from '@/lib/order/order-pricing.server'
+import { calculateOrderPricing, OrderInput, OrderItemSnapshot } from '@/lib/order/order-pricing.server'
+import { cancelTossPayment } from '@/lib/payments/toss-server'
+import type { User } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+/** 검증 불일치 시 payment_error 상태로 주문만 저장 (감사/로그용), 포인트/쿠폰/장바구니/알림은 처리하지 않음 */
+async function createOrderWithPaymentError(params: {
+  supabaseAdmin: SupabaseClient
+  user: User | null
+  orderId: string
+  paymentKey: string
+  payload: OrderInput
+  serverTotalAmount: number
+  serverTaxFreeAmount: number
+  itemSnapshots: OrderItemSnapshot[]
+}): Promise<string> {
+  const {
+    supabaseAdmin,
+    user,
+    orderId,
+    paymentKey,
+    payload,
+    serverTotalAmount,
+    serverTaxFreeAmount,
+    itemSnapshots,
+  } = params
+  const today = new Date()
+  const datePrefix = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
+  const suffix = crypto.randomBytes(2).toString('hex').toUpperCase().slice(0, 4)
+  const orderNumber = `${datePrefix}-${suffix}`
+
+  const normalizedPhone = String(payload.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+  const orderInsertData: Record<string, unknown> = {
+    user_id: user?.id ?? null,
+    order_number: orderNumber,
+    total_amount: serverTotalAmount,
+    tax_free_amount: serverTaxFreeAmount,
+    status: 'payment_error',
+    delivery_type: payload.delivery_type,
+    delivery_time: payload.delivery_time,
+    shipping_address: payload.shipping_address,
+    shipping_name: payload.shipping_name,
+    shipping_phone: payload.is_gift ? '' : normalizedPhone,
+    delivery_note: payload.delivery_note,
+    is_gift: payload.is_gift,
+    gift_message: payload.gift_message,
+    payment_method: payload.payment_method || 'toss_card',
+    toss_order_id: orderId,
+    toss_payment_key: paymentKey,
+  }
+  if (payload.is_gift && payload.gift_recipient_phone) {
+    orderInsertData.gift_recipient_phone = String(payload.gift_recipient_phone).replace(/\D/g, '').slice(0, 13)
+  }
+
+  const { data: order, error: orderError } = await supabaseAdmin
+    .from('orders')
+    .insert(orderInsertData)
+    .select('id')
+    .single()
+
+  if (orderError || !order) {
+    console.error('[toss/confirm] payment_error 주문 저장 실패:', orderError)
+    return orderNumber
+  }
+
+  const orderItems = itemSnapshots.map((item) => ({
+    order_id: order.id,
+    product_id: item.product_id,
+    quantity: item.quantity,
+    price: item.final_unit_price ?? item.price,
+  }))
+  if (orderItems.length > 0) {
+    await supabaseAdmin.from('order_items').insert(orderItems)
+  }
+  return orderNumber
+}
 
 export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromServer()
 
-    const { paymentKey, orderId, amount, orderInput, mock } = await request.json()
+    const { paymentKey, orderId, orderInput, mock } = await request.json()
     const isMock = !!mock
     if (!orderId || !orderInput || (!paymentKey && !isMock)) {
       return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
@@ -34,11 +109,19 @@ export async function POST(request: NextRequest) {
       input: orderInput as OrderInput,
     })
 
-    if (amount && Number(amount) !== pricing.finalTotal) {
-      return NextResponse.json({ error: '결제 금액이 일치하지 않습니다.' }, { status: 400 })
-    }
+    const serverTotalAmount = pricing.finalTotal
+    const serverTaxFreeAmount = pricing.taxFreeAmount ?? 0
 
     if (!isMock) {
+      const confirmBody: Record<string, unknown> = {
+        paymentKey,
+        orderId,
+        amount: serverTotalAmount,
+      }
+      if (serverTaxFreeAmount > 0) {
+        confirmBody.taxFreeAmount = serverTaxFreeAmount
+      }
+
       const auth = Buffer.from(`${secretKey}:`).toString('base64')
       const confirmRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
         method: 'POST',
@@ -46,13 +129,66 @@ export async function POST(request: NextRequest) {
           Authorization: `Basic ${auth}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ paymentKey, orderId, amount: pricing.finalTotal }),
+        body: JSON.stringify(confirmBody),
       })
 
       if (!confirmRes.ok) {
         const errorData = await confirmRes.json().catch(() => ({}))
         return NextResponse.json(
           { error: '결제 승인에 실패했습니다.', details: errorData },
+          { status: 400 }
+        )
+      }
+
+      const tossResponse = await confirmRes.json() as {
+        totalAmount?: number
+        taxFreeAmount?: number
+        taxExemptionAmount?: number
+        [key: string]: unknown
+      }
+      const tossTotalAmount = Number(tossResponse?.totalAmount)
+      const tossTaxFreeAmount =
+        tossResponse?.taxFreeAmount != null ? Number(tossResponse.taxFreeAmount) : Number(tossResponse?.taxExemptionAmount ?? 0)
+
+      // 총액·면세액 모두 일치해야 통과 (복합과세 상점)
+      const amountMismatch =
+        Number.isNaN(tossTotalAmount) ||
+        tossTotalAmount !== serverTotalAmount ||
+        tossTaxFreeAmount !== serverTaxFreeAmount
+
+      if (amountMismatch) {
+        const orderNumber = await createOrderWithPaymentError({
+          supabaseAdmin,
+          user,
+          orderId,
+          paymentKey,
+          payload: orderInput as OrderInput,
+          serverTotalAmount,
+          serverTaxFreeAmount,
+          itemSnapshots,
+        })
+
+        console.error('[toss/confirm] 결제 검증 불일치', {
+          orderNumber,
+          orderId,
+          userId: user?.id ?? 'guest',
+          serverTotalAmount,
+          serverTaxFreeAmount,
+          tossTotalAmount: tossResponse?.totalAmount,
+          tossTaxFreeAmount: tossResponse?.taxFreeAmount,
+          payload: JSON.stringify(tossResponse).slice(0, 500),
+        })
+
+        const cancelResult = await cancelTossPayment(
+          paymentKey,
+          '결제 검증 불일치로 자동 취소(금액 불일치)'
+        )
+        if (!cancelResult.ok) {
+          console.error('[toss/confirm] 검증 실패 후 토스 취소 실패:', cancelResult.error)
+        }
+
+        return NextResponse.json(
+          { error: '결제 검증 중 오류가 발생했습니다. 결제는 취소되었습니다. 다시 시도해 주세요.' },
           { status: 400 }
         )
       }
@@ -111,6 +247,9 @@ export async function POST(request: NextRequest) {
       user_id: user?.id ?? null,
       order_number: orderNumber,
       total_amount: pricing.finalTotal,
+      tax_free_amount: serverTaxFreeAmount,
+      points_used: pricing.appliedPoints ?? 0,
+      coupon_discount_amount: pricing.couponDiscount ?? 0,
       status: 'ORDER_RECEIVED',
       delivery_type: payload.delivery_type,
       delivery_time: payload.delivery_time,
@@ -230,15 +369,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 주문 완료 알림톡 (비회원일 때만, 수령인 연락처 있으면 발송, 실패 시 SMS는 알리고에서 자동 발송)
-    if (!user && !payload.is_gift && normalizedPhone.length >= 10) {
+    // 주문 완료 알림톡 (선물이면 주문자 연락처로, 아니면 수령인 연락처로 발송)
+    const orderCompletePhone = payload.is_gift
+      ? String(payload.orderer_phone ?? '').replace(/\D/g, '').slice(0, 13)
+      : normalizedPhone
+    if (orderCompletePhone.length >= 10) {
       try {
         const totalQty = itemSnapshots.reduce((sum, s) => sum + s.quantity, 0)
         const sortedByPrice = [...itemSnapshots].sort((a, b) => (b.final_unit_price ?? 0) - (a.final_unit_price ?? 0))
         const topProductName = sortedByPrice[0]?.product_name || '상품'
         const productName = totalQty <= 1 ? topProductName : `${topProductName} 외 ${totalQty - 1}개`
         const result = await sendOrderCompleteAlimtalk({
-          to: normalizedPhone,
+          to: orderCompletePhone,
           orderNumber,
           productName,
         })

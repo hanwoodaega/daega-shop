@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
 import { removeFromCartDB, setCartItems } from '@/lib/cart/cart-db'
 import { useAuth } from '@/lib/auth/auth-context'
+import { mutateProfileRelated, mutateAddresses, mutateOrders, mutateUnreadCount } from '@/lib/swr'
 
 interface CheckoutMeta {
   isDirectPurchase: boolean
@@ -57,16 +58,14 @@ function TossSuccessContent() {
   const clearDirectPurchase = useDirectPurchaseStore((state) => state.clearItems)
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
   const [message, setMessage] = useState('')
-  const [successMeta, setSuccessMeta] = useState<{ isGift?: boolean; giftToken?: string } | null>(null)
   const confirmStartedRef = useRef(false)
 
   useEffect(() => {
     const paymentKey = searchParams.get('paymentKey')
     const orderId = searchParams.get('orderId')
-    const amount = searchParams.get('amount')
     const isMock = searchParams.get('mock') === '1'
 
-    if (!paymentKey || !orderId || !amount) {
+    if (!paymentKey || !orderId) {
       setStatus('error')
       setMessage('결제 승인 정보가 없습니다.')
       return
@@ -91,11 +90,10 @@ function TossSuccessContent() {
           const mockRes = await fetch('/api/payments/toss/mock-confirm', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId,
-              amount: Number(amount),
-              orderInput: meta.orderInput,
-            }),
+              body: JSON.stringify({
+                orderId,
+                orderInput: meta.orderInput,
+              }),
           })
 
           if (!mockRes.ok) {
@@ -110,8 +108,10 @@ function TossSuccessContent() {
           await cleanupCart(meta)
 
           sessionStorage.removeItem(metaKey)
-          setStatus('success')
-          setSuccessMeta(meta.isGiftMode && data?.gift_token ? { isGift: true, giftToken: data.gift_token } : null)
+          mutateProfileRelated().catch(() => {})
+          mutateAddresses().catch(() => {})
+          mutateOrders().catch(() => {})
+          mutateUnreadCount().catch(() => {})
 
           const isGuestOrder = data?.order && data.order.user_id == null
           const redirectUrl = meta.isGiftMode && data?.gift_token
@@ -119,7 +119,7 @@ function TossSuccessContent() {
             : isGuestOrder
               ? `/order-lookup?order_number=${encodeURIComponent(data.order?.order_number ?? '')}&phone=${encodeURIComponent(meta.orderInput?.shipping_phone ?? '')}&done=1`
               : '/orders'
-          window.setTimeout(() => router.replace(redirectUrl), 1200)
+          router.replace(redirectUrl)
           return
         }
 
@@ -129,7 +129,6 @@ function TossSuccessContent() {
           body: JSON.stringify({
             paymentKey,
             orderId,
-            amount: Number(amount),
             orderInput: meta.orderInput,
             mock: searchParams.get('mock') === '1',
           }),
@@ -146,9 +145,10 @@ function TossSuccessContent() {
         await cleanupCart(meta)
 
         sessionStorage.removeItem(metaKey)
-
-        setStatus('success')
-        setSuccessMeta(meta.isGiftMode && data?.gift_token ? { isGift: true, giftToken: data.gift_token } : null)
+        mutateProfileRelated().catch(() => {})
+        mutateAddresses().catch(() => {})
+        mutateOrders().catch(() => {})
+        mutateUnreadCount().catch(() => {})
 
         const isGuestOrder = data?.order && data.order.user_id == null
         const redirectUrl = meta.isGiftMode && data?.gift_token
@@ -156,7 +156,7 @@ function TossSuccessContent() {
           : isGuestOrder
             ? `/order-lookup?order_number=${encodeURIComponent(data.order?.order_number ?? '')}&phone=${encodeURIComponent(meta.orderInput?.shipping_phone ?? '')}&done=1`
             : '/orders'
-        window.setTimeout(() => router.replace(redirectUrl), 1200)
+        router.replace(redirectUrl)
       } catch (error: any) {
         setStatus('error')
         setMessage(error.message || '결제 승인에 실패했습니다.')
@@ -266,16 +266,8 @@ function TossSuccessContent() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      {status === 'success' && (
-        <div className="max-w-md w-full bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">
-          <p className="text-lg font-medium text-gray-800 mb-2">결제가 완료되었습니다.</p>
-          {successMeta?.isGift && (
-            <p className="text-sm text-gray-600 mb-2">
-              선물 알림이 받는 분 휴대폰으로 발송되었습니다.
-            </p>
-          )}
-          <p className="text-xs text-gray-500">잠시 후 이동합니다...</p>
-        </div>
+      {status === 'processing' && (
+        <p className="text-sm text-gray-500">결제 확인 중...</p>
       )}
       {status === 'error' && (
         <div className="max-w-md w-full bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">

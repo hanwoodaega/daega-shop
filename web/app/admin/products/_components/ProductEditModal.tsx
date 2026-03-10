@@ -120,6 +120,31 @@ export default function ProductEditModal({
                 />
                 <p className="text-xs text-gray-500 mt-1">상품 무게를 그램 단위로 입력해주세요</p>
               </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">과세 구분</label>
+                <div className="flex gap-4 text-xs text-gray-700">
+                  <label className="inline-flex items-center gap-1">
+                    <input
+                      type="radio"
+                      name="tax_type"
+                      value="taxable"
+                      checked={(editing.tax_type ?? 'taxable') === 'taxable'}
+                      onChange={() => setEditing({ ...editing, tax_type: 'taxable' })}
+                    />
+                    <span>과세</span>
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input
+                      type="radio"
+                      name="tax_type"
+                      value="tax_free"
+                      checked={editing.tax_type === 'tax_free'}
+                      onChange={() => setEditing({ ...editing, tax_type: 'tax_free' })}
+                    />
+                    <span>면세</span>
+                  </label>
+                </div>
+              </div>
               <div className="border-t pt-3 mt-3">
                 <label className="block text-xs text-gray-600 mb-2 font-semibold">상품 이미지 관리</label>
                 <div className="mb-2">

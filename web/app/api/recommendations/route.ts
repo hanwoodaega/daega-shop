@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 
-// 동적 라우트로 처리 (cookies 사용)
 export const dynamic = 'force-dynamic'
+// 60초 간 캐시 후 재검증 (동적 라우트에서 응답 캐시용)
+export const revalidate = 60
 
 export async function GET() {
   try {

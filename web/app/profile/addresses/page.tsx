@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/lib/auth/auth-context'
-import { Address } from '@/lib/supabase/supabase'
+import { useAddressesSWR, mutateAddresses, type Address } from '@/lib/swr'
 import { formatPhoneNumber } from '@/lib/utils/format-phone'
 import { useDaumPostcodeScript, openDaumPostcode, AddressSearchResult } from '@/lib/postcode/useDaumPostcode'
 import { useCartStore } from '@/lib/store'
@@ -13,9 +13,8 @@ export default function AddressesPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
   const cartCount = useCartStore((state) => state.getTotalItems())
+  const { addresses, isLoading: loadingAddresses, mutate: mutateAddressesList } = useAddressesSWR()
   
-  const [addresses, setAddresses] = useState<Address[]>([])
-  const [loadingAddresses, setLoadingAddresses] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingAddress, setEditingAddress] = useState<Address | null>(null)
   
@@ -40,28 +39,8 @@ export default function AddressesPage() {
   // Daum 우편번호 스크립트 로드
   useDaumPostcodeScript()
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchAddresses()
-    }
-  }, [user?.id]) // ✅ user.id만 의존성으로 (무한 루프 방지)
-
-  const fetchAddresses = async () => {
-    try {
-      const res = await fetch('/api/addresses')
-      
-      if (!res.ok) {
-        throw new Error('배송지 조회 실패')
-      }
-      
-      const data = await res.json()
-      setAddresses(data.addresses || [])
-    } catch (error) {
-      console.error('배송지 조회 실패:', error)
-      toast.error('배송지 조회에 실패했습니다.')
-    } finally {
-      setLoadingAddresses(false)
-    }
+  const refreshAddresses = async () => {
+    await Promise.all([mutateAddressesList(), mutateAddresses()])
   }
 
   const handleOpenAddModal = () => {
@@ -143,7 +122,7 @@ export default function AddressesPage() {
         }
       }
 
-      await fetchAddresses()
+      await refreshAddresses()
       setShowAddModal(false)
       toast.success(editingAddress ? '배송지가 수정되었습니다.' : '배송지가 추가되었습니다.')
     } catch (error: any) {
@@ -165,7 +144,7 @@ export default function AddressesPage() {
         throw new Error(errorData.error || '배송지 삭제 실패')
       }
 
-      await fetchAddresses()
+      await refreshAddresses()
       toast.success('배송지가 삭제되었습니다.', { id: 'address-delete' })
     } catch (error: any) {
       console.error('배송지 삭제 실패:', error)
@@ -184,7 +163,7 @@ export default function AddressesPage() {
         throw new Error(errorData.error || '기본 배송지 설정 실패')
       }
 
-      await fetchAddresses()
+      await refreshAddresses()
       toast.success('기본 배송지로 설정되었습니다.')
     } catch (error: any) {
       console.error('기본 배송지 설정 실패:', error)
@@ -262,27 +241,9 @@ export default function AddressesPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      {/* 모바일 전용 헤더 */}
-      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
-        <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
-          <button
-            onClick={() => router.back()}
-            aria-label="뒤로가기"
-            className="p-2 text-gray-700 hover:text-gray-900"
-          >
-            <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">배송지 관리</h1>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 container mx-auto px-4 py-4 pb-24 lg:py-6 lg:pb-6 lg:max-w-none">
-        {/* PC 전용: 상단 카드 + 본문 */}
-        <div className="hidden lg:block">
+      {/* PC 전용: DOM 순서상 먼저 배치해 PC에서 모바일 UI 플래시 방지 */}
+      <div className="hidden lg:block flex-1 w-full">
+        <div className="container mx-auto px-4 py-6 pb-6 max-w-none">
           <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4 shadow-sm">
             <h2 className="text-2xl font-bold text-primary-900 text-center">배송지 관리</h2>
           </div>
@@ -364,7 +325,27 @@ export default function AddressesPage() {
             </div>
           )}
         </div>
+      </div>
 
+      {/* 모바일 전용 헤더 */}
+      <header className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+        <div className="container mx-auto px-2 h-14 md:h-16 relative flex items-center">
+          <button
+            onClick={() => router.back()}
+            aria-label="뒤로가기"
+            className="p-2 text-gray-700 hover:text-gray-900"
+          >
+            <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <h1 className="text-lg md:text-xl font-normal text-gray-900 whitespace-nowrap">배송지 관리</h1>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 container mx-auto px-4 py-4 pb-24 lg:py-6 lg:pb-6 lg:max-w-none">
         {/* 모바일 전용 */}
         <div className="lg:hidden">
           <div className="flex items-center justify-between mb-4">
