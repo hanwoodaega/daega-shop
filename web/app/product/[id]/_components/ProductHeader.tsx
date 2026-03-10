@@ -35,7 +35,7 @@ export default function ProductHeader({ product, cartCount, mounted }: ProductHe
               <span className="text-lg md:text-3xl font-semibold text-gray-900 truncate">
                 {product.name}
                 {product.weight_gram && product.weight_gram > 0 && (
-                  <span className="ml-1 text-xs md:text-sm font-normal text-gray-700">
+                  <span className="ml-1 font-normal text-gray-700">
                     {formatWeightGram(product.weight_gram)}
                   </span>
                 )}
