@@ -131,7 +131,7 @@ export default function ReviewGalleryPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 lg:grid-cols-5 gap-2">
               {allImages.map((image, index) => (
                 <div 
                   key={index} 

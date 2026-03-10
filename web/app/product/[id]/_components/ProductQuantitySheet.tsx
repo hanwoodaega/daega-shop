@@ -37,48 +37,64 @@ export default function ProductQuantitySheet({
         className="fixed left-0 right-0 z-50 flex justify-center pointer-events-none"
         style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))' }}
       >
-        <div className="relative w-full max-w-md mx-auto bg-white rounded-t-2xl shadow-2xl p-6 pointer-events-auto border-t border-gray-200">
-          {/* 상품 카드 */}
-          <div className="border-2 border-gray-400 rounded-lg p-4 mb-4 bg-gray-50">
+        <div className="relative w-full max-w-md mx-auto bg-white rounded-t-2xl shadow-2xl p-5 pointer-events-auto border-t border-gray-200">
+          {/* 상품 카드 (PC와 비슷한 스타일) */}
+          <div className="p-4 mb-4 border border-gray-200 rounded-lg bg-white">
             {/* 상품명 */}
-            <h3 className="text-sm font-semibold mb-8 line-clamp-2">{product.name}</h3>
-            
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 line-clamp-2">
+              {product.name}
+            </h3>
+
             <div className="flex items-end justify-between">
+              {/* 가격 */}
+              <div className="flex flex-col">
+                <span className="text-lg font-bold text-gray-900">
+                  {formatPrice(pricing.finalPrice)}원
+                </span>
+                {pricing.finalPrice !== product.price && (
+                  <span className="text-xs text-gray-400 line-through mt-0.5">
+                    {formatPrice(product.price)}원
+                  </span>
+                )}
+                <span className="text-xs text-gray-500 mt-1">
+                  합계 {formatPrice(totalPrice)}원
+                </span>
+              </div>
+
               {/* 수량 조절 */}
-              <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-white">
-                <button 
-                  onClick={() => onQuantityChange(Math.max(1, quantity - 1))} 
-                  className="w-8 h-7 hover:bg-gray-100 flex items-center justify-center border-r border-gray-300"
+              <div className="flex items-center border border-gray-300 rounded-full bg-gray-50 px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
+                  className="w-7 h-7 flex items-center justify-center text-base text-gray-700 active:bg-gray-200 rounded-full"
                 >
-                  <span className="text-2xl leading-none -mt-1">-</span>
+                  -
                 </button>
-                <span className="w-10 text-center text-base font-medium">{quantity}</span>
-                <button 
-                  onClick={() => onQuantityChange(quantity + 1)} 
-                  className="w-8 h-7 hover:bg-gray-100 flex items-center justify-center border-l border-gray-300"
+                <span className="mx-3 min-w-[1.5rem] text-center text-base font-medium text-gray-900">
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onQuantityChange(quantity + 1)}
+                  className="w-7 h-7 flex items-center justify-center text-base text-gray-700 active:bg-gray-200 rounded-full"
                 >
-                  <span className="text-2xl leading-none -mt-1">+</span>
+                  +
                 </button>
               </div>
-              
-              {/* 가격 */}
-              <span className="text-lg font-bold text-primary-900">
-                {formatPrice(totalPrice)}원
-              </span>
             </div>
           </div>
-          
+
           {/* 취소/확인 버튼 */}
-          <div className="grid grid-cols-2 gap-2">
-            <button 
-              onClick={onCancel} 
-              className="py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50"
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={onCancel}
+              className="py-3 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
             >
               취소
             </button>
             <button
               onClick={onConfirm}
-              className="py-2 text-sm rounded-lg bg-primary-800 text-white font-semibold hover:bg-primary-900"
+              className="py-3 text-sm font-semibold rounded-lg bg-primary-800 text-white hover:bg-primary-900 active:bg-primary-950"
             >
               확인
             </button>

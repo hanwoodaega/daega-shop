@@ -2,6 +2,7 @@
 
 import { Product } from '@/lib/supabase/supabase'
 import { isSoldOut } from '@/lib/product/product-utils'
+import { formatWeightGram } from '@/lib/utils/utils'
 
 interface ProductInfoProps {
   product: Product
@@ -23,7 +24,9 @@ export default function ProductInfo({ product, reviewCount, averageRating, onRev
         <h1 className="text-xl font-normal inline-flex items-center">
           {product.name}
           {product.weight_gram && product.weight_gram > 0 && (
-            <span className="ml-1 text-xl font-normal">{product.weight_gram}G</span>
+            <span className="ml-1 text-xl font-normal">
+              {formatWeightGram(product.weight_gram)}
+            </span>
           )}
         </h1>
       </div>

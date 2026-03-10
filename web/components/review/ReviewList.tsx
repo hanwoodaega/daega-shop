@@ -253,7 +253,7 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
             onClick={() => {
               router.push(`/product/${productId}/reviews`)
             }}
-            className="text-sm text-blue-600 font-bold hover:underline"
+            className="text-sm md:text-base text-blue-600 font-bold hover:underline"
             suppressHydrationWarning
           >
             전체보기 ❯
@@ -285,17 +285,17 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
             onClick={() => {
               router.push('/profile/reviews')
             }}
-            className="text-sm text-blue-600 font-bold hover:underline"
+            className="text-sm md:text-base text-blue-600 font-bold hover:underline"
           >
             리뷰 작성하기
           </button>
         )}
       </div>
 
-      {/* 리뷰 사진 갤러리 (4x2) */}
+      {/* 리뷰 사진 갤러리 (모바일 4열, PC 6열) */}
       {allImages.length > 0 && (
         <div className="mb-4 pb-4">
-          <div className="grid grid-cols-4 gap-1">
+          <div className="grid grid-cols-4 lg:grid-cols-6 gap-1">
             {allImages.slice(0, 7).map((image, index) => (
               <div key={index} className="aspect-square bg-gray-200 rounded overflow-hidden">
                 <img 
@@ -318,7 +318,7 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
                 className="aspect-square bg-blue-600 rounded flex flex-col items-center justify-center text-white hover:bg-blue-700 transition"
               >
                 <span className="text-2xl mb-1">+</span>
-                <span className="text-xs font-medium">더보기</span>
+                <span className="text-sm md:text-base font-semibold">더보기</span>
               </button>
             )}
           </div>

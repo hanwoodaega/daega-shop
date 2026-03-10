@@ -49,6 +49,18 @@ const managementCards: AdminCard[] = [
     accent: 'bg-teal-100 text-teal-700',
   },
   {
+    title: '상품고시정보',
+    description: '상품별 법정 상품 정보 제공 고시를 등록·수정합니다.',
+    href: '/admin/product-notice',
+    accent: 'bg-amber-100 text-amber-700',
+  },
+  {
+    title: '상품 상세',
+    description: '상품별 상세페이지 설명 이미지를 등록·순서 변경·삭제합니다.',
+    href: '/admin/product-description',
+    accent: 'bg-amber-100 text-amber-700',
+  },
+  {
     title: '히어로 이미지 관리',
     description: '메인페이지 히어로 섹션 이미지를 관리하세요.',
     href: '/admin/hero',

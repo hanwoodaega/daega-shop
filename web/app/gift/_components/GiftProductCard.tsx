@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Product } from '@/lib/supabase/supabase'
-import { formatPrice } from '@/lib/utils/utils'
+import { formatPrice, formatWeightGram } from '@/lib/utils/utils'
 
 /** 선물 페이지 상품 카드에서 사용하는 프로모션 정보 (API 조인 결과, Product와 호환) */
 export type GiftProductWithPromotion = Omit<Product, 'promotion'> & {
@@ -75,7 +75,7 @@ export default function GiftProductCard({ product }: GiftProductCardProps) {
             <h3 className="text-base font-medium text-gray-900 line-clamp-2">{product.name}</h3>
             {product.weight_gram && (
               <span className="text-base font-medium text-gray-900 ml-1">
-                {product.weight_gram}G
+                {formatWeightGram(product.weight_gram)}
               </span>
             )}
           </div>

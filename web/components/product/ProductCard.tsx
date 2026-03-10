@@ -9,7 +9,7 @@ import { useWishlistStore, usePromotionModalStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth/auth-context'
 import { toggleWishlistDB } from '@/lib/wishlist/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart/cart-db'
-import { formatPrice } from '@/lib/utils/utils'
+import { formatPrice, formatWeightGram } from '@/lib/utils/utils'
 import { isValidImageUrl, isSoldOut } from '@/lib/product/product-utils'
 import { getFinalPricing } from '@/lib/product/product.pricing'
 import StarIcons from '@/components/review/StarIcons'
@@ -210,7 +210,7 @@ function ProductCard({ product }: ProductCardProps) {
             <h3 className="text-[15px] font-medium line-clamp-1 text-primary-900 leading-tight tracking-tight">{product.name}</h3>
             {product.weight_gram && (
               <span className="text-[15px] font-medium text-primary-900 leading-tight tracking-tight ml-1">
-                {product.weight_gram}G
+                {formatWeightGram(product.weight_gram)}
               </span>
             )}
           </div>

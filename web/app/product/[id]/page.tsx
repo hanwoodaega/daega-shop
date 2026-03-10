@@ -79,6 +79,21 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     initialImages = []
   }
 
+  let initialDescriptionImages: Array<{ id: string; image_url: string; sort_order: number }> = []
+  if (initialProduct?.id) {
+    try {
+      const supabaseDesc = await createSupabaseServerClient()
+      const { data: descImages } = await supabaseDesc
+        .from('product_description_images')
+        .select('id, image_url, sort_order')
+        .eq('product_id', initialProduct.id)
+        .order('sort_order', { ascending: true })
+      initialDescriptionImages = descImages ?? []
+    } catch {
+      initialDescriptionImages = []
+    }
+  }
+
   return (
     <Suspense fallback={
       <div className="min-h-screen flex flex-col">
@@ -112,6 +127,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         productId={id}
         initialProduct={initialProduct}
         initialImages={initialImages}
+        initialDescriptionImages={initialDescriptionImages}
       />
     </Suspense>
   )

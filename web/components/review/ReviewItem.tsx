@@ -47,10 +47,10 @@ function ReviewItem({ review, isOwner = false, onEdit, onDelete }: ReviewItemPro
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-1">
           <ReviewStars rating={review.rating} size="md" />
-          <span className="text-sm font-medium text-gray-900">{review.user_name}</span>
+          <span className="text-sm md:text-base font-medium text-gray-900">{review.user_name}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">
+          <span className="text-xs md:text-sm text-gray-500">
             {formatDate(review.created_at)}
           </span>
           {isOwner && (
@@ -68,9 +68,12 @@ function ReviewItem({ review, isOwner = false, onEdit, onDelete }: ReviewItemPro
 
       {review.images && review.images.length > 0 && (
         <div className="mb-3 overflow-x-auto -mx-4 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <div className="flex gap-1 w-max">
+          <div className="flex gap-1.5 w-max">
             {review.images.map((image, index) => (
-              <div key={index} className="w-24 aspect-square bg-gray-200 rounded overflow-hidden flex-shrink-0">
+              <div
+                key={index}
+                className="w-24 md:w-28 lg:w-32 aspect-square bg-gray-200 rounded overflow-hidden flex-shrink-0"
+              >
                 <img 
                   src={image} 
                   alt={`리뷰 이미지 ${index + 1}`}
@@ -88,10 +91,12 @@ function ReviewItem({ review, isOwner = false, onEdit, onDelete }: ReviewItemPro
       )}
 
       {review.title && (
-        <h4 className="text-sm font-semibold text-gray-900 mb-2">{review.title}</h4>
+        <h4 className="text-sm md:text-base font-semibold text-gray-900 mb-2">{review.title}</h4>
       )}
 
-      <p className="text-sm text-gray-700 mb-3 whitespace-pre-wrap">{review.content}</p>
+      <p className="text-sm md:text-base text-gray-700 mb-3 whitespace-pre-wrap leading-relaxed">
+        {review.content}
+      </p>
 
       {/* 관리자 답변 */}
       {review.admin_reply && (

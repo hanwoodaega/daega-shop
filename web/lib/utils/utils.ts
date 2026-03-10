@@ -68,6 +68,21 @@ export function formatPrice(price: number): string {
 }
 
 /**
+ * 그램(g) 단위를 g / kg 문자열로 변환
+ * - 0 또는 null/undefined → 빈 문자열
+ * - 1000 미만: "123g"
+ * - 1000 이상: "1kg", "1.2kg" (소수점 한 자리, .0은 제거)
+ */
+export function formatWeightGram(weightGram?: number | null): string {
+  if (!weightGram || weightGram <= 0) return ''
+  if (weightGram < 1000) return `${weightGram}g`
+
+  const kg = weightGram / 1000
+  const formatted = Number.isInteger(kg) ? kg.toString() : kg.toFixed(1)
+  return `${formatted}kg`
+}
+
+/**
  * 날짜를 한국어 형식으로 변환
  * @param dateString 날짜 문자열
  * @returns 포맷된 날짜 문자열 (예: "2024.11.12")

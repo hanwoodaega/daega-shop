@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { Product } from '@/lib/supabase/supabase'
 import { useCartStore } from '@/lib/store'
+import { formatWeightGram } from '@/lib/utils/utils'
 
 interface ProductHeaderProps {
   product: Product | null
@@ -18,19 +19,28 @@ export default function ProductHeader({ product, cartCount, mounted }: ProductHe
       <div className="container mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-gray-800 hover:text-gray-900 transition"
+          className="flex items-center gap-2 text-gray-800 hover:text-gray-900 transition max-w-[70%]"
           aria-label="뒤로가기"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           {product && (
-            <span className="text-lg md:text-xl font-semibold line-clamp-1">
-              {product.name}
-              {product.weight_gram && product.weight_gram > 0 && (
-                <span className="ml-1">{product.weight_gram}G</span>
+            <div className="flex flex-col leading-tight overflow-hidden">
+              {product.brand && (
+                <span className="hidden md:block text-sm md:text-base font-medium text-gray-700 truncate">
+                  {product.brand}
+                </span>
               )}
-            </span>
+              <span className="text-lg md:text-3xl font-semibold text-gray-900 truncate">
+                {product.name}
+                {product.weight_gram && product.weight_gram > 0 && (
+                  <span className="ml-1 text-xs md:text-sm font-normal text-gray-700">
+                    {formatWeightGram(product.weight_gram)}
+                  </span>
+                )}
+              </span>
+            </div>
           )}
         </button>
         

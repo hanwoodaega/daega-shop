@@ -37,6 +37,8 @@ export interface Product {
   weight_gram?: number | null  // 상품 무게 (그램 단위, 선택사항)
   status?: 'active' | 'soldout' | 'deleted' | null  // 상품 상태
   tax_type?: 'taxable' | 'tax_free' | null  // 과세/비과세 (기본: taxable)
+  /** 상품고시정보 카테고리 (축산물/가공식품 등) */
+  notice_category_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -172,4 +174,53 @@ export interface Address {
   created_at: string
   updated_at: string
 }
+
+/**
+ * Product description images
+ * - 상품 상세 설명용 이미지 (여러 장)
+ * - 실제 파일은 Supabase Storage 등에 저장하고, 여기에는 URL/경로만 저장
+ */
+export interface ProductDescriptionImage {
+  id: string
+  product_id: string
+  image_url: string
+  sort_order: number
+  created_at: string
+}
+
+/**
+ * 상품고시 카테고리 (축산물/가공식품 등)
+ */
+export interface ProductNoticeCategory {
+  id: string
+  code: string
+  name: string
+  created_at: string
+}
+
+/**
+ * 상품고시 필드 정의 (원산지, 유통기한 등)
+ */
+export interface ProductNoticeField {
+  id: string
+  category_id: string
+  key: string
+  label: string
+  required: boolean
+  sort_order: number
+  created_at: string
+}
+
+/**
+ * 상품고시 값 (상품별 필드 값)
+ */
+export interface ProductNoticeValue {
+  id: string
+  product_id: string
+  field_id: string
+  value: string
+  created_at: string
+}
+
+
 

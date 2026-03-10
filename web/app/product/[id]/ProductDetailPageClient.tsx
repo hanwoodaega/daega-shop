@@ -18,6 +18,7 @@ import toast from 'react-hot-toast'
 import { Product } from '@/lib/supabase/supabase'
 import { isSoldOut } from '@/lib/product/product-utils'
 import { getFinalPricing } from '@/lib/product/product.pricing'
+import { formatPrice } from '@/lib/utils/utils'
 import { useProductDetail } from './_hooks/useProductDetail'
 import { useProductReviews } from './_hooks/useProductReviews'
 import { useProductImages } from './_hooks/useProductImages'
@@ -37,12 +38,14 @@ interface ProductDetailPageClientProps {
   productId: string
   initialProduct?: Product | null
   initialImages?: Array<{ id: string; image_url: string; priority: number }>
+  initialDescriptionImages?: Array<{ id: string; image_url: string; sort_order: number }>
 }
 
 export default function ProductDetailPageClient({
   productId,
   initialProduct,
   initialImages,
+  initialDescriptionImages,
 }: ProductDetailPageClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -101,6 +104,13 @@ export default function ProductDetailPageClient({
   
   // 품절 여부 확인
   const soldOut = product ? isSoldOut(product.status) : false
+
+  const pricing = product
+    ? getFinalPricing({
+        basePrice: product.price,
+        promotion: product.promotion,
+      })
+    : null
   
   // 최종 가격 계산
   const getDiscountPercent = useCallback(() => {
@@ -234,7 +244,7 @@ export default function ProductDetailPageClient({
 
       <main className="flex-1">
         {/* PC: 이미지 왼쪽 상단, 작은 크기 / 모바일: 기존 전체 너비 */}
-        <div className="lg:flex lg:items-start lg:gap-8 lg:container lg:mx-auto lg:px-4 lg:pt-6">
+        <div className="lg:flex lg:items-start lg:gap-8 lg:max-w-5xl lg:mx-auto lg:px-4 lg:pt-6">
           <div className="w-full aspect-square lg:w-[480px] lg:h-[480px] lg:flex-shrink-0 lg:rounded-lg lg:overflow-hidden">
             <ProductImageGallery
               product={product}
@@ -264,14 +274,62 @@ export default function ProductDetailPageClient({
               {/* PC: 교환/반품/환불 안내 + 구매 버튼을 상품 텍스트 밑에 배치 */}
               <div className="hidden lg:block">
                 <ProductInfoButtons product={product} />
+                
+                {/* PC: 상품 카드형 수량 선택 (버튼 위 고정) */}
+                <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-white">
+                  {/* 상품명 */}
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">
+                    {product.name}
+                  </h3>
+
+                  <div className="flex items-end justify-between">
+                    {/* 가격 */}
+                    {pricing && (
+                      <div className="flex flex-col">
+                        <span className="text-lg font-bold text-gray-900">
+                          {formatPrice(pricing.finalPrice)}원
+                        </span>
+                        {pricing.finalPrice !== product.price && (
+                          <span className="text-xs text-gray-400 line-through mt-0.5">
+                            {formatPrice(product.price)}원
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 수량 조절 */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center border border-gray-300 rounded-full bg-white px-3 py-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                          className="w-5 h-5 flex items-center justify-center text-base text-gray-700 hover:text-gray-900"
+                        >
+                          -
+                        </button>
+                        <span className="mx-3 w-6 text-center text-sm font-medium text-gray-900">
+                          {quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setQuantity((prev) => prev + 1)}
+                          className="w-5 h-5 flex items-center justify-center text-base text-gray-700 hover:text-gray-900"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <ProductBottomBar
                   product={product}
                   productId={productId}
                   isWished={isWished}
                   soldOut={soldOut}
                   onWishlistToggle={handleWishlistToggle}
-                  onBuyClick={() => handleOpenQuantitySheet('buy')}
-                  onCartClick={() => handleOpenQuantitySheet('cart')}
+                  onBuyClick={handleDirectPurchase}
+                  onCartClick={handleAddToCart}
                   onPromotionClick={() => openPromotionModal(productId)}
                   staticPosition
                 />
@@ -331,6 +389,7 @@ export default function ProductDetailPageClient({
       <ProductDescription
         product={product}
         descriptionComponent={ProductDescriptionComponent}
+        descriptionImages={initialDescriptionImages ?? []}
       />
       
       <ProductReviewSection productId={product.id} />
