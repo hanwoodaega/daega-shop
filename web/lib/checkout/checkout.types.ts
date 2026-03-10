@@ -25,6 +25,7 @@ export interface Flags {
 
 export interface GiftData {
   message: string
+  recipientName: string
   recipientPhone: string
 }
 

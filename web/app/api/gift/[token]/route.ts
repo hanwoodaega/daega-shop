@@ -53,6 +53,14 @@ export async function GET(
       return NextResponse.json({ error: '유효하지 않은 선물 링크입니다.' }, { status: 404 })
     }
 
+    // 보낸 사람이 주문을 취소한 경우: 받는 사람에게 "주문이 취소되었습니다." 만 표시
+    if (orders.status === 'cancelled') {
+      return NextResponse.json(
+        { error: '주문이 취소되었습니다.', cancelled: true },
+        { status: 410 }
+      )
+    }
+
     // 보낸 사람 정보 조회
     let senderInfo = null
     if (orders.user_id) {
@@ -67,13 +75,46 @@ export async function GET(
       }
     }
 
+    // 상품 이미지 조회 (product_images 우선순위 순, 상품당 1장)
+    const orderItems = orders.order_items || []
+    const productIds = Array.from(new Set(orderItems.map((item: any) => item.products?.id || item.product_id).filter(Boolean)))
+    let productImageMap: Record<string, string | null> = {}
+    if (productIds.length > 0) {
+      const { data: imagesData } = await supabaseAdmin
+        .from('product_images')
+        .select('product_id, image_url, priority')
+        .in('product_id', productIds)
+        .order('priority', { ascending: true })
+
+      const byProduct = new Map<string, string | null>()
+      imagesData?.forEach((img: any) => {
+        if (img?.product_id && !byProduct.has(img.product_id)) {
+          byProduct.set(img.product_id, img.image_url || null)
+        }
+      })
+      productImageMap = Object.fromEntries(byProduct)
+    }
+
+    const orderWithImages = {
+      ...orders,
+      users: senderInfo,
+      order_items: orderItems.map((item: any) => {
+        const product = item.products || {}
+        const pid = product.id || item.product_id
+        return {
+          ...item,
+          products: {
+            ...product,
+            image_url: (pid && productImageMap[pid]) || null,
+          },
+        }
+      }),
+    }
+
     // 이미 수령된 선물인 경우 (status === 'gift_received')
     if (orders.status === 'gift_received') {
       return NextResponse.json({ 
-        order: {
-          ...orders,
-          users: senderInfo
-        },
+        order: orderWithImages,
         alreadyReceived: true
       })
     }
@@ -90,18 +131,12 @@ export async function GET(
         error: '선물 링크가 만료되었습니다. (7일 경과)',
         expired: true,
         expires_at: expiresAt?.toISOString() || orders.gift_expires_at,
-        order: {
-          ...orders,
-          users: senderInfo
-        }
+        order: orderWithImages
       }, { status: 410 })
     }
 
     return NextResponse.json({ 
-      order: {
-        ...orders,
-        users: senderInfo
-      },
+      order: orderWithImages,
       expires_at: expiresAt?.toISOString() || null
     })
   } catch (error: any) {
@@ -148,6 +183,10 @@ export async function POST(
 
     if (tokenError || !order) {
       return NextResponse.json({ error: '유효하지 않은 선물 링크입니다.' }, { status: 404 })
+    }
+
+    if (order.status === 'cancelled') {
+      return NextResponse.json({ error: '주문이 취소되었습니다.' }, { status: 410 })
     }
 
     // 이미 수령된 선물인 경우 (status === 'gift_received')

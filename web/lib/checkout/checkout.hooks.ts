@@ -112,6 +112,7 @@ export function useCheckout(options: UseCheckoutOptions) {
 
   const [giftData, setGiftData] = useState<GiftData>({
     message: '',
+    recipientName: '',
     recipientPhone: '',
   })
 
@@ -336,6 +337,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       is_gift: isGiftMode,
       gift_message: isGiftMode ? giftData.message : null,
       gift_recipient_phone: isGiftMode ? (giftData.recipientPhone || '').replace(/\D/g, '').slice(0, 13) : undefined,
+      gift_recipient_name: isGiftMode ? (giftData.recipientName || '').trim() || undefined : undefined,
       orderer_phone: isGiftMode ? normalizedPhone : undefined,
       gift_sender_name: isGiftMode ? (formData.name || '').trim() || undefined : undefined,
       payment_method: paymentMethod,
@@ -358,6 +360,7 @@ export function useCheckout(options: UseCheckoutOptions) {
     selectedCoupon?.id,
     usedPoints,
     giftData.message,
+    giftData.recipientName,
     giftData.recipientPhone,
     paymentMethod,
     items,
@@ -478,6 +481,10 @@ export function useCheckout(options: UseCheckoutOptions) {
         toast.error('보내는 분 정보를 입력해주세요.', { icon: '⚠️' })
         return
       }
+      if (!(giftData.recipientName || '').trim()) {
+        toast.error('받는 분 이름을 입력해주세요.', { icon: '⚠️' })
+        return
+      }
       const phone = (giftData.recipientPhone || '').replace(/\D/g, '')
       if (phone.length < 10) {
         toast.error('받는 분 휴대폰 번호를 입력해주세요.', { icon: '⚠️' })
@@ -490,7 +497,7 @@ export function useCheckout(options: UseCheckoutOptions) {
     }
 
     setCurrentStep(prev => Math.min(prev + 1, TOTAL_GIFT_STEPS))
-  }, [isGiftMode, currentStep, displayFinalTotal, displayShipping, formData.name, formData.phone, giftData.recipientPhone, giftData.message])
+  }, [isGiftMode, currentStep, displayFinalTotal, displayShipping, formData.name, formData.phone, giftData.recipientName, giftData.recipientPhone, giftData.message])
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
@@ -511,6 +518,10 @@ export function useCheckout(options: UseCheckoutOptions) {
         const recipientPhone = (giftData.recipientPhone || '').replace(/\D/g, '')
         if (recipientPhone.length < 10) {
           showError({ message: '받는 분 휴대폰 번호를 입력해주세요.' }, { icon: '⚠️' })
+          return false
+        }
+        if (!(giftData.recipientName || '').trim()) {
+          showError({ message: '받는 분 이름을 입력해주세요.' }, { icon: '⚠️' })
           return false
         }
         if (!(giftData.message || '').trim()) {

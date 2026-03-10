@@ -40,6 +40,7 @@ export default function GiftReceiveClient() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isCancelled, setIsCancelled] = useState(false)
   const [expiresAt, setExpiresAt] = useState<string | null>(null)
   const [isExpired, setIsExpired] = useState(false)
   const fetchingRef = useRef(false)
@@ -75,6 +76,14 @@ export default function GiftReceiveClient() {
       const data = await response.json()
 
       if (!response.ok) {
+        // 보낸 사람이 주문 취소한 경우: "주문이 취소되었습니다." 만 표시
+        if (response.status === 410 && data.cancelled) {
+          setError('주문이 취소되었습니다.')
+          setIsCancelled(true)
+          setOrder(null)
+          setLoading(false)
+          return
+        }
         // 만료된 선물인 경우에도 order 정보가 있으면 만료 안내 화면 표시
         if ((response.status === 410 || data.expired) && data.order) {
           setOrder(data.order)
@@ -217,6 +226,25 @@ export default function GiftReceiveClient() {
   }
 
   if (error && !order) {
+    // 주문 취소된 경우: "주문이 취소되었습니다." 만 표시
+    if (isCancelled) {
+      return (
+        <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F7F3ED' }}>
+          <main className="flex-1 container mx-auto px-4 py-8">
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-white border-2 p-8 text-center rounded-lg" style={{ borderColor: '#D4C6A8' }}>
+                <h1 className="text-lg font-bold text-gray-800 mb-4">
+                  주문이 취소되었습니다.
+                </h1>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  보내는 분에 의해 주문이 취소되어 선물을 수령할 수 없습니다.
+                </p>
+              </div>
+            </div>
+          </main>
+        </div>
+      )
+    }
     return (
       <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F7F3ED' }}>
         <main className="flex-1 container mx-auto px-4 py-8">

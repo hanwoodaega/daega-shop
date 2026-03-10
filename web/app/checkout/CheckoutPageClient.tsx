@@ -222,6 +222,7 @@ function CheckoutPageContent() {
                   <GiftRecipientForm
                     embedded
                     giftData={giftData}
+                    onRecipientNameChange={(value) => setGiftData(prev => ({ ...prev, recipientName: value }))}
                     onRecipientPhoneChange={(value) => setGiftData(prev => ({ ...prev, recipientPhone: value }))}
                     onMessageChange={(message) => setGiftData(prev => ({ ...prev, message }))}
                   />

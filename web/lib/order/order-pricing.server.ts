@@ -23,6 +23,8 @@ export interface OrderInput {
   is_gift: boolean
   gift_message: string | null
   gift_recipient_phone?: string
+  /** 선물 알림톡 템플릿용 받는 분 이름 */
+  gift_recipient_name?: string
   /** 선물 주문 시 주문 완료 알림톡 받을 주문자 연락처 */
   orderer_phone?: string
   /** 선물 알림톡 발송 시 사용 (보내는 분 이름) */

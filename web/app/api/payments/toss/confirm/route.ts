@@ -406,11 +406,13 @@ export async function POST(request: NextRequest) {
       try {
         const receiveUrl = `${giftBaseUrl.replace(/\/$/, '')}/gift/receive/${giftToken}`
         const senderName = (payload.gift_sender_name || payload.shipping_name || '보내는 분').trim() || '보내는 분'
+        const recipientName = (payload.gift_recipient_name || '').trim() || undefined
         const d = new Date(giftExpiresAt)
         const expiresAtFormatted = `${d.getMonth() + 1}월 ${d.getDate()}일`
         await sendGiftNotification({
           to: payload.gift_recipient_phone,
           senderName,
+          recipientName,
           message: payload.gift_message ?? null,
           productName,
           token: giftToken,
