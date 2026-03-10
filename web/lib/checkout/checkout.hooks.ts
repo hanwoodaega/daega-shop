@@ -95,6 +95,12 @@ export function useCheckout(options: UseCheckoutOptions) {
     finalTotal: number
   } | null>(null)
   const [pricingLoading, setPricingLoading] = useState(false)
+
+  // 쿠폰/포인트 변경 시 캐시된 서버 금액을 비워 로컬 계산이 바로 반영되도록 함
+  useEffect(() => {
+    setServerPricing(null)
+  }, [selectedCoupon?.id, usedPoints])
+
   const itemsSignature = useMemo(
     () =>
       items
