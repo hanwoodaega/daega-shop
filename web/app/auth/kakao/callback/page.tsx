@@ -15,15 +15,13 @@ function KakaoCallbackContent() {
   const [errorDescription, setErrorDescription] = useState<string | null>(null)
   const handledRef = useRef(false)
 
-  const waitForSession = async () => {
-    for (let i = 0; i < 6; i += 1) {
-      const { data } = await supabase.auth.getSession()
-      if (data?.session?.access_token) {
-        return true
-      }
-      await new Promise(resolve => setTimeout(resolve, 200))
-    }
-    return false
+  /** setSession 직후엔 verifyData.session이 있으므로 최대 1~2회만 짧게 확인 (기존 6회×200ms 제거) */
+  const getSessionOnce = async (fallbackToken: string | null) => {
+    const { data } = await supabase.auth.getSession()
+    if (data?.session?.access_token) return data.session.access_token
+    await new Promise((r) => setTimeout(r, 80))
+    const { data: data2 } = await supabase.auth.getSession()
+    return data2?.session?.access_token || fallbackToken
   }
 
   useEffect(() => {
@@ -130,9 +128,7 @@ function KakaoCallbackContent() {
         })
       }
 
-      await waitForSession()
-      const { data: sessionData } = await supabase.auth.getSession()
-      const accessToken = sessionData?.session?.access_token || initialToken
+      const accessToken = await getSessionOnce(initialToken)
 
       if (!accessToken) {
         setErrorCode('verify_failed')
@@ -169,7 +165,6 @@ function KakaoCallbackContent() {
         targetPath = safeNext
       }
 
-      await new Promise((r) => setTimeout(r, 200))
       window.location.href = targetPath
     } catch (error: any) {
       const fallbackCode = 'verify_failed'

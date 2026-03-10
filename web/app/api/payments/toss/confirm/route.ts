@@ -301,18 +301,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 1) 핵심 정합성: 포인트·쿠폰은 주문과 강하게 결합 → 순차 처리, 실패 시 일관성 유지
     if (user && pricing.appliedPoints > 0) {
-      await usePoints(
+      const pointsOk = await usePoints(
         user.id,
         pricing.appliedPoints,
         order.id,
         `주문 #${orderNumber} 포인트 사용`,
         supabaseAdmin
       )
+      if (!pointsOk) {
+        console.error('[toss/confirm] 포인트 사용 처리 실패')
+        return NextResponse.json({ error: '포인트 사용 처리에 실패했습니다.' }, { status: 500 })
+      }
     }
-
     if (user && payload.used_coupon_id && pricing.couponDiscount > 0) {
-      await supabaseAdmin
+      const { error: couponError } = await supabaseAdmin
         .from('user_coupons')
         .update({
           is_used: true,
@@ -321,38 +325,38 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', payload.used_coupon_id)
         .eq('user_id', user.id)
+      if (couponError) {
+        console.error('[toss/confirm] 쿠폰 사용 처리 실패:', couponError)
+        return NextResponse.json({ error: '쿠폰 사용 처리에 실패했습니다.' }, { status: 500 })
+      }
     }
 
+    // 2) 장바구니 삭제: 한 번의 delete로 처리 (user_id + (product_id, promotion_group_id) 조합)
     if (user) {
-      try {
-        const deleteTargets = new Map<string, { productId: string; promotionGroupId?: string | null }>()
-        payload.items.forEach((item) => {
-          const key = `${item.productId}::${item.promotion_group_id ?? ''}`
-          if (!deleteTargets.has(key)) {
-            deleteTargets.set(key, {
-              productId: item.productId,
-              promotionGroupId: item.promotion_group_id ?? null,
-            })
-          }
-        })
-
-        for (const target of Array.from(deleteTargets.values())) {
-          let query = supabaseAdmin
-            .from('carts')
-            .delete()
-            .eq('user_id', user.id)
-            .eq('product_id', target.productId)
-
-          if (target.promotionGroupId) {
-            query = query.eq('promotion_group_id', target.promotionGroupId)
-          } else {
-            query = query.is('promotion_group_id', null)
-          }
-
-          await query
+      const deleteTargets = new Map<string, { productId: string; promotionGroupId?: string | null }>()
+      payload.items.forEach((item) => {
+        const key = `${item.productId}::${item.promotion_group_id ?? ''}`
+        if (!deleteTargets.has(key)) {
+          deleteTargets.set(key, {
+            productId: item.productId,
+            promotionGroupId: item.promotion_group_id ?? null,
+          })
         }
-      } catch (e) {
-        console.error('장바구니 정리 실패:', e)
+      })
+      const pairs = Array.from(deleteTargets.values())
+      if (pairs.length > 0) {
+        const orParts = pairs.map(
+          (p) =>
+            `and(product_id.eq.${p.productId},promotion_group_id.${p.promotionGroupId ? `eq.${p.promotionGroupId}` : 'is.null'})`
+        )
+        const { error: cartError } = await supabaseAdmin
+          .from('carts')
+          .delete()
+          .eq('user_id', user.id)
+          .or(orParts.join(','))
+        if (cartError) {
+          console.error('[toss/confirm] 장바구니 정리 실패:', cartError)
+        }
       }
 
       try {
@@ -365,20 +369,27 @@ export async function POST(request: NextRequest) {
           order_id: order.id,
         })
       } catch (e) {
-        console.error('알림 생성 실패:', e)
+        console.error('[toss/confirm] 알림 생성 실패:', e)
       }
     }
 
-    // 주문 완료 알림톡 (선물이면 주문자 연락처로, 아니면 수령인 연락처로 발송)
+    // 주문 완료 알림톡 수신 번호·선물용 baseUrl(선물일 때만 사용) 미리 준비
     const orderCompletePhone = payload.is_gift
       ? String(payload.orderer_phone ?? '').replace(/\D/g, '').slice(0, 13)
       : normalizedPhone
+    let giftBaseUrl: string | null = null
+    if (payload.is_gift && payload.gift_recipient_phone) {
+      giftBaseUrl = (await getServerBaseUrl()) || process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin
+    }
+
+    const totalQty = itemSnapshots.reduce((sum, s) => sum + s.quantity, 0)
+    const sortedByPrice = [...itemSnapshots].sort((a, b) => (b.final_unit_price ?? 0) - (a.final_unit_price ?? 0))
+    const topProductName = sortedByPrice[0]?.product_name || '상품'
+    const productName = totalQty <= 1 ? topProductName : `${topProductName} 외 ${totalQty - 1}개`
+
+    // 3) 알림톡: 서버리스에서 응답 후 작업이 보장되지 않으므로 await 후 반환 (누락 방지)
     if (orderCompletePhone.length >= 10) {
       try {
-        const totalQty = itemSnapshots.reduce((sum, s) => sum + s.quantity, 0)
-        const sortedByPrice = [...itemSnapshots].sort((a, b) => (b.final_unit_price ?? 0) - (a.final_unit_price ?? 0))
-        const topProductName = sortedByPrice[0]?.product_name || '상품'
-        const productName = totalQty <= 1 ? topProductName : `${topProductName} 외 ${totalQty - 1}개`
         const result = await sendOrderCompleteAlimtalk({
           to: orderCompletePhone,
           orderNumber,
@@ -391,17 +402,10 @@ export async function POST(request: NextRequest) {
         console.error('주문 완료 알림톡 발송 실패:', e)
       }
     }
-
-    // 선물 알림톡 (받는 분 휴대폰으로 발송, 실패해도 주문은 유지)
-    if (payload.is_gift && giftToken && payload.gift_recipient_phone && giftExpiresAt) {
+    if (payload.is_gift && giftToken && payload.gift_recipient_phone && giftExpiresAt && giftBaseUrl) {
       try {
-        const baseUrl = (await getServerBaseUrl()) || process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin
-        const receiveUrl = `${baseUrl.replace(/\/$/, '')}/gift/receive/${giftToken}`
+        const receiveUrl = `${giftBaseUrl.replace(/\/$/, '')}/gift/receive/${giftToken}`
         const senderName = (payload.gift_sender_name || payload.shipping_name || '보내는 분').trim() || '보내는 분'
-        const totalQty = itemSnapshots.reduce((sum, s) => sum + s.quantity, 0)
-        const sortedByPrice = [...itemSnapshots].sort((a, b) => (b.final_unit_price ?? 0) - (a.final_unit_price ?? 0))
-        const topProductName = sortedByPrice[0]?.product_name || '상품'
-        const productName = totalQty <= 1 ? topProductName : `${topProductName} 외 ${totalQty - 1}개`
         const d = new Date(giftExpiresAt)
         const expiresAtFormatted = `${d.getMonth() + 1}월 ${d.getDate()}일`
         await sendGiftNotification({
