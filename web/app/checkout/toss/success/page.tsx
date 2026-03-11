@@ -37,6 +37,7 @@ interface CheckoutMeta {
     shipping_address: string
     shipping_name: string
     shipping_phone: string
+    orderer_phone?: string
     delivery_note: string | null
     used_coupon_id: string | null
     used_points: number
@@ -92,7 +93,11 @@ function TossSuccessContent() {
             headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 orderId,
-                orderInput: meta.orderInput,
+                orderInput: {
+                  ...meta.orderInput,
+                  shipping_phone: meta.orderInput?.shipping_phone || meta.formData?.phone || '',
+                  orderer_phone: meta.orderInput?.orderer_phone ?? meta.formData?.phone ?? undefined,
+                },
               }),
           })
 
@@ -129,7 +134,11 @@ function TossSuccessContent() {
           body: JSON.stringify({
             paymentKey,
             orderId,
-            orderInput: meta.orderInput,
+            orderInput: {
+              ...meta.orderInput,
+              shipping_phone: meta.orderInput?.shipping_phone || meta.formData?.phone || '',
+              orderer_phone: meta.orderInput?.orderer_phone ?? meta.formData?.phone ?? undefined,
+            },
             mock: searchParams.get('mock') === '1',
           }),
         })

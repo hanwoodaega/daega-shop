@@ -376,7 +376,12 @@ export async function POST(request: NextRequest) {
     // 주문 완료 알림톡 수신 번호·선물용 baseUrl(선물일 때만 사용) 미리 준비
     const orderCompletePhone = payload.is_gift
       ? String(payload.orderer_phone ?? '').replace(/\D/g, '').slice(0, 13)
-      : normalizedPhone
+      : (() => {
+          const fromPayload = String(payload.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+          if (fromPayload.length >= 10) return fromPayload
+          const fromOrder = String(order?.shipping_phone ?? '').replace(/\D/g, '').slice(0, 13)
+          return fromOrder.length >= 10 ? fromOrder : fromPayload
+        })()
     let giftBaseUrl: string | null = null
     if (payload.is_gift && payload.gift_recipient_phone) {
       giftBaseUrl = (await getServerBaseUrl()) || process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin
@@ -388,19 +393,31 @@ export async function POST(request: NextRequest) {
     const productName = totalQty <= 1 ? topProductName : `${topProductName} 외 ${totalQty - 1}개`
 
     // 3) 알림톡: 서버리스에서 응답 후 작업이 보장되지 않으므로 await 후 반환 (누락 방지)
+    console.log('[ORDER_COMPLETE] 1. function start')
+    console.log('[ORDER_COMPLETE] 2. phone:', orderCompletePhone)
+    console.log('[ORDER_COMPLETE] 3. orderNumber:', orderNumber)
+
     if (orderCompletePhone.length >= 10) {
       try {
+        console.log('[ORDER_COMPLETE] 4. before send')
         const result = await sendOrderCompleteAlimtalk({
           to: orderCompletePhone,
           orderNumber,
           productName,
         })
+        console.log('[ORDER_COMPLETE] 5. send result:', result)
         if (!result.success) {
           console.error('[Alimtalk] 주문 완료 알림톡 발송 실패 (SMS fallback은 알리고에서 처리):', result.detail)
         }
       } catch (e) {
         console.error('주문 완료 알림톡 발송 실패:', e)
       }
+    } else {
+      console.warn('[Alimtalk] 주문 완료 알림톡 미발송: 수신 번호 부족', {
+        orderNumber,
+        is_gift: payload.is_gift,
+        orderCompletePhoneLength: orderCompletePhone.length,
+      })
     }
     if (payload.is_gift && giftToken && payload.gift_recipient_phone && giftExpiresAt && giftBaseUrl) {
       try {

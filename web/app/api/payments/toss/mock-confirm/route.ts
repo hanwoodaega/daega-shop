@@ -207,7 +207,12 @@ export async function POST(request: NextRequest) {
     // 주문 완료 알림톡 (선물이면 주문자 연락처로, 아니면 수령인 연락처로 발송)
     const orderCompletePhone = payload.is_gift
       ? String(payload.orderer_phone ?? '').replace(/\D/g, '').slice(0, 13)
-      : normalizedPhone
+      : (() => {
+          const fromPayload = String(payload.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+          if (fromPayload.length >= 10) return fromPayload
+          const fromOrder = String(order?.shipping_phone ?? '').replace(/\D/g, '').slice(0, 13)
+          return fromOrder.length >= 10 ? fromOrder : fromPayload
+        })()
     if (orderCompletePhone.length >= 10) {
       try {
         const totalQty = itemSnapshots.reduce((sum, s) => sum + s.quantity, 0)
