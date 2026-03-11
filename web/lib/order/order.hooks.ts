@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { OrderWithItems } from './order-types'
 import { cancelOrder, confirmOrder } from './order.service'
+import { mutateOrders } from '@/lib/swr/useOrders'
 import { useOrdersSWR } from '@/lib/swr'
 import { showError, showSuccess } from '@/lib/utils/error-handler'
 import { formatPrice } from '@/lib/utils/utils'
@@ -25,6 +26,28 @@ interface UseOrdersReturn {
   handleCancelOrder: (orderId: string) => Promise<void>
   handleTrackDelivery: (order: OrderWithItems) => void
   handleConfirmPurchase: (orderId: string) => Promise<void>
+}
+
+function getCarrierCode(name?: string | null): string | undefined {
+  const map: Record<string, string> = {
+    'CJ대한통운': 'kr.cjlogistics',
+    '롯데택배': 'kr.lotte',
+    '로젠택배': 'kr.logen',
+    '한진택배': 'kr.hanjin',
+    '우체국택배': 'kr.epost',
+    '경동택배': 'kr.kdexp',
+    '합동택배': 'kr.hdexp',
+    '대신택배': 'kr.daesin',
+    '일양로지스': 'kr.ilyanglogis',
+    '천일택배': 'kr.chunilps',
+    '건영택배': 'kr.kunyoung',
+  }
+  return name ? map[name] : undefined
+}
+
+function getTrackingUrl(trackingNumber: string, carrierName?: string | null): string {
+  const code = getCarrierCode(carrierName || '') || 'kr.lotte'
+  return `https://tracker.delivery/#/${code}/${trackingNumber}`
 }
 
 export function useOrders({ userId, giftToken, orderPeriodMonths: initialMonths = 1 }: UseOrdersParams): UseOrdersReturn {
@@ -77,7 +100,7 @@ export function useOrders({ userId, giftToken, orderPeriodMonths: initialMonths 
       return
     }
 
-    const trackingUrl = `https://www.lotteglogis.com/home/reservation/tracking/index?InvNo=${order.tracking_number}`
+    const trackingUrl = getTrackingUrl(order.tracking_number, order.tracking_company)
     window.open(trackingUrl, '_blank')
   }, [])
 
@@ -107,13 +130,8 @@ export function useOrders({ userId, giftToken, orderPeriodMonths: initialMonths 
         { duration: 5000 }
       )
 
-      await mutate(
-        { orders: orders.map(o =>
-          o.id === orderId ? { ...o, is_confirmed: true } : o
-        )},
-        false
-      )
-      mutate() // revalidate to get server state
+      // 서버 기준 상태 재조회 (status=CONFIRMED 반영)
+      await mutateOrders()
     } catch (error) {
       showError(error)
     } finally {

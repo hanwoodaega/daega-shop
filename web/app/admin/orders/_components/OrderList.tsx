@@ -5,8 +5,9 @@ interface OrderListProps {
   orders: Order[]
   loading: boolean
   updatingOrderId: string | null
-  trackingInputs: Record<string, { number: string }>
+  trackingInputs: Record<string, { number: string; carrier: string }>
   setTrackingNumber: (orderId: string, number: string) => void
+  setTrackingCarrier: (orderId: string, carrier: string) => void
   onStatusChange: (orderId: string, newStatus: OrderStatus, trackingNumber?: string) => Promise<boolean>
 }
 
@@ -16,6 +17,7 @@ export default function OrderList({
   updatingOrderId,
   trackingInputs,
   setTrackingNumber,
+  setTrackingCarrier,
   onStatusChange,
 }: OrderListProps) {
   if (loading) {
@@ -43,7 +45,9 @@ export default function OrderList({
           order={order}
           updatingOrderId={updatingOrderId}
           trackingInput={trackingInputs[order.id]?.number || ''}
+          carrierInput={trackingInputs[order.id]?.carrier || '롯데택배'}
           onTrackingChange={(num) => setTrackingNumber(order.id, num)}
+          onCarrierChange={(carrier) => setTrackingCarrier(order.id, carrier)}
           onStatusChange={onStatusChange}
         />
       ))}

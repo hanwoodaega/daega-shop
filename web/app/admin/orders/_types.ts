@@ -41,6 +41,7 @@ export interface Order {
   shipping?: number
   refund_completed_at?: string | null
   tracking_number?: string | null
+  tracking_company?: string | null
   is_gift?: boolean
   payment_method?: string | null
 }

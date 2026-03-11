@@ -236,7 +236,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { orderId, status, trackingNumber } = body
+    const { orderId, status, trackingNumber, trackingCompany } = body
 
     // 필수 필드 검증 (status 또는 trackingNumber 중 하나는 필수)
     if (!orderId || (!status && !trackingNumber?.trim())) {
@@ -358,6 +358,9 @@ export async function PATCH(request: NextRequest) {
     // 송장번호 입력 시 배송중 상태로 자동 변경
     if (trackingNumber && trackingNumber.trim()) {
       updateData.tracking_number = trackingNumber.trim()
+      if (trackingCompany && trackingCompany.trim()) {
+        updateData.tracking_company = trackingCompany.trim()
+      }
       // 송장번호가 입력되면 자동으로 배송중 상태로 변경
       if (status === 'PREPARING' || !status || status === 'ORDER_RECEIVED') {
         updateData.status = 'IN_TRANSIT'

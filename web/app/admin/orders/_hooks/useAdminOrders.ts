@@ -18,7 +18,7 @@ export function useAdminOrders() {
 
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
   const [processingAutoConfirm, setProcessingAutoConfirm] = useState(false)
-  const [trackingInputs, setTrackingInputs] = useState<Record<string, { number: string }>>({})
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, { number: string; carrier: string }>>({})
 
   const redirectToLogin = useCallback(() => {
     router.push('/admin/login?next=/admin/orders')
@@ -97,11 +97,12 @@ export function useAdminOrders() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include', // 쿠키 포함
-        body: JSON.stringify({ 
-          orderId, 
-          status: newStatus,
-          trackingNumber: trackingNumber || trackingInputs[orderId]?.number,
-        })
+          body: JSON.stringify({ 
+            orderId, 
+            status: newStatus,
+            trackingNumber: trackingNumber || trackingInputs[orderId]?.number,
+            trackingCompany: trackingInputs[orderId]?.carrier || '롯데택배',
+          })
       })
 
       if (response.status === 401 || response.status === 403) {
@@ -155,7 +156,14 @@ export function useAdminOrders() {
   const setTrackingNumber = (orderId: string, number: string) => {
     setTrackingInputs(prev => ({
       ...prev,
-      [orderId]: { ...prev[orderId], number }
+      [orderId]: { number, carrier: prev[orderId]?.carrier || '롯데택배' }
+    }))
+  }
+
+  const setTrackingCarrier = (orderId: string, carrier: string) => {
+    setTrackingInputs(prev => ({
+      ...prev,
+      [orderId]: { number: prev[orderId]?.number || '', carrier }
     }))
   }
 
@@ -168,6 +176,7 @@ export function useAdminOrders() {
     processingAutoConfirm,
     trackingInputs,
     setTrackingNumber,
+    setTrackingCarrier,
     handleStatusChange,
     handleAutoConfirm,
     refresh: fetchOrders

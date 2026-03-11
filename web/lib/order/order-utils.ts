@@ -35,6 +35,8 @@ export function getStatusText(status: string, deliveryType?: string): string {
       return '배송중'
     case 'DELIVERED':
       return '배송완료'
+    case 'CONFIRMED':
+      return '배송완료'
     case 'cancelled':
       return '주문취소'
     case 'payment_error':
@@ -125,6 +127,7 @@ export function getStatusTextColor(status: string): string {
     case 'IN_TRANSIT':
       return 'text-cyan-600'
     case 'DELIVERED':
+    case 'CONFIRMED':
       return 'text-green-600'
     case 'cancelled':
       return 'text-red-600'

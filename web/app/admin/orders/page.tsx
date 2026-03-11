@@ -18,6 +18,7 @@ export default function AdminOrdersPage() {
     processingAutoConfirm,
     trackingInputs,
     setTrackingNumber,
+    setTrackingCarrier,
     handleStatusChange,
     handleAutoConfirm,
   } = useAdminOrders()
@@ -73,6 +74,7 @@ export default function AdminOrdersPage() {
         updatingOrderId={updatingOrderId}
         trackingInputs={trackingInputs}
         setTrackingNumber={setTrackingNumber}
+        setTrackingCarrier={setTrackingCarrier}
         onStatusChange={handleStatusChange}
       />
     </AdminPageLayout>

@@ -74,7 +74,7 @@ export default function DeliveryFormRegular({
               onChange={onInputChange}
               rows={3}
               maxLength={50}
-              placeholder="예: 공동현관 비밀번호 #1234, 문 앞에 놓아주세요"
+              placeholder="예: 공동현관 비밀번호 #1234"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
             <p className="text-xs text-gray-500 mt-1 text-right">{formData.message.length}/50</p>
@@ -142,7 +142,7 @@ export default function DeliveryFormRegular({
               onChange={onInputChange}
               rows={3}
               maxLength={50}
-              placeholder="예: 공동현관 비밀번호 #1234, 문 앞에 놓아주세요"
+              placeholder="예: 공동현관 비밀번호 #1234"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
             <p className="text-xs text-gray-500 mt-1 text-right">{formData.message.length}/50</p>

@@ -11,8 +11,26 @@ import { formatPrice } from '@/lib/utils/utils'
 import { formatPhoneNumber } from '@/lib/utils/format-phone'
 import { getStatusText, getDeliveryTypeText, getStatusTextColor } from '@/lib/order/order-utils'
 
-function getTrackingUrl(trackingNumber: string): string {
-  return `https://www.lotteglogis.com/home/reservation/tracking/index?InvNo=${trackingNumber}`
+function getCarrierCode(name?: string | null): string | undefined {
+  const map: Record<string, string> = {
+    'CJ대한통운': 'kr.cjlogistics',
+    '롯데택배': 'kr.lotte',
+    '로젠택배': 'kr.logen',
+    '한진택배': 'kr.hanjin',
+    '우체국택배': 'kr.epost',
+    '경동택배': 'kr.kdexp',
+    '합동택배': 'kr.hdexp',
+    '대신택배': 'kr.daesin',
+    '일양로지스': 'kr.ilyanglogis',
+    '천일택배': 'kr.chunilps',
+    '건영택배': 'kr.kunyoung',
+  }
+  return name ? map[name] : undefined
+}
+
+function getTrackingUrl(trackingNumber: string, carrierName?: string | null): string {
+  const code = getCarrierCode(carrierName || '') || 'kr.lotte'
+  return `https://tracker.delivery/#/${code}/${trackingNumber}`
 }
 
 function OrderLookupResult({ order }: { order: OrderWithItems }) {
@@ -20,7 +38,7 @@ function OrderLookupResult({ order }: { order: OrderWithItems }) {
 
   const handleTrackDelivery = () => {
     if (!order.tracking_number) return
-    window.open(getTrackingUrl(order.tracking_number), '_blank')
+    window.open(getTrackingUrl(order.tracking_number, order.tracking_company), '_blank')
   }
 
   const statusText = getStatusText(order.status, order.delivery_type)
@@ -290,7 +308,7 @@ function OrderLookupResult({ order }: { order: OrderWithItems }) {
               구매확정
             </button>
           )}
-          {order.status === 'DELIVERED' && order.is_confirmed && (
+          {order.status === 'CONFIRMED' && (
             <button
               type="button"
               onClick={() => window.location.href = `/auth/login?next=${encodeURIComponent('/profile/reviews')}`}

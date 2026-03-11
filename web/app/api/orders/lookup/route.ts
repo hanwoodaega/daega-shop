@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
         shipping_phone,
         delivery_note,
         tracking_number,
+        tracking_company,
         is_gift,
         gift_message,
         gift_expires_at,

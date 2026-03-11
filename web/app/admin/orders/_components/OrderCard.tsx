@@ -11,7 +11,9 @@ interface OrderCardProps {
   order: Order
   updatingOrderId: string | null
   trackingInput: string
+  carrierInput: string
   onTrackingChange: (number: string) => void
+  onCarrierChange: (carrier: string) => void
   onStatusChange: (orderId: string, newStatus: OrderStatus, trackingNumber?: string) => Promise<boolean>
 }
 
@@ -19,7 +21,9 @@ export default function OrderCard({
   order,
   updatingOrderId,
   trackingInput,
+  carrierInput,
   onTrackingChange,
+  onCarrierChange,
   onStatusChange,
 }: OrderCardProps) {
   return (
@@ -36,7 +40,9 @@ export default function OrderCard({
           order={order}
           updatingOrderId={updatingOrderId}
           trackingInput={trackingInput}
+          carrierInput={carrierInput}
           onTrackingChange={onTrackingChange}
+          onCarrierChange={onCarrierChange}
           onStatusChange={onStatusChange}
         />
       </div>

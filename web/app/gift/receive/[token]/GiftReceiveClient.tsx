@@ -13,6 +13,8 @@ interface OrderItem {
     id: string
     name: string
     image_url?: string | null
+    brand?: string | null
+    weight_gram?: number | null
   }
 }
 
@@ -146,6 +148,14 @@ export default function GiftReceiveClient() {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const numbers = e.target.value.replace(/[^0-9]/g, '')
     setFormData(prev => ({ ...prev, recipient_phone: numbers }))
+  }
+
+  const formatPhone = (value: string) => {
+    const numbers = value.replace(/[^0-9]/g, '')
+    const len = numbers.length
+    if (len <= 3) return numbers
+    if (len <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`
+    return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`
   }
 
   // 배송정보 입력 여부 체크
@@ -319,39 +329,58 @@ export default function GiftReceiveClient() {
         </div>
       )}
       
-      <main className="flex-1 container mx-auto px-4 py-8 pb-24">
+      <main className="flex-1 container mx-auto px-4 pt-3 pb-24">
         <div className="max-w-2xl mx-auto">
-          {/* 선물 메시지 */}
-          {order.gift_message && (
-            <div className="mb-6 p-4 bg-white shadow-md border-2" style={{ borderColor: '#D4C6A8' }}>
-              <p className="text-sm text-gray-800 mb-1">선물 메시지</p>
-              <p className="text-gray-800 whitespace-pre-wrap">{order.gift_message}</p>
-            </div>
-          )}
+          {/* 선물 배너 이미지 */}
+          <div className="mt-0 mb-3 flex justify-center">
+            <img
+              src="/images/gift-banner-800x400.png"
+              alt="선물 안내 배너"
+              className="w-full max-w-[800px] h-auto rounded-md"
+            />
+          </div>
 
           {/* 선물 정보 */}
           <div className="bg-white shadow-md p-6 mb-6 border-2" style={{ borderColor: '#D4C6A8' }}>
             <h2 className="text-xl font-bold mb-4 text-gray-800 text-center">선물 정보</h2>
 
-            <div className="space-y-6">
+            <div className="space-y-4">
               {order.order_items.map((item) => (
-                <div key={item.id} className="flex flex-col items-center gap-3 p-3 bg-white rounded-lg">
-                  {item.products.image_url ? (
-                    <img
-                      src={item.products.image_url}
-                      alt={item.products.name}
-                      className="w-40 h-40 object-cover rounded border-2"
-                      style={{ borderColor: '#D4C6A8' }}
-                    />
-                  ) : (
-                    <div className="w-40 h-40 bg-gray-200 rounded flex items-center justify-center border-2" style={{ borderColor: '#D4C6A8' }}>
-                      <span className="text-gray-400 text-xs">이미지 없음</span>
-                    </div>
-                  )}
-                  <div className="text-center">
-                    <p className="font-medium text-gray-800">
+                <div
+                  key={item.id}
+                  className="flex items-center gap-4 p-3 bg-white rounded-lg border border-gray-100"
+                >
+                  <div className="flex-shrink-0">
+                    {item.products.image_url ? (
+                      <img
+                        src={item.products.image_url}
+                        alt={item.products.name}
+                        className="w-20 h-20 object-cover rounded border"
+                        style={{ borderColor: '#D4C6A8' }}
+                      />
+                    ) : (
+                      <div
+                        className="w-20 h-20 bg-gray-200 rounded flex items-center justify-center border"
+                        style={{ borderColor: '#D4C6A8' }}
+                      >
+                        <span className="text-gray-400 text-[10px]">이미지 없음</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    {item.products.brand && (
+                      <p className="text-xs text-gray-600 font-semibold mb-0.5">
+                        {item.products.brand}
+                      </p>
+                    )}
+                    <p className="font-semibold text-gray-900">
                       {item.products.name} x {item.quantity}개
                     </p>
+                    {item.products.weight_gram != null && (
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        중량: {item.products.weight_gram}g
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -397,11 +426,11 @@ export default function GiftReceiveClient() {
                 <input
                   type="tel"
                   name="recipient_phone"
-                  value={formData.recipient_phone}
+                  value={formatPhone(formData.recipient_phone)}
                   onChange={handlePhoneChange}
                   required
                   placeholder="휴대폰 번호를 입력해주세요"
-                  maxLength={11}
+                  maxLength={13}
                   className="w-full px-4 py-2 border rounded-lg text-gray-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   style={{ borderColor: '#D4C6A8' }}
                 />
@@ -477,7 +506,7 @@ export default function GiftReceiveClient() {
                   maxLength={50}
                   className="w-full px-4 py-2 border rounded-lg text-gray-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   style={{ borderColor: '#D4C6A8' }}
-                  placeholder="예: 공동현관 비밀번호 #1234, 문 앞에 놓아주세요"
+                  placeholder="예: 공동현관 비밀번호 #1234"
                 />
               </div>
             </div>

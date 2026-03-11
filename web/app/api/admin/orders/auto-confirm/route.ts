@@ -29,11 +29,11 @@ export async function GET(request: NextRequest) {
     const sevenDaysAgoISO = sevenDaysAgo.toISOString()
 
     // 배송완료된 주문 중 7일 이상 지난 주문 조회
-    // status='delivered' 또는 'DELIVERED'이고 updated_at이 7일 이상 지난 주문
+    // status='DELIVERED'이고 updated_at이 7일 이상 지난 주문
     const { data: oldDeliveredOrders, error: ordersError } = await supabase
       .from('orders')
       .select('*')
-      .in('status', ['delivered', 'DELIVERED'])
+      .eq('status', 'DELIVERED')
       .lt('updated_at', sevenDaysAgoISO) // 배송완료 후 7일 이상 지난 주문
       .order('updated_at', { ascending: true })
 
@@ -50,20 +50,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // 이미 구매확정된 주문 필터링
-    const orderIds = oldDeliveredOrders.map(o => o.id)
-    const { data: confirmedOrders } = await supabase
-      .from('point_history')
-      .select('order_id')
-      .in('order_id', orderIds)
-      .eq('type', 'purchase')
-
-    const confirmedOrderIds = new Set(
-      confirmedOrders?.map(c => c.order_id) || []
-    )
-
+    // 이미 구매확정된 주문 필터링 (status !== 'CONFIRMED' 인 주문만)
     const unconfirmedOrders = oldDeliveredOrders.filter(
-      o => !confirmedOrderIds.has(o.id)
+      (o) => o.status !== 'CONFIRMED'
     )
 
     if (unconfirmedOrders.length === 0) {
@@ -99,6 +88,16 @@ export async function GET(request: NextRequest) {
           )
 
           if (success) {
+            // 주문 상태를 CONFIRMED로 업데이트
+            const { error: statusUpdateError } = await supabase
+              .from('orders')
+              .update({ status: 'CONFIRMED' })
+              .eq('id', order.id)
+
+            if (statusUpdateError) {
+              console.error(`주문 ${order.id} CONFIRMED 상태 업데이트 실패:`, statusUpdateError)
+            }
+
             // 구매확정 알림 생성
             const orderNumber = order.order_number || order.id.slice(0, 8)
             const notificationTitle = `구매확정 ${pointsToAdd.toLocaleString()}P 적립`
@@ -147,6 +146,14 @@ export async function GET(request: NextRequest) {
           }
         } else {
           // 포인트가 0이어도 구매확정은 완료된 것으로 처리
+          const { error: statusUpdateError } = await supabase
+            .from('orders')
+            .update({ status: 'CONFIRMED' })
+            .eq('id', order.id)
+
+          if (statusUpdateError) {
+            console.error(`주문 ${order.id} CONFIRMED 상태 업데이트 실패(포인트 0):`, statusUpdateError)
+          }
           successCount++
         }
       } catch (error: any) {

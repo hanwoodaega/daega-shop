@@ -25,21 +25,13 @@ export async function sendOrderCompleteAlimtalk(params: {
   orderNumber: string
   productName: string
 }): Promise<SendAlimtalkResult> {
-  console.log('[ALIMTALK] start')
   const config = getSmsServiceConfig()
-  console.log('[ALIMTALK] config exists:', !!config)
   if (!config) {
     console.warn('[Alimtalk] 설정 없음: SMS_SERVICE_URL, SMS_SERVICE_TOKEN')
     return { success: false, detail: 'config_missing' }
   }
 
   const to = normalizePhone(params.to)
-  console.log('[ALIMTALK] phone:', to)
-  console.log('[ALIMTALK] payload:', {
-    to,
-    order_number: params.orderNumber,
-    product_name: params.productName,
-  })
   if (!isValidPhone(to)) {
     return { success: false, detail: 'invalid_phone' }
   }
@@ -49,8 +41,6 @@ export async function sendOrderCompleteAlimtalk(params: {
     order_number: params.orderNumber,
     product_name: params.productName,
   })
-
-  console.log('[ALIMTALK] response:', result)
 
   if (result.ok) {
     return { success: true }

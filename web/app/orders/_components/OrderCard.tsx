@@ -42,6 +42,11 @@ export default function OrderCard({
   const totalItems = items.length
   const displayItems = isExpanded ? items : items.slice(0, PREVIEW_ITEMS)
 
+  const createdAt = new Date(order.created_at)
+  const reviewDeadline = new Date(createdAt)
+  reviewDeadline.setMonth(reviewDeadline.getMonth() + 1)
+  const isReviewWindowOpen = new Date() < reviewDeadline
+
   const copyOrderNumber = () => {
     if (order.order_number) {
       navigator.clipboard.writeText(order.order_number)
@@ -176,7 +181,7 @@ export default function OrderCard({
           <button
             type="button"
             onClick={() => onTrackDelivery(order)}
-            className="flex-1 min-w-[100px] py-2.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+            className="flex-1 min-w-[100px] py-2.5 rounded-lg text-sm font-medium bg-sky-100 text-primary-900 hover:bg-sky-200 transition"
           >
             배송조회
           </button>
@@ -201,7 +206,7 @@ export default function OrderCard({
             {confirmingOrderId === order.id ? '처리 중...' : '구매확정'}
           </button>
         )}
-        {order.status === 'DELIVERED' && (
+        {order.status === 'CONFIRMED' && isReviewWindowOpen && (
           <button
             type="button"
             onClick={() => router.push('/profile/reviews')}

@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     // RLS 우회를 위해 admin client 사용
     const supabase = createSupabaseAdminClient()
 
-    // 1. 배송 완료된 주문의 모든 주문 상품 조회
+    // 1. 구매확정(완료)된 주문의 모든 주문 상품 조회
     const { data: orderItems, error: orderItemsError } = await supabase
       .from('order_items')
       .select(`
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('orders.user_id', user.id)
-      .in('orders.status', ['delivered', 'DELIVERED'])
+      .eq('orders.status', 'CONFIRMED')
       .order('created_at', { ascending: false })
 
     if (orderItemsError) {
@@ -116,14 +116,35 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const reviewableProducts = Array.from(uniqueProductsMap.values()).map(item => ({
+    // 7. 상품 이미지 조회 (product_images 우선순위 순, 상품당 1장)
+    const uniqueItems = Array.from(uniqueProductsMap.values())
+    const productIds = Array.from(new Set(uniqueItems.map((item: any) => item.product_id)))
+
+    let productImages: Record<string, string> = {}
+    if (productIds.length > 0) {
+      const { data: imagesData } = await supabase
+        .from('product_images')
+        .select('product_id, image_url, priority')
+        .in('product_id', productIds)
+        .order('priority', { ascending: true })
+
+      const byProduct = new Map<string, string>()
+      imagesData?.forEach((img: any) => {
+        if (img?.product_id && !byProduct.has(img.product_id)) {
+          byProduct.set(img.product_id, img.image_url || '')
+        }
+      })
+      productImages = Object.fromEntries(byProduct)
+    }
+
+    const reviewableProducts = uniqueItems.map((item: any) => ({
       order_item_id: item.id, // 고유한 key를 위한 order_item.id 추가
       order_id: item.order_id,
       order_number: (item.orders as any)?.order_number,
       order_date: (item.orders as any)?.created_at,
       product_id: item.product_id,
       product_name: (item.products as any)?.name,
-      product_image: null, // product_images에서 가져와야 함
+      product_image: productImages[item.product_id] || null,
       product_brand: (item.products as any)?.brand,
       quantity: item.quantity,
       price: item.price,

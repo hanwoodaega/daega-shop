@@ -69,7 +69,7 @@ export interface Order {
   points_used?: number
   /** 이 주문에서 실제 적용된 쿠폰 할인 금액 (스냅샷) */
   coupon_discount_amount?: number
-  status: 'pending' | 'paid' | 'ORDER_RECEIVED' | 'PREPARING' | 'IN_TRANSIT' | 'DELIVERED' | 'gift_received' | 'cancelled' | 'payment_error'
+  status: 'pending' | 'paid' | 'ORDER_RECEIVED' | 'PREPARING' | 'IN_TRANSIT' | 'DELIVERED' | 'CONFIRMED' | 'gift_received' | 'cancelled' | 'payment_error'
   delivery_type: 'pickup' | 'quick' | 'regular'
   delivery_time?: string | null
   shipping_address: string
@@ -77,6 +77,7 @@ export interface Order {
   shipping_phone: string
   delivery_note?: string | null
   tracking_number?: string | null  // 송장번호
+  tracking_company?: string | null // 택배사명 (예: 롯데택배)
   refund_completed_at?: string | null
   created_at: string
   updated_at: string

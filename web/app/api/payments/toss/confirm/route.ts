@@ -393,19 +393,13 @@ export async function POST(request: NextRequest) {
     const productName = totalQty <= 1 ? topProductName : `${topProductName} 외 ${totalQty - 1}개`
 
     // 3) 알림톡: 서버리스에서 응답 후 작업이 보장되지 않으므로 await 후 반환 (누락 방지)
-    console.log('[ORDER_COMPLETE] 1. function start')
-    console.log('[ORDER_COMPLETE] 2. phone:', orderCompletePhone)
-    console.log('[ORDER_COMPLETE] 3. orderNumber:', orderNumber)
-
     if (orderCompletePhone.length >= 10) {
       try {
-        console.log('[ORDER_COMPLETE] 4. before send')
         const result = await sendOrderCompleteAlimtalk({
           to: orderCompletePhone,
           orderNumber,
           productName,
         })
-        console.log('[ORDER_COMPLETE] 5. send result:', result)
         if (!result.success) {
           console.error('[Alimtalk] 주문 완료 알림톡 발송 실패 (SMS fallback은 알리고에서 처리):', result.detail)
         }

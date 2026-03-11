@@ -2,6 +2,28 @@ import { Order } from '../../_types'
 import { formatPhoneNumber } from '@/lib/utils/format-phone'
 import toast from 'react-hot-toast'
 
+function getCarrierCode(name?: string | null): string | undefined {
+  const map: Record<string, string> = {
+    'CJ대한통운': 'kr.cjlogistics',
+    '롯데택배': 'kr.lotte',
+    '로젠택배': 'kr.logen',
+    '한진택배': 'kr.hanjin',
+    '우체국택배': 'kr.epost',
+    '경동택배': 'kr.kdexp',
+    '합동택배': 'kr.hdexp',
+    '대신택배': 'kr.daesin',
+    '일양로지스': 'kr.ilyanglogis',
+    '천일택배': 'kr.chunilps',
+    '건영택배': 'kr.kunyoung',
+  }
+  return name ? map[name] : undefined
+}
+
+function getTrackingUrl(trackingNumber: string, carrierName?: string | null): string {
+  const code = getCarrierCode(carrierName || '') || 'kr.lotte'
+  return `https://tracker.delivery/#/${code}/${trackingNumber}`
+}
+
 interface ShippingInfoProps {
   order: Order
 }
@@ -12,7 +34,7 @@ export default function ShippingInfo({ order }: ShippingInfoProps) {
       toast.error('송장번호가 없습니다.')
       return
     }
-    const trackingUrl = `https://www.lotteglogis.com/home/reservation/tracking/index?InvNo=${order.tracking_number}`
+    const trackingUrl = getTrackingUrl(order.tracking_number, order.tracking_company)
     window.open(trackingUrl, '_blank')
   }
 

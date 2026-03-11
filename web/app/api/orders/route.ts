@@ -108,34 +108,7 @@ export async function GET(request: NextRequest) {
       productImages = Object.fromEntries(byProduct)
     }
 
-    // 4. 구매확정 여부 확인
-    let confirmedOrderIds = new Set<string>()
-    
-    if (orderIds.length > 0) {
-      const { data: pointHistories, error: pointError } = await supabase
-        .from('point_history')
-        .select('order_id')
-        .eq('user_id', user.id)
-        .in('order_id', orderIds)
-        .eq('type', 'purchase')
-        .not('order_id', 'is', null) // order_id가 null이 아닌 것만
-
-      if (pointError) {
-        console.error('구매확정 여부 조회 실패:', {
-          error: pointError,
-          orderIds: orderIds.length,
-          userId: user.id,
-        })
-      } else if (pointHistories) {
-        confirmedOrderIds = new Set(
-          pointHistories
-            .map((ph: any) => ph.order_id)
-            .filter((id: string | null) => id !== null) // null 제거
-        )
-      }
-    }
-
-    // 5. 데이터 조립
+    // 4. 데이터 조립
     const itemsMap = (orderItems || []).reduce((acc: any, item: any) => {
       if (!acc[item.order_id]) acc[item.order_id] = []
       
@@ -154,7 +127,8 @@ export async function GET(request: NextRequest) {
     const ordersWithDetails = orders.map(order => ({
       ...order,
       order_items: itemsMap[order.id] || [],
-      is_confirmed: confirmedOrderIds.has(order.id)
+      // 구매확정 여부는 status로 판별 (서버 기준)
+      is_confirmed: order.status === 'CONFIRMED'
     }))
 
     return NextResponse.json({ orders: ordersWithDetails })

@@ -7,6 +7,8 @@ interface OrderActionsProps {
   updatingOrderId: string | null
   trackingInput: string
   onTrackingChange: (number: string) => void
+  carrierInput: string
+  onCarrierChange: (carrier: string) => void
   onStatusChange: (orderId: string, newStatus: OrderStatus, trackingNumber?: string) => Promise<boolean>
 }
 
@@ -15,8 +17,23 @@ export default function OrderActions({
   updatingOrderId,
   trackingInput,
   onTrackingChange,
+  carrierInput,
+  onCarrierChange,
   onStatusChange,
 }: OrderActionsProps) {
+  const CARRIERS = [
+    'CJ대한통운',
+    '롯데택배',
+    '로젠택배',
+    '한진택배',
+    '우체국택배',
+    '경동택배',
+    '합동택배',
+    '대신택배',
+    '일양로지스',
+    '천일택배',
+    '건영택배',
+  ]
   const getAvailableStatuses = (currentStatus: string) => {
     switch (currentStatus) {
       case 'pending':
@@ -55,7 +72,20 @@ export default function OrderActions({
           <p className="text-sm font-medium text-gray-700">송장번호</p>
           <div className="space-y-2">
             <div>
-              <label className="block text-xs text-gray-600 mb-1">송장번호 (롯데택배)</label>
+              <label className="block text-xs text-gray-600 mb-1">택배사</label>
+              <select
+                value={carrierInput}
+                onChange={(e) => onCarrierChange(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-800 mb-2"
+              >
+                {CARRIERS.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+
+              <label className="block text-xs text-gray-600 mb-1">송장번호</label>
               <input
                 type="text"
                 value={trackingInput}

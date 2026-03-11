@@ -38,7 +38,9 @@ export async function GET(
           price,
           products (
             id,
-            name
+            name,
+            brand,
+            weight_gram
           )
         )
       `)

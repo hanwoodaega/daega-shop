@@ -75,9 +75,9 @@ export default function GiftShareBox({ giftToken, giftOrder }: GiftShareBoxProps
     <div className="mb-4 bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-200 rounded-lg p-4">
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-gray-900 mb-2">선물 링크가 생성되었습니다!</h3>
+          <h3 className="font-bold text-gray-900 mb-2">선물 링크 생성!</h3>
           <p className="text-sm text-gray-600 mb-3">
-            받는 분 휴대폰으로 알림톡이 발송되었습니다. 아래 링크를 복사해 추가로 전달할 수 있습니다.
+            받는 분께 카카오톡으로 전송되었습니다. 아래 링크를 복사해 추가로 전달할 수 있습니다.
           </p>
           <div className="flex items-center gap-2">
             <input

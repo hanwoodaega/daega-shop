@@ -37,30 +37,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    // 배송완료 상태인지 확인 (기존 상태와 새로운 상태 모두 체크)
-    if (order.status !== 'delivered' && order.status !== 'DELIVERED') {
-      return NextResponse.json({ 
-        error: '배송완료된 주문만 구매확정할 수 있습니다.' 
+    // 이미 구매확정된 주문인지 확인 (status 기반)
+    if (order.status === 'CONFIRMED') {
+      return NextResponse.json({
+        error: '이미 구매확정된 주문입니다.',
       }, { status: 400 })
     }
 
-    // 이미 구매확정되었는지 확인 (point_history에서 확인)
-    const { data: existingPoints, error: existingError } = await supabase
-      .from('point_history')
-      .select('id, order_id')
-      .eq('order_id', orderId)
-      .eq('type', 'purchase')
-      .not('order_id', 'is', null) // order_id가 null이 아닌 것만
-      .maybeSingle()
-
-    if (existingError && existingError.code !== 'PGRST116') {
-      console.error('구매확정 중복 확인 실패:', existingError)
-      // 에러가 있어도 계속 진행 (중복 체크는 실패해도 괜찮음)
-    }
-
-    if (existingPoints && existingPoints.order_id) {
+    // 배송완료 상태인지 확인 (DELIVERED → CONFIRMED 으로만 전이)
+    if (order.status !== 'DELIVERED') {
       return NextResponse.json({ 
-        error: '이미 구매확정된 주문입니다.' 
+        error: '배송완료된 주문만 구매확정할 수 있습니다.' 
       }, { status: 400 })
     }
 
@@ -121,6 +108,19 @@ export async function POST(request: NextRequest) {
       // 기록이 없거나 order_id가 null이면 실패로 처리
       return NextResponse.json({ 
         error: '구매확정 기록 저장에 실패했습니다.' 
+      }, { status: 500 })
+    }
+
+    // 주문 상태를 CONFIRMED로 업데이트 (구매확정 완료)
+    const { error: statusUpdateError } = await supabase
+      .from('orders')
+      .update({ status: 'CONFIRMED' })
+      .eq('id', order.id)
+
+    if (statusUpdateError) {
+      console.error('구매확정 상태 업데이트 실패:', statusUpdateError)
+      return NextResponse.json({ 
+        error: '구매확정 처리에 실패했습니다.' 
       }, { status: 500 })
     }
 
