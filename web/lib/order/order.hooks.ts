@@ -44,7 +44,7 @@ export function useOrders({ userId, giftToken, orderPeriodMonths: initialMonths 
     const order = orders.find(o => o.id === orderId)
     if (!order) return
 
-    if (!confirm(`주문을 취소하시겠습니까?\n\n환불 예정 금액: ${formatPrice(order.total_amount)}원\n환불은 영업일 기준 3-5일이 소요될 수 있습니다.`)) {
+    if (!confirm(`주문을 취소하시겠습니까?\n\n환불 예정 금액: ${formatPrice(order.total_amount)}원\n환불은 영업일 기준 3-5일이 소요될 수 있습니다.\n\n※ 주문 취소 시 사용한 쿠폰은 복구되지 않습니다.`)) {
       return
     }
 

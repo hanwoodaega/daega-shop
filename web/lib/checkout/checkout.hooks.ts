@@ -30,6 +30,7 @@ export function useCheckout(options: UseCheckoutOptions) {
   const { user } = useAuth()
   const timeoutsRef = useRef<number[]>([])
   const pricingKeyRef = useRef<string | null>(null)
+  const tossWidgetsRef = useRef<any>(null)
 
   // Cart & Direct Purchase
   const cartItems = useCartStore((state) => state.items)
@@ -751,6 +752,20 @@ export function useCheckout(options: UseCheckoutOptions) {
 
       const customerKey = user?.id ?? `guest_${orderId}`
 
+      if (tossWidgetsRef.current) {
+        await tossWidgetsRef.current.requestPayment({
+          orderId,
+          orderName,
+          successUrl,
+          failUrl,
+          customerName: formData.name.trim(),
+          customerEmail: normalizedEmail && !isInternalEmail ? normalizedEmail : undefined,
+          customerMobilePhone: sanitizedPhone || undefined,
+          ...(Number.isFinite(taxFreeAmount) && taxFreeAmount >= 0 ? { taxFreeAmount } : {}),
+        })
+        return
+      }
+
       const tossPayments = await loadTossPayments(tossClientKey)
       const payment = (tossPayments as any).payment({ customerKey })
       await payment.requestPayment(paymentOptions)
@@ -915,6 +930,10 @@ export function useCheckout(options: UseCheckoutOptions) {
     removeSelectedFromCart,
   ])
 
+  const setTossWidgets = useCallback((widgets: any) => {
+    tossWidgetsRef.current = widgets
+  }, [])
+
   const handleSearchAddress = useCallback(() => {
     openDaumPostcode((data: AddressSearchResult) => {
       setFormData(prev => ({
@@ -966,6 +985,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       handleSubmit,
       handleNextStep,
       handleSearchAddress,
+      setTossWidgets,
       loadUserPoints,
       applyAddress,
       handleInputChange,

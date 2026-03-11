@@ -2,25 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import crypto from 'crypto'
 import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
+import { calculateOrderPricing, OrderInput } from '@/lib/order/order-pricing.server'
 
 /**
  * 선물 주문 미리 생성 (결제 전 상태)
  * 카카오톡 공유를 위해 결제 전에 주문을 생성하고 선물 링크를 반환합니다.
+ * 금액·할인·프로모션은 서버 calculateOrderPricing으로 계산합니다.
  */
 export async function POST(request: NextRequest) {
   try {
     const supabaseAuth = await createSupabaseServerClient()
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
-    
+
     if (authError || !user) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }
 
     const supabase = createSupabaseAdminClient()
     const body = await request.json()
-    
+
     const {
-      items,
+      items = [],
       gift_message = null,
       gift_recipient_phone = null,
       used_coupon_id = null,
@@ -31,18 +33,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '상품이 없습니다.' }, { status: 400 })
     }
 
-    // 총 금액 계산
-    const totalAmount = items.reduce((sum: number, item: { price: number; quantity: number }) => 
-      sum + (item.price * item.quantity), 0)
-    const finalAmount = totalAmount - used_points
+    const orderInput: OrderInput = {
+      items: items.map((item: { productId: string; quantity: number; promotion_group_id?: string | null }) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        promotion_group_id: item.promotion_group_id ?? null,
+      })),
+      delivery_type: 'regular',
+      delivery_time: null,
+      shipping_address: '선물 수령 대기',
+      shipping_name: '선물 수령 대기',
+      shipping_phone: '',
+      delivery_note: null,
+      used_coupon_id: used_coupon_id ?? null,
+      used_points: Number(used_points) || 0,
+      is_gift: true,
+      gift_message: gift_message ?? null,
+    }
 
-    // 선물 토큰 생성
+    const { pricing, itemSnapshots } = await calculateOrderPricing({
+      supabaseAdmin: supabase,
+      userId: user.id,
+      input: orderInput,
+    })
+
     const giftToken = crypto.randomBytes(32).toString('hex')
-    
-    // 만료일 설정 (7일째 되는 날 23:59:59 KST까지)
     const expiresAtISO = getGiftExpiresAtEndOfDayKST()
 
-    // 선물 주문 (결제 전 상태)
     const orderData: {
       user_id: string
       total_amount: number
@@ -58,7 +75,7 @@ export async function POST(request: NextRequest) {
       gift_expires_at: string
     } = {
       user_id: user.id,
-      total_amount: finalAmount,
+      total_amount: pricing.finalTotal,
       status: 'pending',
       delivery_type: 'regular',
       shipping_address: '선물 수령 대기',
@@ -81,13 +98,12 @@ export async function POST(request: NextRequest) {
       throw new Error(orderError.message)
     }
 
-    // 주문 아이템 저장
-    if (order && items && items.length > 0) {
-      const orderItems = items.map((item: { productId: string; quantity: number; price: number }) => ({
+    if (order && itemSnapshots.length > 0) {
+      const orderItems = itemSnapshots.map((snapshot) => ({
         order_id: order.id,
-        product_id: item.productId,
-        quantity: item.quantity,
-        price: item.price,
+        product_id: snapshot.product_id,
+        quantity: snapshot.quantity,
+        price: snapshot.final_unit_price ?? snapshot.price,
       }))
 
       const { error: itemsError } = await supabase
@@ -95,13 +111,13 @@ export async function POST(request: NextRequest) {
         .insert(orderItems)
 
       if (itemsError) {
-        // 주문 아이템 저장 실패 (부분 실패)
+        console.error('[gift/create-pending] 주문 상품 저장 실패:', itemsError)
       }
     }
 
-    return NextResponse.json({ 
-      order, 
-      gift_token: giftToken 
+    return NextResponse.json({
+      order,
+      gift_token: giftToken,
     })
   } catch (error: any) {
     return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })

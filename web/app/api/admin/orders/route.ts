@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { cookies } from 'next/headers'
 import { VALID_ORDER_STATUSES } from '@/lib/utils/constants'
+import { handleOrderCancellationPoints } from '@/lib/point/points'
+import { cancelTossPayment } from '@/lib/payments/toss-server'
 
 // 관리자 인증 확인 (쿠키 기반)
 async function verifyAdmin() {
@@ -250,14 +252,99 @@ export async function PATCH(request: NextRequest) {
 
     const supabase = createSupabaseAdminClient()
     
-    // 이전 상태 확인
+    // 이전 상태 및 취소 시 필요한 필드 확인
     const { data: oldOrder } = await supabase
       .from('orders')
-      .select('status, user_id, order_number, total_amount')
+      .select('status, user_id, order_number, total_amount, toss_payment_key')
       .eq('id', orderId)
       .single()
 
-    // 업데이트할 데이터 준비
+    if (!oldOrder) {
+      return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 })
+    }
+
+    // 관리자 취소 시: 토스 결제 취소 + 포인트 처리 후 DB 반영
+    if (status === 'cancelled' && oldOrder.status !== 'cancelled') {
+      const cancelableStatuses = ['paid', 'ORDER_RECEIVED']
+      if (!cancelableStatuses.includes(oldOrder.status)) {
+        return NextResponse.json({
+          error: `취소할 수 없는 주문 상태입니다. (현재: ${oldOrder.status}) 결제완료/주문접수 상태에서만 취소 가능합니다.`,
+        }, { status: 400 })
+      }
+
+      const paymentKey = oldOrder.toss_payment_key
+      if (paymentKey) {
+        const tossResult = await cancelTossPayment(paymentKey, '관리자에 의한 취소')
+        if (!tossResult.ok) {
+          return NextResponse.json(
+            { error: tossResult.error || '토스 결제 취소에 실패했습니다.' },
+            { status: 400 }
+          )
+        }
+      }
+
+      const { data: pointUsage } = await supabase
+        .from('point_history')
+        .select('points')
+        .eq('order_id', orderId)
+        .eq('type', 'usage')
+        .maybeSingle()
+
+      const usedPoints = pointUsage && pointUsage.points != null ? Math.abs(pointUsage.points) : 0
+
+      const { error: updateOrderError } = await supabase
+        .from('orders')
+        .update({
+          status: 'cancelled',
+          refund_completed_at: new Date().toISOString(),
+        })
+        .eq('id', orderId)
+
+      if (updateOrderError) {
+        console.error('관리자 주문 취소 DB 반영 실패:', updateOrderError)
+        return NextResponse.json({ error: '주문 취소 처리에 실패했습니다.' }, { status: 500 })
+      }
+
+      await handleOrderCancellationPoints(
+        oldOrder.user_id,
+        orderId,
+        oldOrder.total_amount,
+        usedPoints,
+        supabase
+      )
+
+      try {
+        const orderNumber = oldOrder.order_number || orderId.slice(0, 8)
+        const notificationTitle = '환불 완료'
+        const notificationContent = `주문번호 ${orderNumber}의 환불이 완료되었습니다. 환불 금액: ${oldOrder.total_amount.toLocaleString()}원`
+        
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert({
+            user_id: oldOrder.user_id,
+            title: notificationTitle,
+            content: notificationContent,
+            type: 'general',
+            is_read: false,
+          })
+
+        if (notificationError) {
+          console.error('환불 완료 알림 생성 실패:', notificationError)
+        }
+      } catch (notificationErr: unknown) {
+        console.error('환불 완료 알림 생성 중 예외:', notificationErr)
+      }
+
+      const { data: updatedOrder } = await supabase
+        .from('orders')
+        .select()
+        .eq('id', orderId)
+        .single()
+
+      return NextResponse.json(updatedOrder)
+    }
+
+    // 업데이트할 데이터 준비 (취소가 아닌 경우 또는 이미 취소된 주문)
     const updateData: Record<string, unknown> = {}
     
     // 주문 상태 변경
@@ -287,34 +374,6 @@ export async function PATCH(request: NextRequest) {
     if (error) {
       console.error('주문 상태 변경 실패:', error)
       return NextResponse.json({ error: '주문 상태 변경에 실패했습니다.' }, { status: 500 })
-    }
-
-    // 관리자가 주문을 취소로 변경한 경우 알림 발송
-    if (status === 'cancelled' && oldOrder && oldOrder.status !== 'cancelled') {
-      try {
-        const orderNumber = oldOrder.order_number || orderId.slice(0, 8)
-        const notificationTitle = '환불 완료'
-        const notificationContent = `주문번호 ${orderNumber}의 환불이 완료되었습니다. 환불 금액: ${oldOrder.total_amount.toLocaleString()}원`
-        
-        const { error: notificationError } = await supabase
-          .from('notifications')
-          .insert({
-            user_id: oldOrder.user_id,
-            title: notificationTitle,
-            content: notificationContent,
-            type: 'general',
-            is_read: false,
-          })
-
-        if (notificationError) {
-          console.error('환불 완료 알림 생성 실패:', notificationError)
-          // 알림 생성 실패해도 환불 완료 처리는 성공으로 처리
-        } else {
-          console.log(`환불 완료 알림 생성 성공: 주문 ${orderId}, 사용자 ${oldOrder.user_id}`)
-        }
-      } catch (error: any) {
-        console.error('환불 완료 알림 생성 중 예외 발생:', error)
-      }
     }
 
     // 배송완료로 변경될 때 알림 발송

@@ -262,12 +262,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '주문 생성 실패', details: orderError?.message || '알 수 없는 오류' }, { status: 500 })
     }
 
-    // 2. 주문 상품 생성
-    const orderItems = rawItems.map((item: any) => ({
+    // 2. 주문 상품 생성 (서버 계산된 단가 사용)
+    const orderItems = itemSnapshots.map((snapshot) => ({
       order_id: order.id,
-      product_id: item.productId,
-      quantity: item.quantity,
-      price: item.price,
+      product_id: snapshot.product_id,
+      quantity: snapshot.quantity,
+      price: snapshot.final_unit_price ?? snapshot.price,
     }))
 
     const { error: itemsError } = await supabaseAdmin

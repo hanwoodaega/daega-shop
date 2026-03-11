@@ -1,5 +1,6 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -22,6 +23,11 @@ import {
   OrderSummaryBox,
   CheckoutBottomBar,
 } from './_components'
+
+const TossPaymentWidget = dynamic(
+  () => import('./_components/TossPaymentWidget'),
+  { ssr: false }
+)
 
 function CheckoutPageContent() {
   const router = useRouter()
@@ -69,6 +75,7 @@ function CheckoutPageContent() {
     handleSubmit,
     handleNextStep,
     handleSearchAddress,
+    setTossWidgets,
     loadUserPoints,
     applyAddress,
     handleInputChange,
@@ -369,6 +376,18 @@ function CheckoutPageContent() {
                   </div>
                 )}
               </div>
+              )}
+
+              {(!isGiftMode || currentStep === 3) && (
+                <div className="bg-white rounded-lg shadow-md p-4">
+                  <h2 className="text-lg font-bold mb-3">결제 방법</h2>
+                  <TossPaymentWidget
+                    amount={orderTotal}
+                    customerKey={user?.id ?? 'guest'}
+                    onWidgetsReady={setTossWidgets}
+                    variantKey={process.env.NEXT_PUBLIC_TOSS_WIDGET_VARIANT_KEY ?? 'DEFAULT'}
+                  />
+                </div>
               )}
 
             </div>
