@@ -9,7 +9,7 @@ import { formatDate, formatPrice } from '@/lib/utils/utils'
 import toast from 'react-hot-toast'
 import { ReviewableProduct, MyReview } from '@/lib/types/review'
 import { isValidImageUrl } from '@/lib/product/product-utils'
-import { handleApiError, showSuccessMessage } from '@/lib/utils/error-handler'
+import { showError, showSuccess } from '@/lib/utils/error-handler'
 import { useCartStore } from '@/lib/store'
 
 export default function ProfileReviewsPage() {
@@ -87,7 +87,7 @@ export default function ProfileReviewsPage() {
         setReviewableProducts(data.reviewableProducts || [])
         setReviewableCount(data.reviewableProducts?.length || 0)
       } catch (error) {
-        handleApiError(error, '데이터 조회')
+        showError(error)
       } finally {
         setLoading(false)
         isFetchingReviewableRef.current = false
@@ -121,7 +121,7 @@ export default function ProfileReviewsPage() {
         setMyReviews(data.reviews || [])
         setMyReviewsCount(data.reviews?.length || 0)
       } catch (error) {
-        handleApiError(error, '데이터 조회')
+        showError(error)
       } finally {
         setLoading(false)
         isFetchingMyReviewsRef.current = false
@@ -160,10 +160,10 @@ export default function ProfileReviewsPage() {
         }
       }
     } catch (error) {
-      handleApiError(error, '리뷰 목록 새로고침')
+      showError(error)
     }
     
-    showSuccessMessage('리뷰가 작성되었습니다!')
+    showSuccess('리뷰가 작성되었습니다!')
   }
 
   const handleEditReview = (review: MyReview) => {
@@ -183,10 +183,10 @@ export default function ProfileReviewsPage() {
         setMyReviewsCount(data.reviews?.length || 0)
       }
     } catch (error) {
-      handleApiError(error, '리뷰 목록 새로고침')
+      showError(error)
     }
     
-    showSuccessMessage('리뷰가 수정되었습니다!')
+    showSuccess('리뷰가 수정되었습니다!')
   }
 
   const handleDeleteReview = async (reviewId: string) => {
@@ -201,7 +201,7 @@ export default function ProfileReviewsPage() {
         throw new Error('리뷰 삭제 실패')
       }
       
-      showSuccessMessage('리뷰가 삭제되었습니다.')
+      showSuccess('리뷰가 삭제되었습니다.')
       
       const myReviewsRes = await fetch('/api/reviews/my-reviews')
       if (myReviewsRes.ok) {
@@ -210,7 +210,7 @@ export default function ProfileReviewsPage() {
         setMyReviewsCount(data.reviews?.length || 0)
       }
     } catch (error) {
-      handleApiError(error, '리뷰 삭제')
+      showError(error)
     }
   }
 

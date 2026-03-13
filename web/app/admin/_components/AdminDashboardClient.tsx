@@ -82,6 +82,12 @@ const managementCards: AdminCard[] = [
 
 const supportCards: AdminCard[] = [
   {
+    title: '결제 복구',
+    description: '승인 후 주문 미생성 · 미처리 결제 이상건 조회 및 복구.',
+    href: '/admin/payment-recovery',
+    accent: 'bg-amber-100 text-amber-800',
+  },
+  {
     title: '쿠폰 관리',
     description: '카테고리/기간별 쿠폰 전략을 설계하세요.',
     href: '/admin/coupons',

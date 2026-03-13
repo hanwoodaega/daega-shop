@@ -134,9 +134,9 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
                 <button
                   type="button"
                   onClick={() => router.push('/profile')}
-                  className="hover:text-red-600 transition"
+                  className="group hover:text-red-600 transition"
                 >
-                  {displayName || '마이페이지'}님
+                  <span className="font-bold text-gray-900 group-hover:text-red-600 transition">{displayName || '마이페이지'}님</span>
                 </button>
                 <span className="text-gray-300">│</span>
                 <button

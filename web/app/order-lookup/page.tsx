@@ -10,6 +10,8 @@ import { OrderWithItems } from '@/lib/order/order-types'
 import { formatPrice } from '@/lib/utils/utils'
 import { formatPhoneNumber } from '@/lib/utils/format-phone'
 import { getStatusText, getDeliveryTypeText, getStatusTextColor } from '@/lib/order/order-utils'
+import toast from 'react-hot-toast'
+import { useAuth } from '@/lib/auth/auth-context'
 
 function getCarrierCode(name?: string | null): string | undefined {
   const map: Record<string, string> = {
@@ -33,17 +35,53 @@ function getTrackingUrl(trackingNumber: string, carrierName?: string | null): st
   return `https://tracker.delivery/#/${code}/${trackingNumber}`
 }
 
-function OrderLookupResult({ order }: { order: OrderWithItems }) {
-  const [expanded, setExpanded] = useState(true)
+const ORDER_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+}
+
+function formatOrderDate(createdAt: string): string {
+  return new Date(createdAt).toLocaleDateString('ko-KR', ORDER_DATE_OPTIONS)
+}
+
+function hideImageOnError(e: React.SyntheticEvent<HTMLImageElement>) {
+  e.currentTarget.style.display = 'none'
+}
+
+const PREVIEW_ITEMS = 3
+
+function OrderLookupResult({
+  order,
+  onCancel,
+  cancelling,
+}: {
+  order: OrderWithItems
+  onCancel: () => void
+  cancelling: boolean
+}) {
+  const [expanded, setExpanded] = useState(false)
 
   const handleTrackDelivery = () => {
     if (!order.tracking_number) return
     window.open(getTrackingUrl(order.tracking_number, order.tracking_company), '_blank')
   }
 
+  const copyOrderNumber = () => {
+    if (order.order_number) {
+      navigator.clipboard.writeText(order.order_number)
+      toast.success('주문번호가 복사되었습니다.')
+    }
+  }
+
   const statusText = getStatusText(order.status, order.delivery_type)
   const statusColorClass = getStatusTextColor(order.status)
   const shippingDisplay = order.gift_token ? '선물하기 주문' : (order.shipping_address || '-')
+  const items = order.order_items || []
+  const displayItems = expanded ? items : items.slice(0, PREVIEW_ITEMS)
+  const deliveryTypeLabel = getDeliveryTypeText(order.delivery_type)
 
   return (
     <>
@@ -54,13 +92,7 @@ function OrderLookupResult({ order }: { order: OrderWithItems }) {
             주문번호: <span className="font-mono font-semibold text-gray-900">{order.order_number || '-'}</span>
           </p>
           <p className="text-sm text-gray-500 mt-0.5">
-            주문일시: {new Date(order.created_at).toLocaleDateString('ko-KR', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+            주문일시: {formatOrderDate(order.created_at)}
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -86,7 +118,7 @@ function OrderLookupResult({ order }: { order: OrderWithItems }) {
                             alt={item.product?.name || ''}
                             className="w-full h-full object-cover"
                             referrerPolicy="no-referrer"
-                            onError={(e) => { e.currentTarget.style.display = 'none' }}
+                          onError={hideImageOnError}
                           />
                         ) : null}
                       </div>
@@ -103,13 +135,6 @@ function OrderLookupResult({ order }: { order: OrderWithItems }) {
                           {order.tracking_company || '택배'} {order.tracking_number}
                         </span>
                       )}
-                      <button
-                        type="button"
-                        className="mt-1 text-sm text-gray-600 hover:text-red-600 underline"
-                        onClick={() => {}}
-                      >
-                        주문취소
-                      </button>
                     </div>
                   </td>
                   {index === 0 ? (
@@ -139,153 +164,105 @@ function OrderLookupResult({ order }: { order: OrderWithItems }) {
         )}
       </div>
 
-      {/* 모바일: 기존 카드 레이아웃 */}
-      <div className="lg:hidden bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="bg-white px-4 py-3 border-b">
-        <p className="text-sm text-gray-600 mb-1">
-          주문일시: {new Date(order.created_at).toLocaleDateString('ko-KR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </p>
-        {order.order_number && (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              주문번호: <span className="font-mono text-primary-900 font-semibold">{order.order_number}</span>
+      {/* 모바일: 회원 주문내역(OrderCard)과 동일 UI */}
+      <div className="lg:hidden bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+        <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-base font-semibold text-gray-900 mb-0.5">
+              {new Date(order.created_at).toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+              }).replace(/\. /g, '.').replace(/\.$/, '')}
             </p>
-            <span className={`text-sm font-semibold ${getStatusTextColor(order.status)}`}>
-              {getStatusText(order.status, order.delivery_type)}
-            </span>
-          </div>
-        )}
-      </div>
-
-      <div className="p-4">
-        {order.order_items && order.order_items.length > 0 && (
-          <div className="mb-4">
-            {!expanded ? (
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="w-16 h-16 rounded flex-shrink-0 overflow-hidden bg-gray-200">
-                  {order.order_items[0].product?.image_url && (
-                    <img
-                      src={order.order_items[0].product.image_url}
-                      alt={order.order_items[0].product?.name || ''}
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => { e.currentTarget.style.display = 'none' }}
-                    />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {order.order_items[0].product?.name || '상품'}
-                    {order.order_items.length > 1 && (
-                      <span className="text-gray-500 ml-1">외 {order.order_items.length - 1}개 상품</span>
-                    )}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {formatPrice(order.order_items[0].price)}원 × {order.order_items[0].quantity}개
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3 mb-3">
-                {order.order_items.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-3">
-                    <div className="w-16 h-16 rounded flex-shrink-0 overflow-hidden bg-gray-200">
-                      {item.product?.image_url && (
-                        <img
-                          src={item.product.image_url}
-                          alt={item.product?.name || ''}
-                          className="w-full h-full object-cover"
-                          referrerPolicy="no-referrer"
-                          onError={(e) => { e.currentTarget.style.display = 'none' }}
-                        />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{item.product?.name || '상품'}</p>
-                      <p className="text-sm text-gray-600">
-                        {formatPrice(item.price)}원 × {item.quantity}개
-                      </p>
-                    </div>
-                  </div>
-                ))}
+            {order.order_number && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-gray-500">주문번호 {order.order_number}</span>
+                <button
+                  type="button"
+                  onClick={copyOrderNumber}
+                  aria-label="주문번호 복사"
+                  className="p-0.5 text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
               </div>
             )}
+          </div>
+          <div className="flex flex-col items-end">
+            <span className={`text-base font-semibold ${statusColorClass}`}>{statusText}</span>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100">
+          {displayItems.map((item) => (
+            <div
+              key={item.id}
+              className="px-5 py-4 flex gap-4 border-b border-gray-100 last:border-b-0"
+            >
+              <div className="w-20 h-20 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden relative">
+                {item.product?.image_url ? (
+                  <img
+                    src={item.product.image_url}
+                    alt={item.product?.name || '상품'}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={hideImageOnError}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-300">
+                    <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-500 mb-0.5">{deliveryTypeLabel}</p>
+                <p className="text-sm font-semibold text-gray-900 leading-snug">
+                  {item.product?.name || '상품'}
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  <span className="font-semibold text-gray-900">{formatPrice(item.price)}원</span>
+                  <span className="text-gray-500"> | {item.quantity}개</span>
+                </p>
+              </div>
+            </div>
+          ))}
+
+          {items.length > PREVIEW_ITEMS && (
             <button
               type="button"
               onClick={() => setExpanded((e) => !e)}
-              className="w-full py-2 text-sm text-primary-800 font-medium hover:bg-white rounded transition"
+              className="w-full py-3 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-1 transition"
             >
-              {expanded ? '접기 ▲' : '자세히 보기 ▼'}
+              {expanded ? '접기' : `총 ${items.length}건 주문 펼쳐보기`}
+              <svg
+                className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
             </button>
-          </div>
-        )}
-
-        {expanded && (
-          <div className="border-t pt-3 space-y-2">
-            <div className="text-sm">
-              <span className="text-gray-600">배달 유형: </span>
-              <span className="text-gray-900 font-medium">{getDeliveryTypeText(order.delivery_type)}</span>
-            </div>
-            {order.delivery_time && (order.delivery_type === 'pickup' || order.delivery_type === 'quick') && (
-              <div className="text-sm">
-                <span className="text-gray-600">
-                  {order.delivery_type === 'pickup' ? '픽업 시간: ' : '배달 시간: '}
-                </span>
-                <span className="text-gray-900 font-medium">{order.delivery_time}</span>
-              </div>
-            )}
-            {!order.gift_token && (
-              <>
-                <div className="text-sm">
-                  <span className="text-gray-600">배송지: </span>
-                  <span className="text-gray-900">{order.shipping_address}</span>
-                </div>
-                <div className="text-sm">
-                  <span className="text-gray-600">수령인: </span>
-                  <span className="text-gray-900">{order.shipping_name}</span>
-                </div>
-                <div className="text-sm">
-                  <span className="text-gray-600">연락처: </span>
-                  <span className="text-gray-900">{formatPhoneNumber(order.shipping_phone)}</span>
-                </div>
-                {order.delivery_note && (
-                  <div className="text-sm">
-                    <span className="text-gray-600">요청사항: </span>
-                    <span className="text-gray-900">{order.delivery_note}</span>
-                  </div>
-                )}
-              </>
-            )}
-            {order.status === 'cancelled' && (
-              <div className="text-sm pt-2 border-t">
-                <span className="text-gray-600">취소·환불</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {expanded && (
-        <div className="border-t mt-3 pt-3">
-          <div className="flex justify-between items-center">
-            <span className="text-base font-semibold text-gray-900">총 결제금액</span>
-            <span className="text-xl font-bold text-primary-900">{formatPrice(order.total_amount)}원</span>
-          </div>
+          )}
         </div>
-        )}
 
-        {/* 버튼 영역 - 자세히 보기 아래 항상 표시 */}
-        <div className="border-t mt-3 pt-3 flex flex-wrap gap-2">
+        <div className="px-5 py-3 border-t border-gray-100 flex justify-between items-center">
+          <span className="text-sm font-semibold text-gray-900">총 결제금액</span>
+          <span className="text-base font-bold text-primary-900">{formatPrice(order.total_amount)}원</span>
+        </div>
+
+        <div className="px-5 py-4 border-t border-gray-100 flex gap-2 flex-wrap">
           {order.tracking_number && (order.status === 'IN_TRANSIT' || order.status === 'DELIVERED') && (
             <button
               type="button"
               onClick={handleTrackDelivery}
-              className="flex-1 min-w-[120px] bg-white border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+              className="flex-1 min-w-[100px] py-2.5 rounded-lg text-sm font-medium bg-sky-100 text-primary-900 hover:bg-sky-200 transition"
             >
               배송조회
             </button>
@@ -293,17 +270,18 @@ function OrderLookupResult({ order }: { order: OrderWithItems }) {
           {order.status === 'ORDER_RECEIVED' && (
             <button
               type="button"
-              onClick={() => window.location.href = `/auth/login?next=${encodeURIComponent('/orders')}`}
-              className="flex-1 min-w-[120px] bg-white border border-red-300 text-red-600 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition"
+              onClick={onCancel}
+              disabled={cancelling}
+              className="flex-1 min-w-[100px] py-2.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition disabled:opacity-50"
             >
-              주문취소
+              {cancelling ? '취소 중...' : '주문취소'}
             </button>
           )}
           {order.status === 'DELIVERED' && (
             <button
               type="button"
-              onClick={() => window.location.href = `/auth/login?next=${encodeURIComponent('/orders')}`}
-              className="flex-1 min-w-[120px] bg-white border border-blue-300 text-blue-700 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition"
+              onClick={() => { window.location.href = `/auth/login?next=${encodeURIComponent('/orders')}` }}
+              className="flex-1 min-w-[100px] py-2.5 rounded-lg text-sm font-medium bg-primary-100 text-primary-900 hover:bg-primary-200 transition"
             >
               구매확정
             </button>
@@ -311,15 +289,14 @@ function OrderLookupResult({ order }: { order: OrderWithItems }) {
           {order.status === 'CONFIRMED' && (
             <button
               type="button"
-              onClick={() => window.location.href = `/auth/login?next=${encodeURIComponent('/profile/reviews')}`}
-              className="flex-1 min-w-[120px] bg-white border border-blue-300 text-blue-700 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition"
+              onClick={() => { window.location.href = `/auth/login?next=${encodeURIComponent('/profile/reviews')}` }}
+              className="flex-1 min-w-[100px] py-2.5 rounded-lg text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 transition"
             >
-              리뷰 작성하기
+              후기 작성
             </button>
           )}
         </div>
       </div>
-    </div>
     </>
   )
 }
@@ -329,6 +306,7 @@ type Step = 'form' | 'otp' | 'result'
 function OrderLookupContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user, loading: authLoading } = useAuth()
   const [step, setStep] = useState<Step>('form')
   const [orderNumber, setOrderNumber] = useState('')
   const [phone, setPhone] = useState('')
@@ -336,7 +314,10 @@ function OrderLookupContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [order, setOrder] = useState<OrderWithItems | null>(null)
-  const [doneMessage, setDoneMessage] = useState(false)
+  const [guestCancelToken, setGuestCancelToken] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+
+  const doneMessage = searchParams?.get('done') === '1'
 
   const normalizePhoneInput = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 11)
@@ -350,8 +331,14 @@ function OrderLookupContent() {
     const ph = searchParams?.get('phone') ?? ''
     if (num) setOrderNumber(num)
     if (ph) setPhone(normalizePhoneInput(ph))
-    if (searchParams?.get('done') === '1') setDoneMessage(true)
   }, [searchParams])
+
+  // 회원은 /order-lookup 대신 /orders로 이동
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace('/orders')
+    }
+  }, [authLoading, user, router])
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -406,6 +393,7 @@ function OrderLookupContent() {
         return
       }
       setOrder(data.order)
+      setGuestCancelToken(data.guestCancelToken ?? null)
       setStep('result')
     } catch {
       setError('네트워크 오류가 발생했습니다.')
@@ -418,12 +406,48 @@ function OrderLookupContent() {
     setStep('form')
     setOtpCode('')
     setError('')
+    setOrder(null)
+    setGuestCancelToken(null)
   }
 
   const handleBackToOtp = () => {
     setStep('otp')
     setOrder(null)
     setError('')
+    setGuestCancelToken(null)
+  }
+
+  const handleGuestCancelOrder = async () => {
+    if (!order || !guestCancelToken || cancelling) return
+    const refundAmount = formatPrice(order.total_amount)
+    const confirmMessage =
+      `주문을 취소하시겠습니까?\n\n` +
+      `환불 예정 금액: ${refundAmount}원\n` +
+      `환불은 영업일 기준 3-5일이 소요될 수 있습니다.\n\n` +
+      `※ 주문 취소 시 사용한 쿠폰은 복구되지 않습니다.`
+    if (!confirm(confirmMessage)) return
+    setCancelling(true)
+    setError('')
+    try {
+      const res = await fetch('/api/orders/lookup/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id, token: guestCancelToken }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || '주문 취소에 실패했습니다.')
+        return
+      }
+      setOrder((prev) => (prev ? { ...prev, status: 'cancelled' } : prev))
+      toast.success('주문이 취소되었습니다.\n환불은 영업일 기준 3-5일이 소요됩니다.', {
+        duration: 5000,
+      })
+    } catch {
+      setError('네트워크 오류가 발생했습니다.')
+    } finally {
+      setCancelling(false)
+    }
   }
 
   return (
@@ -550,7 +574,13 @@ function OrderLookupContent() {
           </>
         )}
 
-        {step === 'result' && order && <OrderLookupResult order={order} />}
+        {step === 'result' && order && (
+          <OrderLookupResult
+            order={order}
+            onCancel={handleGuestCancelOrder}
+            cancelling={cancelling}
+          />
+        )}
       </main>
 
       <div className="lg:mt-16">

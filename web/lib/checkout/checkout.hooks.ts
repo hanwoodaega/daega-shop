@@ -8,15 +8,15 @@ import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useDefaultAddress, useUserProfile } from '@/lib/address/useAddress'
 import { openDaumPostcode, AddressSearchResult } from '@/lib/postcode/useDaumPostcode'
-import { calculateOrderTotal } from '@/lib/order/order-calc'
-import { SHIPPING, GIFT_MIN_AMOUNT } from '@/lib/utils/constants'
+import { showError, showSuccess, showInfo } from '@/lib/utils/error-handler'
+import { formatPrice } from '@/lib/utils/utils'
+import { DeliveryState, FormData, Flags, GiftData } from './checkout.types'
+import { GIFT_MIN_AMOUNT } from '@/lib/utils/constants'
+import type { PricingResult } from '@/lib/order/pricing-types'
 import { useCoupons } from '@/lib/swr'
 import { isCouponValid } from '@/lib/coupon/coupons'
 import { UserCoupon, Coupon } from '@/lib/supabase/supabase'
 import { removeFromCartDB } from '@/lib/cart/cart-db'
-import { showError, showSuccess, showInfo } from '@/lib/utils/error-handler'
-import { formatPrice } from '@/lib/utils/utils'
-import { DeliveryState, FormData, Flags, GiftData } from './checkout.types'
 
 const TOTAL_GIFT_STEPS = 3
 
@@ -29,7 +29,6 @@ export function useCheckout(options: UseCheckoutOptions) {
   const router = useRouter()
   const { user } = useAuth()
   const timeoutsRef = useRef<number[]>([])
-  const pricingKeyRef = useRef<string | null>(null)
   const tossWidgetsRef = useRef<any>(null)
 
   // Cart & Direct Purchase
@@ -87,20 +86,8 @@ export function useCheckout(options: UseCheckoutOptions) {
 
   const [paymentMethod, setPaymentMethod] = useState('card')
 
-  const [serverPricing, setServerPricing] = useState<{
-    originalTotal: number
-    discountedTotal: number
-    shipping: number
-    couponDiscount: number
-    appliedPoints: number
-    finalTotal: number
-  } | null>(null)
+  const [serverPricing, setServerPricing] = useState<PricingResult | null>(null)
   const [pricingLoading, setPricingLoading] = useState(false)
-
-  // 쿠폰/포인트 변경 시 캐시된 서버 금액을 비워 로컬 계산이 바로 반영되도록 함
-  useEffect(() => {
-    setServerPricing(null)
-  }, [selectedCoupon?.id, usedPoints])
 
   const itemsSignature = useMemo(
     () =>
@@ -129,10 +116,9 @@ export function useCheckout(options: UseCheckoutOptions) {
   const isGiftFinalStep = !isGiftMode || currentStep === TOTAL_GIFT_STEPS
   const gridColumnsClass = isGiftFinalStep ? 'lg:grid-cols-3' : 'lg:grid-cols-1'
 
-  // Order calculations
-  const { originalTotal, discountAmount, shipping, discountedTotal, total: orderTotal } = calculateOrderTotal(items, deliveryMethod)
-  const subtotal = discountedTotal
-  
+  // Order calculations: 서버 금액만 사용. 클라이언트는 계산하지 않음.
+  const subtotal = serverPricing?.discountedTotal ?? 0
+
   const calculateCouponDiscount = useCallback((subtotal: number): number => {
     if (!selectedCoupon || !selectedCoupon.coupon) return 0
 
@@ -157,12 +143,13 @@ export function useCheckout(options: UseCheckoutOptions) {
   const afterCouponDiscount = Math.max(0, subtotal - couponDiscount)
   const finalTotal = Math.max(0, afterCouponDiscount - usedPoints)
 
-  const displayOriginalTotal = serverPricing?.originalTotal ?? originalTotal
-  const displayDiscountedTotal = serverPricing?.discountedTotal ?? discountedTotal
+  // 표시용: 서버 pricing 우선, 없으면 0 (로딩 중)
+  const displayOriginalTotal = serverPricing?.originalTotal ?? 0
+  const displayDiscountedTotal = serverPricing?.discountedTotal ?? 0
   const displayDiscountAmount = Math.max(0, displayOriginalTotal - displayDiscountedTotal)
   const displayCouponDiscount = serverPricing?.couponDiscount ?? couponDiscount
   const displayUsedPoints = serverPricing?.appliedPoints ?? usedPoints
-  const displayShipping = serverPricing?.shipping ?? shipping
+  const displayShipping = serverPricing?.shipping ?? 0
   const displayAfterCouponDiscount = Math.max(0, displayDiscountedTotal - displayCouponDiscount)
   const displayFinalTotal = Math.max(0, displayDiscountedTotal - displayCouponDiscount - displayUsedPoints)
   const displayOrderTotal = displayFinalTotal + displayShipping
@@ -308,6 +295,12 @@ export function useCheckout(options: UseCheckoutOptions) {
     items,
   ])
 
+  const pricingKey = useMemo(
+    () => (items.length === 0 ? '' : JSON.stringify(buildPricingInput())),
+    // itemsSignature 등 내용 기준으로만 변경. buildPricingInput 제외해 매 렌더 abort 방지
+    [itemsSignature, isGiftMode, deliveryMethod, pickupTime, quickDeliveryTime, selectedCoupon?.id, usedPoints]
+  )
+
   const buildOrderInput = useCallback(() => {
     const normalizedPhone = (formData.phone || '').replace(/\D/g, '').slice(0, 13)
     const shippingAddress = isGiftMode
@@ -368,18 +361,10 @@ export function useCheckout(options: UseCheckoutOptions) {
   ])
 
   useEffect(() => {
-    if (!user?.id || items.length === 0) {
-      pricingKeyRef.current = null
+    if (!pricingKey) {
       setServerPricing(null)
       return
     }
-
-    const pricingInput = buildPricingInput()
-    const nextKey = JSON.stringify(pricingInput)
-    if (pricingKeyRef.current === nextKey) {
-      return
-    }
-    pricingKeyRef.current = nextKey
 
     let isActive = true
     const controller = new AbortController()
@@ -387,10 +372,11 @@ export function useCheckout(options: UseCheckoutOptions) {
     const fetchPricing = async () => {
       setPricingLoading(true)
       try {
-        const res = await fetch('/api/payments/toss/prepare', {
+        const orderInput = JSON.parse(pricingKey) as object
+        const res = await fetch('/api/orders/price', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderInput: pricingInput }),
+          body: JSON.stringify({ orderInput }),
           signal: controller.signal,
         })
 
@@ -400,21 +386,19 @@ export function useCheckout(options: UseCheckoutOptions) {
         }
 
         const data = await res.json()
-        if (!isActive || pricingKeyRef.current !== nextKey) return
+        if (!isActive) return
 
-        setServerPricing(data.pricing || null)
+        setServerPricing(data.pricing ?? null)
 
-        if (data?.pricing?.appliedPoints !== undefined && data.pricing.appliedPoints !== usedPoints) {
+        if (user?.id && data?.pricing?.appliedPoints !== undefined && data.pricing.appliedPoints !== usedPoints) {
           setUsedPoints(data.pricing.appliedPoints)
           setUsedPointsInput(String(data.pricing.appliedPoints || ''))
         }
       } catch (error) {
-        if (!isActive || pricingKeyRef.current !== nextKey) return
+        if (!isActive) return
         console.error('결제 금액 계산 실패:', error)
       } finally {
-        if (isActive) {
-          setPricingLoading(false)
-        }
+        setPricingLoading(false)
       }
     }
 
@@ -424,17 +408,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       isActive = false
       controller.abort()
     }
-  }, [
-    user?.id,
-    itemsSignature,
-    selectedCoupon?.id,
-    usedPoints,
-    deliveryMethod,
-    pickupTime,
-    quickDeliveryTime,
-    isGiftMode,
-    buildPricingInput,
-  ])
+  }, [pricingKey, user?.id])
 
   const applyAddress = useCallback((address: {
     recipient_name?: string | null
@@ -469,7 +443,7 @@ export function useCheckout(options: UseCheckoutOptions) {
     const expectedAmount = displayFinalTotal + displayShipping
     
     if (expectedAmount < GIFT_MIN_AMOUNT) {
-      toast.error(`선물하기는 결제 금액이 ${formatPrice(GIFT_MIN_AMOUNT)}원 이상이어야 합니다.`, { icon: '🎁' })
+      toast.error(`선물하기는 결제 금액이 ${formatPrice(GIFT_MIN_AMOUNT)}원 이상이어야 합니다.`)
       return
     }
 
@@ -479,20 +453,20 @@ export function useCheckout(options: UseCheckoutOptions) {
 
     if (currentStep === 2) {
       if (!formData.name.trim() || !formData.phone.trim()) {
-        toast.error('보내는 분 정보를 입력해주세요.', { icon: '⚠️' })
+        toast.error('보내는 분 정보를 입력해주세요.')
         return
       }
       if (!(giftData.recipientName || '').trim()) {
-        toast.error('받는 분 이름을 입력해주세요.', { icon: '⚠️' })
+        toast.error('받는 분 이름을 입력해주세요.')
         return
       }
       const phone = (giftData.recipientPhone || '').replace(/\D/g, '')
       if (phone.length < 10) {
-        toast.error('받는 분 휴대폰 번호를 입력해주세요.', { icon: '⚠️' })
+        toast.error('받는 분 휴대폰 번호를 입력해주세요.')
         return
       }
       if (!(giftData.message || '').trim()) {
-        toast.error('선물 메시지를 입력해주세요.', { icon: '⚠️' })
+        toast.error('선물 메시지를 입력해주세요.')
         return
       }
     }
@@ -505,75 +479,75 @@ export function useCheckout(options: UseCheckoutOptions) {
 
     const validateBeforeSubmit = (): boolean => {
       if (items.length === 0) {
-        showError({ message: '주문할 상품이 없습니다.' }, { icon: '📦' })
+        showError({ message: '주문할 상품이 없습니다.' })
         router.push(isDirectPurchase ? '/products' : '/cart')
         return false
       }
 
       if (isGiftMode && currentStep < TOTAL_GIFT_STEPS) {
-        showInfo('다음 단계를 진행해주세요.', { icon: '➡️' })
+        showInfo('다음 단계를 진행해주세요.')
         return false
       }
 
       if (isGiftMode) {
         const recipientPhone = (giftData.recipientPhone || '').replace(/\D/g, '')
         if (recipientPhone.length < 10) {
-          showError({ message: '받는 분 휴대폰 번호를 입력해주세요.' }, { icon: '⚠️' })
+          showError({ message: '받는 분 휴대폰 번호를 입력해주세요.' })
           return false
         }
         if (!(giftData.recipientName || '').trim()) {
-          showError({ message: '받는 분 이름을 입력해주세요.' }, { icon: '⚠️' })
+          showError({ message: '받는 분 이름을 입력해주세요.' })
           return false
         }
         if (!(giftData.message || '').trim()) {
-          showError({ message: '선물 메시지를 입력해주세요.' }, { icon: '⚠️' })
+          showError({ message: '선물 메시지를 입력해주세요.' })
           return false
         }
         if (!formData.name?.trim() || !formData.phone?.trim()) {
-          showError({ message: '보내는 분 정보를 입력해주세요.' }, { icon: '⚠️' })
+          showError({ message: '보내는 분 정보를 입력해주세요.' })
           return false
         }
       }
 
       if (!isGiftMode) {
         if (!formData.name || !formData.phone) {
-          showError({ message: '필수 항목을 모두 입력해주세요.' }, { icon: '⚠️' })
+          showError({ message: '필수 항목을 모두 입력해주세요.' })
           return false
         }
 
         if (deliveryMethod === 'pickup' && !pickupTime) {
-          showError({ message: '픽업 시간을 선택해주세요.' }, { icon: '⏰' })
+          showError({ message: '픽업 시간을 선택해주세요.' })
           return false
         }
 
         if (deliveryMethod === 'quick') {
           if (!quickDeliveryArea) {
-            showError({ message: '배달 지역을 선택해주세요.' }, { icon: '📍' })
+            showError({ message: '배달 지역을 선택해주세요.' })
             return false
           }
           if (!formData.address) {
-            showError({ message: '상세 주소를 입력해주세요.' }, { icon: '📍' })
+            showError({ message: '상세 주소를 입력해주세요.' })
             return false
           }
           if (!quickDeliveryTime) {
-            showError({ message: '배달 시간을 선택해주세요.' }, { icon: '⏰' })
+            showError({ message: '배달 시간을 선택해주세요.' })
             return false
           }
         }
 
         if (deliveryMethod === 'regular' && !formData.address) {
-          showError({ message: '배송 주소를 입력해주세요.' }, { icon: '📍' })
+          showError({ message: '배송 주소를 입력해주세요.' })
           return false
         }
       }
 
       if (user && usedPoints > 0) {
         if (usedPoints > userPoints) {
-          showError({ message: '보유 포인트보다 많이 사용할 수 없습니다.' }, { icon: '⚠️' })
+          showError({ message: '보유 포인트보다 많이 사용할 수 없습니다.' })
           return false
         }
         if (usedPoints > displayAfterCouponDiscount) {
-          showError({ message: '결제 금액보다 많은 포인트를 사용할 수 없습니다.' }, { icon: '⚠️' })
+          showError({ message: '결제 금액보다 많은 포인트를 사용할 수 없습니다.' })
           return false
         }
       }
@@ -600,54 +574,44 @@ export function useCheckout(options: UseCheckoutOptions) {
         process.env.NEXT_PUBLIC_TOSS_MOCK === 'true' ||
         (!tossClientKey && process.env.NODE_ENV !== 'production')
 
+      const orderInput = buildOrderInput()
+
+      const draftRes = await fetch('/api/orders/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderInput }),
+      })
+
+      if (!draftRes.ok) {
+        const errorData = await draftRes.json().catch(() => ({}))
+        throw new Error(errorData.error || '주문 초안 생성에 실패했습니다.')
+      }
+
+      const draftData = await draftRes.json()
+      const orderId = draftData.orderId
+      const amount = Number(draftData.amount)
+      const taxFreeAmount = Number(draftData.taxFreeAmount ?? 0)
+
+      if (!orderId || !Number.isFinite(amount) || amount < 0) {
+        throw new Error('주문 정보를 불러오지 못했습니다.')
+      }
+
+      const meta = {
+        isDirectPurchase,
+        isGiftMode,
+        saveAsDefaultAddress,
+        deliveryMethod,
+        formData,
+        orderInput: {
+          shipping_phone: orderInput.shipping_phone,
+          orderer_phone: orderInput.orderer_phone,
+        },
+      }
+      sessionStorage.setItem(`toss_checkout_${orderId}`, JSON.stringify(meta))
+
       if (shouldMockToss) {
-        const orderId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
-          ? crypto.randomUUID()
-          : `order-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-
-      const rawOrderName = items.length > 1
-        ? `${items[0]?.name || '상품'} 외 ${items.length - 1}건`
-        : (items[0]?.name || '상품')
-      const orderName = rawOrderName.length > 100 ? `${rawOrderName.slice(0, 97)}...` : rawOrderName
-
-        const orderInput = buildOrderInput()
-        const prepareRes = await fetch('/api/payments/toss/prepare', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderInput }),
-        })
-
-        if (!prepareRes.ok) {
-          const errorData = await prepareRes.json().catch(() => ({}))
-          throw new Error(errorData.error || '결제 금액 계산에 실패했습니다.')
-        }
-
-        const prepareData = await prepareRes.json()
-        const amount = Number(prepareData.amount)
-        if (!Number.isFinite(amount) || amount < 0) {
-          throw new Error('결제 금액을 불러오지 못했습니다.')
-        }
-        const meta = {
-          isDirectPurchase,
-          isGiftMode,
-          saveAsDefaultAddress,
-          deliveryMethod,
-          formData,
-          items: items.map(item => ({
-            id: item.id,
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-            promotion_group_id: item.promotion_group_id,
-          })),
-          giftData,
-          orderInput,
-        }
-
-        sessionStorage.setItem(`toss_checkout_${orderId}`, JSON.stringify(meta))
-
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
-        const mockSuccessUrl = `${baseUrl}/checkout/toss/success?paymentKey=MOCK_${orderId}&orderId=${orderId}&amount=${amount}&mock=1`
+        const mockSuccessUrl = `${baseUrl}/checkout/toss/success?paymentKey=MOCK_${orderId}&orderId=${orderId}&mock=1`
         router.push(mockSuccessUrl)
         return
       }
@@ -656,51 +620,10 @@ export function useCheckout(options: UseCheckoutOptions) {
         throw new Error('결제 설정이 없습니다.')
       }
 
-      const orderId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
-        ? crypto.randomUUID()
-        : `order-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-
       const rawOrderName = items.length > 1
         ? `${items[0]?.name || '상품'} 외 ${items.length - 1}건`
         : (items[0]?.name || '상품')
       const orderName = rawOrderName.length > 100 ? `${rawOrderName.slice(0, 97)}...` : rawOrderName
-
-      const orderInput = buildOrderInput()
-      const prepareRes = await fetch('/api/payments/toss/prepare', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderInput }),
-      })
-
-      if (!prepareRes.ok) {
-        const errorData = await prepareRes.json().catch(() => ({}))
-        throw new Error(errorData.error || '결제 금액 계산에 실패했습니다.')
-      }
-
-      const prepareData = await prepareRes.json()
-      const amount = Number(prepareData.amount)
-      if (!Number.isFinite(amount) || amount < 0) {
-        throw new Error('결제 금액을 불러오지 못했습니다.')
-      }
-      const taxFreeAmount = Number(prepareData.pricing?.taxFreeAmount ?? 0)
-      const meta = {
-        isDirectPurchase,
-        isGiftMode,
-        saveAsDefaultAddress,
-        deliveryMethod,
-        formData,
-        items: items.map(item => ({
-          id: item.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          promotion_group_id: item.promotion_group_id,
-        })),
-        giftData,
-        orderInput,
-      }
-
-      sessionStorage.setItem(`toss_checkout_${orderId}`, JSON.stringify(meta))
 
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
       const successUrl = `${baseUrl}/checkout/toss/success`
@@ -731,10 +654,7 @@ export function useCheckout(options: UseCheckoutOptions) {
 
       const paymentOptions: any = {
         method: methodConfig.method,
-        amount: {
-          currency: 'KRW',
-          value: amount,
-        },
+        amount: { currency: 'KRW', value: amount },
         orderId,
         orderName,
         successUrl,
@@ -869,12 +789,10 @@ export function useCheckout(options: UseCheckoutOptions) {
     const redirectAfterSuccess = (order: any, giftToken?: string | null) => {
       if (isGiftMode && giftToken) {
         showSuccess('주문이 완료되었습니다! 카카오톡으로 선물을 공유해주세요.', {
-          icon: '🎁',
           duration: 3000,
         })
       } else {
         showSuccess('주문이 완료되었습니다!', {
-          icon: '🎉',
           duration: 3000,
         })
       }

@@ -9,11 +9,7 @@ const nextConfig = {
   },
   async redirects() {
     return [
-      {
-        source: '/o',
-        destination: '/order-lookup',
-        permanent: true,
-      },
+      // /o 리다이렉트는 app/o/page.tsx에서 회원 여부에 따라 분기 (회원 → /orders, 비회원 → /order-lookup)
     ]
   },
   images: {

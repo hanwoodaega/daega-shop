@@ -3,6 +3,9 @@ import { getFinalPricing } from '../product/product.pricing'
 import { extractActivePromotion, PRODUCT_SELECT_FIELDS } from '../product/product.service'
 import { GIFT_MIN_AMOUNT } from '../utils/constants'
 import { SupabaseClient } from '@supabase/supabase-js'
+import type { PricingResult, OrderItemSnapshot } from './pricing-types'
+
+export type { PricingResult, OrderItemSnapshot }
 
 export interface OrderItemInput {
   productId: string
@@ -30,28 +33,6 @@ export interface OrderInput {
   /** 선물 알림톡 발송 시 사용 (보내는 분 이름) */
   gift_sender_name?: string
   payment_method?: string | null
-}
-
-export interface PricingResult {
-  originalTotal: number
-  discountedTotal: number
-  shipping: number
-  couponDiscount: number
-  appliedPoints: number
-  finalTotal: number
-  /** 비과세 금액 합계 (토스 검증용) */
-  taxFreeAmount: number
-}
-
-export interface OrderItemSnapshot {
-  product_id: string
-  product_name?: string
-  quantity: number
-  price: number
-  final_unit_price: number
-  promotion_group_id?: string | null
-  /** 과세/비과세 구분 (기본 taxable) */
-  tax_type?: 'taxable' | 'tax_free'
 }
 
 function isCouponExpired(userCoupon: any, coupon: any): boolean {

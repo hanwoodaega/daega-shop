@@ -123,7 +123,7 @@ export function showError(error: unknown, options?: { duration?: number; icon?: 
   
   // 사용자에게 친화적 메시지 표시
   toast.error(appError.userMessage || appError.message, {
-    icon: options?.icon || '❌',
+    icon: null,
     duration: options?.duration || 4000,
   })
   
@@ -176,7 +176,7 @@ export async function handleApiResponse(response: Response) {
  */
 export function showSuccess(message: string, options?: { duration?: number; icon?: string }) {
   toast.success(message, {
-    icon: options?.icon || '✅',
+    icon: null,
     duration: options?.duration || 3000,
   })
 }
@@ -186,9 +186,14 @@ export function showSuccess(message: string, options?: { duration?: number; icon
  */
 export function showInfo(message: string, options?: { duration?: number; icon?: string }) {
   toast(message, {
-    icon: options?.icon || 'ℹ️',
+    icon: null,
     duration: options?.duration || 3000,
   })
+}
+
+/** 장바구니 추가 성공 토스트 (호출할 때마다 새 토스트 표시) */
+export function showCartAddedToast() {
+  toast.success('장바구니에 추가되었습니다!', { id: `toast-cart-added-${Date.now()}` })
 }
 
 /**
@@ -217,7 +222,7 @@ export function handleApiError(error: any, context: string) {
  */
 export function showSuccessMessage(message: string) {
   toast.success(message, {
-    icon: '✅',
+    icon: null,
     duration: 2000,
   })
 }
@@ -228,7 +233,7 @@ export function showSuccessMessage(message: string) {
  */
 export function showInfoMessage(message: string) {
   toast(message, {
-    icon: 'ℹ️',
+    icon: null,
     duration: 3000,
   })
 }

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import toast from 'react-hot-toast'
+import { showCartAddedToast } from '@/lib/utils/error-handler'
 import { Product, isSupabaseConfigured } from '@/lib/supabase/supabase'
 import { isValidImageUrl } from '@/lib/product/product-utils'
 import { formatPrice } from '@/lib/utils/utils'
@@ -394,7 +394,7 @@ export default function RecommendationSection({
                             brand: product.brand ?? undefined,
                           }
                           addCartItemWithDB(user?.id || null, cartItem)
-                          toast.success('장바구니에 추가되었습니다!', { icon: '🛒', id: 'toast-cart-added' })
+                          showCartAddedToast()
                         }}
                         className="bg-white p-2 rounded-full shadow-md hover:bg-primary-800 hover:text-white transition flex-shrink-0"
                         aria-label="장바구니에 담기"

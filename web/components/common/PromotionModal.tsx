@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
+import { showCartAddedToast } from '@/lib/utils/error-handler'
 import { supabase, Product } from '@/lib/supabase/supabase'
 import { useAuth } from '@/lib/auth/auth-context'
 import { addCartItemWithDB } from '@/lib/cart/cart-db'
@@ -119,9 +120,7 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
       .reduce((sum, [, qty]) => sum + qty, 0)
     
     if (totalOthers + newQty > requiredCount) {
-      toast.error(`최대 ${requiredCount}개까지만 선택 가능합니다`, {
-        icon: '⚠️',
-      })
+      toast.error(`최대 ${requiredCount}개까지만 선택 가능합니다`)
       return
     }
     
@@ -140,7 +139,6 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
     
     if (totalSelected !== requiredCount) {
       toast.error(`${buyQty}+1 프로모션은 정확히 ${requiredCount}개를 선택해야 합니다\n현재: ${totalSelected}개`, {
-        icon: '⚠️',
         duration: 4000,
       })
       return
@@ -178,7 +176,7 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
     onClose()
     setPromoQuantities({})
     
-    toast.success('장바구니에 추가되었습니다!', { icon: '🛒', id: 'toast-cart-added' })
+    showCartAddedToast()
   }, [product, promotionProducts, promoQuantities, user, onClose])
 
   if (!isOpen || !product) return null

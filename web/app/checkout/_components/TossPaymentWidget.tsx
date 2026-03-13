@@ -53,7 +53,7 @@ export default function TossPaymentWidget({
       } catch (error: any) {
         if (cancelled) return
         console.error('결제 위젯 초기화 실패:', error)
-        showError({ message: error?.message || '결제 위젯을 불러오지 못했습니다.' }, { icon: '⚠️' })
+        showError({ message: error?.message || '결제 위젯을 불러오지 못했습니다.' })
       }
     }
 
@@ -102,7 +102,7 @@ export default function TossPaymentWidget({
       } catch (error: any) {
         if (cancelled) return
         console.error('결제 위젯 렌더 실패:', error)
-        showError({ message: error?.message || '결제 위젯을 불러오지 못했습니다.' }, { icon: '⚠️' })
+        showError({ message: error?.message || '결제 위젯을 불러오지 못했습니다.' })
       }
     }
 

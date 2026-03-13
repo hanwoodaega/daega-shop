@@ -1,5 +1,4 @@
 import { CartItem } from '@/lib/store'
-import { calculateOrderTotal } from '@/lib/order/order-calc'
 import { formatPrice } from '@/lib/utils/utils'
 import { GIFT_MIN_AMOUNT } from '@/lib/utils/constants'
 
@@ -12,6 +11,8 @@ export interface CheckoutValidationInput {
   quickDeliveryArea?: string
   quickDeliveryTime?: string
   isGift?: boolean
+  /** 서버에서 받은 할인 적용 후 상품 금액. 있으면 이 값으로 선물 최소 금액 검사 */
+  serverDiscountedTotal?: number
 }
 
 export interface CheckoutValidationResult {
@@ -59,17 +60,14 @@ export function validateCheckout(input: CheckoutValidationInput): CheckoutValida
  * 선물하기 주문 검증
  */
 export function validateGiftCheckout(input: CheckoutValidationInput): CheckoutValidationResult {
-  // 기본 검증 먼저 수행
   const basicValidation = validateCheckout(input)
   if (!basicValidation.valid) {
     return basicValidation
   }
 
-  const { selectedItems, deliveryMethod } = input
+  const { serverDiscountedTotal } = input
 
-  // 선물하기는 상품금액(즉시할인 적용 후)이 최소 금액 이상이어야 함 (배송비 제외)
-  const { discountedTotal } = calculateOrderTotal(selectedItems, deliveryMethod)
-  if (discountedTotal < GIFT_MIN_AMOUNT) {
+  if (serverDiscountedTotal !== undefined && serverDiscountedTotal < GIFT_MIN_AMOUNT) {
     return {
       valid: false,
       error: `선물하기는 상품금액(할인 적용 후)이 ${formatPrice(GIFT_MIN_AMOUNT)}원 이상이어야 합니다.`,

@@ -18,6 +18,7 @@ import CartItemList from './_components/CartItemList'
 import OrderSummary from './_components/OrderSummary'
 import AddressModal from './_components/AddressModal'
 import LoginPromptModal from './_components/LoginPromptModal'
+import { useOrderPricing } from '@/lib/cart/useOrderPricing'
 
 function CartPageContent() {
   const router = useRouter()
@@ -64,6 +65,18 @@ function CartPageContent() {
     removeCartItemWithDB,
     updateCartQuantityWithDB,
   } = useCart()
+
+  const selectedItems = getSelectedItems()
+  const { pricing: serverPricing, loading: pricingLoading } = useOrderPricing(
+    selectedItems.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      promotion_group_id: item.promotion_group_id ?? null,
+    })),
+    deliveryMethod,
+    pickupTime,
+    quickDeliveryTime
+  )
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -165,8 +178,8 @@ function CartPageContent() {
               {/* 무료배송 진행률 바 */}
               {deliveryMethod === 'regular' && (
                 <div className="py-3 pb-4 border-b border-gray-300">
-                  <FreeShippingProgress 
-                    totalPrice={getTotalPrice()} 
+                  <FreeShippingProgress
+                    totalPrice={serverPricing?.discountedTotal ?? getTotalPrice()}
                     deliveryMethod={deliveryMethod}
                   />
                 </div>
@@ -190,14 +203,16 @@ function CartPageContent() {
                 pickupTime={pickupTime}
                 quickDeliveryArea={quickDeliveryArea}
                 quickDeliveryTime={quickDeliveryTime}
+                serverPricing={serverPricing}
+                pricingLoading={pricingLoading}
               />
               <div className="hidden lg:flex mt-2">
                 {deliveryMethod === 'regular' && (
-                  <button
-                    type="button"
-                    onClick={handleGiftCheckout}
-                    className="flex-[0.3] shrink-0 bg-gray-900 text-white py-3 text-base font-medium hover:bg-gray-800 flex items-center justify-center gap-2 border-0"
-                  >
+                <button
+                  type="button"
+                  onClick={() => handleGiftCheckout(serverPricing?.discountedTotal)}
+                  className="flex-[0.3] shrink-0 bg-gray-900 text-white py-3 text-base font-medium hover:bg-gray-800 flex items-center justify-center gap-2 border-0"
+                >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
                     </svg>
@@ -222,11 +237,10 @@ function CartPageContent() {
         <div className="w-full flex justify-center">
           <div className="w-full max-w-[480px] bg-white shadow-lg flex">
             {deliveryMethod === 'regular' && (
-              <button
-                type="button"
-                onClick={handleGiftCheckout}
-                className="flex-[0.3] shrink-0 bg-gray-900 text-white py-3 text-base font-medium flex items-center justify-center gap-1 hover:bg-gray-800 border-0"
-              >
+            <button
+              onClick={() => handleGiftCheckout(serverPricing?.discountedTotal)}
+              className="flex-[0.3] shrink-0 bg-gray-900 text-white py-3 text-base font-medium flex items-center justify-center gap-1 hover:bg-gray-800 border-0"
+            >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
                 </svg>
@@ -262,7 +276,7 @@ function CartPageContent() {
       <LoginPromptModal
         show={showLoginPrompt}
         onClose={closeLoginPrompt}
-        onGuestCheckout={handleGuestCheckout}
+        onGuestCheckout={() => handleGuestCheckout(serverPricing?.discountedTotal)}
       />
 
       <Footer />

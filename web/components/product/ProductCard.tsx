@@ -4,6 +4,7 @@ import { memo, useCallback, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
+import { showCartAddedToast } from '@/lib/utils/error-handler'
 import { Product } from '@/lib/supabase/supabase'
 import { useWishlistStore, usePromotionModalStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -69,9 +70,7 @@ function ProductCard({ product }: ProductCardProps) {
     
     // 품절 상품은 장바구니에 추가 불가
     if (soldOut) {
-      toast.error('품절된 상품입니다.', {
-        icon: '❌',
-      })
+      toast.error('품절된 상품입니다.')
       return
     }
     
@@ -88,13 +87,12 @@ function ProductCard({ product }: ProductCardProps) {
     // DB 연동 장바구니 추가
     addCartItemWithDB(userId || null, cartItem)
 
-    toast.success('장바구니에 추가되었습니다!', { icon: '🛒', id: 'toast-cart-added' })
+    showCartAddedToast()
     
     if (product.promotion?.is_active && product.promotion?.type === 'bogo') {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
       timeoutRef.current = window.setTimeout(() => {
         toast('상품 상세페이지에서 프로모션을 확인하세요', {
-          icon: '💡',
           duration: 4000,
         })
       }, 500)
@@ -129,14 +127,12 @@ function ProductCard({ product }: ProductCardProps) {
     
     if (success) {
       if (isWished) {
-        toast.success('찜 목록에서 제거되었습니다', { icon: '💔', id: 'toast-wishlist-removed' })
+        toast.success('찜 목록에서 제거되었습니다', { id: 'toast-wishlist-removed' })
       } else {
-        toast.success('찜 목록에 추가되었습니다!', { icon: '❤️', id: 'toast-wishlist-added' })
+        toast.success('찜 목록에 추가되었습니다!', { id: 'toast-wishlist-added' })
       }
     } else {
-      toast.error('오류가 발생했습니다. 다시 시도해주세요.', {
-        icon: '❌',
-      })
+      toast.error('오류가 발생했습니다. 다시 시도해주세요.')
     }
   }, [product.id, userId, isWished])
 

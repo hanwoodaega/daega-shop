@@ -82,3 +82,8 @@ export type PromotionType = typeof PROMOTION_TYPES[number]
 // 선물하기 최소 금액
 export const GIFT_MIN_AMOUNT = 50000
 
+// ==================== Payment Draft ====================
+
+/** 주문 초안(draft) 만료 시간(분). 이 시간 내 미결제 시 confirm 시 400 */
+export const DRAFT_EXPIRY_MINUTES = 30
+

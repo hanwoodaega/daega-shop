@@ -1,9 +1,9 @@
 'use client'
 
 import { CartItem } from '@/lib/store'
-import { calculateOrderTotal } from '@/lib/order/order-calc'
 import { formatPrice } from '@/lib/utils/utils'
 import { DeliveryMethod } from '@/lib/cart'
+import type { PricingResult } from '@/lib/order/pricing-types'
 
 interface OrderSummaryProps {
   selectedItems: CartItem[]
@@ -11,6 +11,9 @@ interface OrderSummaryProps {
   pickupTime: string
   quickDeliveryArea: string
   quickDeliveryTime: string
+  /** 서버에서 받은 금액만 표시. 없으면 로딩/안내 표시 */
+  serverPricing: PricingResult | null
+  pricingLoading?: boolean
 }
 
 export default function OrderSummary({
@@ -19,14 +22,21 @@ export default function OrderSummary({
   pickupTime,
   quickDeliveryArea,
   quickDeliveryTime,
+  serverPricing,
+  pricingLoading = false,
 }: OrderSummaryProps) {
-  const { originalTotal, discountAmount, shipping, total } = calculateOrderTotal(selectedItems, deliveryMethod)
+  const originalTotal = serverPricing?.originalTotal ?? 0
+  const discountAmount = Math.max(
+    0,
+    (serverPricing?.originalTotal ?? 0) - (serverPricing?.discountedTotal ?? 0)
+  )
+  const shipping = serverPricing?.shipping ?? 0
+  const total = serverPricing?.finalTotal ?? 0
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 sticky top-24 mb-40 lg:static lg:top-auto lg:mb-2">
       <h2 className="text-xl font-bold mb-4">주문 요약</h2>
-      
-      {/* 배송 방법 표시 */}
+
       <div className="mb-2 pb-2">
         <div className="flex items-center justify-between">
           <span className="text-gray-600">배송 방법</span>
@@ -61,30 +71,40 @@ export default function OrderSummary({
       </div>
 
       <div className="border-t pt-4 space-y-3 mb-6">
-        <div className="flex justify-between">
-          <span className="text-gray-600">상품 금액</span>
-          <span className="font-semibold">{formatPrice(originalTotal)}원</span>
-        </div>
-        {discountAmount > 0 && (
-          <div className="flex justify-between">
-            <span className="text-gray-600">즉시할인</span>
-            <span className="font-semibold text-red-600">-{formatPrice(discountAmount)}원</span>
+        {pricingLoading && !serverPricing ? (
+          <div className="animate-pulse space-y-3">
+            <div className="h-5 bg-gray-200 rounded w-full" />
+            <div className="h-5 bg-gray-200 rounded w-3/4" />
+            <div className="h-5 bg-gray-200 rounded w-1/2" />
+            <div className="h-6 bg-gray-200 rounded w-full mt-4" />
           </div>
+        ) : (
+          <>
+            <div className="flex justify-between">
+              <span className="text-gray-600">상품 금액</span>
+              <span className="font-semibold">{formatPrice(originalTotal)}원</span>
+            </div>
+            {discountAmount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">즉시할인</span>
+                <span className="font-semibold text-red-600">-{formatPrice(discountAmount)}원</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-gray-600">배송비</span>
+              <span className="font-semibold">
+                {shipping === 0 ? '무료' : `${formatPrice(shipping)}원`}
+              </span>
+            </div>
+            <div className="border-t pt-3">
+              <div className="flex justify-between text-lg font-bold">
+                <span>결제 예상 금액</span>
+                <span className="text-primary-900">{formatPrice(total)}원</span>
+              </div>
+            </div>
+          </>
         )}
-        <div className="flex justify-between">
-          <span className="text-gray-600">배송비</span>
-          <span className="font-semibold">
-            {shipping === 0 ? '무료' : `${formatPrice(shipping)}원`}
-          </span>
-        </div>
-        <div className="border-t pt-3">
-          <div className="flex justify-between text-lg font-bold">
-            <span>결제 예상 금액</span>
-            <span className="text-primary-900">{formatPrice(total)}원</span>
-          </div>
-        </div>
       </div>
     </div>
   )
 }
-

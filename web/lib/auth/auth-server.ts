@@ -29,7 +29,6 @@ export async function getUserFromRequest(request: NextRequest): Promise<User | n
     const supabase = await createSupabaseServerClient()
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
-
     const { data: { user }, error } = token
       ? await supabase.auth.getUser(token)
       : await supabase.auth.getUser()

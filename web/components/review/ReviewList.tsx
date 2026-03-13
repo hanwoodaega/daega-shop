@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/auth/auth-context'
 import { supabase } from '@/lib/supabase/supabase'
 import toast from 'react-hot-toast'
 import { Review, ReviewListProps } from '@/lib/types/review'
-import { handleApiError, showSuccessMessage } from '@/lib/utils/error-handler'
+import { showError, showSuccess } from '@/lib/utils/error-handler'
 
 // 키보드 네비게이션 hook
 function useKeyboardNavigation(
@@ -203,7 +203,7 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
         throw new Error('리뷰 삭제 실패')
       }
 
-      showSuccessMessage('리뷰가 삭제되었습니다.')
+      showSuccess('리뷰가 삭제되었습니다.')
       
       const { data: productData } = await supabase
         .from('products')
@@ -218,7 +218,7 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
       
       fetchReviews()
     } catch (error) {
-      handleApiError(error, '리뷰 삭제')
+      showError(error)
     }
   }
 

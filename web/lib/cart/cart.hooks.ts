@@ -158,9 +158,7 @@ export function useCart() {
     })
 
     if (!validation.valid) {
-      toast.error(validation.error || '주문 정보를 확인해주세요.', {
-        icon: validation.errorIcon,
-      })
+      toast.error(validation.error || '주문 정보를 확인해주세요.')
       return
     }
 
@@ -180,7 +178,7 @@ export function useCart() {
     router.push('/checkout')
   }, [router, deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime])
 
-  const handleGuestCheckout = useCallback(() => {
+  const handleGuestCheckout = useCallback((serverDiscountedTotal?: number) => {
     const selectedItems = getSelectedItems()
 
     if (pendingGuestCheckoutMode === 'gift') {
@@ -191,9 +189,10 @@ export function useCart() {
         quickDeliveryArea,
         quickDeliveryTime,
         isGift: true,
+        serverDiscountedTotal,
       })
       if (!validation.valid) {
-        toast.error(validation.error || '주문 정보를 확인해주세요.', { icon: validation.errorIcon })
+        toast.error(validation.error || '주문 정보를 확인해주세요.')
         return
       }
       setShowLoginPrompt(false)
@@ -215,22 +214,20 @@ export function useCart() {
     })
 
     if (!validation.valid) {
-      toast.error(validation.error || '주문 정보를 확인해주세요.', {
-        icon: validation.errorIcon,
-      })
+      toast.error(validation.error || '주문 정보를 확인해주세요.')
       return
     }
 
     goToCheckout()
   }, [getSelectedItems, pendingGuestCheckoutMode, deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime, goToCheckout, router])
 
-  const handleGiftCheckout = useCallback(() => {
+  const handleGiftCheckout = useCallback((serverDiscountedTotal?: number) => {
     if (!ensureKakaoGiftAvailability()) {
       return
     }
 
     const selectedItems = getSelectedItems()
-    
+
     const validation = validateGiftCheckout({
       selectedItems,
       deliveryMethod,
@@ -238,12 +235,11 @@ export function useCart() {
       quickDeliveryArea,
       quickDeliveryTime,
       isGift: true,
+      serverDiscountedTotal,
     })
 
     if (!validation.valid) {
-      toast.error(validation.error || '주문 정보를 확인해주세요.', {
-        icon: validation.errorIcon,
-      })
+      toast.error(validation.error || '주문 정보를 확인해주세요.')
       return
     }
 

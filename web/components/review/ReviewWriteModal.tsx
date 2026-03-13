@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import ReviewStars from './ReviewStars'
 import toast from 'react-hot-toast'
 import { ReviewWriteModalProps } from '@/lib/types/review'
-import { handleApiError, showSuccessMessage } from '@/lib/utils/error-handler'
+import { showError, showSuccess } from '@/lib/utils/error-handler'
 
 export default function ReviewWriteModal({
   isOpen,
@@ -107,7 +107,7 @@ export default function ReviewWriteModal({
       onSuccess()
       onClose()
     } catch (error: any) {
-      handleApiError(error, editMode ? '리뷰 수정' : '리뷰 작성')
+      showError(error)
     } finally {
       setSubmitting(false)
     }
@@ -163,9 +163,9 @@ export default function ReviewWriteModal({
       }
 
       setImages([...images, ...uploadedUrls])
-      showSuccessMessage(`${uploadedUrls.length}장의 이미지가 업로드되었습니다.`)
+      showSuccess(`${uploadedUrls.length}장의 이미지가 업로드되었습니다.`)
     } catch (error: any) {
-      handleApiError(error, '이미지 업로드')
+      showError(error)
     } finally {
       setUploading(false)
       if (fileInputRef.current) {

@@ -166,7 +166,6 @@ export function useAdminPoints() {
       }
 
       toast.success(`${selectedUsers.length}명에게 ${pointsNum.toLocaleString()}포인트가 적립되었습니다.`, {
-        icon: '✅',
         duration: 5000,
       })
 

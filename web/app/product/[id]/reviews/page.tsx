@@ -12,7 +12,7 @@ import ReviewItemSkeleton from '@/components/skeletons/ReviewItemSkeleton'
 import { useAuth } from '@/lib/auth/auth-context'
 import toast from 'react-hot-toast'
 import { Review } from '@/lib/types/review'
-import { handleApiError, showSuccessMessage } from '@/lib/utils/error-handler'
+import { showError, showSuccess } from '@/lib/utils/error-handler'
 
 export default function AllReviewsPage() {
   const params = useParams()
@@ -75,7 +75,7 @@ export default function AllReviewsPage() {
       setTotal(data.total || 0)
       setHasMore(pageNum < data.totalPages)
     } catch (error: any) {
-      handleApiError(error, '리뷰 조회')
+      showError(error)
     } finally {
       loadingRef.current = false
       setLoading(false)
@@ -227,7 +227,7 @@ export default function AllReviewsPage() {
         throw new Error('리뷰 삭제 실패')
       }
 
-      showSuccessMessage('리뷰가 삭제되었습니다.')
+      showSuccess('리뷰가 삭제되었습니다.')
       
       const reviewsRes = await fetch(`/api/reviews?productId=${productId}&page=1&limit=10`)
       if (reviewsRes.ok) {
@@ -240,7 +240,7 @@ export default function AllReviewsPage() {
       
       setReviews(prev => prev.filter(r => r.id !== reviewId))
     } catch (error) {
-      handleApiError(error, '리뷰 삭제')
+      showError(error)
     }
   }, [productId])
 

@@ -3,59 +3,31 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
-import { removeFromCartDB, setCartItems } from '@/lib/cart/cart-db'
+import { loadCartFromDB, setCartItems } from '@/lib/cart/cart-db'
 import { useAuth } from '@/lib/auth/auth-context'
 import { mutateProfileRelated, mutateAddresses, mutateOrders, mutateUnreadCount } from '@/lib/swr'
 
+/** sessionStorage용 메타 (배송지 저장 등 부가 처리만, confirm은 서버 draft 기준) */
 interface CheckoutMeta {
-  isDirectPurchase: boolean
-  isGiftMode: boolean
-  saveAsDefaultAddress: boolean
-  deliveryMethod: string
-  giftData?: {
-    message: string
-  }
-  formData: {
+  isDirectPurchase?: boolean
+  isGiftMode?: boolean
+  saveAsDefaultAddress?: boolean
+  deliveryMethod?: string
+  formData?: {
     name: string
     phone: string
-    email: string
-    address: string
-    addressDetail: string
-    zipcode: string
-    message: string
+    address?: string
+    addressDetail?: string
+    zipcode?: string
+    message?: string
   }
-  items: Array<{
-    id?: string
-    productId: string
-    quantity: number
-    price: number
-    promotion_group_id?: string
-  }>
-  orderInput: {
-    delivery_type: string
-    delivery_time: string | null
-    shipping_address: string
-    shipping_name: string
-    shipping_phone: string
-    orderer_phone?: string
-    delivery_note: string | null
-    used_coupon_id: string | null
-    used_points: number
-    is_gift: boolean
-    gift_message: string | null
-    items: Array<{
-      productId: string
-      quantity: number
-      promotion_group_id?: string | null
-    }>
-  }
+  orderInput?: { shipping_phone?: string }
 }
 
 function TossSuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
-  const removeSelectedFromCart = useCartStore((state) => state.removeSelectedItems)
   const clearDirectPurchase = useDirectPurchaseStore((state) => state.clearItems)
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
   const [message, setMessage] = useState('')
@@ -72,86 +44,120 @@ function TossSuccessContent() {
       return
     }
 
-    const metaKey = `toss_checkout_${orderId}`
-    const rawMeta = sessionStorage.getItem(metaKey)
-    if (!rawMeta) {
-      setStatus('error')
-      setMessage('결제 정보를 찾을 수 없습니다. 다시 시도해주세요.')
-      return
-    }
-
     if (confirmStartedRef.current) return
     confirmStartedRef.current = true
 
-    const meta: CheckoutMeta = JSON.parse(rawMeta)
+    const metaKey = `toss_checkout_${orderId}`
+    const rawMeta = sessionStorage.getItem(metaKey)
+    let meta: CheckoutMeta | null = null
+    if (rawMeta) {
+      try {
+        meta = JSON.parse(rawMeta) as CheckoutMeta
+      } catch {
+        meta = null
+      }
+    }
 
     const confirmPayment = async () => {
       try {
-        if (isMock) {
-          const mockRes = await fetch('/api/payments/toss/mock-confirm', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                orderId,
-                orderInput: {
-                  ...meta.orderInput,
-                  shipping_phone: meta.orderInput?.shipping_phone || meta.formData?.phone || '',
-                  orderer_phone: meta.orderInput?.orderer_phone ?? meta.formData?.phone ?? undefined,
-                },
-              }),
-          })
-
-          if (!mockRes.ok) {
-            const errorData = await mockRes.json().catch(() => ({}))
-            console.error('mock-confirm error:', errorData)
-            throw new Error(errorData.error || '결제 승인에 실패했습니다.')
-          }
-
-          const data = await mockRes.json()
-
-          await saveAddressIfNeeded(meta)
-          await cleanupCart(meta)
-
-          sessionStorage.removeItem(metaKey)
-          mutateProfileRelated().catch(() => {})
-          mutateAddresses().catch(() => {})
-          mutateOrders().catch(() => {})
-          mutateUnreadCount().catch(() => {})
-
-          const isGuestOrder = data?.order && data.order.user_id == null
-          const redirectUrl = meta.isGiftMode && data?.gift_token
-            ? `/orders?giftToken=${data.gift_token}`
-            : isGuestOrder
-              ? `/order-lookup?order_number=${encodeURIComponent(data.order?.order_number ?? '')}&phone=${encodeURIComponent(meta.orderInput?.shipping_phone ?? '')}&done=1`
-              : '/orders'
-          router.replace(redirectUrl)
-          return
-        }
-
         const res = await fetch('/api/payments/toss/confirm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             paymentKey,
             orderId,
-            orderInput: {
-              ...meta.orderInput,
-              shipping_phone: meta.orderInput?.shipping_phone || meta.formData?.phone || '',
-              orderer_phone: meta.orderInput?.orderer_phone ?? meta.formData?.phone ?? undefined,
-            },
-            mock: searchParams.get('mock') === '1',
+            mock: isMock,
           }),
         })
 
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}))
-          throw new Error(errorData.error || '결제 승인에 실패했습니다.')
-        }
-
         const data = await res.json()
 
-        await saveAddressIfNeeded(meta)
-        await cleanupCart(meta)
+        if (!res.ok) {
+          const detailMsg = data.details?.message || data.details?.code
+          const fullMsg = data.error + (detailMsg ? ` (${detailMsg})` : '')
+          throw new Error(fullMsg || '결제 승인에 실패했습니다.')
+        }
+
+        if (data.redirectTo) {
+          if (meta?.saveAsDefaultAddress && meta?.formData?.address && (meta.deliveryMethod === 'regular' || meta.deliveryMethod === 'quick')) {
+            try {
+              const checkRes = await fetch('/api/addresses/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  address: meta.formData.address.trim(),
+                  address_detail: (meta.formData.addressDetail || '').trim() || null,
+                }),
+              })
+              const checkData = await checkRes.json()
+              const existing = checkData.existing
+              const addressCount = (checkData.addressCount || 0) + 1
+              const fd = meta.formData!
+
+              if (existing) {
+                await fetch(`/api/addresses/${existing.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    name: existing.name,
+                    recipient_name: fd.name,
+                    recipient_phone: fd.phone,
+                    zipcode: fd.zipcode || null,
+                    address: fd.address,
+                    address_detail: fd.addressDetail || null,
+                    delivery_note: fd.message || null,
+                    is_default: true,
+                  }),
+                })
+              } else {
+                const addressName = meta.deliveryMethod === 'quick'
+                  ? `퀵배달 주소 ${addressCount}`
+                  : addressCount === 1 ? '기본 배송지' : `배송지 ${addressCount}`
+                await fetch('/api/addresses', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    name: addressName,
+                    recipient_name: fd.name,
+                    recipient_phone: fd.phone,
+                    zipcode: fd.zipcode || null,
+                    address: fd.address,
+                    address_detail: fd.addressDetail || null,
+                    delivery_note: fd.message || null,
+                    is_default: true,
+                  }),
+                })
+              }
+            } catch {
+              // 배송지 저장 실패는 주문 성공과 분리
+            }
+          }
+
+          const refreshUserId = data.cartUserId ?? user?.id
+          if (refreshUserId) {
+            try {
+              const freshItems = await loadCartFromDB(refreshUserId)
+              setCartItems(freshItems, 'paymentSuccess')
+            } catch {
+              // 장바구니 갱신 실패해도 주문 완료는 유지
+            }
+          } else if (data.cartRemove?.length) {
+            // 비회원: DB 장바구니 없음 → 스토어에서 결제한 상품만 제거
+            const removeSet = new Set(
+              data.cartRemove.map((x: { productId: string; promotionGroupId?: string | null }) => `${x.productId}::${x.promotionGroupId ?? ''}`)
+            )
+            const current = useCartStore.getState().items
+            const filtered = current.filter(
+              (item) => !removeSet.has(`${item.productId}::${item.promotion_group_id ?? ''}`)
+            )
+            setCartItems(filtered, 'paymentSuccess')
+          }
+
+          if (meta?.isDirectPurchase) {
+            clearDirectPurchase()
+          }
+        }
 
         sessionStorage.removeItem(metaKey)
         mutateProfileRelated().catch(() => {})
@@ -159,13 +165,11 @@ function TossSuccessContent() {
         mutateOrders().catch(() => {})
         mutateUnreadCount().catch(() => {})
 
-        const isGuestOrder = data?.order && data.order.user_id == null
-        const redirectUrl = meta.isGiftMode && data?.gift_token
-          ? `/orders?giftToken=${data.gift_token}`
-          : isGuestOrder
-            ? `/order-lookup?order_number=${encodeURIComponent(data.order?.order_number ?? '')}&phone=${encodeURIComponent(meta.orderInput?.shipping_phone ?? '')}&done=1`
-            : '/orders'
-        router.replace(redirectUrl)
+        if (data.redirectTo) {
+          router.replace(data.redirectTo)
+        } else {
+          router.replace('/orders')
+        }
       } catch (error: any) {
         setStatus('error')
         setMessage(error.message || '결제 승인에 실패했습니다.')
@@ -173,105 +177,7 @@ function TossSuccessContent() {
     }
 
     confirmPayment()
-  }, [router, searchParams, removeSelectedFromCart, clearDirectPurchase, user])
-
-  const saveAddressIfNeeded = async (meta: CheckoutMeta) => {
-    if (!meta.saveAsDefaultAddress || !meta.formData.address) return
-    if (meta.deliveryMethod !== 'regular' && meta.deliveryMethod !== 'quick') return
-
-    try {
-      const checkRes = await fetch('/api/addresses/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: meta.formData.address.trim(),
-          address_detail: (meta.formData.addressDetail || '').trim() || null,
-        }),
-      })
-
-      const checkData = await checkRes.json()
-      const existing = checkData.existing
-      const addressCount = (checkData.addressCount || 0) + 1
-
-      if (existing) {
-        await fetch(`/api/addresses/${existing.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: existing.name,
-            recipient_name: meta.formData.name,
-            recipient_phone: meta.formData.phone,
-            zipcode: meta.formData.zipcode || null,
-            address: meta.formData.address,
-            address_detail: meta.formData.addressDetail || null,
-            delivery_note: meta.formData.message || null,
-            is_default: true,
-          }),
-        })
-      } else {
-        const addressName = meta.deliveryMethod === 'quick'
-          ? `퀵배달 주소 ${addressCount}`
-          : addressCount === 1
-            ? '기본 배송지'
-            : `배송지 ${addressCount}`
-
-        await fetch('/api/addresses', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: addressName,
-            recipient_name: meta.formData.name,
-            recipient_phone: meta.formData.phone,
-            zipcode: meta.formData.zipcode || null,
-            address: meta.formData.address,
-            address_detail: meta.formData.addressDetail || null,
-            delivery_note: meta.formData.message || null,
-            is_default: true,
-          }),
-        })
-      }
-    } catch (error) {
-      // 배송지 저장 실패는 무시
-    }
-  }
-
-  const cleanupCart = async (meta: CheckoutMeta) => {
-    if (meta.isDirectPurchase) {
-      clearDirectPurchase()
-      return
-    }
-
-    const itemsByKey = new Map<string, { productId: string; promotionGroupId?: string | null }>()
-    meta.items.forEach((it) => {
-      const key = `${it.productId}::${it.promotion_group_id ?? ''}`
-      if (!itemsByKey.has(key)) {
-        itemsByKey.set(key, { productId: it.productId, promotionGroupId: it.promotion_group_id })
-      }
-    })
-
-    try {
-      if (user?.id) {
-        await Promise.all(
-          Array.from(itemsByKey.values()).map(({ productId, promotionGroupId }) =>
-            removeFromCartDB(user.id, {
-              productId,
-              promotionGroupId: promotionGroupId ?? undefined,
-            })
-          )
-        )
-      }
-    } catch (err) {
-      // DB 삭제 실패해도 UI는 진행
-    }
-
-    // 선택 여부와 관계없이 결제된 상품은 로컬에서 제거
-    const currentItems = useCartStore.getState().items
-    const filtered = currentItems.filter((item) => {
-      const key = `${item.productId}::${item.promotion_group_id ?? ''}`
-      return !itemsByKey.has(key)
-    })
-    setCartItems(filtered, 'paymentSuccess')
-  }
+  }, [router, searchParams, user, clearDirectPurchase])
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
@@ -281,6 +187,9 @@ function TossSuccessContent() {
       {status === 'error' && (
         <div className="max-w-md w-full bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">
           <p className="text-sm text-red-600">{message || '결제 승인에 실패했습니다.'}</p>
+          <p className="text-xs text-gray-500 mt-2">
+            주문/결제 내역은 주문조회 또는 마이페이지에서 확인할 수 있습니다.
+          </p>
         </div>
       )}
     </div>

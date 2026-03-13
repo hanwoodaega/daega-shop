@@ -24,7 +24,18 @@ export default function ProductQuantitySheet({
     promotion: product.promotion,
   })
 
-  const totalPrice = pricing.finalPrice * quantity
+  const discountedTotal = pricing.finalPrice * quantity
+  const originalTotal = product.price * quantity
+  let weightLabel: string | null = null
+  if (typeof product.weight_gram === 'number' && product.weight_gram > 0) {
+    if (product.weight_gram >= 1000) {
+      const kg = product.weight_gram / 1000
+      // 1000 -> 1kg, 1200 -> 1.2kg
+      weightLabel = `${Number.isInteger(kg) ? kg.toString() : kg.toFixed(1)}kg`
+    } else {
+      weightLabel = `${product.weight_gram}g`
+    }
+  }
 
   return (
     <>
@@ -40,25 +51,23 @@ export default function ProductQuantitySheet({
         <div className="relative w-full max-w-md mx-auto bg-white rounded-t-2xl shadow-2xl p-5 pointer-events-auto border-t border-gray-200">
           {/* 상품 카드 (PC와 비슷한 스타일) */}
           <div className="p-4 mb-4 border border-gray-200 rounded-lg bg-white">
-            {/* 상품명 */}
-            <h3 className="text-sm font-semibold text-gray-900 mb-3 line-clamp-2">
-              {product.name}
-            </h3>
+          {/* 상품명 + 중량 (동일 스타일) */}
+          <h3 className="text-base font-semibold text-gray-900 mb-3 line-clamp-2">
+            {product.name}
+            {weightLabel ? ` ${weightLabel}` : ''}
+          </h3>
 
             <div className="flex items-end justify-between">
-              {/* 가격 */}
-              <div className="flex flex-col">
+              {/* 가격: 왼쪽 할인가, 오른쪽 정상가 (수량 반영) */}
+              <div className="flex items-baseline gap-2">
                 <span className="text-lg font-bold text-gray-900">
-                  {formatPrice(pricing.finalPrice)}원
+                  {formatPrice(discountedTotal)}원
                 </span>
-                {pricing.finalPrice !== product.price && (
-                  <span className="text-xs text-gray-400 line-through mt-0.5">
-                    {formatPrice(product.price)}원
+                {discountedTotal !== originalTotal && (
+                  <span className="text-xs text-gray-400 line-through">
+                    {formatPrice(originalTotal)}원
                   </span>
                 )}
-                <span className="text-xs text-gray-500 mt-1">
-                  합계 {formatPrice(totalPrice)}원
-                </span>
               </div>
 
               {/* 수량 조절 */}

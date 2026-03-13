@@ -55,17 +55,15 @@ export default function GiftShareBox({ giftToken, giftOrder }: GiftShareBoxProps
       const success = await copyToClipboard(giftLink)
       if (success) {
         setCopied(true)
-        showSuccess('링크가 복사되었습니다!', { icon: '📋' })
+        showSuccess('링크가 복사되었습니다!')
         setTimeout(() => setCopied(false), 2000)
       } else {
         toast.error('자동 복사에 실패했습니다. 링크를 직접 선택해서 복사해주세요.', {
-          icon: '📋',
           duration: 5000,
         })
       }
     } catch (error) {
       toast.error('링크 복사에 실패했습니다. 링크를 직접 선택해서 복사해주세요.', {
-        icon: '📋',
         duration: 5000,
       })
     }

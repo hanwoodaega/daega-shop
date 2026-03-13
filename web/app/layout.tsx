@@ -29,36 +29,30 @@ export default function RootLayout({
             duration: 3000,
             style: {
               background: '#fff',
-              color: '#1e293b',
+              color: '#000',
               padding: '12px 20px',
               borderRadius: '8px',
-              fontSize: '14px',
+              fontSize: '15px',
               fontWeight: '500',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-              border: '1px solid #e5e7eb',
+              border: '1px solid #000',
             },
             success: {
               duration: 1500,
+              icon: null,
               style: {
                 background: '#fff',
-                color: '#059669',
-                border: '1px solid #10b981',
-              },
-              iconTheme: {
-                primary: '#10b981',
-                secondary: '#fff',
+                color: '#000',
+                border: '1px solid #000',
               },
             },
             error: {
               duration: 4000,
+              icon: null,
               style: {
                 background: '#fff',
-                color: '#dc2626',
-                border: '1px solid #ef4444',
-              },
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
+                color: '#000',
+                border: '1px solid #000',
               },
             },
           }}

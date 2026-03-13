@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { hashOtp, normalizePhone } from '@/lib/auth/otp-utils'
+import { hashOtp, hashToken, normalizePhone } from '@/lib/auth/otp-utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -186,9 +186,21 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // 게스트 주문취소용 토큰 (주문 ID + 휴대폰 + 만료시각 + 서명)
+    const cancelExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
+    const payload = {
+      orderId: order.id,
+      phone: normalizedPhone,
+      exp: cancelExpiresAt,
+    }
+    const raw = JSON.stringify(payload)
+    const sig = hashToken(raw)
+    const guestCancelToken = Buffer.from(`${raw}.${sig}`).toString('base64url')
+
     return NextResponse.json({
       success: true,
       order: { ...order, order_items },
+      guestCancelToken,
     })
   } catch (err: unknown) {
     console.error('주문조회 인증 오류:', err)

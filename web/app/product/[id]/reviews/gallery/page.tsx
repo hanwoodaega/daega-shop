@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
-import { handleApiError } from '@/lib/utils/error-handler'
+import { showError } from '@/lib/utils/error-handler'
 
 export default function ReviewGalleryPage() {
   const params = useParams()
@@ -52,7 +52,7 @@ export default function ReviewGalleryPage() {
       
       setHasMore(data.hasMore || false)
     } catch (error) {
-      handleApiError(error, '리뷰 이미지 조회')
+      showError(error)
     } finally {
       loadingRef.current = false
       setLoading(false)

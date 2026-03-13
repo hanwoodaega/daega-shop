@@ -15,10 +15,11 @@ import { toggleWishlistDB } from '@/lib/wishlist/wishlist-db'
 import { addCartItemWithDB } from '@/lib/cart/cart-db'
 import { CartItem } from '@/lib/store'
 import toast from 'react-hot-toast'
+import { showCartAddedToast } from '@/lib/utils/error-handler'
 import { Product } from '@/lib/supabase/supabase'
 import { isSoldOut } from '@/lib/product/product-utils'
 import { getFinalPricing } from '@/lib/product/product.pricing'
-import { formatPrice } from '@/lib/utils/utils'
+import { formatWeightGram, formatPrice } from '@/lib/utils/utils'
 import { useProductDetail } from './_hooks/useProductDetail'
 import { useProductReviews } from './_hooks/useProductReviews'
 import { useProductImages } from './_hooks/useProductImages'
@@ -127,7 +128,7 @@ export default function ProductDetailPageClient({
     if (!product) return
     
     if (soldOut) {
-      toast.error('품절된 상품입니다.', { icon: '❌' })
+      toast.error('품절된 상품입니다.')
       return
     }
     
@@ -144,7 +145,7 @@ export default function ProductDetailPageClient({
     }
     
     addCartItemWithDB(user?.id || null, cartItem)
-    toast.success('장바구니에 추가되었습니다!', { icon: '🛒', id: 'toast-cart-added' })
+    showCartAddedToast()
   }, [product, quantity, user, soldOut, getDiscountPercent])
   
   // 찜하기 토글
@@ -155,12 +156,12 @@ export default function ProductDetailPageClient({
     
     if (success) {
       if (isWished) {
-        toast.success('찜 목록에서 제거되었습니다', { icon: '💔', id: 'toast-wishlist-removed' })
+        toast.success('찜 목록에서 제거되었습니다', { id: 'toast-wishlist-removed' })
       } else {
-        toast.success('찜 목록에 추가되었습니다!', { icon: '❤️', id: 'toast-wishlist-added' })
+        toast.success('찜 목록에 추가되었습니다!', { id: 'toast-wishlist-added' })
       }
     } else {
-      toast.error('오류가 발생했습니다. 다시 시도해주세요.', { icon: '❌' })
+      toast.error('오류가 발생했습니다. 다시 시도해주세요.')
     }
   }, [product?.id, isWished, user])
   
@@ -277,21 +278,27 @@ export default function ProductDetailPageClient({
                 
                 {/* PC: 상품 카드형 수량 선택 (버튼 위 고정) */}
                 <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-white">
-                  {/* 상품명 */}
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2">
+                  {/* 상품명 + 중량 (동일 스타일) */}
+                  <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-2">
                     {product.name}
+                    {product.weight_gram && product.weight_gram > 0 && (
+                      <span className="ml-1 font-semibold text-gray-900">
+                        {' '}
+                        {formatWeightGram(product.weight_gram)}
+                      </span>
+                    )}
                   </h3>
 
                   <div className="flex items-end justify-between">
-                    {/* 가격 */}
+                    {/* 가격: 왼쪽 할인가(총액), 오른쪽 정상가(총액) */}
                     {pricing && (
-                      <div className="flex flex-col">
+                      <div className="flex items-baseline gap-2">
                         <span className="text-lg font-bold text-gray-900">
-                          {formatPrice(pricing.finalPrice)}원
+                          {formatPrice(pricing.finalPrice * quantity)}원
                         </span>
                         {pricing.finalPrice !== product.price && (
-                          <span className="text-xs text-gray-400 line-through mt-0.5">
-                            {formatPrice(product.price)}원
+                          <span className="text-xs text-gray-400 line-through">
+                            {formatPrice(product.price * quantity)}원
                           </span>
                         )}
                       </div>
