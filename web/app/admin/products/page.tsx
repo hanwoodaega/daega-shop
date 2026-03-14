@@ -33,7 +33,6 @@ export default function AdminProductManagementPage() {
     clearError,
     setEditing,
     fetchList,
-    goToImport,
   } = useAdminProducts()
 
   const handleRemove = async (productId: string) => {
@@ -60,12 +59,6 @@ export default function AdminProductManagementPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <button
-                onClick={goToImport}
-                className="px-4 py-2 rounded-lg border border-neutral-300 text-sm font-semibold text-neutral-700 hover:bg-neutral-100"
-              >
-                CSV 업로드 (준비중)
-              </button>
               <button
                 onClick={openCreateModal}
                 className="px-4 py-2 rounded-lg bg-primary-800 text-white text-sm font-semibold hover:bg-primary-900"

@@ -35,9 +35,7 @@ export default function RecommendationDetail({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-bold">{category.name}</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {category.is_active ? '활성' : '비활성'} · 순서: {category.sort_order}
-          </p>
+          <p className="text-sm text-gray-500 mt-1">순서: {category.sort_order}</p>
         </div>
         <div className="flex gap-2">
           <button

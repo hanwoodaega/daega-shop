@@ -30,9 +30,7 @@ export default function RecommendationCategoryList({
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="font-medium">{category.name}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {category.is_active ? '활성' : '비활성'} · 순서: {category.sort_order}
-                </p>
+                <p className="text-xs text-gray-500 mt-1">순서: {category.sort_order}</p>
               </div>
             </div>
           </div>

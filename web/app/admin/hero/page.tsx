@@ -18,7 +18,6 @@ export default function HeroManagementPage() {
     handleImageUpload,
     handleSave,
     handleDelete,
-    handleToggleActive,
   } = useHeroSlides()
 
   if (loading) {
@@ -46,7 +45,6 @@ export default function HeroManagementPage() {
         slides={slides}
         onEdit={openEditModal}
         onDelete={handleDelete}
-        onToggleActive={handleToggleActive}
       />
 
       <HeroModal

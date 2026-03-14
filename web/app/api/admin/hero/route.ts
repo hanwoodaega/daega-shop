@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from('hero_slides')
       .select('*')
+      .eq('is_active', true)
       .order('sort_order', { ascending: true })
 
     if (error) {

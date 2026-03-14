@@ -16,22 +16,26 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createSupabaseServerClient()
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    const visibilityFilter = currentUser?.id
+      ? `status.eq.approved,and(status.eq.pending,user_id.eq.${currentUser.id})`
+      : 'status.eq.approved'
 
-    // 페이지네이션 적용
     const offset = (page - 1) * limit
 
-    // 전체 리뷰 수 조회 (이미지가 있는 것만)
     const { count } = await supabase
       .from('reviews')
       .select('*', { count: 'exact', head: true })
       .eq('product_id', productId)
       .not('images', 'is', null)
+      .or(visibilityFilter)
 
     const { data: reviews, error } = await supabase
       .from('reviews')
       .select('id, images, created_at')
       .eq('product_id', productId)
       .not('images', 'is', null)
+      .or(visibilityFilter)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 

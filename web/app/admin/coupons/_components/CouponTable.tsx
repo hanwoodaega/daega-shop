@@ -4,20 +4,14 @@ import { Coupon } from '@/lib/supabase/supabase'
 
 interface CouponTableProps {
   coupons: Coupon[]
-  onEdit: (coupon: Coupon) => void
-  onToggleActive: (coupon: Coupon) => void
   onDelete: (couponId: string) => void
-  onIssueWithConditions: (coupon: Coupon) => void
-  onIssueToAll: (couponId: string) => void
+  onIssue: (coupon: Coupon) => void
 }
 
 export default function CouponTable({
   coupons,
-  onEdit,
-  onToggleActive,
   onDelete,
-  onIssueWithConditions,
-  onIssueToAll,
+  onIssue,
 }: CouponTableProps) {
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -28,7 +22,6 @@ export default function CouponTable({
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">할인</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">유효기간</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">발급 트리거</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">작업</th>
           </tr>
         </thead>
@@ -69,51 +62,17 @@ export default function CouponTable({
                     ? '기타'
                     : '관리자'}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span
-                  className={`px-2 py-1 text-xs rounded-full ${
-                    coupon.is_active
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {coupon.is_active ? '활성' : '비활성'}
-                </span>
-              </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                <button
-                  onClick={() => onEdit(coupon)}
-                  className="text-primary-600 hover:text-primary-900"
-                >
-                  수정
-                </button>
-                <button
-                  onClick={() => onToggleActive(coupon)}
-                  className="text-blue-600 hover:text-red-600"
-                >
-                  {coupon.is_active ? '비활성화' : '활성화'}
-                </button>
-                {coupon.is_active && (
-                  <>
-                    {coupon.issue_trigger === 'PHONE_VERIFIED' ? (
-                      <span className="text-sm text-gray-500">휴대폰 인증 자동 지급</span>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => onIssueWithConditions(coupon)}
-                          className="text-green-600 hover:text-green-900"
-                        >
-                          조건별 지급
-                        </button>
-                        <button
-                          onClick={() => onIssueToAll(coupon.id)}
-                          className="text-blue-600 hover:text-red-600"
-                        >
-                          전체 지급
-                        </button>
-                      </>
-                    )}
-                  </>
+                {coupon.is_active && coupon.issue_trigger !== 'PHONE_VERIFIED' && (
+                  <button
+                    onClick={() => onIssue(coupon)}
+                    className="text-green-600 hover:text-green-900"
+                  >
+                    지급하기
+                  </button>
+                )}
+                {coupon.issue_trigger === 'PHONE_VERIFIED' && (
+                  <span className="text-sm text-gray-500">휴대폰 인증 자동 지급</span>
                 )}
                 <button
                   onClick={() => onDelete(coupon.id)}

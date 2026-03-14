@@ -36,6 +36,7 @@ export const VALID_ORDER_STATUSES = [
   'PREPARING',           // 상품준비중
   'IN_TRANSIT',          // 배송중
   'DELIVERED',           // 배송완료
+  'CONFIRMED',           // 구매확정
   'cancelled',
   'payment_error',       // 결제 검증 실패
 ] as const

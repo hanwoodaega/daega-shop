@@ -7,7 +7,6 @@ interface PromotionListProps {
   promotions: Promotion[]
   promotionProductsMap: Map<string, PromotionProduct[]>
   loading: boolean
-  onToggleActive: (promotion: Promotion) => void
   onEdit: (promotion: Promotion) => void
   onDelete: (promotionId: string) => void
   onCreateClick: () => void
@@ -17,7 +16,6 @@ export default function PromotionList({
   promotions,
   promotionProductsMap,
   loading,
-  onToggleActive,
   onEdit,
   onDelete,
   onCreateClick,
@@ -47,7 +45,6 @@ export default function PromotionList({
           key={promotion.id}
           promotion={promotion}
           promotionProducts={promotionProductsMap.get(promotion.id)}
-          onToggleActive={onToggleActive}
           onEdit={onEdit}
           onDelete={onDelete}
         />

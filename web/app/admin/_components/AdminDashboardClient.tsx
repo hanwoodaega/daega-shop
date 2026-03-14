@@ -113,23 +113,23 @@ const getTodayOrdersUrl = () => {
   return `/admin/orders?date=${today}`
 }
 
-const getRecent14DaysOrdersUrl = () => {
+const getRecent7DaysOrdersUrl = () => {
   const today = new Date()
-  const fourteenDaysAgo = new Date(today)
-  fourteenDaysAgo.setDate(today.getDate() - 14)
-  const startDate = fourteenDaysAgo.toISOString().split('T')[0]
+  const sevenDaysAgo = new Date(today)
+  sevenDaysAgo.setDate(today.getDate() - 7)
+  const startDate = sevenDaysAgo.toISOString().split('T')[0]
   const endDate = today.toISOString().split('T')[0]
   return `/admin/orders?start_date=${startDate}&end_date=${endDate}`
 }
 
 interface AdminDashboardClientProps {
   todayOrdersCount: number
-  recent14DaysOrdersCount: number
+  recent7DaysOrdersCount: number
 }
 
 export default function AdminDashboardClient({ 
   todayOrdersCount, 
-  recent14DaysOrdersCount 
+  recent7DaysOrdersCount 
 }: AdminDashboardClientProps) {
   const router = useRouter()
 
@@ -145,15 +145,6 @@ export default function AdminDashboardClient({
             <div className="space-y-2">
               <p className="text-sm text-neutral-500">DAEGA Admin</p>
               <h1 className="text-3xl font-semibold tracking-tight">운영 대시보드</h1>
-              <p className="text-neutral-500 text-sm">상품, 주문, 혜택 관리를 빠르게 시작하세요.</p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button 
-                onClick={() => handleNavigate('/admin/products')}
-                className="px-5 py-2.5 rounded-full bg-primary-800 text-white text-sm font-semibold hover:bg-primary-900 transition"
-              >
-                상품 관리 바로가기
-              </button>
             </div>
           </div>
 
@@ -169,14 +160,14 @@ export default function AdminDashboardClient({
               <p className="text-xs text-neutral-400">오늘 주문 내역 보기 →</p>
             </button>
             <button
-              onClick={() => handleNavigate(getRecent14DaysOrdersUrl())}
+              onClick={() => handleNavigate(getRecent7DaysOrdersUrl())}
               className="bg-neutral-900 text-white rounded-2xl p-5 space-y-2 shadow-sm hover:bg-neutral-800 transition text-left"
             >
-              <p className="text-sm text-neutral-300">최근 14일 주문</p>
+              <p className="text-sm text-neutral-300">최근 7일 주문</p>
               <p className="text-2xl font-semibold">
-                {recent14DaysOrdersCount}건
+                {recent7DaysOrdersCount}건
               </p>
-              <p className="text-xs text-neutral-400">최근 14일 주문 내역 보기 →</p>
+              <p className="text-xs text-neutral-400">최근 7일 주문 내역 보기 →</p>
             </button>
           </div>
         </div>

@@ -127,8 +127,8 @@ export async function GET(
       expiresAt = new Date(orders.gift_expires_at)
     }
 
-    // 만료된 선물인 경우 (만료일 지남)
-    if (orders.status !== 'gift_received' && expiresAt && expiresAt < new Date()) {
+    // 만료된 선물인 경우 (만료 시점 이상)
+    if (orders.status !== 'gift_received' && expiresAt && new Date() >= expiresAt) {
       return NextResponse.json({ 
         error: '선물 링크가 만료되었습니다. (7일 경과)',
         expired: true,
@@ -202,8 +202,8 @@ export async function POST(
       expiresAt = new Date(order.gift_expires_at)
     }
 
-    // 만료된 선물인 경우 (만료일 지남)
-    if (order.status !== 'gift_received' && expiresAt && expiresAt < new Date()) {
+    // 만료된 선물인 경우 (만료 시점 이상)
+    if (order.status !== 'gift_received' && expiresAt && new Date() >= expiresAt) {
       return NextResponse.json({ 
         error: '선물 링크가 만료되었습니다. (7일 경과)',
         expired: true,

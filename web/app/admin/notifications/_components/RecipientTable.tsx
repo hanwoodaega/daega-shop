@@ -45,7 +45,6 @@ export default function RecipientTable({
                 onChange={(e) => onToggleAll(e.target.checked)}
               />
             </th>
-            <th className="p-2 border text-left">이메일</th>
             <th className="p-2 border text-left">이름</th>
             <th className="p-2 border text-left">전화번호</th>
           </tr>
@@ -67,7 +66,6 @@ export default function RecipientTable({
                   onClick={(e) => e.stopPropagation()}
                 />
               </td>
-              <td className="p-2 border">{user.email || '-'}</td>
               <td className="p-2 border">{user.name || '-'}</td>
               <td className="p-2 border">{user.phone || '-'}</td>
             </tr>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { addPoints } from '@/lib/point/points'
 
 // UUID 형식인지 확인하는 함수
 function isUUID(str: string): boolean {
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createSupabaseServerClient()
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
 
     // slug인 경우 UUID로 변환
     let productId = productIdOrSlug
@@ -79,14 +81,16 @@ export async function GET(request: NextRequest) {
       query = query.order('created_at', { ascending: false })
     }
 
-    // 최적화: users 테이블과 JOIN하여 한 번의 쿼리로 처리
-    // 우선 승인된 리뷰만 조회 시도 (status 컬럼이 없으면 폴백)
+    // 승인된 리뷰 + (로그인 사용자 본인의 pending 리뷰만) 노출. 비로그인은 approved만.
+    const visibilityFilter = currentUser?.id
+      ? `status.eq.approved,and(status.eq.pending,user_id.eq.${currentUser.id})`
+      : 'status.eq.approved'
     let reviews: any[] | null = null
     let count: number | null = null
     let error: any = null
     try {
       const res = await query
-        .eq('status', 'approved')
+        .or(visibilityFilter)
         .range(offset, offset + limit - 1)
       reviews = res.data as any[] | null
       count = res.count as number | null
@@ -270,8 +274,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    if (order.status !== 'delivered' && order.status !== 'DELIVERED') {
-      return NextResponse.json({ error: '배송 완료된 주문만 리뷰 작성이 가능합니다.' }, { status: 400 })
+    const allowedStatuses = ['delivered', 'DELIVERED', 'CONFIRMED']
+    if (!allowedStatuses.includes(order.status)) {
+      return NextResponse.json({ error: '구매확정된 주문만 리뷰 작성이 가능합니다.' }, { status: 400 })
     }
 
     // 같은 주문에 같은 상품이 여러 개 있을 수 있으므로 limit(1) 사용
@@ -314,7 +319,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '이미 리뷰를 작성하셨습니다.' }, { status: 400 })
     }
 
-    // 최초에는 승인 대기 상태로 저장 (status, has_images 컬럼이 없으면 폴백)
+    // pending으로 저장 후 즉시 포인트만 지급. 승인 전에는 작성자만 상품 상세에서 본인 리뷰 조회 가능.
+    const hasImages = Array.isArray(images) && images.length > 0
     let review: any = null
     let insertError: any = null
     const basePayload: any = {
@@ -333,7 +339,7 @@ export async function POST(request: NextRequest) {
         .insert({
           ...basePayload,
           status: 'pending',
-          has_images: Array.isArray(images) && images.length > 0
+          has_images: hasImages
         })
         .select()
         .single()
@@ -342,7 +348,6 @@ export async function POST(request: NextRequest) {
     } catch (e: any) {
       insertError = e
     }
-    // 컬럼이 없어 실패하면 최소 필드만으로 재시도
     if (insertError) {
       const res = await supabase
         .from('reviews')
@@ -356,6 +361,26 @@ export async function POST(request: NextRequest) {
     if (insertError) {
       console.error('리뷰 작성 실패:', insertError)
       return NextResponse.json({ error: '리뷰 작성에 실패했습니다.' }, { status: 500 })
+    }
+
+    // 즉시 포인트 지급 (사진 리뷰 500P, 일반 리뷰 200P)
+    const supabaseAdmin = createSupabaseAdminClient()
+    const awardPoints = hasImages ? 500 : 200
+    const pointDescription = hasImages ? '사진 리뷰 적립' : '텍스트 리뷰 적립'
+    try {
+      await addPoints(user.id, awardPoints, 'review', pointDescription, undefined, review.id, supabaseAdmin)
+      let productName = '상품'
+      const { data: product } = await supabaseAdmin.from('products').select('name').eq('id', product_id).single()
+      if (product?.name) productName = product.name
+      await supabaseAdmin.from('notifications').insert({
+        user_id: user.id,
+        title: `리뷰 ${awardPoints}P 적립`,
+        content: `${productName} 리뷰로 포인트가 적립되었습니다.`,
+        type: 'review',
+        is_read: false,
+      })
+    } catch (pointErr: any) {
+      console.error('리뷰 포인트/알림 처리 실패:', pointErr)
     }
 
     // products 테이블의 average_rating과 review_count 업데이트

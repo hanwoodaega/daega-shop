@@ -5,10 +5,9 @@ interface HeroListProps {
   slides: HeroSlide[]
   onEdit: (slide: HeroSlide) => void
   onDelete: (id: string) => void
-  onToggleActive: (slide: HeroSlide) => void
 }
 
-export default function HeroList({ slides, onEdit, onDelete, onToggleActive }: HeroListProps) {
+export default function HeroList({ slides, onEdit, onDelete }: HeroListProps) {
   if (slides.length === 0) {
     return (
       <div className="p-8 text-center text-gray-500">
@@ -26,7 +25,6 @@ export default function HeroList({ slides, onEdit, onDelete, onToggleActive }: H
             slide={slide}
             onEdit={onEdit}
             onDelete={onDelete}
-            onToggleActive={onToggleActive}
           />
         ))}
       </div>

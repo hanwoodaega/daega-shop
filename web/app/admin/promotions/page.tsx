@@ -19,7 +19,6 @@ export default function PromotionsPage() {
     handleCreate,
     handleUpdate,
     handleDelete,
-    handleToggleActive,
     openCreateModal,
     openEditModal,
     closeModal,
@@ -62,7 +61,6 @@ export default function PromotionsPage() {
           promotions={promotions}
           promotionProductsMap={promotionProductsMap}
           loading={loading}
-          onToggleActive={handleToggleActive}
           onEdit={handleEdit}
           onDelete={handleDelete}
           onCreateClick={openCreateModal}

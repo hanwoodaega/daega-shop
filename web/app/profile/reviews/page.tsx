@@ -341,7 +341,7 @@ export default function ProfileReviewsPage() {
                     <div className="flex-1">
                       {review.product.brand && <p className="text-xs text-gray-600 mb-1">{review.product.brand}</p>}
                       <button
-                        onClick={() => router.push(`/products/${review.product_id}`)}
+                        onClick={() => router.push(`/product/${review.product_id}`)}
                         className="text-sm font-medium mb-2 text-blue-600 hover:underline text-left block"
                       >
                         {review.product.name}
@@ -462,7 +462,7 @@ export default function ProfileReviewsPage() {
                     <div className="flex-1">
                       {review.product.brand && <p className="text-xs text-gray-600 mb-1">{review.product.brand}</p>}
                       <button
-                        onClick={() => router.push(`/products/${review.product_id}`)}
+                        onClick={() => router.push(`/product/${review.product_id}`)}
                         className="text-sm font-medium mb-2 text-blue-600 hover:underline text-left block"
                       >
                         {review.product.name}

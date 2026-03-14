@@ -1,5 +1,6 @@
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { normalizePhone } from '@/lib/auth/otp-utils'
+import { getCouponExpiresAtEndOfDayKST } from '@/lib/coupon/expires'
 
 const PHONE_COUPON_CAMPAIGN_ID = 'phone_verification'
 
@@ -21,7 +22,6 @@ export async function issuePhoneVerificationCoupon(params: {
     .select('id, validity_days')
     .eq('issue_trigger', 'PHONE_VERIFIED')
     .eq('is_active', true)
-    .eq('is_deleted', false)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -45,9 +45,7 @@ export async function issuePhoneVerificationCoupon(params: {
     throw claimError
   }
 
-  const now = new Date()
-  const expiresAt = new Date(now)
-  expiresAt.setDate(expiresAt.getDate() + coupon.validity_days)
+  const expiresAtISO = getCouponExpiresAtEndOfDayKST(coupon.validity_days)
 
   const { error: issueError } = await supabaseAdmin
     .from('user_coupons')
@@ -55,7 +53,7 @@ export async function issuePhoneVerificationCoupon(params: {
       user_id: userId,
       coupon_id: coupon.id,
       is_used: false,
-      expires_at: expiresAt.toISOString(),
+      expires_at: expiresAtISO,
     })
 
   if (issueError) {

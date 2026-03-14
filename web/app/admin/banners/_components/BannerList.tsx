@@ -37,11 +37,6 @@ export default function BannerList({ banners, selectedBanner, onSelectBanner }: 
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    banner.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                  }`}>
-                    {banner.is_active ? '활성' : '비활성'}
-                  </span>
                   <span className="text-xs text-gray-500">순서: {banner.sort_order}</span>
                 </div>
                 {banner.title && (

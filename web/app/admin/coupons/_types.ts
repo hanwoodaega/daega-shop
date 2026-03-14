@@ -12,11 +12,6 @@ export interface CouponFormData {
 }
 
 export interface IssueConditions {
-  birthday_month: string
-  min_purchase_amount: string
-  purchase_period_start: string
-  purchase_period_end: string
-  min_purchase_count: string
   phone: string
 }
 

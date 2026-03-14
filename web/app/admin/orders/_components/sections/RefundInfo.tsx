@@ -9,9 +9,9 @@ export default function RefundInfo({ order }: RefundInfoProps) {
   if (order.status !== 'cancelled') return null
 
   return (
-    <div className="mb-4 pb-4 border-b">
-      <h3 className="text-sm font-semibold text-gray-900 mb-2">환불 정보</h3>
-      <div className="space-y-2 text-sm">
+    <div>
+      <h3 className="text-base font-semibold text-gray-900 mb-3">환불 정보</h3>
+      <div className="space-y-2 text-base text-gray-700">
         <div className="flex justify-between">
           <span className="text-gray-600">금액:</span>
           <span className="font-medium text-red-600">

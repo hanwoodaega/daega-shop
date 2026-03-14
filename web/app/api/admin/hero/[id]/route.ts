@@ -45,7 +45,7 @@ export async function PUT(
   }
 }
 
-// DELETE: 히어로 슬라이드 삭제
+// DELETE: 히어로 슬라이드 소프트 삭제 (is_active = false)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -60,7 +60,7 @@ export async function DELETE(
   try {
     const { error } = await supabaseAdmin
       .from('hero_slides')
-      .delete()
+      .update({ is_active: false, updated_at: new Date().toISOString() })
       .eq('id', id)
 
     if (error) {

@@ -12,15 +12,18 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url)
-    const is_active = searchParams.get('is_active')
+    const is_activeParam = searchParams.get('is_active')
 
     let query = supabaseAdmin
       .from('promotions')
       .select('*')
       .order('created_at', { ascending: false })
 
-    if (is_active !== null) {
-      query = query.eq('is_active', is_active === 'true')
+    // 목록은 기본적으로 활성(is_active=true)만 표시. 소프트 삭제된 항목 제외
+    if (is_activeParam !== null && is_activeParam !== '') {
+      query = query.eq('is_active', is_activeParam === 'true')
+    } else {
+      query = query.eq('is_active', true)
     }
 
     const { data, error } = await query

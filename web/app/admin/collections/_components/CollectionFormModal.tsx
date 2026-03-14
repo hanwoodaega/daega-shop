@@ -21,12 +21,11 @@ interface FormData {
   is_active: boolean
 }
 
-// 기본 색상 테마 (일관성 유지)
+// 기본 색상 테마 (설명은 항상 검정으로 표시되며 DB에 저장하지 않음)
 const defaultColorTheme: ColorTheme = {
   background: '#FFFFFF',
   accent: '#C02020',
   title_color: '#111111',
-  description_color: '#555555',
 }
 
 export default function CollectionFormModal({
@@ -77,7 +76,7 @@ export default function CollectionFormModal({
         title: data.title || null,
         description: data.description || null,
         image_url: data.image_url || null,
-        color_theme: data.color_theme,
+        color_theme: { background: data.color_theme.background },
         sort_order: data.sort_order ?? 0,
         is_active: data.is_active ?? true,
       }),
@@ -234,19 +233,6 @@ export default function CollectionFormModal({
             />
           </div>
 
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.is_active}
-                onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
-                className="w-5 h-5 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium">활성화</span>
-            </label>
-            <p className="text-xs text-gray-500 mt-1">비활성화된 컬렉션은 메인 페이지에 표시되지 않습니다</p>
-          </div>
-
           <div className="border-t pt-4">
             <label className="block text-sm font-medium mb-3">색상 테마</label>
             <div className="space-y-3">
@@ -268,29 +254,6 @@ export default function CollectionFormModal({
                     onChange={(e) => setFormData(prev => ({
                       ...prev,
                       color_theme: { ...prev.color_theme, background: e.target.value }
-                    }))}
-                    className="flex-1 px-3 py-2 border rounded-lg"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">설명 색상</label>
-                <div className="flex gap-2">
-                  <input
-                    type="color"
-                    value={formData.color_theme.description_color}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      color_theme: { ...prev.color_theme, description_color: e.target.value }
-                    }))}
-                    className="w-12 h-10 border rounded"
-                  />
-                  <input
-                    type="text"
-                    value={formData.color_theme.description_color}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      color_theme: { ...prev.color_theme, description_color: e.target.value }
                     }))}
                     className="flex-1 px-3 py-2 border rounded-lg"
                   />

@@ -134,32 +134,6 @@ export function useAdminPromotions() {
     }
   }, [fetchPromotions])
 
-  const handleToggleActive = useCallback(async (promotion: Promotion) => {
-    try {
-      const res = await fetch(`/api/admin/promotions/${promotion.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...promotion,
-          is_active: !promotion.is_active,
-        }),
-      })
-
-      if (res.ok) {
-        toast.success(`프로모션이 ${!promotion.is_active ? '활성화' : '비활성화'}되었습니다`)
-        await fetchPromotions()
-        return true
-      } else {
-        toast.error('프로모션 상태 변경에 실패했습니다')
-        return false
-      }
-    } catch (error) {
-      console.error('프로모션 상태 변경 실패:', error)
-      toast.error('프로모션 상태 변경에 실패했습니다')
-      return false
-    }
-  }, [fetchPromotions])
-
   const resetForm = useCallback(() => {
     setFormData(INITIAL_FORM_DATA)
   }, [])
@@ -219,7 +193,6 @@ export function useAdminPromotions() {
     handleCreate,
     handleUpdate,
     handleDelete,
-    handleToggleActive,
     openCreateModal,
     openEditModal,
     closeModal,

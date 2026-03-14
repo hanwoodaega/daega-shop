@@ -16,11 +16,11 @@ export async function GET(request: NextRequest) {
 
     const supabase = createSupabaseAdminClient()
 
-    // 쿠폰 목록 조회 (삭제되지 않은 쿠폰만)
+    // 쿠폰 목록 조회 (활성만 표시, 삭제 시 is_active false로 목록에서 제외)
     const { data, error } = await supabase
       .from('coupons')
       .select('*')
-      .eq('is_deleted', false)  // soft delete 필터링
+      .eq('is_active', true)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -97,7 +97,6 @@ export async function POST(request: NextRequest) {
         validity_days,
         is_active: is_active !== false,
         issue_trigger: issue_trigger || 'ADMIN',
-        is_deleted: false,  // 새로 생성되는 쿠폰은 삭제되지 않음
       })
       .select()
       .single()

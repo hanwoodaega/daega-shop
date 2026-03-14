@@ -27,56 +27,48 @@ export default function PaymentSummary({ order }: PaymentSummaryProps) {
     return sum + (originalPrice * item.quantity)
   }, 0) || 0
 
+  const couponDiscount = order.coupon_discount_amount ?? order.couponDiscount ?? 0
+  const pointsUsed = order.points_used ?? order.usedPoints ?? 0
+
   return (
-    <div className="mb-4 pb-4 border-b">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">결제 상세</h3>
-      <div className="mb-3 pb-3 border-b">
-        <div className="flex justify-between items-center text-sm">
-          <span className="text-gray-600">결제방식</span>
-          <span className="font-medium text-gray-900">
-            {getPaymentMethodLabel(order.payment_method)}
-          </span>
-        </div>
-      </div>
-      <div className="space-y-2 text-sm">
+    <div>
+      <h3 className="text-base font-semibold text-gray-900 mb-3">결제 정보</h3>
+      <div className="space-y-3 text-base text-gray-700">
         <div className="flex justify-between">
-          <span className="text-gray-600">상품 금액</span>
+          <span className="text-gray-600">결제방식</span>
+          <span className="font-medium text-gray-900">{getPaymentMethodLabel(order.payment_method)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-600">상품금액</span>
           <span className="font-medium">{formatPrice(productTotal)}원</span>
         </div>
-        
         {(order.immediateDiscount ?? 0) > 0 && (
           <div className="flex justify-between">
-            <span className="text-gray-600">즉시할인</span>
-            <span className="font-medium text-red-600">-{formatPrice(order.immediateDiscount ?? 0)}원</span>
+            <span className="text-gray-600">할인</span>
+            <span className="font-medium text-red-600">(-) {formatPrice(order.immediateDiscount ?? 0)}원</span>
           </div>
         )}
-        
-        {(order.couponDiscount ?? 0) > 0 && (
+        {couponDiscount > 0 && (
           <div className="flex justify-between">
-            <span className="text-gray-600">쿠폰 할인</span>
-            <span className="font-medium text-red-600">-{formatPrice(order.couponDiscount ?? 0)}원</span>
+            <span className="text-gray-600">쿠폰</span>
+            <span className="font-medium text-red-600">(-) {formatPrice(couponDiscount)}원</span>
           </div>
         )}
-        
-        {(order.usedPoints ?? 0) > 0 && (
+        {pointsUsed > 0 && (
           <div className="flex justify-between">
-            <span className="text-gray-600">포인트 사용</span>
-            <span className="font-medium text-red-600">-{formatPrice(order.usedPoints ?? 0)}원</span>
+            <span className="text-gray-600">포인트</span>
+            <span className="font-medium text-red-600">(-) {formatPrice(pointsUsed)}원</span>
           </div>
         )}
-        
         <div className="flex justify-between">
           <span className="text-gray-600">배송비</span>
           <span className="font-medium">
-            {(order.shipping ?? 0) === 0 ? '무료' : `${formatPrice(order.shipping ?? 0)}원`}
+            {(order.shipping ?? 0) === 0 ? '0원' : `(+) ${formatPrice(order.shipping ?? 0)}원`}
           </span>
         </div>
-        
-        <div className="flex justify-between pt-2 border-t">
-          <span className="text-base font-semibold text-gray-900">총 결제금액</span>
-          <span className="text-xl font-bold text-primary-900">
-            {formatPrice(order.total_amount)}원
-          </span>
+        <div className="flex justify-between pt-3 mt-3 border-t-2 border-gray-200">
+          <span className="text-lg font-semibold text-gray-900">총결제금액</span>
+          <span className="text-xl font-bold text-primary-900">{formatPrice(order.total_amount)}원</span>
         </div>
       </div>
     </div>

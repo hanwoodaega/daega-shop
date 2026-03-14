@@ -7,15 +7,10 @@ interface ReviewCardProps {
   status: ReviewStatus
   updatingId: string | null
   replyDraft: string
-  pointsDraft: string
-  defaultPoints: number
   onReplyChange: (text: string) => void
-  onPointsChange: (value: string) => void
-  onPointsBlur: () => void
   onSaveReply: () => void
   onDeleteReply: () => void
   onApprove: () => void
-  onReject: () => void
   onDelete: () => void
 }
 
@@ -24,15 +19,10 @@ export default function ReviewCard({
   status,
   updatingId,
   replyDraft,
-  pointsDraft,
-  defaultPoints,
   onReplyChange,
-  onPointsChange,
-  onPointsBlur,
   onSaveReply,
   onDeleteReply,
   onApprove,
-  onReject,
   onDelete,
 }: ReviewCardProps) {
   const isUpdating = updatingId === review.id
@@ -62,23 +52,6 @@ export default function ReviewCard({
                   <img src={img} alt="" className="w-full h-full object-cover" />
                 </div>
               ))}
-            </div>
-          )}
-
-          {/* 승인 시 포인트 설정 (대기/반려 상태에서만 노출) */}
-          {status !== 'approved' && (
-            <div className="mt-3 flex items-center gap-2">
-              <label className="text-xs text-gray-600">지급 포인트</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={pointsDraft}
-                placeholder={defaultPoints.toString()}
-                onChange={(e) => onPointsChange(e.target.value)}
-                onBlur={onPointsBlur}
-                className="w-28 px-2 py-1 text-sm border rounded"
-              />
             </div>
           )}
 
@@ -127,16 +100,7 @@ export default function ReviewCard({
                 disabled={isUpdating}
                 className="px-3 py-1.5 text-xs rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
               >
-                {isUpdating ? '처리 중...' : '승인(포인트 지급)'}
-              </button>
-            )}
-            {status !== 'rejected' && (
-              <button
-                onClick={onReject}
-                disabled={isUpdating}
-                className="px-3 py-1.5 text-xs rounded bg-yellow-100 text-yellow-800 hover:bg-yellow-200 disabled:opacity-60"
-              >
-                {isUpdating ? '처리 중...' : '반려'}
+                {isUpdating ? '처리 중...' : '승인(전체 공개)'}
               </button>
             )}
             <button

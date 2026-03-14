@@ -2,7 +2,6 @@ export interface ColorTheme {
   background?: string
   accent?: string
   title_color?: string
-  description_color?: string
 }
 
 export interface Collection {

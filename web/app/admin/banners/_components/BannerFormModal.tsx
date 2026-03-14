@@ -301,19 +301,6 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
             <p className="text-xs text-gray-500 mt-1">낮은 숫자부터 표시됩니다</p>
           </div>
 
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.is_active}
-                onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
-                className="w-5 h-5 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium">활성화</span>
-            </label>
-            <p className="text-xs text-gray-500 mt-1">비활성화된 배너는 메인 페이지에 표시되지 않습니다</p>
-          </div>
-
           <div className="flex gap-2 pt-4 border-t">
             <button
               type="submit"

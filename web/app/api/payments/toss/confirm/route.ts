@@ -317,6 +317,25 @@ export async function POST(request: NextRequest) {
             })
           }
         }
+        const isForbidden = confirmRes.status === 403 || responseData?.code === 'FORBIDDEN_REQUEST'
+        if (isForbidden) {
+          const keyPrefix = secretKey?.slice(0, 7) ?? '(없음)' // test_sk / live_sk 구분용만 로그
+          console.error('[toss/confirm] 토스 승인 실패 403 (키·환경 불일치 가능)', {
+            code: responseData?.code,
+            message: responseData?.message,
+            keyPrefix,
+            orderId,
+          })
+          return NextResponse.json(
+            {
+              error:
+                '결제 승인에 실패했습니다. (허용되지 않은 요청입니다.) ' +
+                '테스트/실결제 환경이 일치하는지 확인해주세요. 결제창에 사용한 클라이언트 키와 서버 시크릿 키가 같은 환경(테스트 또는 실결제)이어야 합니다.',
+              details: responseData,
+            },
+            { status: 400 }
+          )
+        }
         console.error('[toss/confirm] 토스 승인 실패', confirmRes.status, responseData)
         return NextResponse.json(
           { error: '결제 승인에 실패했습니다.', details: responseData },

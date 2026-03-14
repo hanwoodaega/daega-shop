@@ -123,7 +123,7 @@ export async function PUT(
   }
 }
 
-// DELETE: 배너 삭제
+// DELETE: 배너 소프트 삭제 (is_active = false)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -138,7 +138,7 @@ export async function DELETE(
   try {
     const { error } = await supabaseAdmin
       .from('banners')
-      .delete()
+      .update({ is_active: false, updated_at: new Date().toISOString() })
       .eq('id', id)
 
     if (error) {

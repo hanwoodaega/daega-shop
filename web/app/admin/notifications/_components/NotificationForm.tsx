@@ -51,6 +51,9 @@ export default function NotificationForm({
           <option value="point">적립</option>
           <option value="review">리뷰</option>
         </select>
+        <p className="mt-1 text-xs text-gray-500">
+          일반: 사용자 알림 화면 「일반」 탭에 표시 · 적립/리뷰: 「적립」 탭에 표시
+        </p>
       </div>
     </div>
   )

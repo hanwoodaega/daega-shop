@@ -673,6 +673,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       const customerKey = user?.id ?? `guest_${orderId}`
 
       if (tossWidgetsRef.current) {
+        await tossWidgetsRef.current.setAmount({ currency: 'KRW', value: amount })
         await tossWidgetsRef.current.requestPayment({
           orderId,
           orderName,

@@ -63,19 +63,6 @@ export default function RecommendationFormModal({
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="is_active"
-              checked={formData.is_active}
-              onChange={(e) => onUpdateField('is_active', e.target.checked)}
-              className="w-4 h-4"
-            />
-            <label htmlFor="is_active" className="text-sm">
-              활성화
-            </label>
-          </div>
-
           <div className="flex gap-2 pt-4">
             <button
               type="submit"

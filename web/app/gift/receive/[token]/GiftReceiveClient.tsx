@@ -115,9 +115,9 @@ export default function GiftReceiveClient() {
         return
       }
       
-      // 만료 상태 체크 (수령 완료가 아니고 만료일 지남)
+      // 만료 상태 체크 (수령 완료가 아니고 만료 시점 이상)
       if (!data.order.status || data.order.status !== 'gift_received') {
-        if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        if (data.expires_at && new Date() >= new Date(data.expires_at)) {
           setIsExpired(true)
         }
       }

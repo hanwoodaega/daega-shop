@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from('banners')
       .select('*')
+      .eq('is_active', true)
       .order('sort_order', { ascending: true })
 
     if (error) {

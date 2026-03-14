@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { ADMIN_CATEGORIES } from '@/lib/utils/constants'
 import { PRODUCT_LIST_LIMIT } from '../constants'
@@ -21,8 +20,6 @@ const INITIAL_FORM_STATE: ProductFormData = {
 }
 
 export function useAdminProducts() {
-  const router = useRouter()
-  
   const [form, setForm] = useState<ProductFormData>({ ...INITIAL_FORM_STATE })
   const [uiState, setUIState] = useState<ProductUIState>({
     error: null,
@@ -267,11 +264,6 @@ export function useAdminProducts() {
     setUIState(prev => ({ ...prev, error: null }))
   }, [])
 
-  // 라우팅 함수 (hook은 "행동"만 노출)
-  const goToImport = useCallback(() => {
-    router.push('/admin/products/import')
-  }, [router])
-
   return {
     // State
     form,
@@ -294,7 +286,6 @@ export function useAdminProducts() {
     clearError,
     setEditing,
     fetchList,
-    goToImport,
   }
 }
 

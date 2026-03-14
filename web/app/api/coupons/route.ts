@@ -32,7 +32,7 @@ function isCouponExpired(userCoupon: UserCoupon, coupon: Coupon | null): boolean
   // expires_at이 있으면 그것을 사용 (서버에서 계산된 값)
   if (userCoupon.expires_at) {
     const expiresAt = new Date(userCoupon.expires_at)
-    return now > expiresAt
+    return now >= expiresAt
   }
   
   // 레거시: expires_at이 없으면 created_at + validity_days로 계산
@@ -44,7 +44,7 @@ function isCouponExpired(userCoupon: UserCoupon, coupon: Coupon | null): boolean
   const validUntil = new Date(issuedAt)
   validUntil.setDate(validUntil.getDate() + coupon.validity_days)
   
-  return now > validUntil
+  return now >= validUntil
 }
 
 // GET: 사용자 쿠폰 목록 조회
@@ -101,23 +101,15 @@ export async function GET(request: NextRequest) {
     // - includeUsed=false: is_used=false이고 만료되지 않은 쿠폰만
     // - includeUsed=true: 모든 쿠폰 표시 (사용됨, 만료됨 포함)
     // - is_active=false: 표시 (이미 받은 쿠폰은 사용 가능해야 함)
-    // - is_deleted=true: 숨김 (관리자가 완전 삭제한 쿠폰)
     const filteredCoupons = (data || []).filter((uc: UserCoupon) => {
       const coupon = uc.coupon as Coupon | null
       
-      // 쿠폰 정보가 없으면 제외 (쿠폰이 삭제되었거나 RLS 정책 문제)
       if (!coupon) {
         devWarn(`[쿠폰 조회] 쿠폰 정보 없음: user_coupon_id=${uc.id}, coupon_id=${uc.coupon_id}, user_id=${user.id}`)
         return false
       }
       
-      // 쿠폰이 삭제되었으면 제외 (soft delete - 관리자가 완전 삭제)
-      if (coupon.is_deleted) {
-        devWarn(`[쿠폰 조회] 삭제된 쿠폰: user_coupon_id=${uc.id}, coupon_id=${uc.coupon_id}, coupon_name=${coupon.name}`)
-        return false
-      }
-      
-      // is_active=false는 표시 (이미 받은 쿠폰은 사용 가능해야 함)
+      // is_active=false 쿠폰도 이미 받은 건 표시 (신규 발급만 중단)
       // 비활성화는 "신규 발급 중단"이지 "기존 쿠폰 사용 금지"가 아님
       
       // includeUsed에 따른 필터링

@@ -1,6 +1,5 @@
 import { Order, OrderStatus } from '../_types'
 import OrderHeader from './sections/OrderHeader'
-import CustomerInfo from './sections/CustomerInfo'
 import OrderItems from './sections/OrderItems'
 import ShippingInfo from './sections/ShippingInfo'
 import PaymentSummary from './sections/PaymentSummary'
@@ -27,16 +26,26 @@ export default function OrderCard({
   onStatusChange,
 }: OrderCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <OrderHeader order={order} />
-      
-      <div className="p-4">
-        <CustomerInfo order={order} />
+    <div className="space-y-0">
+      <section className="pb-5 border-b border-gray-200">
+        <OrderHeader order={order} />
+      </section>
+      <section className="py-5 border-b border-gray-200">
         <OrderItems order={order} />
+      </section>
+      <section className="py-5 border-b border-gray-200">
         <ShippingInfo order={order} />
+      </section>
+      <section className="py-5 border-b border-gray-200">
         <PaymentSummary order={order} />
-        <RefundInfo order={order} />
-        <OrderActions 
+      </section>
+      {order.status === 'cancelled' && (
+        <section className="py-5 border-b border-gray-200">
+          <RefundInfo order={order} />
+        </section>
+      )}
+      <section className="pt-5">
+        <OrderActions
           order={order}
           updatingOrderId={updatingOrderId}
           trackingInput={trackingInput}
@@ -45,7 +54,7 @@ export default function OrderCard({
           onCarrierChange={onCarrierChange}
           onStatusChange={onStatusChange}
         />
-      </div>
+      </section>
     </div>
   )
 }

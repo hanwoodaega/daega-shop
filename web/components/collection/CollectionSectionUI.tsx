@@ -9,7 +9,6 @@ interface ColorTheme {
   background?: string
   accent?: string
   title_color?: string
-  description_color?: string
 }
 
 interface CollectionSectionUIProps {
@@ -29,9 +28,9 @@ export default function CollectionSectionUI({
   const theme = collection.color_theme || {
     background: '#F3E9D7',
     title_color: '#2A2A2A',
-    description_color: '#7A6F62',
     accent: '#D9C79E',
   }
+  const descriptionColor = '#111111'
 
   // 전체보기 링크 생성 (항상 /collections/{type}으로)
   const getViewAllLink = () => {
@@ -48,7 +47,7 @@ export default function CollectionSectionUI({
                 <p 
                   className="md:text-[26px] text-[22px]" 
                   style={{ 
-                    color: theme.description_color || '#7A6F62',
+                    color: descriptionColor,
                     fontFamily: 'Pretendard, sans-serif',
                     fontWeight: 700,
                     lineHeight: '1.5',
@@ -102,7 +101,7 @@ export default function CollectionSectionUI({
                     <Link href={getViewAllLink()} prefetch={false} aria-label="전체보기" className="ml-2">
                       <button
                         className="flex items-center px-1.5 py-0.5 hover:opacity-80 transition"
-                        style={{ color: theme.description_color || '#7A6F62' }}
+                        style={{ color: descriptionColor }}
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
@@ -116,7 +115,7 @@ export default function CollectionSectionUI({
                     <p
                       className="text-[20px] lg:text-[21px] flex-1 whitespace-pre-line lg:whitespace-normal"
                       style={{
-                        color: theme.description_color || '#7A6F62',
+                        color: descriptionColor,
                         fontFamily: 'Pretendard, sans-serif',
                         fontWeight: 600,
                         lineHeight: '1.6',
@@ -128,7 +127,7 @@ export default function CollectionSectionUI({
                     <Link href={getViewAllLink()} prefetch={false} aria-label="전체보기" className="lg:hidden">
                       <button
                         className="flex items-center px-1.5 py-0.5 hover:opacity-80 transition flex-shrink-0"
-                        style={{ color: theme.description_color || '#7A6F62' }}
+                        style={{ color: descriptionColor }}
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />

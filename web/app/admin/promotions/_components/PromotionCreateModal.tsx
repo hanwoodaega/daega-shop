@@ -112,18 +112,6 @@ export default function PromotionCreateModal({
           )}
 
           <div>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.is_active}
-                onChange={(e) => onUpdateField('is_active', e.target.checked)}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">활성화</span>
-            </label>
-          </div>
-
-          <div>
             <label className="block text-sm font-medium mb-2">
               상품 선택 ({selectedProducts.length}개)
             </label>

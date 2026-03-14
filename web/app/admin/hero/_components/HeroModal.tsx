@@ -81,7 +81,7 @@ export default function HeroModal({
           <div>
             <label className="block text-sm font-medium mb-2">이미지 *</label>
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
-              가로로 넓은 이미지를 사용해주세요 (권장: 1920×720px 이상). 모바일에서는 5:3, PC에서는 5:3 비율로 표시되므로, 중요한 요소는 가운데에 두는 것을 권장합니다.
+              모바일·PC 모두 5:3 비율로 표시됩니다. 가로로 넓은 5:3 이미지를 사용해주세요 (권장: 1920×1152px 또는 1000×600px). 중요한 요소는 가운데에 두는 것을 권장합니다.
             </p>
             <input
               ref={imageFileInputRef}
@@ -124,18 +124,6 @@ export default function HeroModal({
               min="0"
             />
             <p className="text-xs text-gray-500 mt-1">숫자가 작을수록 먼저 표시됩니다</p>
-          </div>
-
-          <div>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.is_active}
-                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">활성화</span>
-            </label>
           </div>
 
           <div className="flex gap-3 pt-4">

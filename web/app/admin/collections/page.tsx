@@ -13,6 +13,7 @@ async function getCollections(): Promise<Collection[]> {
     const { data, error } = await supabase
       .from('collections')
       .select('*')
+      .eq('is_active', true)
       .order('sort_order', { ascending: true })
       .order('type', { ascending: true })
 

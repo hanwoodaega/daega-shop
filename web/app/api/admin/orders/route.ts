@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { cookies } from 'next/headers'
 import { VALID_ORDER_STATUSES } from '@/lib/utils/constants'
-import { handleOrderCancellationPoints } from '@/lib/point/points'
+import { handleOrderCancellationPoints, addPoints } from '@/lib/point/points'
 import { cancelTossPayment } from '@/lib/payments/toss-server'
 
 // 관리자 인증 확인 (쿠키 기반)
@@ -342,6 +342,55 @@ export async function PATCH(request: NextRequest) {
         .single()
 
       return NextResponse.json(updatedOrder)
+    }
+
+    // 관리자 구매확정: DELIVERED → CONFIRMED, 포인트 적립 및 알림
+    if (status === 'CONFIRMED' && oldOrder.status !== 'CONFIRMED') {
+      if (oldOrder.status !== 'DELIVERED') {
+        return NextResponse.json({
+          error: '배송완료된 주문만 구매확정할 수 있습니다.',
+        }, { status: 400 })
+      }
+      const finalAmount = oldOrder.total_amount
+      const pointsToAdd = Math.floor(Math.max(0, finalAmount) * 0.01)
+      const success = await addPoints(
+        oldOrder.user_id,
+        pointsToAdd,
+        'purchase',
+        `주문 #${orderId} 구매확정 적립`,
+        orderId,
+        undefined,
+        supabase
+      )
+      if (!success) {
+        return NextResponse.json({ error: '구매확정 처리에 실패했습니다.' }, { status: 500 })
+      }
+      const { error: statusUpdateError } = await supabase
+        .from('orders')
+        .update({ status: 'CONFIRMED' })
+        .eq('id', orderId)
+      if (statusUpdateError) {
+        return NextResponse.json({ error: '구매확정 처리에 실패했습니다.' }, { status: 500 })
+      }
+      const orderNumber = oldOrder.order_number || orderId.slice(0, 8)
+      if (pointsToAdd > 0) {
+        await supabase.from('notifications').insert({
+          user_id: oldOrder.user_id,
+          title: `구매확정 ${pointsToAdd.toLocaleString()}P 적립`,
+          content: `주문번호 ${orderNumber}가 구매확정이 되어 포인트가 적립되었습니다.`,
+          type: 'point',
+          is_read: false,
+        })
+      }
+      await supabase.from('notifications').insert({
+        user_id: oldOrder.user_id,
+        title: '리뷰 작성',
+        content: '구매확정이 완료되었습니다. 상품 리뷰를 작성해주세요. 리뷰 작성하기',
+        type: 'general',
+        is_read: false,
+      })
+      const { data: updated } = await supabase.from('orders').select().eq('id', orderId).single()
+      return NextResponse.json(updated)
     }
 
     // 업데이트할 데이터 준비 (취소가 아닌 경우 또는 이미 취소된 주문)

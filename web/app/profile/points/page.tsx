@@ -128,7 +128,7 @@ export default function PointsPage() {
                 </div>
               )}
               <p className="text-xs text-gray-500 mt-2">
-                주문 금액의 1% 적립 · 사진 리뷰 500P · 일반 리뷰 200P
+                주문 금액의 1% 적립 · 사진 리뷰 500P · 일반 리뷰 200P (작성 즉시 적립)
               </p>
             </div>
           </div>
@@ -206,7 +206,7 @@ export default function PointsPage() {
                 </div>
               )}
               <p className="text-xs text-gray-500 mt-2">
-                주문 금액의 1% 적립 · 사진 리뷰 500P · 일반 리뷰 200P
+                주문 금액의 1% 적립 · 사진 리뷰 500P · 일반 리뷰 200P (작성 즉시 적립)
               </p>
             </div>
           </div>

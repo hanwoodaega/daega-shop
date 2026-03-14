@@ -138,7 +138,6 @@ export interface Coupon {
   valid_until?: string | null  // 레거시 컬럼 (사용 안 함, validity_days로 대체됨)
   is_active: boolean
   issue_trigger: 'PHONE_VERIFIED' | 'ADMIN' | 'ETC'
-  is_deleted: boolean  // 삭제 여부 (soft delete)
   created_at: string
   updated_at: string
 }

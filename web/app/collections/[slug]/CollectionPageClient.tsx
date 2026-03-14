@@ -66,6 +66,17 @@ export default function CollectionPageClient({ slug, initialData }: CollectionPa
           loadingMore={loadingMore}
           sortOrder={sortOrder}
           onSortOrderChange={setSortOrder}
+          emptyMessage={
+            collection && !collection.image_url?.trim()
+              ? '할인 상품이 없습니다'
+              : undefined
+          }
+          emptyLinkHref={
+            collection && !collection.image_url?.trim() ? '/' : undefined
+          }
+          emptyLinkLabel={
+            collection && !collection.image_url?.trim() ? '홈으로 가기' : undefined
+          }
         />
       </main>
 

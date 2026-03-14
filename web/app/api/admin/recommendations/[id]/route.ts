@@ -76,7 +76,7 @@ export async function PUT(
   }
 }
 
-// DELETE: 추천 카테고리 삭제
+// DELETE: 추천 카테고리 소프트 삭제 (is_active = false)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -89,10 +89,9 @@ export async function DELETE(
   }
 
   try {
-    const { id } = await params
     const { error } = await supabaseAdmin
       .from('recommendation_categories')
-      .delete()
+      .update({ is_active: false, updated_at: new Date().toISOString() })
       .eq('id', id)
 
     if (error) {

@@ -14,7 +14,6 @@ export interface UseHeroSlidesReturn {
   handleImageUpload: (file: File) => Promise<string | null>
   handleSave: (formData: HeroFormData) => Promise<boolean>
   handleDelete: (id: string) => Promise<void>
-  handleToggleActive: (slide: HeroSlide) => Promise<void>
   refresh: () => Promise<void>
 }
 
@@ -149,27 +148,6 @@ export function useHeroSlides(): UseHeroSlidesReturn {
     }
   }
 
-  const handleToggleActive = async (slide: HeroSlide) => {
-    try {
-      const res = await fetch(`/api/admin/hero/${slide.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...slide,
-          is_active: !slide.is_active,
-        }),
-      })
-
-      if (res.ok) {
-        toast.success(`히어로 슬라이드가 ${!slide.is_active ? '활성화' : '비활성화'}되었습니다`)
-        await fetchSlides()
-      }
-    } catch (error) {
-      console.error('히어로 슬라이드 상태 변경 실패:', error)
-      toast.error('히어로 슬라이드 상태 변경에 실패했습니다')
-    }
-  }
-
   return {
     slides,
     loading,
@@ -182,7 +160,6 @@ export function useHeroSlides(): UseHeroSlidesReturn {
     handleImageUpload,
     handleSave,
     handleDelete,
-    handleToggleActive,
     refresh: fetchSlides,
   }
 }

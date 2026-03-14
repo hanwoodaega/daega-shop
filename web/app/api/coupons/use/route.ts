@@ -46,12 +46,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '쿠폰을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    // 쿠폰이 삭제되었으면 제외 (soft delete)
-    if (coupon.is_deleted) {
-      return NextResponse.json({ error: '삭제된 쿠폰입니다.' }, { status: 400 })
-    }
-
-    // 활성화 여부 체크
     if (!coupon.is_active) {
       return NextResponse.json({ error: '비활성화된 쿠폰입니다.' }, { status: 400 })
     }
@@ -61,15 +55,13 @@ export async function POST(request: NextRequest) {
     let isExpired = false
     
     if (userCoupon.expires_at) {
-      // expires_at이 있으면 그것을 사용
       const expiresAt = new Date(userCoupon.expires_at)
-      isExpired = now > expiresAt
+      isExpired = now >= expiresAt
     } else {
-      // 레거시: expires_at이 없으면 created_at + validity_days로 계산
       const issuedAt = new Date(userCoupon.created_at)
       const validUntil = new Date(issuedAt)
       validUntil.setDate(validUntil.getDate() + coupon.validity_days)
-      isExpired = now > validUntil
+      isExpired = now >= validUntil
     }
 
     if (isExpired) {

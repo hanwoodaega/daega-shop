@@ -57,11 +57,10 @@ export function useNotifications() {
     if (!searchQuery.trim()) {
       return users
     }
-    const query = searchQuery.toLowerCase()
-    return users.filter(u => 
-      u.email?.toLowerCase().includes(query) ||
+    const query = searchQuery.trim().toLowerCase()
+    return users.filter(u =>
       u.name?.toLowerCase().includes(query) ||
-      u.phone?.includes(query)
+      (u.phone && u.phone.replace(/\s/g, '').includes(query.replace(/\s/g, '')))
     )
   }, [users, searchQuery])
 

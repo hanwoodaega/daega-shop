@@ -17,7 +17,6 @@ interface ColorTheme {
   background?: string
   accent?: string
   title_color?: string
-  description_color?: string
   button_color?: string
   button_text_color?: string
 }
@@ -50,8 +49,7 @@ interface RecommendationCategory {
 export default async function Home() {
   let collections: Collection[] = []
   let heroSlides: HeroSlide[] = []
-  let weeklyCollection: Collection | null = null
-  let weeklyProducts: any[] = []
+  /** 관리자 지정 sort_order 순서대로, 이미지 유무에 따라 스타일만 구분 */
   let collectionSections: Array<{ collection: Collection; products: any[] }> = []
   let recommendationCategories: RecommendationCategory[] = []
   let recommendationProducts: any[] | undefined = undefined
@@ -101,45 +99,24 @@ export default async function Home() {
         }
       }
 
-      weeklyCollection = collections.find(
-        (collection) => collection.type?.toLowerCase() === 'weekly_discount'
-      ) || null
+      // 관리자 지정 sort_order 순서대로 한 번만 정렬 후, 이미지 유무에 따라 스타일만 구분
+      const sortByOrder = (a: Collection, b: Collection) =>
+        (a.sort_order ?? 0) - (b.sort_order ?? 0)
+      const orderedCollections = [...collections].sort(sortByOrder)
 
-      if (weeklyCollection) {
-        const weeklyRes = await fetch(`${baseUrl}/api/collections/weekly_discount?limit=4`, {
-          next: { revalidate: 300 },
-        })
-        if (weeklyRes.ok) {
-          const data = await weeklyRes.json()
-          weeklyProducts = data.products || []
-        }
-      }
-
-      const nonWeeklyCollections = collections.filter(
-        (collection) => collection.type?.toLowerCase() !== 'weekly_discount'
-      )
-
-      if (nonWeeklyCollections.length > 0) {
-        const sectionResults = await Promise.all(
-          nonWeeklyCollections.map(async (collection) => {
+      if (orderedCollections.length > 0) {
+        collectionSections = await Promise.all(
+          orderedCollections.map(async (collection) => {
             const typeSlug = (collection.type || '').trim().toLowerCase()
-            const res = await fetch(`${baseUrl}/api/collections/${encodeURIComponent(typeSlug)}?limit=4`, {
-              next: { revalidate: 300 },
-            })
-
-            if (!res.ok) {
-              return { collection, products: [] }
-            }
-
+            const res = await fetch(
+              `${baseUrl}/api/collections/${encodeURIComponent(typeSlug)}?limit=4`,
+              { next: { revalidate: 300 } }
+            )
+            if (!res.ok) return { collection, products: [] as any[] }
             const data = await res.json()
-            return {
-              collection,
-              products: data.products || [],
-            }
+            return { collection, products: data.products || [] }
           })
         )
-
-        collectionSections = sectionResults
       }
     }
   } catch (error: any) {
@@ -173,19 +150,25 @@ export default async function Home() {
           </div>
         </section>
 
-        <WeeklyDiscountSection collection={weeklyCollection} products={weeklyProducts} />
-
-        {collectionSections.length > 0 &&
-          collectionSections
-            .filter((section) => section.products.length > 0)
-            .map((section) => (
+        {collectionSections
+          .filter((s) => s.products.length > 0)
+          .map((section) => {
+            const hasImage = !!(section.collection.image_url && String(section.collection.image_url).trim())
+            return hasImage ? (
               <CollectionSectionUI
                 key={section.collection.id}
                 collection={section.collection}
                 products={section.products}
                 loading={false}
               />
-            ))}
+            ) : (
+              <WeeklyDiscountSection
+                key={section.collection.id}
+                collection={section.collection}
+                products={section.products}
+              />
+            )
+          })}
 
         <div className="mt-20 mb-20">
           <BannerSection />

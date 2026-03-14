@@ -17,13 +17,9 @@ export default function CouponsPage() {
   const {
     formData,
     setFormData,
-    editingCoupon,
-    setEditing,
     resetForm,
     handleCreate,
-    handleUpdate,
     handleDelete,
-    toggleActive,
   } = useCouponForm()
   const {
     selectedCoupon,
@@ -32,7 +28,7 @@ export default function CouponsPage() {
     setIssueConditions,
     resetConditions,
     handleIssueToAll,
-    handleIssueWithConditions,
+    handleIssueByPhone,
   } = useIssueCoupon()
 
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -45,24 +41,8 @@ export default function CouponsPage() {
     }
   }, [error, router])
 
-  const handleEdit = (coupon: Coupon) => {
-    setEditing(coupon)
-    setShowCreateModal(true)
-  }
-
   const handleCreateSubmit = async () => {
     const result = await handleCreate()
-    if (result.success) {
-      resetForm()
-      setShowCreateModal(false)
-      refetch()
-    } else if (result.error?.status === 401) {
-      router.push('/admin/login?next=/admin/coupons')
-    }
-  }
-
-  const handleUpdateSubmit = async () => {
-    const result = await handleUpdate()
     if (result.success) {
       resetForm()
       setShowCreateModal(false)
@@ -81,30 +61,14 @@ export default function CouponsPage() {
     }
   }
 
-  const handleToggleActive = async (coupon: Coupon) => {
-    const result = await toggleActive(coupon)
-    if (result.success) {
-      refetch()
-    } else if (result.error?.status === 401) {
-        router.push('/admin/login?next=/admin/coupons')
-    }
-  }
-
-  const handleIssueWithConditionsClick = (coupon: Coupon) => {
-    setIssueConditions({
-      birthday_month: '',
-      min_purchase_amount: '',
-      purchase_period_start: '',
-      purchase_period_end: '',
-      min_purchase_count: '',
-      phone: '',
-    })
+  const handleIssueClick = (coupon: Coupon) => {
+    setIssueConditions({ phone: '' })
     setSelectedCoupon(coupon)
     setShowIssueModal(true)
   }
 
-  const handleIssueWithConditionsSubmit = async () => {
-    const result = await handleIssueWithConditions()
+  const handleIssueByPhoneSubmit = async () => {
+    const result = await handleIssueByPhone()
     if (result.success) {
       setShowIssueModal(false)
       refetch()
@@ -113,11 +77,11 @@ export default function CouponsPage() {
     }
   }
 
-  const handleIssueToAllClick = async (couponId: string) => {
-    if (!confirm('모든 사용자에게 이 쿠폰을 지급하시겠습니까?')) return
-    
-    const result = await handleIssueToAll(couponId)
+  const handleIssueToAllSubmit = async () => {
+    if (!selectedCoupon || !confirm('모든 사용자에게 이 쿠폰을 지급하시겠습니까?')) return
+    const result = await handleIssueToAll(selectedCoupon.id)
     if (result.success) {
+      setShowIssueModal(false)
       refetch()
     } else if (result.error?.status === 401) {
       router.push('/admin/login?next=/admin/coupons')
@@ -167,22 +131,19 @@ export default function CouponsPage() {
 
         <CouponTable
           coupons={coupons}
-          onEdit={handleEdit}
-          onToggleActive={handleToggleActive}
           onDelete={handleDeleteSubmit}
-          onIssueWithConditions={handleIssueWithConditionsClick}
-          onIssueToAll={handleIssueToAllClick}
+          onIssue={handleIssueClick}
         />
 
         <CouponFormModal
           isOpen={showCreateModal}
-          editingCoupon={editingCoupon}
+          editingCoupon={null}
           formData={formData}
           onClose={() => {
             resetForm()
-                    setShowCreateModal(false)
+            setShowCreateModal(false)
           }}
-          onSubmit={editingCoupon ? handleUpdateSubmit : handleCreateSubmit}
+          onSubmit={handleCreateSubmit}
           onFormDataChange={setFormData}
         />
 
@@ -192,9 +153,10 @@ export default function CouponsPage() {
           conditions={issueConditions}
           onClose={() => {
             resetConditions()
-                    setShowIssueModal(false)
+            setShowIssueModal(false)
           }}
-          onSubmit={handleIssueWithConditionsSubmit}
+          onIssueByPhone={handleIssueByPhoneSubmit}
+          onIssueToAll={handleIssueToAllSubmit}
           onConditionsChange={setIssueConditions}
         />
     </AdminPageLayout>

@@ -45,7 +45,7 @@ export default function OrderActions({
       case 'IN_TRANSIT':
         return ['DELIVERED', 'cancelled']
       case 'DELIVERED':
-        return []
+        return ['CONFIRMED']
       case 'paid':
         return ['PREPARING', 'cancelled']
       case 'shipped':
@@ -111,24 +111,39 @@ export default function OrderActions({
         </div>
       )}
 
-      {availableStatuses.length > 0 && (
+      {order.status === 'DELIVERED' && (
+        <div className="rounded-xl bg-emerald-50 border-2 border-emerald-200 p-4 space-y-3">
+          <p className="text-sm font-semibold text-emerald-800">배송이 완료되었습니다. 구매확정 시 포인트가 적립됩니다.</p>
+          <button
+            onClick={() => handleStatusChangeWithConfirm('CONFIRMED' as OrderStatus)}
+            disabled={isUpdating}
+            className="w-full py-3 px-4 rounded-lg font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition disabled:opacity-50"
+          >
+            {isUpdating ? '처리 중...' : '구매확정'}
+          </button>
+        </div>
+      )}
+
+      {availableStatuses.length > 0 && availableStatuses.some((s) => s !== 'CONFIRMED') && (
         <div className="space-y-2">
           <p className="text-sm font-medium text-gray-700">상태 변경</p>
           <div className="flex gap-2">
-            {availableStatuses.map((status) => (
-              <button
-                key={status}
-                onClick={() => handleStatusChangeWithConfirm(status as OrderStatus)}
-                disabled={isUpdating}
-                className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${
-                  status === 'cancelled'
-                    ? 'bg-red-600 text-white hover:bg-red-700'
-                    : 'bg-primary-800 text-white hover:bg-primary-900'
-                } disabled:opacity-50`}
-              >
-                {isUpdating ? '처리 중...' : getStatusText(status as OrderStatus, order.delivery_type as any)}
-              </button>
-            ))}
+            {availableStatuses
+              .filter((status) => status !== 'CONFIRMED')
+              .map((status) => (
+                <button
+                  key={status}
+                  onClick={() => handleStatusChangeWithConfirm(status as OrderStatus)}
+                  disabled={isUpdating}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${
+                    status === 'cancelled'
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'bg-primary-800 text-white hover:bg-primary-900'
+                  } disabled:opacity-50`}
+                >
+                  {isUpdating ? '처리 중...' : getStatusText(status as OrderStatus, order.delivery_type as any)}
+                </button>
+              ))}
           </div>
         </div>
       )}

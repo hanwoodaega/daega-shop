@@ -315,7 +315,7 @@ export default function ReviewList({ productId, onWriteReview, limit = 10, showV
             {allImages.length > 0 && (
               <button
                 onClick={() => router.push(`/product/${productId}/reviews/gallery`)}
-                className="aspect-square bg-blue-600 rounded flex flex-col items-center justify-center text-white hover:bg-blue-700 transition"
+                className="aspect-square bg-gray-400 rounded flex flex-col items-center justify-center text-white hover:bg-gray-500 transition"
               >
                 <span className="text-2xl mb-1">+</span>
                 <span className="text-sm md:text-base font-semibold">더보기</span>

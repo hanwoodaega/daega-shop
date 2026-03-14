@@ -56,20 +56,15 @@ export function useAdminReviews() {
   }, [fetchReviews])
 
   const changeStatus = useCallback(
-    async (id: string, nextStatus: 'approved' | 'rejected', points?: number) => {
-      if (!confirm(`리뷰를 ${nextStatus === 'approved' ? '승인' : '반려'}하시겠습니까?`)) return
+    async (id: string, nextStatus: 'approved' | 'rejected') => {
+      if (!confirm('리뷰를 승인하시겠습니까?')) return
 
       setUpdatingId(id)
       try {
-        const payload: any = { status: nextStatus }
-        if (nextStatus === 'approved' && points !== undefined) {
-          payload.points = points
-        }
-
         const res = await fetch(`/api/admin/reviews/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ status: nextStatus }),
         })
 
         if (!res.ok) {
@@ -78,7 +73,7 @@ export function useAdminReviews() {
           return false
         }
 
-        toast.success(`리뷰가 ${nextStatus === 'approved' ? '승인' : '반려'}되었습니다`)
+        toast.success('리뷰가 승인되었습니다')
         await fetchReviews()
         return true
       } catch (error) {

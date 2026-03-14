@@ -211,13 +211,8 @@ export default function AdminProductNoticePage() {
                       {currentFields.map((field) => (
                         <tr key={field.id} className="align-top">
                           <td className="px-3 py-2 border-b">
-                            <div className="flex items-center gap-2">
-                              <span>{field.label}</span>
-                              {field.required && (
-                                <span className="px-1.5 py-0.5 text-[10px] rounded bg-red-100 text-red-700">
-                                  필수
-                                </span>
-                              )}
+                            <div>
+                              <span>{field.label}{!field.required && ' (선택)'}</span>
                             </div>
                             <p className="text-[11px] text-neutral-400 break-all mt-0.5">{field.key}</p>
                           </td>

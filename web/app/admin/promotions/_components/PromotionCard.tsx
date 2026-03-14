@@ -6,7 +6,6 @@ import PromotionTypeBadge from './PromotionTypeBadge'
 interface PromotionCardProps {
   promotion: Promotion
   promotionProducts?: PromotionProduct[]
-  onToggleActive: (promotion: Promotion) => void
   onEdit: (promotion: Promotion) => void
   onDelete: (promotionId: string) => void
 }
@@ -14,7 +13,6 @@ interface PromotionCardProps {
 export default function PromotionCard({
   promotion,
   promotionProducts,
-  onToggleActive,
   onEdit,
   onDelete,
 }: PromotionCardProps) {
@@ -62,12 +60,6 @@ export default function PromotionCard({
           )}
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => onToggleActive(promotion)}
-            className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
-          >
-            {promotion.is_active ? '비활성화' : '활성화'}
-          </button>
           <button
             onClick={() => onEdit(promotion)}
             className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"

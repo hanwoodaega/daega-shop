@@ -144,7 +144,7 @@ export async function PUT(
   }
 }
 
-// DELETE: 프로모션 삭제
+// DELETE: 프로모션 소프트 삭제 (is_active = false)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -157,10 +157,9 @@ export async function DELETE(
   }
 
   try {
-    // CASCADE로 promotion_products도 자동 삭제됨
     const { error } = await supabaseAdmin
       .from('promotions')
-      .delete()
+      .update({ is_active: false, updated_at: new Date().toISOString() })
       .eq('id', id)
 
     if (error) {

@@ -11,13 +11,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    let query = supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('collections')
       .select('*')
+      .eq('is_active', true)
       .order('sort_order', { ascending: true })
       .order('type', { ascending: true })
-
-    const { data, error } = await query
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
@@ -64,15 +63,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '이미 존재하는 타입입니다.' }, { status: 400 })
     }
 
-    // color_theme 검증 (객체여야 함)
+    // color_theme 검증 (객체여야 함, description_color는 사용하지 않음)
     if (color_theme !== undefined && color_theme !== null) {
       if (typeof color_theme !== 'object' || Array.isArray(color_theme)) {
         return NextResponse.json({ error: 'color_theme은 객체여야 합니다.' }, { status: 400 })
       }
-      
-      // 필수 필드 검증
-      if (!color_theme.background || !color_theme.description_color) {
-        return NextResponse.json({ error: 'color_theme의 필수 필드(background, description_color)가 누락되었습니다.' }, { status: 400 })
+      if (!color_theme.background) {
+        return NextResponse.json({ error: 'color_theme.background가 필요합니다.' }, { status: 400 })
       }
     }
 
@@ -83,7 +80,9 @@ export async function POST(request: NextRequest) {
     if (title !== undefined) insertData.title = title || null
     if (description !== undefined) insertData.description = description || null
     if (image_url !== undefined) insertData.image_url = image_url || null
-    if (color_theme !== undefined) insertData.color_theme = color_theme || null
+    if (color_theme !== undefined) {
+      insertData.color_theme = { background: color_theme.background }
+    }
     if (sort_order !== undefined) insertData.sort_order = sort_order ?? 0
     if (is_active !== undefined) insertData.is_active = is_active ?? true
 

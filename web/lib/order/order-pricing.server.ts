@@ -39,7 +39,7 @@ function isCouponExpired(userCoupon: any, coupon: any): boolean {
   const now = new Date()
 
   if (userCoupon?.expires_at) {
-    return now > new Date(userCoupon.expires_at)
+    return now >= new Date(userCoupon.expires_at)
   }
 
   if (!coupon?.validity_days || coupon.validity_days <= 0) {
@@ -236,9 +236,6 @@ export async function calculateOrderPricing({
     }
 
     const coupon = userCoupon.coupon
-    if (coupon.is_deleted) {
-      throw new Error('삭제된 쿠폰입니다.')
-    }
     if (!coupon.is_active) {
       throw new Error('비활성화된 쿠폰입니다.')
     }
@@ -276,9 +273,37 @@ export async function calculateOrderPricing({
 
   const finalTotal = Math.max(0, discountedTotal - couponDiscount - appliedPoints) + shipping
 
-  const taxFreeAmount = itemSnapshots
+  // 면세/과세 비율대로 쿠폰·포인트·배송비 배분 → 토스에 넘길 비과세 금액 계산
+  const taxFreeProductAmount = itemSnapshots
     .filter((s) => s.tax_type === 'tax_free')
     .reduce((sum, s) => sum + s.final_unit_price * s.quantity, 0)
+  const taxableProductAmount = itemSnapshots
+    .filter((s) => s.tax_type !== 'tax_free')
+    .reduce((sum, s) => sum + s.final_unit_price * s.quantity, 0)
+  const productSubtotal = taxableProductAmount + taxFreeProductAmount
+  const discountTotal = couponDiscount + appliedPoints
+
+  const allocatedTaxFreeDiscount =
+    productSubtotal === 0
+      ? 0
+      : Math.floor((taxFreeProductAmount * discountTotal) / productSubtotal)
+  const allocatedTaxableDiscount = discountTotal - allocatedTaxFreeDiscount
+  const discountedTaxFreeProduct = Math.max(
+    0,
+    taxFreeProductAmount - allocatedTaxFreeDiscount
+  )
+  const discountedTaxableProduct = Math.max(
+    0,
+    taxableProductAmount - allocatedTaxableDiscount
+  )
+
+  const allocatedTaxFreeShipping =
+    productSubtotal === 0
+      ? 0
+      : Math.floor((taxFreeProductAmount * shipping) / productSubtotal)
+  const allocatedTaxableShipping = shipping - allocatedTaxFreeShipping
+  const discountedTaxFreeAmount =
+    discountedTaxFreeProduct + allocatedTaxFreeShipping
 
   return {
     pricing: {
@@ -288,7 +313,7 @@ export async function calculateOrderPricing({
       couponDiscount,
       appliedPoints,
       finalTotal,
-      taxFreeAmount,
+      taxFreeAmount: discountedTaxFreeAmount,
     },
     itemSnapshots,
   }

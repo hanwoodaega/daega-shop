@@ -27,7 +27,7 @@ function isCouponValid(userCoupon: UserCoupon, coupon: Coupon): boolean {
   // expires_at이 있으면 그것을 사용 (서버에서 계산된 값)
   if (userCoupon.expires_at) {
     const expiresAt = new Date(userCoupon.expires_at)
-    return now <= expiresAt
+    return now < expiresAt
   }
   
   // 레거시: expires_at이 없으면 created_at + validity_days로 계산
@@ -40,7 +40,7 @@ function isCouponValid(userCoupon: UserCoupon, coupon: Coupon): boolean {
   const validUntil = new Date(issuedAt)
   validUntil.setDate(validUntil.getDate() + coupon.validity_days)
   
-  return now <= validUntil
+  return now < validUntil
 }
 
 // GET: 마이페이지 전체 정보 조회 (이름, 주문 개수, 쿠폰 개수, 포인트)

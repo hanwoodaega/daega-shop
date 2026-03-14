@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { assertAdmin } from '@/lib/auth/admin-auth'
+import { getCouponExpiresAtEndOfDayKST } from '@/lib/coupon/expires'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,12 +42,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '이미 받은 쿠폰입니다. 같은 쿠폰은 평생 1번만 받을 수 있습니다.' }, { status: 400 })
     }
 
-    // 쿠폰 정보 확인 (삭제되지 않은 쿠폰만)
+    // 쿠폰 정보 확인
     const { data: coupon, error: couponError } = await supabase
       .from('coupons')
       .select('*')
       .eq('id', couponId)
-      .eq('is_deleted', false)  // soft delete 필터링
       .single()
 
     if (couponError || !coupon) {
@@ -66,10 +66,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 서버에서 expires_at 계산 (발급일 + validity_days)
-    const now = new Date()
-    const expiresAt = new Date(now)
-    expiresAt.setDate(expiresAt.getDate() + coupon.validity_days)
+    // 서버에서 expires_at 계산: 발급일(KST) + validity_days 되는 날 23:59:59 KST까지
+    const expiresAtISO = getCouponExpiresAtEndOfDayKST(coupon.validity_days)
 
     // 쿠폰 지급 (UNIQUE 제약조건 충돌 시 DO NOTHING)
     const { data: userCoupon, error: issueError } = await supabase
@@ -78,7 +76,7 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         coupon_id: couponId,
         is_used: false,
-        expires_at: expiresAt.toISOString(),  // 서버에서 계산한 만료일
+        expires_at: expiresAtISO,
       })
       .select()
       .single()

@@ -128,22 +128,20 @@ export async function PUT(
       updateData.type = type
     }
 
-    // color_theme 검증 (객체여야 함)
+    // color_theme 검증 (객체여야 함, description_color는 사용하지 않음)
     if (color_theme !== undefined && color_theme !== null) {
       if (typeof color_theme !== 'object' || Array.isArray(color_theme)) {
         return NextResponse.json({ error: 'color_theme은 객체여야 합니다.' }, { status: 400 })
       }
-      
-      // 필수 필드 검증
-      if (!color_theme.background || !color_theme.description_color) {
-        return NextResponse.json({ error: 'color_theme의 필수 필드(background, description_color)가 누락되었습니다.' }, { status: 400 })
+      if (!color_theme.background) {
+        return NextResponse.json({ error: 'color_theme.background가 필요합니다.' }, { status: 400 })
       }
     }
 
     if (title !== undefined) updateData.title = title || null
     if (description !== undefined) updateData.description = description || null
     if (image_url !== undefined) updateData.image_url = image_url || null
-    if (color_theme !== undefined) updateData.color_theme = color_theme || null
+    if (color_theme !== undefined) updateData.color_theme = { background: color_theme.background }
     if (sort_order !== undefined) updateData.sort_order = sort_order ?? 0
     if (is_active !== undefined) updateData.is_active = is_active ?? true
 
@@ -165,7 +163,7 @@ export async function PUT(
   }
 }
 
-// DELETE: 컬렉션 삭제
+// DELETE: 컬렉션 소프트 삭제 (is_active = false)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -178,10 +176,9 @@ export async function DELETE(
   }
 
   try {
-    // CASCADE로 collection_products도 자동 삭제됨
     const { error } = await supabaseAdmin
       .from('collections')
-      .delete()
+      .update({ is_active: false, updated_at: new Date().toISOString() })
       .eq('id', id)
 
     if (error) {

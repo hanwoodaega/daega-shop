@@ -1,45 +1,43 @@
 import { Order } from '../../_types'
-import { getStatusText, getStatusTextColor, getDeliveryTypeText } from '@/lib/order/order-utils'
+import { getStatusText, getStatusColor, getDeliveryTypeText } from '@/lib/order/order-utils'
 
 interface OrderHeaderProps {
   order: Order
 }
 
 export default function OrderHeader({ order }: OrderHeaderProps) {
+  const orderDate = new Date(order.created_at).toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  const orderNumber = order.order_number || order.id.slice(0, 8) + '…'
+  const statusText = getStatusText(order.status, order.delivery_type)
+
   return (
-    <div className="bg-gray-50 px-4 py-3 border-b">
-      <p className="text-sm text-gray-600 mb-1">
-        주문일시: {new Date(order.created_at).toLocaleDateString('ko-KR', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })}
-      </p>
-      <div className="flex items-center justify-between mb-2">
-        {order.order_number ? (
-          <p className="text-sm text-gray-600">
-            주문번호: <span className="font-mono text-primary-900 font-bold text-base">{order.order_number}</span>
-          </p>
-        ) : (
-          <p className="text-xs text-gray-500">ID: {order.id.slice(0, 8)}...</p>
-        )}
-        <div className="flex items-center gap-2">
-          <span className={`text-base font-bold ${getStatusTextColor(order.status)}`}>
-            {getStatusText(order.status, order.delivery_type)}
+    <div>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-base">
+        <p className="text-gray-700">
+          <span className="text-gray-500">주문일시</span>
+          <span className="ml-2 font-medium text-gray-900">{orderDate}</span>
+        </p>
+        <p className="text-gray-700">
+          <span className="text-gray-500">주문번호</span>
+          <span className="ml-2 font-mono font-semibold text-gray-900">{orderNumber}</span>
+        </p>
+        <p className="text-gray-700 flex items-center gap-2">
+          <span className="text-gray-500">주문상태</span>
+          <span className={`inline-flex px-2.5 py-1 text-sm font-medium rounded-md ${getStatusColor(order.status)}`}>
+            {statusText}
           </span>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="px-2 py-1 bg-gray-200 text-gray-700 text-xs font-medium rounded">
-          {getDeliveryTypeText(order.delivery_type)}
-        </span>
-        {order.delivery_time && (
-          <span className="text-xs text-gray-600">
-            {order.delivery_type === 'pickup' ? '픽업' : '배달'} 시간: {order.delivery_time}
-          </span>
-        )}
+          {order.delivery_time && (
+            <span className="text-sm text-gray-600">
+              ({getDeliveryTypeText(order.delivery_type)} {order.delivery_time})
+            </span>
+          )}
+        </p>
       </div>
     </div>
   )

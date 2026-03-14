@@ -29,7 +29,6 @@ export default function ReviewHeader({
           >
             <option value="pending">대기</option>
             <option value="approved">승인</option>
-            <option value="rejected">반려</option>
           </select>
         </div>
       </div>

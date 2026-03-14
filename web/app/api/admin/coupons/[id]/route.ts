@@ -153,7 +153,7 @@ export async function DELETE(
 
     return NextResponse.json({ 
       success: true,
-      message: '쿠폰이 삭제되었습니다. (soft delete)'
+      message: '쿠폰이 비활성화되었습니다.'
     })
   } catch (error: any) {
     console.error('쿠폰 삭제 오류:', error)

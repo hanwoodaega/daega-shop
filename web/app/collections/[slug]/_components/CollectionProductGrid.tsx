@@ -12,6 +12,10 @@ interface CollectionProductGridProps {
   loadingMore: boolean
   sortOrder: 'default' | 'price_asc' | 'price_desc'
   onSortOrderChange: (sort: 'default' | 'price_asc' | 'price_desc') => void
+  /** 이미지 없는 컬렉션(주간 할인 스타일)일 때 빈 상태 메시지/링크 */
+  emptyMessage?: string
+  emptyLinkHref?: string
+  emptyLinkLabel?: string
 }
 
 export default function CollectionProductGrid({
@@ -21,6 +25,9 @@ export default function CollectionProductGrid({
   loadingMore,
   sortOrder,
   onSortOrderChange,
+  emptyMessage = '등록된 상품이 없습니다',
+  emptyLinkHref = '/products',
+  emptyLinkLabel = '전체 상품 보기',
 }: CollectionProductGridProps) {
   return (
     <div className="container mx-auto px-4 py-4 pt-6">
@@ -56,12 +63,10 @@ export default function CollectionProductGrid({
       ) : products.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-6xl mb-4">🔍</div>
-          <p className="text-xl text-gray-600 mb-2">
-            등록된 상품이 없습니다
-          </p>
-          <Link href="/products">
+          <p className="text-xl text-gray-600 mb-2">{emptyMessage}</p>
+          <Link href={emptyLinkHref}>
             <button className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-600 transition">
-              전체 상품 보기
+              {emptyLinkLabel}
             </button>
           </Link>
         </div>

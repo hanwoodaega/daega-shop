@@ -5,6 +5,7 @@ import ReviewStars from './ReviewStars'
 import toast from 'react-hot-toast'
 import { ReviewWriteModalProps } from '@/lib/types/review'
 import { showError, showSuccess } from '@/lib/utils/error-handler'
+import { compressReviewImage } from '@/lib/utils/review-image'
 
 export default function ReviewWriteModal({
   isOpen,
@@ -127,43 +128,60 @@ export default function ReviewWriteModal({
     const files = e.target.files
     if (!files || files.length === 0) return
 
-    // 최대 5장 제한
     if (images.length + files.length > 5) {
       toast.error('이미지는 최대 5장까지 업로드 가능합니다.')
       return
     }
 
+    const fileList = Array.from(files).slice(0, 5 - images.length)
+    const maxOriginalMB = 15
+    const oversizeOriginal = fileList.find((f) => f.size > maxOriginalMB * 1024 * 1024)
+    if (oversizeOriginal) {
+      toast.error(`${oversizeOriginal.name}은(는) 원본이 ${maxOriginalMB}MB를 초과합니다.`)
+      return
+    }
+
     try {
       setUploading(true)
-      const uploadedUrls: string[] = []
+      const compressed = await Promise.all(fileList.map(compressReviewImage))
+      const limitMB = 5
+      const limitBytes = limitMB * 1024 * 1024
+      const toUpload = compressed.filter((f) => f.size <= limitBytes)
+      const oversizedAfter = compressed.filter((f) => f.size > limitBytes)
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(`${file.name}은(는) 5MB를 초과합니다.`)
-          continue
-        }
-
-        const formData = new FormData()
-        formData.append('file', file)
-
-        const response = await fetch('/api/reviews/upload-image', {
-          method: 'POST',
-          body: formData,
+      const results = await Promise.allSettled(
+        toUpload.map(async (file) => {
+          const formData = new FormData()
+          formData.append('file', file)
+          const res = await fetch('/api/reviews/upload-image', { method: 'POST', body: formData })
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}))
+            throw new Error(err.error || '업로드 실패')
+          }
+          const data = await res.json()
+          return data.url as string
         })
+      )
+      const uploadedUrls = results
+        .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+        .map((r) => r.value)
+      const failedCount = results.filter((r) => r.status === 'rejected').length
 
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || '업로드 실패')
-        }
-
-        const data = await response.json()
-        uploadedUrls.push(data.url)
+      if (oversizedAfter.length > 0) {
+        toast.error(`이미지가 압축 후에도 ${limitMB}MB를 초과해 업로드되지 않았습니다.`)
       }
-
-      setImages([...images, ...uploadedUrls])
-      showSuccess(`${uploadedUrls.length}장의 이미지가 업로드되었습니다.`)
+      if (uploadedUrls.length > 0) {
+        setImages([...images, ...uploadedUrls])
+        showSuccess(
+          failedCount > 0
+            ? `${uploadedUrls.length}장 업로드됨. ${failedCount}장 실패했습니다.`
+            : `${uploadedUrls.length}장의 이미지가 업로드되었습니다.`
+        )
+      }
+      if (failedCount > 0 && uploadedUrls.length === 0 && oversizedAfter.length === 0) {
+        const firstRejected = results.find((r): r is PromiseRejectedResult => r.status === 'rejected')
+        showError(firstRejected?.reason ?? new Error('업로드 실패'))
+      }
     } catch (error: any) {
       showError(error)
     } finally {
@@ -304,7 +322,7 @@ export default function ReviewWriteModal({
               className="hidden"
             />
             <p className="mt-2 text-xs text-gray-500">
-              * 이미지당 최대 5MB, JPG/PNG 형식
+              * 이미지 자동 압축, JPG/PNG 형식
             </p>
           </div>
 

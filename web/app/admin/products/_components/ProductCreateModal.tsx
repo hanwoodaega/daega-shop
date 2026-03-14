@@ -163,13 +163,6 @@ export default function ProductCreateModal({
                 기본값은 과세이며, 비과세 상품은 면세를 선택해주세요.
               </p>
             </div>
-            <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/80 px-3 py-4 text-sm text-neutral-600">
-              <p className="font-semibold text-neutral-700 mb-1">재고 입력 없이 운영합니다.</p>
-              <p>등록 후 목록에서 "품절처리/판매재개" 버튼으로 상태를 직접 전환하세요.</p>
-              <p className="text-xs text-neutral-500 mt-1">
-                타임딜 재고는 타임딜 메뉴에서 별도로 관리됩니다.
-              </p>
-            </div>
             <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-4 text-sm text-amber-800">
               <p className="font-semibold mb-1">이미지 등록</p>
               <p className="text-xs">
