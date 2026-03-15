@@ -222,4 +222,3 @@ export interface ProductNoticeValue {
   created_at: string
 }
 
-

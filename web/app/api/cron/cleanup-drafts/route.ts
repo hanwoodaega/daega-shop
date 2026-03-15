@@ -7,8 +7,8 @@ export const runtime = 'nodejs'
 /**
  * 만료된 order_drafts 삭제.
  * Cron(CRON_SECRET)으로 주기 호출하거나 수동 호출.
- * - draft는 confirm 성공 시에만 삭제되므로, 취소/이탈/만료된 건은 테이블에 남음.
- * - 이 엔드포인트는 expires_at < now() 인 행만 삭제해 테이블을 정리한다.
+ * - confirm_status가 null(미승인)이고 expires_at < now() 인 행만 삭제.
+ * - approved_not_persisted / persisting / done / failed 는 보존(복구·감사용).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
       .from('order_drafts')
       .delete()
       .lt('expires_at', now)
+      .is('confirm_status', null)
       .select('id')
 
     if (error) {

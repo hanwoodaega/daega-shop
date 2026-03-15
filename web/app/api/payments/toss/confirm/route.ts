@@ -11,6 +11,27 @@ import { cancelTossPayment } from '@/lib/payments/toss-server'
 import type { User } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+/** draft 기준 응답: 주문은 아직 없으므로 success 페이지에서 정리 중 + 폴링 후 리다이렉트 */
+function buildPendingRedirectResponse(
+  orderId: string,
+  payload: OrderInput,
+  cartUserId: string | null
+): { redirectTo: string; orderId: string; cartRemove: Array<{ productId: string; promotionGroupId?: string | null }>; cartUserId: string | null; processingPending: true } {
+  const cartRemoveMap = new Map<string, { productId: string; promotionGroupId?: string | null }>()
+  payload.items.forEach((item) => {
+    const key = `${item.productId}::${item.promotion_group_id ?? ''}`
+    if (!cartRemoveMap.has(key)) {
+      cartRemoveMap.set(key, {
+        productId: item.productId,
+        promotionGroupId: item.promotion_group_id ?? null,
+      })
+    }
+  })
+  const cartRemove = Array.from(cartRemoveMap.values())
+  const redirectTo = `/checkout/toss/success?orderId=${encodeURIComponent(orderId)}&confirmed=1`
+  return { redirectTo, orderId, cartRemove, cartUserId, processingPending: true as const }
+}
+
 /** 리다이렉트용 응답 생성 (confirm 성공 시 클라이언트가 redirectTo만 쓰면 됨) */
 function buildRedirectResponse(
   order: { order_number?: string | null; user_id?: string | null; gift_token?: string | null; shipping_phone?: string | null },
@@ -403,9 +424,27 @@ export async function POST(request: NextRequest) {
           confirm_status: 'approved_not_persisted',
         })
         .eq('id', draftIdToDelete)
+      // draft 경로: 후처리는 worker가 담당. 즉시 성공 응답 + worker 트리거( fire-and-forget )
+      const pendingPayload = buildPendingRedirectResponse(orderId, orderInput, cartUserId)
+      const origin =
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+        new URL(request.url).origin
+      fetch(`${origin}/api/payments/toss/process-draft`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(process.env.CRON_SECRET && { Authorization: `Bearer ${process.env.CRON_SECRET}` }),
+        },
+        body: JSON.stringify({ orderId: draftIdToDelete }),
+      }).catch((e) => console.warn('[toss/confirm] process-draft 트리거 실패:', e))
+      return NextResponse.json({
+        success: true,
+        ...pendingPayload,
+      })
     }
 
-    // ---------- 3단계: 내부 확정 트랜잭션 (orders → order_items → 포인트 → 쿠폰 → 장바구니 삭제 → draft 삭제) ----------
+    // ---------- 3단계: 레거시 경로(orderId 없이 orderInput만 전달) — 내부 확정 트랜잭션 ----------
     // 실패 시 draft는 삭제하지 않음(재시도 가능). 토스는 이미 승인된 상태일 수 있으므로 안내 메시지 반환.
     try {
     const today = new Date()

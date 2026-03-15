@@ -24,19 +24,80 @@ interface CheckoutMeta {
   orderInput?: { shipping_phone?: string }
 }
 
+const POLL_INTERVAL_MS = 1500
+const POLL_MAX_ATTEMPTS = 60 // ~90초
+
+function buildFinalRedirect(order: {
+  order_number: string | null
+  user_id: string | null
+  gift_token: string | null
+  shipping_phone: string | null
+}): string {
+  if (order.gift_token) {
+    return `/orders?giftToken=${encodeURIComponent(order.gift_token)}`
+  }
+  if (!order.user_id) {
+    const phone = String(order.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+    return `/order-lookup?order_number=${encodeURIComponent(order.order_number || '')}&phone=${encodeURIComponent(phone)}&done=1`
+  }
+  return '/orders'
+}
+
 function TossSuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
   const clearDirectPurchase = useDirectPurchaseStore((state) => state.clearItems)
-  const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
+  const [status, setStatus] = useState<'processing' | 'pending' | 'success' | 'error'>('processing')
   const [message, setMessage] = useState('')
   const confirmStartedRef = useRef(false)
+  const pendingOrderIdRef = useRef<string | null>(null)
+
+  // confirmed=1 + orderId 있을 때 주문 폴링 (worker 완료 대기)
+  useEffect(() => {
+    const orderId = searchParams.get('orderId')
+    const confirmed = searchParams.get('confirmed') === '1'
+    if (status !== 'pending' || !confirmed || !orderId) return
+
+    let attempts = 0
+    const timer = setInterval(async () => {
+      attempts += 1
+      if (attempts > POLL_MAX_ATTEMPTS) {
+        clearInterval(timer)
+        setStatus('error')
+        setMessage('주문 처리 시간이 초과되었습니다. 주문조회 또는 마이페이지에서 확인해 주세요.')
+        return
+      }
+      try {
+        const res = await fetch(`/api/orders/by-toss-order-id?orderId=${encodeURIComponent(orderId)}`)
+        if (res.ok) {
+          const data = await res.json()
+          clearInterval(timer)
+          const finalRedirect = buildFinalRedirect(data.order)
+          mutateOrders().catch(() => {})
+          router.replace(finalRedirect)
+          return
+        }
+      } catch {
+        // 다음 폴링까지 대기
+      }
+    }, POLL_INTERVAL_MS)
+    return () => clearInterval(timer)
+  }, [status, searchParams, router])
 
   useEffect(() => {
     const paymentKey = searchParams.get('paymentKey')
     const orderId = searchParams.get('orderId')
+    const confirmed = searchParams.get('confirmed') === '1'
     const isMock = searchParams.get('mock') === '1'
+
+    // 이미 정리 중 페이지로 리다이렉트된 상태(confirmed=1, orderId만 있음) → confirm 재호출 없이 폴링만
+    if (confirmed && orderId && !paymentKey) {
+      pendingOrderIdRef.current = orderId
+      setStatus('pending')
+      setMessage('주문 정보를 정리 중입니다')
+      return
+    }
 
     if (!paymentKey || !orderId) {
       setStatus('error')
@@ -143,7 +204,6 @@ function TossSuccessContent() {
               // 장바구니 갱신 실패해도 주문 완료는 유지
             }
           } else if (data.cartRemove?.length) {
-            // 비회원: DB 장바구니 없음 → 스토어에서 결제한 상품만 제거
             const removeSet = new Set(
               data.cartRemove.map((x: { productId: string; promotionGroupId?: string | null }) => `${x.productId}::${x.promotionGroupId ?? ''}`)
             )
@@ -165,6 +225,14 @@ function TossSuccessContent() {
         mutateOrders().catch(() => {})
         mutateUnreadCount().catch(() => {})
 
+        if (data.processingPending && data.orderId) {
+          pendingOrderIdRef.current = data.orderId
+          setStatus('pending')
+          setMessage('주문 정보를 정리 중입니다')
+          router.replace(data.redirectTo || `/checkout/toss/success?orderId=${encodeURIComponent(data.orderId)}&confirmed=1`)
+          return
+        }
+
         if (data.redirectTo) {
           router.replace(data.redirectTo)
         } else {
@@ -183,6 +251,9 @@ function TossSuccessContent() {
     <div className="min-h-screen flex items-center justify-center px-4">
       {status === 'processing' && (
         <p className="text-sm text-gray-500">결제 확인 중...</p>
+      )}
+      {status === 'pending' && (
+        <p className="text-sm text-gray-500">{message}</p>
       )}
       {status === 'error' && (
         <div className="max-w-md w-full bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">

@@ -17,6 +17,7 @@ export default function AdminPaymentRecoveryDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [processing, setProcessing] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -52,6 +53,24 @@ export default function AdminPaymentRecoveryDetailPage() {
       router.push('/admin/payment-recovery')
     } finally {
       setCancelling(false)
+    }
+  }
+
+  const handleProcess = async () => {
+    if (!id || processing) return
+    if (!confirm('이 draft로 주문을 생성(재처리)하시겠습니까?')) return
+    setProcessing(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/order-drafts/recovery/${id}/process`, { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) {
+        setError(json.error || '재처리 실패')
+        return
+      }
+      router.push('/admin/payment-recovery')
+    } finally {
+      setProcessing(false)
     }
   }
 
@@ -95,6 +114,13 @@ export default function AdminPaymentRecoveryDetailPage() {
             {JSON.stringify(draft.payload, null, 2)}
           </pre>
           <div className="flex gap-3 pt-2">
+            <button
+              onClick={handleProcess}
+              disabled={processing}
+              className="px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium disabled:opacity-50"
+            >
+              {processing ? '처리 중…' : '재처리(주문 생성)'}
+            </button>
             <button
               onClick={handleCancelPayment}
               disabled={cancelling}

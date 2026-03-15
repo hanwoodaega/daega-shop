@@ -35,7 +35,9 @@ export async function POST(
     if (draftError || !draft) {
       return NextResponse.json({ error: 'draft 없음' }, { status: 404 })
     }
-    if (draft.confirm_status !== 'approved_not_persisted') {
+    const canCancel =
+      draft.confirm_status === 'approved_not_persisted' || draft.confirm_status === 'failed'
+    if (!canCancel) {
       return NextResponse.json(
         { error: '복구 대상이 아닙니다. (이미 취소되었거나 다른 상태입니다.)' },
         { status: 400 }

@@ -8,7 +8,7 @@ async function verifyAdmin() {
   return adminAuth?.value === '1'
 }
 
-/** 승인 후 주문 미생성 draft 목록 (복구 대상) */
+/** 승인 후 주문 미생성 draft 목록 (복구 대상: approved_not_persisted + failed) */
 export async function GET() {
   try {
     const isAdmin = await verifyAdmin()
@@ -20,7 +20,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('order_drafts')
       .select('id, amount, tax_free_amount, toss_payment_key, toss_approved_at, confirm_status, payload, created_at')
-      .eq('confirm_status', 'approved_not_persisted')
+      .in('confirm_status', ['approved_not_persisted', 'failed'])
       .order('toss_approved_at', { ascending: false })
 
     if (error) {
