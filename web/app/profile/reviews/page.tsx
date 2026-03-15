@@ -34,7 +34,7 @@ export default function ProfileReviewsPage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      toast.error('로그인이 필요합니다.')
+      toast.error('로그인이 필요합니다.', { duration: 3000 })
       router.push('/auth/login?next=/profile/reviews')
     }
   }, [user, authLoading, router])

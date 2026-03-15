@@ -23,11 +23,11 @@ export function useAdminRecommendations() {
       if (res.ok) {
         setCategories(data.categories || [])
       } else {
-        toast.error('추천 카테고리 조회 실패')
+        toast.error('추천 카테고리 조회 실패', { duration: 3000 })
       }
     } catch (error) {
       console.error('추천 카테고리 조회 실패:', error)
-      toast.error('추천 카테고리 조회에 실패했습니다')
+      toast.error('추천 카테고리 조회에 실패했습니다', { duration: 3000 })
     } finally {
       setLoading(false)
     }
@@ -71,7 +71,7 @@ export function useAdminRecommendations() {
 
   const handleCreate = useCallback(async () => {
     if (!formData.name) {
-      toast.error('카테고리 이름을 입력해주세요')
+      toast.error('카테고리 이름을 입력해주세요', { duration: 3000 })
       return false
     }
 
@@ -88,19 +88,19 @@ export function useAdminRecommendations() {
         await fetchCategories()
         return true
       } else {
-        toast.error(data.error || '카테고리 생성 실패')
+        toast.error(data.error || '카테고리 생성 실패', { duration: 3000 })
         return false
       }
     } catch (error) {
       console.error('카테고리 저장 실패:', error)
-      toast.error('카테고리 저장에 실패했습니다')
+      toast.error('카테고리 저장에 실패했습니다', { duration: 3000 })
       return false
     }
   }, [formData, closeModal, fetchCategories])
 
   const handleUpdate = useCallback(async () => {
     if (!editingCategory || !formData.name) {
-      toast.error('카테고리 이름을 입력해주세요')
+      toast.error('카테고리 이름을 입력해주세요', { duration: 3000 })
       return false
     }
 
@@ -112,17 +112,17 @@ export function useAdminRecommendations() {
       })
       const data = await res.json()
       if (res.ok) {
-        toast.success('카테고리가 수정되었습니다')
+        toast.success('카테고리가 수정되었습니다', { duration: 2000 })
         closeModal()
         await fetchCategories()
         return true
       } else {
-        toast.error(data.error || '카테고리 수정 실패')
+        toast.error(data.error || '카테고리 수정 실패', { duration: 3000 })
         return false
       }
     } catch (error) {
       console.error('카테고리 저장 실패:', error)
-      toast.error('카테고리 저장에 실패했습니다')
+      toast.error('카테고리 저장에 실패했습니다', { duration: 3000 })
       return false
     }
   }, [editingCategory, formData, closeModal, fetchCategories])
@@ -142,11 +142,11 @@ export function useAdminRecommendations() {
         }
       } else {
         const data = await res.json()
-        toast.error(data.error || '카테고리 삭제 실패')
+        toast.error(data.error || '카테고리 삭제 실패', { duration: 3000 })
       }
     } catch (error) {
       console.error('카테고리 삭제 실패:', error)
-      toast.error('카테고리 삭제에 실패했습니다')
+      toast.error('카테고리 삭제에 실패했습니다', { duration: 3000 })
     }
   }, [selectedCategory, fetchCategories])
 

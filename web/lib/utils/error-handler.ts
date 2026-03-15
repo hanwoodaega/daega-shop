@@ -1,6 +1,9 @@
 import { AppError, ErrorCode, ERROR_MESSAGES } from './errors'
 import toast from 'react-hot-toast'
 
+/** 토스트 자동 제거 시간(ms). 사라지지 않는 문제 방지를 위해 각 호출에서 명시 권장. */
+export const TOAST_DURATION = { success: 2000, error: 3000, info: 2000, cartAdded: 1500 } as const
+
 /**
  * Supabase 에러를 AppError로 변환
  */
@@ -124,7 +127,7 @@ export function showError(error: unknown, options?: { duration?: number; icon?: 
   // 사용자에게 친화적 메시지 표시
   toast.error(appError.userMessage || appError.message, {
     icon: null,
-    duration: options?.duration || 4000,
+    duration: options?.duration || 2000,
   })
   
   // 개발 환경에서는 상세 로그
@@ -177,7 +180,7 @@ export async function handleApiResponse(response: Response) {
 export function showSuccess(message: string, options?: { duration?: number; icon?: string }) {
   toast.success(message, {
     icon: null,
-    duration: options?.duration || 3000,
+    duration: options?.duration || 2000,
   })
 }
 
@@ -187,13 +190,16 @@ export function showSuccess(message: string, options?: { duration?: number; icon
 export function showInfo(message: string, options?: { duration?: number; icon?: string }) {
   toast(message, {
     icon: null,
-    duration: options?.duration || 3000,
+    duration: options?.duration || 2000,
   })
 }
 
-/** 장바구니 추가 성공 토스트 (호출할 때마다 새 토스트 표시) */
+/** 장바구니 추가 성공 토스트 (호출할 때마다 새 토스트 표시, 1.5초 후 자동 제거) */
 export function showCartAddedToast() {
-  toast.success('장바구니에 추가되었습니다!', { id: `toast-cart-added-${Date.now()}` })
+  toast.success('장바구니에 추가되었습니다!', {
+    id: `toast-cart-added-${Date.now()}`,
+    duration: 1500,
+  })
 }
 
 /**
@@ -206,12 +212,12 @@ export function handleApiError(error: any, context: string) {
   // 개발 환경에서는 상세 에러 메시지 표시
   if (process.env.NODE_ENV === 'development') {
     toast.error(`${context}: ${error.message || '알 수 없는 오류'}`, {
-      duration: 4000,
+      duration: 2000,
     })
   } else {
     // 프로덕션에서는 사용자 친화적 메시지
     toast.error('일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', {
-      duration: 3000,
+      duration: 2000,
     })
   }
 }
@@ -234,7 +240,7 @@ export function showSuccessMessage(message: string) {
 export function showInfoMessage(message: string) {
   toast(message, {
     icon: null,
-    duration: 3000,
+    duration: 2000,
   })
 }
 

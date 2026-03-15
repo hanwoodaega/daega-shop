@@ -78,7 +78,7 @@ export default function AddProductForm({
 
   const handleSubmit = async () => {
     if (!isValid()) {
-      toast.error('모든 항목을 올바르게 입력해주세요')
+      toast.error('모든 항목을 올바르게 입력해주세요', { duration: 3000 })
       return
     }
 
@@ -91,7 +91,7 @@ export default function AddProductForm({
     try {
       await addActions[activeTab](displayOrder)
 
-      toast.success('상품이 추가되었습니다')
+      toast.success('상품이 추가되었습니다', { duration: 2000 })
       setSelectedProductId('')
       setSelectedTargets([])
       setSelectedBudgetTargets([])
@@ -99,7 +99,7 @@ export default function AddProductForm({
       onSuccess()
     } catch (error: any) {
       console.error('상품 추가 실패:', error)
-      toast.error(error.message || '상품 추가에 실패했습니다')
+      toast.error(error.message || '상품 추가에 실패했습니다', { duration: 3000 })
     } finally {
       setSaving(false)
     }

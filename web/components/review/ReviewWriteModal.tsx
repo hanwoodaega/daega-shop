@@ -45,12 +45,12 @@ export default function ReviewWriteModal({
     e.preventDefault()
 
     if (!content.trim()) {
-      toast.error('리뷰 내용을 입력해주세요.')
+      toast.error('리뷰 내용을 입력해주세요.', { duration: 3000 })
       return
     }
 
     if (content.length < 10) {
-      toast.error('리뷰는 최소 10자 이상 작성해주세요.')
+      toast.error('리뷰는 최소 10자 이상 작성해주세요.', { duration: 3000 })
       return
     }
 
@@ -129,7 +129,7 @@ export default function ReviewWriteModal({
     if (!files || files.length === 0) return
 
     if (images.length + files.length > 5) {
-      toast.error('이미지는 최대 5장까지 업로드 가능합니다.')
+      toast.error('이미지는 최대 5장까지 업로드 가능합니다.', { duration: 3000 })
       return
     }
 
@@ -137,7 +137,7 @@ export default function ReviewWriteModal({
     const maxOriginalMB = 15
     const oversizeOriginal = fileList.find((f) => f.size > maxOriginalMB * 1024 * 1024)
     if (oversizeOriginal) {
-      toast.error(`${oversizeOriginal.name}은(는) 원본이 ${maxOriginalMB}MB를 초과합니다.`)
+      toast.error(`${oversizeOriginal.name}은(는) 원본이 ${maxOriginalMB}MB를 초과합니다.`, { duration: 3000 })
       return
     }
 
@@ -168,7 +168,7 @@ export default function ReviewWriteModal({
       const failedCount = results.filter((r) => r.status === 'rejected').length
 
       if (oversizedAfter.length > 0) {
-        toast.error(`이미지가 압축 후에도 ${limitMB}MB를 초과해 업로드되지 않았습니다.`)
+        toast.error(`이미지가 압축 후에도 ${limitMB}MB를 초과해 업로드되지 않았습니다.`, { duration: 3000 })
       }
       if (uploadedUrls.length > 0) {
         setImages([...images, ...uploadedUrls])

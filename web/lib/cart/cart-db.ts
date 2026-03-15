@@ -234,13 +234,13 @@ export async function addCartItemWithDB(userId: string | null, item: CartItem): 
       } else {
         // DB 저장 실패 시 롤백
         useCartStore.setState({ items: previousItems })
-        toast.error('장바구니 추가에 실패했습니다.')
+        toast.error('장바구니 추가에 실패했습니다.', { duration: 3000 })
       }
     } catch (error) {
       // 에러 발생 시 롤백
       useCartStore.setState({ items: previousItems })
       console.error('장바구니 추가 실패:', error)
-      toast.error('장바구니 추가에 실패했습니다.')
+      toast.error('장바구니 추가에 실패했습니다.', { duration: 3000 })
     }
   }
 }
@@ -271,7 +271,7 @@ export async function removeCartItemWithDB(
       })
       if (!success) {
         useCartStore.setState({ items: previousItems })
-        toast.error('장바구니에서 제거하는데 실패했습니다.')
+        toast.error('장바구니에서 제거하는데 실패했습니다.', { duration: 3000 })
       } else {
         const nextItems = useCartStore.getState().items
         setCartItems(nextItems, 'deleteSuccess')
@@ -280,7 +280,7 @@ export async function removeCartItemWithDB(
     } catch (error) {
       useCartStore.setState({ items: previousItems })
       console.error('장바구니 제거 실패:', error)
-      toast.error('장바구니에서 제거하는데 실패했습니다.')
+      toast.error('장바구니에서 제거하는데 실패했습니다.', { duration: 3000 })
     }
   } else {
     const nextItems = useCartStore.getState().items
@@ -312,13 +312,13 @@ export async function updateCartQuantityWithDB(
       if (!success) {
         // DB 수정 실패 시 롤백
         useCartStore.setState({ items: previousItems })
-        toast.error('수량 변경에 실패했습니다.')
+        toast.error('수량 변경에 실패했습니다.', { duration: 3000 })
       }
     } catch (error) {
       // 에러 발생 시 롤백
       useCartStore.setState({ items: previousItems })
       console.error('장바구니 수량 수정 실패:', error)
-      toast.error('수량 변경에 실패했습니다.')
+      toast.error('수량 변경에 실패했습니다.', { duration: 3000 })
     }
   }
 }
@@ -352,18 +352,18 @@ export async function clearCartWithDB(userId: string | null): Promise<void> {
       const nextItems = useCartStore.getState().items
       setCartItems(nextItems, 'clearSuccess')
       flushCartPersist(nextItems)
-      toast.success('장바구니가 비워졌습니다.')
+      toast.success('장바구니가 비워졌습니다.', { duration: 2000 })
     } catch (error) {
       // 에러 발생 시 롤백
       useCartStore.setState({ items: previousItems })
       console.error('장바구니 비우기 에러:', error)
-      toast.error('장바구니 비우기에 실패했습니다.')
+      toast.error('장바구니 비우기에 실패했습니다.', { duration: 3000 })
     }
   } else {
     const nextItems = useCartStore.getState().items
     setCartItems(nextItems, 'clearSuccess')
     flushCartPersist(nextItems)
-    toast.success('장바구니가 비워졌습니다.')
+    toast.success('장바구니가 비워졌습니다.', { duration: 2000 })
   }
 }
 

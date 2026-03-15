@@ -50,7 +50,7 @@ export default function OrderCard({
   const copyOrderNumber = () => {
     if (order.order_number) {
       navigator.clipboard.writeText(order.order_number)
-      toast.success('주문번호가 복사되었습니다.')
+      toast.success('주문번호가 복사되었습니다.', { duration: 2000 })
     }
   }
 
@@ -66,7 +66,7 @@ export default function OrderCard({
       imageUrl: item.product?.image_url ?? null,
       status: 'active',
     })
-    toast.success('장바구니에 담았어요.')
+    toast.success('장바구니에 담았어요.', { duration: 2000 })
   }
 
   return (

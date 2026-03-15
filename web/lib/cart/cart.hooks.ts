@@ -122,7 +122,7 @@ export function useCart() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         console.error('기본 배송지 설정 실패:', res.status, errorData)
-        toast.error('배송지 설정에 실패했습니다.')
+        toast.error('배송지 설정에 실패했습니다.', { duration: 3000 })
         return
       }
 
@@ -131,10 +131,10 @@ export function useCart() {
         reloadDefaultAddress()
       ])
 
-      toast.success('기본 배송지가 변경되었습니다.')
+      toast.success('기본 배송지가 변경되었습니다.', { duration: 2000 })
     } catch (error) {
       console.error('배송지 업데이트 실패:', error)
-      toast.error('배송지 설정에 실패했습니다.')
+      toast.error('배송지 설정에 실패했습니다.', { duration: 3000 })
     } finally {
       setShowAddressModal(false)
       setSelectedAddressId(null)
@@ -158,7 +158,7 @@ export function useCart() {
     })
 
     if (!validation.valid) {
-      toast.error(validation.error || '주문 정보를 확인해주세요.')
+      toast.error(validation.error || '주문 정보를 확인해주세요.', { duration: 3000 })
       return
     }
 
@@ -192,7 +192,7 @@ export function useCart() {
         serverDiscountedTotal,
       })
       if (!validation.valid) {
-        toast.error(validation.error || '주문 정보를 확인해주세요.')
+        toast.error(validation.error || '주문 정보를 확인해주세요.', { duration: 3000 })
         return
       }
       setShowLoginPrompt(false)
@@ -214,7 +214,7 @@ export function useCart() {
     })
 
     if (!validation.valid) {
-      toast.error(validation.error || '주문 정보를 확인해주세요.')
+      toast.error(validation.error || '주문 정보를 확인해주세요.', { duration: 3000 })
       return
     }
 
@@ -239,7 +239,7 @@ export function useCart() {
     })
 
     if (!validation.valid) {
-      toast.error(validation.error || '주문 정보를 확인해주세요.')
+      toast.error(validation.error || '주문 정보를 확인해주세요.', { duration: 3000 })
       return
     }
 

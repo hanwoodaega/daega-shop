@@ -59,12 +59,12 @@ export default function GiftShareBox({ giftToken, giftOrder }: GiftShareBoxProps
         setTimeout(() => setCopied(false), 2000)
       } else {
         toast.error('자동 복사에 실패했습니다. 링크를 직접 선택해서 복사해주세요.', {
-          duration: 5000,
+          duration: 3000,
         })
       }
     } catch (error) {
       toast.error('링크 복사에 실패했습니다. 링크를 직접 선택해서 복사해주세요.', {
-        duration: 5000,
+        duration: 3000,
       })
     }
   }

@@ -95,22 +95,22 @@ export default function CollectionFormModal({
     e.preventDefault()
 
     if (!formData.type) {
-      toast.error('타입을 입력해주세요')
+      toast.error('타입을 입력해주세요', { duration: 3000 })
       return
     }
 
     try {
       if (editingCollection) {
         await apiCall('PUT', `/api/admin/collections/${editingCollection.id}`, formData)
-        toast.success('컬렉션이 수정되었습니다')
+        toast.success('컬렉션이 수정되었습니다', { duration: 2000 })
       } else {
         await apiCall('POST', '/api/admin/collections', formData)
-        toast.success('컬렉션이 생성되었습니다')
+        toast.success('컬렉션이 생성되었습니다', { duration: 2000 })
       }
       onSuccess()
     } catch (error: any) {
       console.error('컬렉션 저장 실패:', error)
-      toast.error(error.message || '컬렉션 저장에 실패했습니다')
+      toast.error(error.message || '컬렉션 저장에 실패했습니다', { duration: 3000 })
     }
   }
 

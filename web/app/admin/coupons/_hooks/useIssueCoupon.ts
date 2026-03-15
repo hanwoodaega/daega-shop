@@ -25,14 +25,14 @@ async function issueCouponRequest(
     }
 
     if (res.ok) {
-      toast.success(data.message || '쿠폰이 지급되었습니다.', { duration: 4000 })
+      toast.success(data.message || '쿠폰이 지급되었습니다.', { duration: 3000 })
       return { success: true }
     }
-    toast.error(data.error || '쿠폰 지급에 실패했습니다.')
+    toast.error(data.error || '쿠폰 지급에 실패했습니다.', { duration: 3000 })
     return { success: false, error: { status: res.status, message: data.error || '쿠폰 지급에 실패했습니다.' } }
   } catch (error: any) {
     console.error('쿠폰 지급 실패:', error)
-    toast.error('쿠폰 지급에 실패했습니다.')
+    toast.error('쿠폰 지급에 실패했습니다.', { duration: 3000 })
     return { success: false, error: { status: 500, message: '쿠폰 지급에 실패했습니다.' } }
   }
 }
@@ -57,7 +57,7 @@ export function useIssueCoupon() {
 
     const validation = validateIssueConditions(issueConditions)
     if (!validation.isValid) {
-      toast.error(validation.error || '전화번호를 확인해주세요.')
+      toast.error(validation.error || '전화번호를 확인해주세요.', { duration: 3000 })
       return { success: false }
     }
 

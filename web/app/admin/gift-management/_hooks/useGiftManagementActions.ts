@@ -58,12 +58,12 @@ export function useGiftManagementActions({
       const isInCategory = await checkProductInCategory(category.id, productId)
       await toggleTargetCategory(productId, target, isInCategory)
 
-      toast.success('선물 대상이 업데이트되었습니다')
+      toast.success('선물 대상이 업데이트되었습니다', { duration: 2000 })
       refetchGiftProducts()
     } catch (error: any) {
       if (handleUnauthorized(router, error)) return
       console.error('선물 대상 업데이트 실패:', error)
-      toast.error('업데이트에 실패했습니다')
+      toast.error('업데이트에 실패했습니다', { duration: 3000 })
     } finally {
       setSaving(null)
     }
@@ -78,12 +78,12 @@ export function useGiftManagementActions({
       const isInCategory = await checkProductInCategory(category.id, productId)
       await toggleBudgetCategory(productId, budgetSlug, isInCategory)
 
-      toast.success('예산 카테고리가 업데이트되었습니다')
+      toast.success('예산 카테고리가 업데이트되었습니다', { duration: 2000 })
       refetchBudgetProducts()
     } catch (error: any) {
       if (handleUnauthorized(router, error)) return
       console.error('예산 카테고리 업데이트 실패:', error)
-      toast.error('업데이트에 실패했습니다')
+      toast.error('업데이트에 실패했습니다', { duration: 3000 })
     } finally {
       setSaving(null)
     }
@@ -98,12 +98,12 @@ export function useGiftManagementActions({
       const isInCategory = await checkProductInCategory(category.id, productId)
       await toggleFeaturedCategory(productId, isInCategory)
 
-      toast.success('인기 선물세트 설정이 업데이트되었습니다')
+      toast.success('인기 선물세트 설정이 업데이트되었습니다', { duration: 2000 })
       refetchFeaturedProducts()
     } catch (error: any) {
       if (handleUnauthorized(router, error)) return
       console.error('인기 선물세트 업데이트 실패:', error)
-      toast.error('업데이트에 실패했습니다')
+      toast.error('업데이트에 실패했습니다', { duration: 3000 })
     } finally {
       setSaving(null)
     }
@@ -124,11 +124,11 @@ export function useGiftManagementActions({
         selectedBudget
       )
 
-      toast.success('순서가 변경되었습니다')
+      toast.success('순서가 변경되었습니다', { duration: 2000 })
       refetchCurrentProducts()
     } catch (error) {
       console.error('순서 변경 실패:', error)
-      toast.error('순서 변경에 실패했습니다')
+      toast.error('순서 변경에 실패했습니다', { duration: 3000 })
       refetchCurrentProducts()
     } finally {
       setReordering(null)

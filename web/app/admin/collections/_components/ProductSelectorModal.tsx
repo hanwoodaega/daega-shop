@@ -79,7 +79,7 @@ export default function ProductSelectorModal({
 
   const handleAddProducts = async () => {
     if (selectedProducts.size === 0) {
-      toast.error('상품을 선택하세요')
+      toast.error('상품을 선택하세요', { duration: 3000 })
       return
     }
 
@@ -93,15 +93,15 @@ export default function ProductSelectorModal({
       const data = await res.json()
 
       if (res.ok) {
-        toast.success('상품이 추가되었습니다')
+        toast.success('상품이 추가되었습니다', { duration: 2000 })
         onSuccess()
         onClose()
       } else {
-        toast.error(data.error || '상품 추가에 실패했습니다')
+        toast.error(data.error || '상품 추가에 실패했습니다', { duration: 3000 })
       }
     } catch (error) {
       console.error('상품 추가 실패:', error)
-      toast.error('상품 추가에 실패했습니다')
+      toast.error('상품 추가에 실패했습니다', { duration: 3000 })
     }
   }
 

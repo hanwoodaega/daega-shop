@@ -26,7 +26,7 @@ export default function RootLayout({
           position="top-center"
           containerStyle={{ top: '50%', transform: 'translateY(-50%)' }}
           toastOptions={{
-            duration: 3000,
+            duration: 2000,
             style: {
               background: '#fff',
               color: '#000',
@@ -47,7 +47,7 @@ export default function RootLayout({
               },
             },
             error: {
-              duration: 4000,
+              duration: 2000,
               icon: null,
               style: {
                 background: '#fff',

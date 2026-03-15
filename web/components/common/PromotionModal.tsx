@@ -90,7 +90,7 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
         setPromotionProducts(products)
       } catch (error) {
         console.error('프로모션 상품 조회 실패:', error)
-        toast.error('프로모션 상품을 불러오지 못했습니다.')
+        toast.error('프로모션 상품을 불러오지 못했습니다.', { duration: 3000 })
       } finally {
         setLoading(false)
       }
@@ -120,7 +120,7 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
       .reduce((sum, [, qty]) => sum + qty, 0)
     
     if (totalOthers + newQty > requiredCount) {
-      toast.error(`최대 ${requiredCount}개까지만 선택 가능합니다`)
+      toast.error(`최대 ${requiredCount}개까지만 선택 가능합니다`, { duration: 3000 })
       return
     }
     
@@ -139,7 +139,7 @@ export default function PromotionModal({ isOpen, onClose, product }: PromotionMo
     
     if (totalSelected !== requiredCount) {
       toast.error(`${buyQty}+1 프로모션은 정확히 ${requiredCount}개를 선택해야 합니다\n현재: ${totalSelected}개`, {
-        duration: 4000,
+        duration: 3000,
       })
       return
     }

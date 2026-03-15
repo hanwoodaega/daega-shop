@@ -35,7 +35,7 @@ export function useAdminReviews() {
         { cache: 'no-store' }
       )
       if (res.status === 401) {
-        toast.error('관리자 로그인이 필요합니다.')
+        toast.error('관리자 로그인이 필요합니다.', { duration: 3000 })
         router.replace('/admin/login')
         return
       }
@@ -45,7 +45,7 @@ export function useAdminReviews() {
       setTotalPages(data.totalPages || 1)
     } catch (error) {
       console.error('리뷰 조회 실패:', error)
-      toast.error('리뷰 조회에 실패했습니다')
+      toast.error('리뷰 조회에 실패했습니다', { duration: 3000 })
     } finally {
       setLoading(false)
     }
@@ -69,16 +69,16 @@ export function useAdminReviews() {
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}))
-          toast.error(data.error || '처리에 실패했습니다.')
+          toast.error(data.error || '처리에 실패했습니다.', { duration: 3000 })
           return false
         }
 
-        toast.success('리뷰가 승인되었습니다')
+        toast.success('리뷰가 승인되었습니다', { duration: 2000 })
         await fetchReviews()
         return true
       } catch (error) {
         console.error('리뷰 상태 변경 실패:', error)
-        toast.error('리뷰 상태 변경에 실패했습니다')
+        toast.error('리뷰 상태 변경에 실패했습니다', { duration: 3000 })
         return false
       } finally {
         setUpdatingId(null)
@@ -96,16 +96,16 @@ export function useAdminReviews() {
         const res = await fetch(`/api/admin/reviews/${id}`, { method: 'DELETE' })
         if (!res.ok) {
           const data = await res.json().catch(() => ({}))
-          toast.error(data.error || '삭제에 실패했습니다.')
+          toast.error(data.error || '삭제에 실패했습니다.', { duration: 3000 })
           return false
         }
 
-        toast.success('리뷰가 삭제되었습니다')
+        toast.success('리뷰가 삭제되었습니다', { duration: 2000 })
         await fetchReviews()
         return true
       } catch (error) {
         console.error('리뷰 삭제 실패:', error)
-        toast.error('리뷰 삭제에 실패했습니다')
+        toast.error('리뷰 삭제에 실패했습니다', { duration: 3000 })
         return false
       } finally {
         setUpdatingId(null)

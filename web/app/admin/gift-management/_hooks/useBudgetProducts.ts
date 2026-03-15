@@ -77,7 +77,7 @@ export function useBudgetProducts(selectedBudget: string) {
       setBudgetProducts(uniqueProducts as Product[])
     } catch (error) {
       console.error('상품 조회 실패:', error)
-      toast.error('상품 조회에 실패했습니다')
+      toast.error('상품 조회에 실패했습니다', { duration: 3000 })
     } finally {
       setLoading(false)
     }

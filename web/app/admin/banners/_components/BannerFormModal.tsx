@@ -59,13 +59,13 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
 
     // 파일 크기 제한 (10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('파일 크기는 10MB 이하여야 합니다.')
+      toast.error('파일 크기는 10MB 이하여야 합니다.', { duration: 3000 })
       return
     }
 
     // 이미지 파일 타입 확인
     if (!file.type.startsWith('image/')) {
-      toast.error('이미지 파일만 업로드 가능합니다.')
+      toast.error('이미지 파일만 업로드 가능합니다.', { duration: 3000 })
       return
     }
 
@@ -88,10 +88,10 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
 
       const data = await res.json()
       setFormData(prev => ({ ...prev, image_url: data.url }))
-      toast.success('이미지 업로드 완료')
+      toast.success('이미지 업로드 완료', { duration: 2000 })
     } catch (error: any) {
       console.error('이미지 업로드 실패:', error)
-      toast.error(error.message || '이미지 업로드에 실패했습니다.')
+      toast.error(error.message || '이미지 업로드에 실패했습니다.', { duration: 3000 })
     } finally {
       setUploadingImage(false)
       if (imageFileInputRef.current) imageFileInputRef.current.value = ''
@@ -118,32 +118,32 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
     e.preventDefault()
 
     if (!formData.image_url) {
-      toast.error('이미지 URL을 입력해주세요')
+      toast.error('이미지 URL을 입력해주세요', { duration: 3000 })
       return
     }
 
     if (!formData.slug || formData.slug.trim() === '') {
-      toast.error('Slug를 입력해주세요')
+      toast.error('Slug를 입력해주세요', { duration: 3000 })
       return
     }
 
     if (formData.slug.includes(' ')) {
-      toast.error('Slug에는 공백을 사용할 수 없습니다.')
+      toast.error('Slug에는 공백을 사용할 수 없습니다.', { duration: 3000 })
       return
     }
 
     try {
       if (editingBanner) {
         await apiCall('PUT', `/api/admin/banners/${editingBanner.id}`, formData)
-        toast.success('배너가 수정되었습니다')
+        toast.success('배너가 수정되었습니다', { duration: 2000 })
       } else {
         await apiCall('POST', '/api/admin/banners', formData)
-        toast.success('배너가 생성되었습니다')
+        toast.success('배너가 생성되었습니다', { duration: 2000 })
       }
       onSuccess()
     } catch (error: any) {
       console.error('배너 저장 실패:', error)
-      toast.error(error.message || '배너 저장에 실패했습니다')
+      toast.error(error.message || '배너 저장에 실패했습니다', { duration: 3000 })
     }
   }
 

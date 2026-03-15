@@ -69,11 +69,11 @@ export function useAdminProducts() {
       } else {
         // list 조회 실패 → toast (전역 피드백)
         const errorMessage = data.error || '상품 목록을 불러오는데 실패했습니다.'
-        toast.error(errorMessage)
+        toast.error(errorMessage, { duration: 3000 })
       }
     } catch (error) {
       console.error('상품 목록 조회 실패:', error)
-      toast.error('상품 목록을 불러오는데 실패했습니다.')
+      toast.error('상품 목록을 불러오는데 실패했습니다.', { duration: 3000 })
     } finally {
       setUIState(prev => ({ ...prev, loadingList: false }))
     }
@@ -130,7 +130,7 @@ export function useAdminProducts() {
       }
       
       // 성공 시 toast로 피드백
-      toast.success('상품이 등록되었습니다.')
+      toast.success('상품이 등록되었습니다.', { duration: 2000 })
       setUIState(prev => ({ ...prev, loading: false }))
       await fetchList()
       
@@ -156,7 +156,7 @@ export function useAdminProducts() {
     } else {
       // list/edit/toggle 실패 → toast (전역 피드백)
       const data = await res.json().catch(() => ({ error: '삭제 실패' }))
-      toast.error(data.error || '삭제에 실패했습니다.')
+      toast.error(data.error || '삭제에 실패했습니다.', { duration: 3000 })
       return false
     }
   }, [])
@@ -181,18 +181,18 @@ export function useAdminProducts() {
       })
       if (res.ok) {
         await fetchList()
-        toast.success(`상품이 ${newStatus === 'soldout' ? '품절 처리' : '판매 재개'}되었습니다.`)
+        toast.success(`상품이 ${newStatus === 'soldout' ? '품절 처리' : '판매 재개'}되었습니다.`, { duration: 2000 })
         return true
       } else {
         // list/edit/toggle 실패 → toast (전역 피드백)
         const data = await res.json().catch(() => ({}))
-        toast.error(data.error || '품절 상태 변경에 실패했습니다.')
+        toast.error(data.error || '품절 상태 변경에 실패했습니다.', { duration: 3000 })
         return false
       }
     } catch (error) {
       console.error('품절 상태 변경 실패:', error)
       // list/edit/toggle 실패 → toast (전역 피드백)
-      toast.error('품절 상태 변경에 실패했습니다.')
+      toast.error('품절 상태 변경에 실패했습니다.', { duration: 3000 })
       return false
     } finally {
       setTogglingSoldOut(null)
@@ -224,18 +224,18 @@ export function useAdminProducts() {
           items: prev.items.map((i) => (i.id === editing.id ? { ...i, ...editing } : i))
         }))
         setEditing(null)
-        toast.success('상품이 수정되었습니다.')
+        toast.success('상품이 수정되었습니다.', { duration: 2000 })
         return true
       } else {
         // list/edit/toggle 실패 → toast (전역 피드백)
         const data = await res.json().catch(() => ({}))
-        toast.error(data.error || '상품 수정에 실패했습니다.')
+        toast.error(data.error || '상품 수정에 실패했습니다.', { duration: 3000 })
         return false
       }
     } catch (error) {
       console.error('상품 수정 실패:', error)
       // list/edit/toggle 실패 → toast (전역 피드백)
-      toast.error('상품 수정에 실패했습니다.')
+      toast.error('상품 수정에 실패했습니다.', { duration: 3000 })
       return false
     } finally {
       setSavingEdit(false)

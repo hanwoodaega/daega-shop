@@ -28,7 +28,7 @@ export default function AdminOrderDetailPage() {
       }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        toast.error(data.error || '주문을 불러올 수 없습니다.')
+        toast.error(data.error || '주문을 불러올 수 없습니다.', { duration: 3000 })
         router.push('/admin/orders')
         return
       }
@@ -36,7 +36,7 @@ export default function AdminOrderDetailPage() {
       setOrder(data)
     } catch (e) {
       console.error(e)
-      toast.error('주문을 불러오는 중 오류가 발생했습니다.')
+      toast.error('주문을 불러오는 중 오류가 발생했습니다.', { duration: 3000 })
       router.push('/admin/orders')
     } finally {
       setLoading(false)
@@ -62,7 +62,7 @@ export default function AdminOrderDetailPage() {
         }),
       })
       if (res.status === 401 || res.status === 403) {
-        toast.error('관리자 권한이 필요합니다.')
+        toast.error('관리자 권한이 필요합니다.', { duration: 3000 })
         router.push('/admin/login?next=/admin/orders')
         return false
       }
@@ -71,10 +71,10 @@ export default function AdminOrderDetailPage() {
         throw new Error(data.error || '상태 변경 실패')
       }
       await fetchOrder()
-      toast.success('주문 상태가 변경되었습니다.')
+      toast.success('주문 상태가 변경되었습니다.', { duration: 2000 })
       return true
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '상태 변경에 실패했습니다.')
+      toast.error(err instanceof Error ? err.message : '상태 변경에 실패했습니다.', { duration: 3000 })
       return false
     } finally {
       setUpdatingOrderId(null)

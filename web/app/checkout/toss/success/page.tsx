@@ -95,7 +95,7 @@ function TossSuccessContent() {
     if (confirmed && orderId && !paymentKey) {
       pendingOrderIdRef.current = orderId
       setStatus('pending')
-      setMessage('주문 정보를 정리 중입니다')
+      setMessage('주문 정보 처리중입니다.')
       return
     }
 
@@ -228,7 +228,7 @@ function TossSuccessContent() {
         if (data.processingPending && data.orderId) {
           pendingOrderIdRef.current = data.orderId
           setStatus('pending')
-          setMessage('주문 정보를 정리 중입니다')
+          setMessage('주문 정보 처리중입니다.')
           router.replace(data.redirectTo || `/checkout/toss/success?orderId=${encodeURIComponent(data.orderId)}&confirmed=1`)
           return
         }
@@ -248,12 +248,24 @@ function TossSuccessContent() {
   }, [router, searchParams, user, clearDirectPurchase])
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 gap-6">
       {status === 'processing' && (
-        <p className="text-sm text-gray-500">결제 확인 중...</p>
+        <>
+          <div
+            className="w-12 h-12 border-2 border-gray-200 border-t-gray-700 rounded-full animate-spin"
+            aria-hidden
+          />
+          <p className="text-lg font-medium text-gray-700">결제 확인 중...</p>
+        </>
       )}
       {status === 'pending' && (
-        <p className="text-sm text-gray-500">{message}</p>
+        <>
+          <div
+            className="w-12 h-12 border-2 border-gray-200 border-t-gray-700 rounded-full animate-spin"
+            aria-hidden
+          />
+          <p className="text-lg font-medium text-gray-700">{message}</p>
+        </>
       )}
       {status === 'error' && (
         <div className="max-w-md w-full bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">

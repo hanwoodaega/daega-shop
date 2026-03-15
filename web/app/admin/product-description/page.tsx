@@ -31,7 +31,7 @@ export default function AdminProductDescriptionPage() {
       .then((data) => {
         if (data.items) setProducts(data.items)
       })
-      .catch(() => toast.error('상품 목록을 불러오지 못했습니다.'))
+      .catch(() => toast.error('상품 목록을 불러오지 못했습니다.', { duration: 3000 }))
       .finally(() => setLoadingProducts(false))
   }, [])
 
@@ -51,7 +51,7 @@ export default function AdminProductDescriptionPage() {
         if (data.images) setImages(data.images)
         else setImages([])
       })
-      .catch(() => toast.error('설명 이미지를 불러오지 못했습니다.'))
+      .catch(() => toast.error('설명 이미지를 불러오지 못했습니다.', { duration: 3000 }))
       .finally(() => setLoadingImages(false))
   }, [productId])
 
@@ -74,13 +74,13 @@ export default function AdminProductDescriptionPage() {
       .then((data) => {
         if (data.image) {
           setImages((prev) => [...prev, data.image].sort((a, b) => a.sort_order - b.sort_order))
-          toast.success('이미지가 추가되었습니다.')
+          toast.success('이미지가 추가되었습니다.', { duration: 2000 })
           setUploadKey((k) => k + 1)
         } else {
-          toast.error(data.error || '업로드 실패')
+          toast.error(data.error || '업로드 실패', { duration: 3000 })
         }
       })
-      .catch(() => toast.error('업로드에 실패했습니다.'))
+      .catch(() => toast.error('업로드에 실패했습니다.', { duration: 3000 }))
       .finally(() => {
         setUploading(false)
         e.target.value = ''
@@ -106,7 +106,7 @@ export default function AdminProductDescriptionPage() {
       }),
     ]).then(() => {
       loadImages()
-      toast.success('순서를 변경했습니다.')
+      toast.success('순서를 변경했습니다.', { duration: 2000 })
     })
   }
 
@@ -116,13 +116,13 @@ export default function AdminProductDescriptionPage() {
       .then((res) => {
         if (res.ok) {
           setImages((prev) => prev.filter((i) => i.id !== id))
-          toast.success('삭제되었습니다.')
+          toast.success('삭제되었습니다.', { duration: 2000 })
         } else return res.json()
       })
       .then((data) => {
-        if (data?.error) toast.error(data.error)
+        if (data?.error) toast.error(data.error, { duration: 3000 })
       })
-      .catch(() => toast.error('삭제에 실패했습니다.'))
+      .catch(() => toast.error('삭제에 실패했습니다.', { duration: 3000 }))
   }
 
   const selectedProduct = products.find((p) => p.id === productId)

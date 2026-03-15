@@ -41,7 +41,7 @@ export function useCouponForm() {
   const handleCreate = async (): Promise<{ success: boolean; error?: { status: number; message: string } }> => {
     const validation = validateCouponForm(formData)
     if (!validation.isValid) {
-      toast.error(validation.error || '입력값을 확인해주세요.')
+      toast.error(validation.error || '입력값을 확인해주세요.', { duration: 3000 })
       return { success: false }
     }
 
@@ -64,11 +64,11 @@ export function useCouponForm() {
         throw new Error(errorData.error || '쿠폰 생성에 실패했습니다.')
       }
 
-      toast.success('쿠폰이 생성되었습니다.')
+      toast.success('쿠폰이 생성되었습니다.', { duration: 2000 })
       return { success: true }
     } catch (error: any) {
       console.error('쿠폰 생성 실패:', error)
-      toast.error(error.message || '쿠폰 생성에 실패했습니다.')
+      toast.error(error.message || '쿠폰 생성에 실패했습니다.', { duration: 3000 })
       return { success: false, error: { status: 500, message: error.message || '쿠폰 생성에 실패했습니다.' } }
     }
   }
@@ -78,7 +78,7 @@ export function useCouponForm() {
 
     const validation = validateCouponForm(formData)
     if (!validation.isValid) {
-      toast.error(validation.error || '입력값을 확인해주세요.')
+      toast.error(validation.error || '입력값을 확인해주세요.', { duration: 3000 })
       return { success: false }
     }
 
@@ -98,11 +98,11 @@ export function useCouponForm() {
         throw new Error(errorData.error || '쿠폰 수정에 실패했습니다.')
       }
 
-      toast.success('쿠폰이 수정되었습니다.')
+      toast.success('쿠폰이 수정되었습니다.', { duration: 2000 })
       return { success: true }
     } catch (error: any) {
       console.error('쿠폰 수정 실패:', error)
-      toast.error(error.message || '쿠폰 수정에 실패했습니다.')
+      toast.error(error.message || '쿠폰 수정에 실패했습니다.', { duration: 3000 })
       return { success: false, error: { status: 500, message: error.message || '쿠폰 수정에 실패했습니다.' } }
     }
   }
@@ -124,11 +124,11 @@ export function useCouponForm() {
         throw new Error(errorData.error || '쿠폰 삭제에 실패했습니다.')
       }
 
-      toast.success('쿠폰이 삭제되었습니다.')
+      toast.success('쿠폰이 삭제되었습니다.', { duration: 2000 })
       return { success: true }
     } catch (error: any) {
       console.error('쿠폰 삭제 실패:', error)
-      toast.error(error.message || '쿠폰 삭제에 실패했습니다.')
+      toast.error(error.message || '쿠폰 삭제에 실패했습니다.', { duration: 3000 })
       return { success: false, error: { status: 500, message: error.message || '쿠폰 삭제에 실패했습니다.' } }
     }
   }
@@ -152,11 +152,11 @@ export function useCouponForm() {
         throw new Error(errorData.error || '쿠폰 상태 변경에 실패했습니다.')
       }
 
-      toast.success(`쿠폰이 ${!coupon.is_active ? '활성화' : '비활성화'}되었습니다.`)
+      toast.success(`쿠폰이 ${!coupon.is_active ? '활성화' : '비활성화'}되었습니다.`, { duration: 2000 })
       return { success: true }
     } catch (error: any) {
       console.error('쿠폰 상태 변경 실패:', error)
-      toast.error(error.message || '쿠폰 상태 변경에 실패했습니다.')
+      toast.error(error.message || '쿠폰 상태 변경에 실패했습니다.', { duration: 3000 })
       return { success: false, error: { status: 500, message: error.message || '쿠폰 상태 변경에 실패했습니다.' } }
     }
   }

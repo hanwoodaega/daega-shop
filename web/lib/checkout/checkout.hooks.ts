@@ -790,11 +790,11 @@ export function useCheckout(options: UseCheckoutOptions) {
     const redirectAfterSuccess = (order: any, giftToken?: string | null) => {
       if (isGiftMode && giftToken) {
         showSuccess('주문이 완료되었습니다! 카카오톡으로 선물을 공유해주세요.', {
-          duration: 3000,
+          duration: 2000,
         })
       } else {
         showSuccess('주문이 완료되었습니다!', {
-          duration: 3000,
+          duration: 2000,
         })
       }
 

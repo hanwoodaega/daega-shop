@@ -69,7 +69,7 @@ export function useAdminPoints() {
       console.error('사용자 조회 실패:', error)
       const errorMessage = error.message || '사용자 조회에 실패했습니다.'
       toast.error(errorMessage, {
-        duration: 5000,
+        duration: 3000,
       })
     } finally {
       setLoading(false)
@@ -123,7 +123,7 @@ export function useAdminPoints() {
 
   const handleSubmit = useCallback(async () => {
     if (selectedUsers.length === 0) {
-      toast.error('적립할 고객을 선택해주세요.')
+      toast.error('적립할 고객을 선택해주세요.', { duration: 3000 })
       return false
     }
 
@@ -134,7 +134,7 @@ export function useAdminPoints() {
     }
 
     if (!formData.notificationTitle.trim() || !formData.notificationContent.trim()) {
-      toast.error('알림 제목과 내용을 입력해주세요.')
+      toast.error('알림 제목과 내용을 입력해주세요.', { duration: 3000 })
       return false
     }
 
@@ -166,7 +166,7 @@ export function useAdminPoints() {
       }
 
       toast.success(`${selectedUsers.length}명에게 ${pointsNum.toLocaleString()}포인트가 적립되었습니다.`, {
-        duration: 5000,
+        duration: 3000,
       })
 
       // 폼 초기화
@@ -183,7 +183,7 @@ export function useAdminPoints() {
       return true
     } catch (error: any) {
       console.error('포인트 적립 실패:', error)
-      toast.error(error.message || '포인트 적립에 실패했습니다.')
+      toast.error(error.message || '포인트 적립에 실패했습니다.', { duration: 3000 })
       return false
     } finally {
       setIsSubmitting(false)

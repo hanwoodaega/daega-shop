@@ -70,7 +70,7 @@ function ProductCard({ product }: ProductCardProps) {
     
     // 품절 상품은 장바구니에 추가 불가
     if (soldOut) {
-      toast.error('품절된 상품입니다.')
+      toast.error('품절된 상품입니다.', { duration: 3000 })
       return
     }
     
@@ -93,7 +93,7 @@ function ProductCard({ product }: ProductCardProps) {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
       timeoutRef.current = window.setTimeout(() => {
         toast('상품 상세페이지에서 프로모션을 확인하세요', {
-          duration: 4000,
+          duration: 3000,
         })
       }, 500)
     }    
@@ -127,12 +127,12 @@ function ProductCard({ product }: ProductCardProps) {
     
     if (success) {
       if (isWished) {
-        toast.success('찜 목록에서 제거되었습니다', { id: 'toast-wishlist-removed' })
+        toast.success('찜 목록에서 제거되었습니다', { id: 'toast-wishlist-removed', duration: 2000 })
       } else {
-        toast.success('찜 목록에 추가되었습니다!', { id: 'toast-wishlist-added' })
+        toast.success('찜 목록에 추가되었습니다!', { id: 'toast-wishlist-added', duration: 2000 })
       }
     } else {
-      toast.error('오류가 발생했습니다. 다시 시도해주세요.')
+      toast.error('오류가 발생했습니다. 다시 시도해주세요.', { duration: 3000 })
     }
   }, [product.id, userId, isWished])
 

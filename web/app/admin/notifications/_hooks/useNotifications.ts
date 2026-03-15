@@ -43,7 +43,7 @@ export function useNotifications() {
       }
     } catch (error) {
       console.error('사용자 조회 실패:', error)
-      toast.error('사용자 정보를 불러오는데 실패했습니다.')
+      toast.error('사용자 정보를 불러오는데 실패했습니다.', { duration: 3000 })
     } finally {
       setLoading(false)
     }
@@ -88,12 +88,12 @@ export function useNotifications() {
     const { title, content, type } = formData
     
     if (!title.trim() || !content.trim()) {
-      toast.error('제목과 내용을 입력해주세요.')
+      toast.error('제목과 내용을 입력해주세요.', { duration: 3000 })
       return false
     }
 
     if (selectedUserIds.size === 0) {
-      toast.error('수신자를 선택해주세요.')
+      toast.error('수신자를 선택해주세요.', { duration: 3000 })
       return false
     }
 
@@ -112,11 +112,11 @@ export function useNotifications() {
 
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error || '알림 발송에 실패했습니다.')
+        toast.error(data.error || '알림 발송에 실패했습니다.', { duration: 3000 })
         return false
       }
 
-      toast.success(`알림이 ${data.count}건 발송되었습니다.`)
+      toast.success(`알림이 ${data.count}건 발송되었습니다.`, { duration: 2000 })
       
       // 폼 초기화
       setFormData({
@@ -128,7 +128,7 @@ export function useNotifications() {
       return true
     } catch (error) {
       console.error('알림 발송 실패:', error)
-      toast.error('알림 발송 중 오류가 발생했습니다.')
+      toast.error('알림 발송 중 오류가 발생했습니다.', { duration: 3000 })
       return false
     } finally {
       setSending(false)

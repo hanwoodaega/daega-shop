@@ -17,11 +17,11 @@ export function useAdminPromotions() {
       if (res.ok) {
         setPromotions(data.promotions || [])
       } else {
-        toast.error('프로모션 조회에 실패했습니다')
+        toast.error('프로모션 조회에 실패했습니다', { duration: 3000 })
       }
     } catch (error) {
       console.error('프로모션 조회 실패:', error)
-      toast.error('프로모션 조회에 실패했습니다')
+      toast.error('프로모션 조회에 실패했습니다', { duration: 3000 })
     } finally {
       setLoading(false)
     }
@@ -33,17 +33,17 @@ export function useAdminPromotions() {
 
   const handleCreate = useCallback(async (productIds: string[]) => {
     if (!formData.title.trim()) {
-      toast.error('제목을 입력해주세요')
+      toast.error('제목을 입력해주세요', { duration: 3000 })
       return false
     }
 
     if (formData.type === 'bogo' && !formData.buy_qty) {
-      toast.error('BOGO 타입은 구매 개수를 입력해주세요')
+      toast.error('BOGO 타입은 구매 개수를 입력해주세요', { duration: 3000 })
       return false
     }
 
     if (formData.type === 'percent' && !formData.discount_percent) {
-      toast.error('할인율을 입력해주세요')
+      toast.error('할인율을 입력해주세요', { duration: 3000 })
       return false
     }
 
@@ -60,18 +60,18 @@ export function useAdminPromotions() {
       const data = await res.json()
 
       if (res.ok) {
-        toast.success('프로모션이 생성되었습니다')
+        toast.success('프로모션이 생성되었습니다', { duration: 2000 })
         setShowCreateModal(false)
         resetForm()
         await fetchPromotions()
         return true
       } else {
-        toast.error(data.error || '프로모션 생성에 실패했습니다')
+        toast.error(data.error || '프로모션 생성에 실패했습니다', { duration: 3000 })
         return false
       }
     } catch (error) {
       console.error('프로모션 생성 실패:', error)
-      toast.error('프로모션 생성에 실패했습니다')
+      toast.error('프로모션 생성에 실패했습니다', { duration: 3000 })
       return false
     }
   }, [formData, fetchPromotions])
@@ -80,7 +80,7 @@ export function useAdminPromotions() {
     if (!editingPromotion) return false
 
     if (!formData.title.trim()) {
-      toast.error('제목을 입력해주세요')
+      toast.error('제목을 입력해주세요', { duration: 3000 })
       return false
     }
 
@@ -94,18 +94,18 @@ export function useAdminPromotions() {
       const data = await res.json()
 
       if (res.ok) {
-        toast.success('프로모션이 수정되었습니다')
+        toast.success('프로모션이 수정되었습니다', { duration: 2000 })
         setEditingPromotion(null)
         resetForm()
         await fetchPromotions()
         return true
       } else {
-        toast.error(data.error || '프로모션 수정에 실패했습니다')
+        toast.error(data.error || '프로모션 수정에 실패했습니다', { duration: 3000 })
         return false
       }
     } catch (error) {
       console.error('프로모션 수정 실패:', error)
-      toast.error('프로모션 수정에 실패했습니다')
+      toast.error('프로모션 수정에 실패했습니다', { duration: 3000 })
       return false
     }
   }, [editingPromotion, formData, fetchPromotions])
@@ -119,17 +119,17 @@ export function useAdminPromotions() {
       })
 
       if (res.ok) {
-        toast.success('프로모션이 삭제되었습니다')
+        toast.success('프로모션이 삭제되었습니다', { duration: 2000 })
         await fetchPromotions()
         return true
       } else {
         const data = await res.json()
-        toast.error(data.error || '프로모션 삭제에 실패했습니다')
+        toast.error(data.error || '프로모션 삭제에 실패했습니다', { duration: 3000 })
         return false
       }
     } catch (error) {
       console.error('프로모션 삭제 실패:', error)
-      toast.error('프로모션 삭제에 실패했습니다')
+      toast.error('프로모션 삭제에 실패했습니다', { duration: 3000 })
       return false
     }
   }, [fetchPromotions])

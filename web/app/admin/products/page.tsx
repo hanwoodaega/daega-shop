@@ -40,7 +40,7 @@ export default function AdminProductManagementPage() {
     if (!confirmed) return
     const success = await removeItem(productId)
     if (success) {
-      toast.success('상품이 삭제되었습니다.')
+      toast.success('상품이 삭제되었습니다.', { duration: 2000 })
     }
   }
 

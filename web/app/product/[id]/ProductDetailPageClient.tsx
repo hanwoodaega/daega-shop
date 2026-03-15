@@ -128,7 +128,7 @@ export default function ProductDetailPageClient({
     if (!product) return
     
     if (soldOut) {
-      toast.error('품절된 상품입니다.')
+      toast.error('품절된 상품입니다.', { duration: 3000 })
       return
     }
     
@@ -156,12 +156,12 @@ export default function ProductDetailPageClient({
     
     if (success) {
       if (isWished) {
-        toast.success('찜 목록에서 제거되었습니다', { id: 'toast-wishlist-removed' })
+        toast.success('찜 목록에서 제거되었습니다', { id: 'toast-wishlist-removed', duration: 2000 })
       } else {
-        toast.success('찜 목록에 추가되었습니다!', { id: 'toast-wishlist-added' })
+        toast.success('찜 목록에 추가되었습니다!', { id: 'toast-wishlist-added', duration: 2000 })
       }
     } else {
-      toast.error('오류가 발생했습니다. 다시 시도해주세요.')
+      toast.error('오류가 발생했습니다. 다시 시도해주세요.', { duration: 3000 })
     }
   }, [product?.id, isWished, user])
   

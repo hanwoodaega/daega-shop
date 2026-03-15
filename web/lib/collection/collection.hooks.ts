@@ -130,7 +130,7 @@ export function useCollectionProducts(
       if (requestId === requestIdRef.current) {
         const message = error?.message || '컬렉션을 불러오는데 실패했습니다'
         setError(message)
-        toast.error(message)
+        toast.error(message, { duration: 3000 })
       }
     } finally {
       // timeout 정리 보장

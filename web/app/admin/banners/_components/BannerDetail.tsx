@@ -64,15 +64,15 @@ export default function BannerDetail({ banner, onEdit, onDelete, initialProducts
         method: 'DELETE',
       })
       if (res.ok) {
-        toast.success('배너가 삭제되었습니다')
+        toast.success('배너가 삭제되었습니다', { duration: 2000 })
         onDelete()
       } else {
         const data = await res.json()
-        toast.error(data.error || '배너 삭제 실패')
+        toast.error(data.error || '배너 삭제 실패', { duration: 3000 })
       }
     } catch (error) {
       console.error('배너 삭제 실패:', error)
-      toast.error('배너 삭제에 실패했습니다')
+      toast.error('배너 삭제에 실패했습니다', { duration: 3000 })
     }
   }
 
@@ -87,15 +87,15 @@ export default function BannerDetail({ banner, onEdit, onDelete, initialProducts
       )
 
       if (res.ok) {
-        toast.success('상품이 제거되었습니다')
+        toast.success('상품이 제거되었습니다', { duration: 2000 })
         fetchBannerProducts(banner.id)
       } else {
         const data = await res.json()
-        toast.error(data.error || '상품 제거에 실패했습니다')
+        toast.error(data.error || '상품 제거에 실패했습니다', { duration: 3000 })
       }
     } catch (error) {
       console.error('상품 제거 실패:', error)
-      toast.error('상품 제거에 실패했습니다')
+      toast.error('상품 제거에 실패했습니다', { duration: 3000 })
     }
   }
 

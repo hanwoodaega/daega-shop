@@ -85,7 +85,7 @@ export function useOrders({ userId, giftToken, orderPeriodMonths: initialMonths 
       mutate() // revalidate
 
       showSuccess('주문이 취소되었습니다.\n환불은 영업일 기준 3-5일이 소요될 수 있습니다.', {
-        duration: 5000,
+        duration: 3000,
       })
     } catch (error) {
       showError(error)
@@ -127,7 +127,7 @@ export function useOrders({ userId, giftToken, orderPeriodMonths: initialMonths 
         data.pointsEarned > 0
           ? `구매확정이 완료되었습니다.\n${data.pointsEarned.toLocaleString()}포인트가 적립되었습니다.`
           : '구매확정이 완료되었습니다.',
-        { duration: 5000 }
+        { duration: 3000 }
       )
 
       // 서버 기준 상태 재조회 (status=CONFIRMED 반영)

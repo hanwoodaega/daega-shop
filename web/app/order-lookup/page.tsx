@@ -72,7 +72,7 @@ function OrderLookupResult({
   const copyOrderNumber = () => {
     if (order.order_number) {
       navigator.clipboard.writeText(order.order_number)
-      toast.success('주문번호가 복사되었습니다.')
+      toast.success('주문번호가 복사되었습니다.', { duration: 2000 })
     }
   }
 
@@ -441,7 +441,7 @@ function OrderLookupContent() {
       }
       setOrder((prev) => (prev ? { ...prev, status: 'cancelled' } : prev))
       toast.success('주문이 취소되었습니다.\n환불은 영업일 기준 3-5일이 소요됩니다.', {
-        duration: 5000,
+        duration: 3000,
       })
     } catch {
       setError('네트워크 오류가 발생했습니다.')

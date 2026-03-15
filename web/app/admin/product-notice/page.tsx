@@ -45,7 +45,7 @@ export default function AdminProductNoticePage() {
       .then((data) => {
         if (data.items) setProducts(data.items)
       })
-      .catch(() => toast.error('상품 목록을 불러오지 못했습니다.'))
+      .catch(() => toast.error('상품 목록을 불러오지 못했습니다.', { duration: 3000 }))
       .finally(() => setLoadingProducts(false))
   }, [])
 
@@ -62,7 +62,7 @@ export default function AdminProductNoticePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.error) {
-          toast.error(data.error)
+          toast.error(data.error, { duration: 3000 })
           return
         }
         setCategories(data.categories || [])
@@ -75,7 +75,7 @@ export default function AdminProductNoticePage() {
         setSelectedCategoryId(data.notice_category_id || null)
       })
       .catch(() => {
-        toast.error('상품고시정보를 불러오지 못했습니다.')
+        toast.error('상품고시정보를 불러오지 못했습니다.', { duration: 3000 })
       })
       .finally(() => setLoadingNotice(false))
   }
@@ -119,13 +119,13 @@ export default function AdminProductNoticePage() {
       })
       const data = await res.json()
       if (!res.ok || data.error) {
-        toast.error(data.error || '저장에 실패했습니다.')
+        toast.error(data.error || '저장에 실패했습니다.', { duration: 3000 })
         return
       }
-      toast.success('상품고시정보가 저장되었습니다.')
+      toast.success('상품고시정보가 저장되었습니다.', { duration: 2000 })
       loadNotice(productId)
     } catch {
-      toast.error('저장 중 오류가 발생했습니다.')
+      toast.error('저장 중 오류가 발생했습니다.', { duration: 3000 })
     } finally {
       setSaving(false)
     }

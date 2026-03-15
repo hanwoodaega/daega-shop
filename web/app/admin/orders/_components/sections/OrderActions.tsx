@@ -97,7 +97,7 @@ export default function OrderActions({
             <button
               onClick={() => {
                 if (!trackingInput) {
-                  toast.error('송장번호를 입력해주세요.')
+                  toast.error('송장번호를 입력해주세요.', { duration: 3000 })
                   return
                 }
                 handleStatusChangeWithConfirm('IN_TRANSIT', trackingInput)

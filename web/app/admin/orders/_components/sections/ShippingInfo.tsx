@@ -31,7 +31,7 @@ interface ShippingInfoProps {
 export default function ShippingInfo({ order }: ShippingInfoProps) {
   const handleTrackDelivery = () => {
     if (!order.tracking_number) {
-      toast.error('송장번호가 없습니다.')
+      toast.error('송장번호가 없습니다.', { duration: 3000 })
       return
     }
     const trackingUrl = getTrackingUrl(order.tracking_number, order.tracking_company)

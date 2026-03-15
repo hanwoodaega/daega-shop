@@ -105,7 +105,7 @@ export default function ProductInfoPage() {
         }
       } catch (error) {
         console.error('상품 조회 실패:', error)
-        toast.error('상품을 찾을 수 없습니다.')
+        toast.error('상품을 찾을 수 없습니다.', { duration: 3000 })
         router.push('/products')
       } finally {
         setLoading(false)

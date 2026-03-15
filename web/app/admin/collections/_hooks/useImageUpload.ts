@@ -18,13 +18,13 @@ export function useImageUpload({ bucket, maxSizeMB = 10, useServerUpload = false
   const uploadImage = async (file: File): Promise<string | null> => {
     // 파일 크기 제한
     if (file.size > maxSizeMB * 1024 * 1024) {
-      toast.error(`파일 크기는 ${maxSizeMB}MB 이하여야 합니다.`)
+      toast.error(`파일 크기는 ${maxSizeMB}MB 이하여야 합니다.`, { duration: 3000 })
       return null
     }
 
     // 이미지 파일 타입 확인
     if (!file.type.startsWith('image/')) {
-      toast.error('이미지 파일만 업로드 가능합니다.')
+      toast.error('이미지 파일만 업로드 가능합니다.', { duration: 3000 })
       return null
     }
 
@@ -38,10 +38,10 @@ export function useImageUpload({ bucket, maxSizeMB = 10, useServerUpload = false
         const res = await fetch('/api/admin/upload-image', { method: 'POST', body: form })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
-          toast.error(data.error || '이미지 업로드 실패')
+          toast.error(data.error || '이미지 업로드 실패', { duration: 3000 })
           return null
         }
-        toast.success('이미지 업로드 완료')
+        toast.success('이미지 업로드 완료', { duration: 2000 })
         return data.url ?? null
       }
 
@@ -58,17 +58,17 @@ export function useImageUpload({ bucket, maxSizeMB = 10, useServerUpload = false
 
       if (error) {
         console.error('이미지 업로드 실패:', error)
-        toast.error(error.message || '이미지 업로드 실패')
+        toast.error(error.message || '이미지 업로드 실패', { duration: 3000 })
         return null
       }
 
       // 공개 URL 가져오기
       const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(filePath)
-      toast.success('이미지 업로드 완료')
+      toast.success('이미지 업로드 완료', { duration: 2000 })
       return publicUrlData.publicUrl
     } catch (error: any) {
       console.error('이미지 업로드 실패:', error)
-      toast.error('이미지 업로드에 실패했습니다.')
+      toast.error('이미지 업로드에 실패했습니다.', { duration: 3000 })
       return null
     } finally {
       setUploading(false)

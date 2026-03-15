@@ -67,7 +67,7 @@ export function useAdminOrders() {
       setOrders(data)
     } catch (error) {
       console.error('❌ 주문 조회 실패:', error)
-      toast.error('주문 조회에 실패했습니다')
+      toast.error('주문 조회에 실패했습니다', { duration: 3000 })
     } finally {
       setLoading(false)
     }
@@ -107,7 +107,7 @@ export function useAdminOrders() {
 
       if (response.status === 401 || response.status === 403) {
         const errorData = await response.json().catch(() => ({ error: '관리자 권한이 필요합니다.' }))
-        toast.error(errorData.error || '관리자 권한이 필요합니다.')
+        toast.error(errorData.error || '관리자 권한이 필요합니다.', { duration: 3000 })
         redirectToLogin()
         return false
       }
@@ -118,11 +118,11 @@ export function useAdminOrders() {
       }
 
       await fetchOrders()
-      toast.success('주문 상태가 변경되었습니다.')
+      toast.success('주문 상태가 변경되었습니다.', { duration: 2000 })
       return true
     } catch (error) {
       console.error('상태 변경 실패:', error)
-      toast.error(error instanceof Error ? error.message : '상태 변경에 실패했습니다.')
+      toast.error(error instanceof Error ? error.message : '상태 변경에 실패했습니다.', { duration: 3000 })
       return false
     } finally {
       setUpdatingOrderId(null)
@@ -140,13 +140,14 @@ export function useAdminOrders() {
       toast.success(
         data.confirmedCount > 0
           ? `${data.confirmedCount}개 주문이 자동 구매확정되었습니다.`
-          : '자동 구매확정할 주문이 없습니다.'
+          : '자동 구매확정할 주문이 없습니다.',
+        { duration: 3000 }
       )
       await fetchOrders()
       return true
     } catch (error: any) {
       console.error('자동 구매확정 실패:', error)
-      toast.error(`자동 구매확정에 실패했습니다.\n\n${error.message || error}`)
+      toast.error(`자동 구매확정에 실패했습니다.\n\n${error.message || error}`, { duration: 3000 })
       return false
     } finally {
       setProcessingAutoConfirm(false)

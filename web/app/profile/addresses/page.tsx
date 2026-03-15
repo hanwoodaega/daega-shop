@@ -124,10 +124,10 @@ export default function AddressesPage() {
 
       await refreshAddresses()
       setShowAddModal(false)
-      toast.success(editingAddress ? '배송지가 수정되었습니다.' : '배송지가 추가되었습니다.')
+      toast.success(editingAddress ? '배송지가 수정되었습니다.' : '배송지가 추가되었습니다.', { duration: 2000 })
     } catch (error: any) {
       console.error('배송지 저장 실패:', error)
-      toast.error(error.message || '배송지 저장에 실패했습니다.')
+      toast.error(error.message || '배송지 저장에 실패했습니다.', { duration: 3000 })
     } finally {
       setSaving(false)
     }
@@ -145,10 +145,10 @@ export default function AddressesPage() {
       }
 
       await refreshAddresses()
-      toast.success('배송지가 삭제되었습니다.', { id: 'address-delete' })
+      toast.success('배송지가 삭제되었습니다.', { id: 'address-delete', duration: 2000 })
     } catch (error: any) {
       console.error('배송지 삭제 실패:', error)
-      toast.error(error.message || '배송지 삭제에 실패했습니다.')
+      toast.error(error.message || '배송지 삭제에 실패했습니다.', { duration: 3000 })
     }
   }
 
@@ -164,10 +164,10 @@ export default function AddressesPage() {
       }
 
       await refreshAddresses()
-      toast.success('기본 배송지로 설정되었습니다.')
+      toast.success('기본 배송지로 설정되었습니다.', { duration: 2000 })
     } catch (error: any) {
       console.error('기본 배송지 설정 실패:', error)
-      toast.error(error.message || '기본 배송지 설정에 실패했습니다.')
+      toast.error(error.message || '기본 배송지 설정에 실패했습니다.', { duration: 3000 })
     }
   }
 
