@@ -78,10 +78,13 @@ export async function DELETE(
     return NextResponse.json({ error: deleteError.message }, { status: 500 })
   }
 
-  const url = row.image_url as string
-  const match = url.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/)
-  if (match?.[1]) {
-    await supabaseAdmin.storage.from('product-descriptions').remove([match[1]])
+  // image_url에서 storage 경로 추출
+  if (row.image_url) {
+    const url = row.image_url as string
+    const match = url.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/)
+    if (match?.[1]) {
+      await supabaseAdmin.storage.from('product-descriptions').remove([match[1]])
+    }
   }
 
   return NextResponse.json({ ok: true })

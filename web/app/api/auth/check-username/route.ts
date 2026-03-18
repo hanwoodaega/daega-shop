@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { normalizeUsername } from '@/lib/auth/otp-utils'
+import { getClientIpFromHeaders, rateLimitOrThrow } from '@/lib/auth/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIpFromHeaders(request.headers)
+    rateLimitOrThrow({ key: `auth:check-username:${ip}`, limit: 60, windowMs: 60_000 })
+
     const body = await request.json()
     const { username } = body
 
@@ -31,6 +35,9 @@ export async function POST(request: NextRequest) {
       available: !existingUser,
     })
   } catch (error: any) {
+    if (error?.code === 'rate_limited') {
+      return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 })
+    }
     return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
   }
 }

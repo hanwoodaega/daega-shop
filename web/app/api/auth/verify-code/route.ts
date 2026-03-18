@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { generateToken, hashOtp, hashToken, normalizePhone } from '@/lib/auth/otp-utils'
+import { getClientIpFromHeaders, rateLimitOrThrow } from '@/lib/auth/rate-limit'
+import { buildServerTimingHeader } from '@/lib/utils/server-timing'
 
 const MAX_ATTEMPTS = 5
 const LOCK_MINUTES = 10
@@ -11,9 +13,15 @@ const VERIFICATION_TOKEN_MINUTES = 10
  * POST /api/auth/verify-code
  */
 export async function POST(request: NextRequest) {
+  const t0 = Date.now()
   try {
+    const ip = getClientIpFromHeaders(request.headers)
+    // 인증번호 검증은 brute-force 위험 → 분당 제한
+    rateLimitOrThrow({ key: `auth:verify-otp:${ip}`, limit: 30, windowMs: 60_000 })
+
     const body = await request.json()
     const { phone, code, purpose } = body
+    const tParse = Date.now()
 
     if (!phone || !code || !purpose) {
       return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
@@ -39,8 +47,18 @@ export async function POST(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
+    const tRead = Date.now()
 
     if (!latestOtp) {
+      const headers = new Headers()
+      headers.set(
+        'Server-Timing',
+        buildServerTimingHeader([
+          { name: 'parse', durMs: tParse - t0 },
+          { name: 'read', durMs: tRead - tParse },
+          { name: 'total', durMs: Date.now() - t0 },
+        ])
+      )
       return NextResponse.json({ error: '인증번호가 만료되었습니다. 다시 요청해주세요.' }, { status: 400 })
     }
 
@@ -84,16 +102,32 @@ export async function POST(request: NextRequest) {
         verification_expires_at: verificationExpiresAt,
       })
       .eq('id', latestOtp.id)
+    const tUpdate = Date.now()
 
+    const headers = new Headers()
+    headers.set(
+      'Server-Timing',
+      buildServerTimingHeader([
+        { name: 'parse', durMs: tParse - t0 },
+        { name: 'read', durMs: tRead - tParse },
+        { name: 'update', durMs: tUpdate - tRead },
+        { name: 'total', durMs: tUpdate - t0 },
+      ])
+    )
     return NextResponse.json({
       success: true,
       message: '인증이 완료되었습니다.',
       verificationToken,
       expiresIn: VERIFICATION_TOKEN_MINUTES * 60,
-    })
+    }, { headers })
   } catch (error: any) {
+    if (error?.code === 'rate_limited') {
+      return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 })
+    }
     console.error('인증번호 검증 오류:', error)
-    return NextResponse.json({ error: error.message || '서버 오류가 발생했습니다.' }, { status: 500 })
+    const headers = new Headers()
+    headers.set('Server-Timing', buildServerTimingHeader([{ name: 'total', durMs: Date.now() - t0 }]))
+    return NextResponse.json({ error: error.message || '서버 오류가 발생했습니다.' }, { status: 500, headers })
   }
 }
 

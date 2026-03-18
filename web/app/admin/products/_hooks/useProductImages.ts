@@ -61,11 +61,11 @@ export function useProductImages({ productId }: UseProductImagesProps) {
       const data = await res.json()
 
       if (!res.ok) {
-        toast.error(data.error || '이미지 업로드 실패')
+        toast.error(data.error || '이미지 업로드 실패', { duration: 3000 })
         return false
       }
 
-      // 2. product_images 테이블에 추가
+      // 2. product_images 테이블에 추가 (URL만 저장)
       const addRes = await fetch(`/api/admin/products/${targetProductId}/images`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,16 +78,16 @@ export function useProductImages({ productId }: UseProductImagesProps) {
           await fetchProductImages()
         }
         if (fileInputRef.current) fileInputRef.current.value = ''
-        toast.success('이미지가 업로드되었습니다.')
+        toast.success('이미지가 업로드되었습니다.', { duration: 2000 })
         return true
       } else {
         const addData = await addRes.json()
-        toast.error(addData.error || '이미지 추가 실패')
+        toast.error(addData.error || '이미지 추가 실패', { duration: 3000 })
         return false
       }
     } catch (error) {
       console.error('이미지 업로드 실패:', error)
-      toast.error('이미지 업로드에 실패했습니다.')
+      toast.error('이미지 업로드에 실패했습니다.', { duration: 3000 })
       return false
     } finally {
       setUploadingImage(false)

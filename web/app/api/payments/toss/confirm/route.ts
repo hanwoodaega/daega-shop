@@ -237,12 +237,26 @@ export async function POST(request: NextRequest) {
           .from('order_items')
           .select('product_id')
           .eq('order_id', existingOrder.id)
-        return NextResponse.json({
-          success: true,
-          order: existingOrder,
-          gift_token: existingOrder.gift_token ?? null,
-          ...buildRedirectResponseFromOrder(existingOrder, orderItems || []),
-        })
+            const redirectPayload = buildRedirectResponseFromOrder(existingOrder, orderItems || [])
+            const res = NextResponse.json({
+              success: true,
+              order: existingOrder,
+              gift_token: existingOrder.gift_token ?? null,
+              ...redirectPayload,
+            })
+            if (redirectPayload.isGuest && existingOrder.id) {
+              const cookiePayload = {
+                orderId: existingOrder.id,
+                createdAt: new Date().toISOString(),
+              }
+              res.cookies.set('guest_order_lookup', JSON.stringify(cookiePayload), {
+                path: '/order-lookup',
+                httpOnly: true,
+                sameSite: 'lax',
+                maxAge: 60 * 30,
+              })
+            }
+            return res
       }
 
       // 4) draft의 amount·payload만 사용 (클라이언트 orderInput 무시)
@@ -467,12 +481,26 @@ export async function POST(request: NextRequest) {
       if (existingOrder) {
         const giftToken = existingOrder.gift_token ?? null
         const payloadLegacy = orderInput
-        return NextResponse.json({
+        const redirectPayload = buildRedirectResponse(existingOrder, payloadLegacy)
+        const res = NextResponse.json({
           success: true,
           order: existingOrder,
           gift_token: giftToken,
-          ...buildRedirectResponse(existingOrder, payloadLegacy),
+          ...redirectPayload,
         })
+        if (redirectPayload.isGuest && existingOrder.id) {
+          const cookiePayload = {
+            orderId: existingOrder.id,
+            createdAt: new Date().toISOString(),
+          }
+          res.cookies.set('guest_order_lookup', JSON.stringify(cookiePayload), {
+            path: '/api/orders/lookup',
+            httpOnly: true,
+            sameSite: 'lax',
+            maxAge: 60 * 30,
+          })
+        }
+        return res
       }
     }
 
@@ -704,13 +732,26 @@ export async function POST(request: NextRequest) {
     }
 
     const redirectPayload = buildRedirectResponse(order, payload)
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       order,
       gift_token: giftToken,
       ...redirectPayload,
       cartUserId: order?.user_id ?? uid ?? null,
     })
+    if (redirectPayload.isGuest && order?.id) {
+      const cookiePayload = {
+        orderId: order.id,
+        createdAt: new Date().toISOString(),
+      }
+      res.cookies.set('guest_order_lookup', JSON.stringify(cookiePayload), {
+        path: '/api/orders/lookup',
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 60 * 30,
+      })
+    }
+    return res
     } catch (phase3Error: unknown) {
       // 토스 승인 성공 후 주문/포인트/쿠폰/장바구니 등 DB 오류. draft는 삭제하지 않음(재시도 시 idempotency로 처리 가능)
       console.error('[toss/confirm] 주문 저장 중 오류:', phase3Error)

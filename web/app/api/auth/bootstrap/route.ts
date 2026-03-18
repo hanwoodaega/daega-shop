@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { getUserFromRequest } from '@/lib/auth/auth-server'
 import { fetchCartItemsForUser } from '@/lib/cart/cart-service'
+import { buildServerTimingHeader } from '@/lib/utils/server-timing'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,18 +30,31 @@ const buildEmptySync = (): { cart: BootstrapSyncResult; wishlist: BootstrapSyncR
 })
 
 export async function POST(request: NextRequest) {
+  const t0 = Date.now()
   try {
     const includeSync = request.nextUrl.searchParams.get('includeSync') === 'true'
       || request.nextUrl.searchParams.get('includeSync') === '1'
 
     const user = await getUserFromRequest(request)
+    const tAuth = Date.now()
     if (!user) {
-      return NextResponse.json({
-        authenticated: false,
-        user: null,
-        onboarding: null,
-        sync: buildEmptySync(),
-      })
+      const headers = new Headers()
+      headers.set(
+        'Server-Timing',
+        buildServerTimingHeader([
+          { name: 'auth', durMs: tAuth - t0 },
+          { name: 'total', durMs: Date.now() - t0 },
+        ])
+      )
+      return NextResponse.json(
+        {
+          authenticated: false,
+          user: null,
+          onboarding: null,
+          sync: buildEmptySync(),
+        },
+        { headers }
+      )
     }
 
     const supabase = await createSupabaseServerClient()
@@ -49,6 +63,7 @@ export async function POST(request: NextRequest) {
       .select('phone, phone_verified_at, name, status')
       .eq('id', user.id)
       .maybeSingle()
+    const tProfile = Date.now()
 
     const status = profile?.status || 'pending'
     const requiresPhoneVerification = !profile?.phone || !profile?.phone_verified_at
@@ -65,10 +80,22 @@ export async function POST(request: NextRequest) {
     }
 
     if (!includeSync || status !== 'active') {
-      return NextResponse.json({
-        ...baseResponse,
-        sync: buildEmptySync(),
-      })
+      const headers = new Headers()
+      headers.set(
+        'Server-Timing',
+        buildServerTimingHeader([
+          { name: 'auth', durMs: tAuth - t0 },
+          { name: 'profile', durMs: tProfile - tAuth },
+          { name: 'total', durMs: Date.now() - t0 },
+        ])
+      )
+      return NextResponse.json(
+        {
+          ...baseResponse,
+          sync: buildEmptySync(),
+        },
+        { headers }
+      )
     }
 
     const body = await request.json().catch(() => ({}))
@@ -164,25 +191,46 @@ export async function POST(request: NextRequest) {
     }
 
     const syncResult = await withTimeout(syncTask(), SYNC_TIMEOUT_MS)
+    const tSync = Date.now()
     if (!syncResult) {
+      const headers = new Headers()
+      headers.set(
+        'Server-Timing',
+        buildServerTimingHeader([
+          { name: 'auth', durMs: tAuth - t0 },
+          { name: 'profile', durMs: tProfile - tAuth },
+          { name: 'sync', durMs: tSync - tProfile },
+          { name: 'total', durMs: Date.now() - t0 },
+        ])
+      )
       return NextResponse.json({
         ...baseResponse,
         sync: buildEmptySync(),
-      })
+      }, { headers })
     }
 
+    const headers = new Headers({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      Pragma: 'no-cache',
+      Expires: '0',
+    })
+    headers.set(
+      'Server-Timing',
+      buildServerTimingHeader([
+        { name: 'auth', durMs: tAuth - t0 },
+        { name: 'profile', durMs: tProfile - tAuth },
+        { name: 'sync', durMs: tSync - tProfile },
+        { name: 'total', durMs: Date.now() - t0 },
+      ])
+    )
     return NextResponse.json(
       { ...baseResponse, sync: syncResult },
-      {
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-          Pragma: 'no-cache',
-          Expires: '0',
-        },
-      }
+      { headers }
     )
   } catch (error: any) {
     console.error('부트스트랩 처리 오류:', error)
-    return NextResponse.json({ error: error?.message || '서버 오류' }, { status: 500 })
+    const headers = new Headers()
+    headers.set('Server-Timing', buildServerTimingHeader([{ name: 'total', durMs: Date.now() - t0 }]))
+    return NextResponse.json({ error: error?.message || '서버 오류' }, { status: 500, headers })
   }
 }

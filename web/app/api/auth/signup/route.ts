@@ -2,13 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { hashToken, normalizePhone, normalizeUsername, usernameToEmail } from '@/lib/auth/otp-utils'
 import { issuePhoneVerificationCoupon } from '@/lib/coupon/coupon-issue.server'
+import { getClientIpFromHeaders, rateLimitOrThrow } from '@/lib/auth/rate-limit'
+import { buildServerTimingHeader } from '@/lib/utils/server-timing'
 
 const MIN_PASSWORD_LENGTH = 8
 
 export async function POST(request: NextRequest) {
+  const t0 = Date.now()
   try {
+    const ip = getClientIpFromHeaders(request.headers)
+    rateLimitOrThrow({ key: `auth:signup:${ip}`, limit: 20, windowMs: 60_000 })
+
     const body = await request.json()
     const { username, password, name, phone, verificationToken, terms } = body
+    const tParse = Date.now()
 
     if (!username || !password || !name || !phone || !verificationToken) {
       return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
@@ -33,6 +40,7 @@ export async function POST(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
+    const tOtp = Date.now()
 
     if (!latestOtp?.verification_token_hash) {
       return NextResponse.json({ error: '인증 정보가 없습니다.' }, { status: 400 })
@@ -57,6 +65,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('phone', normalizedPhone)
       .maybeSingle()
+    const tPhoneCheck = Date.now()
 
     if (existingPhone) {
       return NextResponse.json({ error: '이미 가입된 휴대폰 번호입니다.' }, { status: 409 })
@@ -67,6 +76,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('username_normalized', normalizedUsername)
       .maybeSingle()
+    const tUserCheck = Date.now()
 
     if (existingUsername) {
       return NextResponse.json({ error: '이미 사용 중인 아이디입니다.' }, { status: 409 })
@@ -85,6 +95,7 @@ export async function POST(request: NextRequest) {
         phone: normalizedPhone,
       },
     })
+    const tCreateUser = Date.now()
 
     if (createError || !createdUser?.user) {
       return NextResponse.json({ error: createError?.message || '회원가입에 실패했습니다.' }, { status: 500 })
@@ -102,6 +113,7 @@ export async function POST(request: NextRequest) {
         username_normalized: normalizedUsername,
         status: 'active',
       }, { onConflict: 'id' })
+    const tUpsert = Date.now()
 
     if (profileError) {
       const message = String(profileError.message || '')
@@ -136,11 +148,14 @@ export async function POST(request: NextRequest) {
       const { error: termsError } = await supabaseAdmin
         .from('user_terms')
         .upsert(termsRecords, { onConflict: 'user_id,terms_type' })
+      const tTerms = Date.now()
 
       if (termsError) {
         console.error('약관 동의 저장 실패:', termsError)
         return NextResponse.json({ error: '약관 동의 저장에 실패했습니다.' }, { status: 500 })
       }
+      // keep timing mark if terms existed
+      void tTerms
     }
 
     try {
@@ -148,11 +163,31 @@ export async function POST(request: NextRequest) {
     } catch (couponError) {
       console.error('휴대폰 인증 쿠폰 지급 실패:', couponError)
     }
+    const tCoupon = Date.now()
 
-    return NextResponse.json({ success: true })
+    const headers = new Headers()
+    headers.set(
+      'Server-Timing',
+      buildServerTimingHeader([
+        { name: 'parse', durMs: tParse - t0 },
+        { name: 'otp', durMs: tOtp - tParse },
+        { name: 'phone', durMs: tPhoneCheck - tOtp },
+        { name: 'user', durMs: tUserCheck - tPhoneCheck },
+        { name: 'create', durMs: tCreateUser - tUserCheck },
+        { name: 'upsert', durMs: tUpsert - tCreateUser },
+        { name: 'coupon', durMs: tCoupon - tUpsert },
+        { name: 'total', durMs: tCoupon - t0 },
+      ])
+    )
+    return NextResponse.json({ success: true }, { headers })
   } catch (error: any) {
+    if (error?.code === 'rate_limited') {
+      return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 })
+    }
     console.error('Signup error:', error)
-    return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
+    const headers = new Headers()
+    headers.set('Server-Timing', buildServerTimingHeader([{ name: 'total', durMs: Date.now() - t0 }]))
+    return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500, headers })
   }
 }
 

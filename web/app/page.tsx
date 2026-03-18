@@ -8,6 +8,7 @@ import WeeklyDiscountSection from '@/components/sections/WeeklyDiscountSection'
 import CollectionSectionUI from '@/components/collection/CollectionSectionUI'
 import RecommendationSection from '@/components/sections/RecommendationSection'
 import HeroSlider from '@/components/sections/HeroSlider'
+import HomeHeroUserBanner from '@/components/sections/HomeHeroUserBanner'
 import BannerSection from '@/components/banner/BannerSection'
 import { getServerBaseUrl } from '@/lib/utils/server-url'
 
@@ -143,11 +144,10 @@ export default async function Home() {
         <div className="lg:relative lg:left-1/2 lg:right-1/2 lg:-ml-[50vw] lg:-mr-[50vw] lg:w-screen">
           <HeroSlider initialSlides={heroSlides} />
         </div>
+        <HomeHeroUserBanner />
 
-        <section className="py-8 bg-white">
-          <div className="container mx-auto px-4">
-            <CategoryGrid selectedCategory="" />
-          </div>
+        <section className="pt-1 pb-1 bg-gray-100 lg:bg-white">
+          <CategoryGrid selectedCategory="" />
         </section>
 
         {collectionSections

@@ -48,7 +48,7 @@ export default function TermsPage() {
             <h2 className="text-2xl font-semibold mb-4">제3조 (약관의 명시와 개정)</h2>
             <p className="text-gray-700 leading-relaxed mb-3">
               ① 회사는 이 약관의 내용과 상호, 영업소 소재지, 대표자의 성명, 사업자등록번호, 
-              통신판매업신고번호, 연락처(전화, 팩스, 전자우편 주소 등) 등을 이용자가 알 수 있도록 
+              통신판매업신고번호, 연락처(전화, 이메일 등) 등을 이용자가 알 수 있도록 
               초기 서비스화면에 게시합니다.
             </p>
             <p className="text-gray-700 leading-relaxed">

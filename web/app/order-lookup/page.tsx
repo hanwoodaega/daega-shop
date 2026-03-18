@@ -316,6 +316,8 @@ function OrderLookupContent() {
   const [order, setOrder] = useState<OrderWithItems | null>(null)
   const [guestCancelToken, setGuestCancelToken] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  /** 결제 직후(done=1) 비회원: 세션 조회 시도 전/중에는 폼 대신 로딩만 표시 */
+  const [sessionCheckDone, setSessionCheckDone] = useState(false)
 
   const doneMessage = searchParams?.get('done') === '1'
 
@@ -339,6 +341,47 @@ function OrderLookupContent() {
       router.replace('/orders')
     }
   }, [authLoading, user, router])
+
+  // 결제 직후 비회원 주문: 서버 세션(쿠키)에 저장된 주문이 있으면 인증 없이 한 번 바로 보여줌
+  useEffect(() => {
+    if (!doneMessage) return
+    if (authLoading) return
+    if (user) return
+    if (step !== 'form') return
+
+    let aborted = false
+    const run = async () => {
+      setLoading(true)
+      setError('')
+      try {
+        const res = await fetch('/api/orders/lookup/from-session', {
+          method: 'GET',
+          credentials: 'include',
+        })
+        if (!res.ok) {
+          // 세션이 없으면 기존 흐름 유지 (OTP)
+          return
+        }
+        const data = await res.json()
+        if (aborted) return
+        setOrder(data.order)
+        setGuestCancelToken(data.guestCancelToken ?? null)
+        setStep('result')
+      } catch {
+        // 세션 조회 실패 시에도 기존 OTP 플로우로 폴백
+      } finally {
+        if (!aborted) {
+          setLoading(false)
+          setSessionCheckDone(true)
+        }
+      }
+    }
+    run()
+
+    return () => {
+      aborted = true
+    }
+  }, [doneMessage, authLoading, user, step])
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -484,13 +527,23 @@ function OrderLookupContent() {
 
       <main className="flex-1 container mx-auto px-4 py-6 pb-24 lg:pb-6">
         <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">주문조회</h2>
-        {doneMessage && step === 'form' && (
+        {doneMessage && step === 'form' && sessionCheckDone && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800 w-full lg:max-w-sm lg:mx-auto">
             주문이 완료되었습니다. 아래에서 주문번호와 휴대폰 번호로 인증 후 조회하세요.
           </div>
         )}
 
-        {step === 'form' && (
+        {step === 'form' && doneMessage && !user && !sessionCheckDone && (
+          <div className="flex flex-col items-center justify-center py-16 gap-4">
+            <div
+              className="w-12 h-12 border-2 border-gray-200 border-t-gray-700 rounded-full animate-spin"
+              aria-hidden
+            />
+            <p className="text-base text-gray-600">주문 정보를 불러오는 중...</p>
+          </div>
+        )}
+
+        {step === 'form' && (sessionCheckDone || user || !doneMessage) && (
           <>
             <p className="text-sm lg:text-base text-gray-600 mb-4 text-center lg:mb-6">
               주문 시 입력한 <strong>주문번호</strong>와 <strong>휴대폰 번호</strong>를 입력한 뒤,

@@ -146,7 +146,6 @@ export default function RefundPage() {
                 <p className="text-sm text-gray-700 mb-2">다음의 경우 고객이 배송비를 부담합니다:</p>
                 <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
                   <li>단순 변심</li>
-                  <li>색상/사이즈 변경</li>
                   <li>고객 과실로 인한 훼손</li>
                 </ul>
               </div>

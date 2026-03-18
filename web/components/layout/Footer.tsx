@@ -74,8 +74,8 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-gray-300">
-        <div className="container mx-auto px-4 pt-6 pb-10">
-          <div className="flex flex-wrap gap-2 mb-4" style={{ fontSize: '11px' }}>
+        <div className="container mx-auto px-4 pt-6 pb-20 lg:pb-10">
+          <div className="flex flex-wrap gap-2 mb-4" style={{ fontSize: '12px' }}>
             {FOOTER_LINKS.map((link, index) => (
               <div key={link.href} className="flex items-center gap-2">
                 <Link 

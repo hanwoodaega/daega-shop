@@ -4,7 +4,18 @@
 
 // ==================== Categories ====================
 
-export const CATEGORIES = ['전체', '한우', '한돈', '수입육', '닭·오리', '가공육', '양념육', '과일·야채', '선물세트'] as const
+export const CATEGORIES = [
+  '전체',
+  '한우',
+  '한돈',
+  '수입육',
+  '닭·오리',
+  '양념육',
+  '가공육',
+  '바베큐',
+  '과일·야채',
+  '선물세트',
+] as const
 
 // 관리자용 (전체 제외) - 동적으로 생성
 export const ADMIN_CATEGORIES = CATEGORIES.filter(cat => cat !== '전체') as readonly string[]
@@ -25,7 +36,30 @@ export const MAIN_MENU_LINKS = [
 // 실제 링크는 getCategoryPath() 함수를 사용하는 것을 권장합니다.
 export const CATEGORY_LINKS = CATEGORIES.map(category => ({
   name: category,
-  href: category === '전체' ? '/products' : `/category/${category === '한우' ? 'hanwoo' : category === '한돈' ? 'handon' : category === '수입육' ? 'imported' : category === '닭·오리' ? 'chicken' : category === '가공육' ? 'processed' : category === '양념육' ? 'seasoned' : category === '과일·야채' ? 'produce' : category === '선물세트' ? 'gift-set' : category}`
+  href:
+    category === '전체'
+      ? '/products'
+      : `/category/${
+          category === '한우'
+            ? 'hanwoo'
+            : category === '한돈'
+            ? 'handon'
+            : category === '수입육'
+            ? 'imported'
+            : category === '닭·오리'
+            ? 'chicken'
+            : category === '양념육'
+            ? 'seasoned'
+            : category === '가공육'
+            ? 'processed'
+            : category === '바베큐'
+            ? 'bbq'
+            : category === '과일·야채'
+            ? 'produce'
+            : category === '선물세트'
+            ? 'gift-set'
+            : category
+        }`,
 }))
 
 // ==================== Order Status ====================
@@ -87,3 +121,4 @@ export const GIFT_MIN_AMOUNT = 50000
 
 /** 주문 초안(draft) 만료 시간(분). 이 시간 내 미결제 시 confirm 시 400 */
 export const DRAFT_EXPIRY_MINUTES = 30
+

@@ -21,17 +21,6 @@ function LoginForm() {
   const [error, setError] = useState(urlError || '')
   const [showSignupSuccess, setShowSignupSuccess] = useState(fromSignup)
 
-  const waitForSession = async () => {
-    for (let i = 0; i < 6; i += 1) {
-      const { data } = await supabase.auth.getSession()
-      if (data?.session?.access_token) {
-        return true
-      }
-      await new Promise(resolve => setTimeout(resolve, 200))
-    }
-    return false
-  }
-
   useEffect(() => {
     if (!fromSignup) return
     const params = new URLSearchParams(searchParams.toString())
@@ -44,35 +33,17 @@ function LoginForm() {
   useEffect(() => {
     let isMounted = true
     const checkExistingSession = async () => {
-      const res = await fetch('/api/auth/session', { cache: 'no-store' })
-      const data = await res.json().catch(() => ({}))
-      if (!isMounted) return
-      if (data?.user) {
-        router.replace(redirectAfterLogin)
-        return
-      }
       const { data: sessionData } = await supabase.auth.getSession()
+      if (!isMounted) return
       if (sessionData?.session?.access_token) {
-        try {
-          const statusRes = await fetch('/api/auth/onboarding-status', {
-            cache: 'no-store',
-            headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
-          })
-          const statusData = await statusRes.json().catch(() => ({}))
-          if (!isMounted) return
-          if (statusRes.ok && statusData?.requiresPhoneVerification) {
-            router.replace(`/auth/verify-phone?next=${encodeURIComponent(redirectAfterLogin)}`)
-          }
-        } catch {
-          // 세션은 있지만 온보딩 상태 확인 실패 시 로그인 화면 유지
-        }
+        router.replace(`/auth/finalize?next=${encodeURIComponent(redirectAfterLogin)}`)
       }
     }
     checkExistingSession().catch(() => {})
     return () => {
       isMounted = false
     }
-  }, [router])
+  }, [router, redirectAfterLogin])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,27 +70,8 @@ function LoginForm() {
       if (error) {
         throw error
       }
-
-      const { data: sessionData } = await supabase.auth.getSession()
-      const accessToken = sessionData?.session?.access_token
-      const onboardingRes = await fetch('/api/auth/onboarding-status', {
-        cache: 'no-store',
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-      })
-      const onboardingData = await onboardingRes.json().catch(() => ({}))
-
-      const isDeleted = onboardingData?.status === 'deleted'
-      const requiresPhoneVerification =
-        onboardingData?.status === 'deleted' || onboardingData?.requiresPhoneVerification
-      const targetPath = requiresPhoneVerification
-        ? isDeleted
-          ? `/auth/restore?next=${encodeURIComponent(redirectAfterLogin)}`
-          : `/auth/onboarding?next=${encodeURIComponent(redirectAfterLogin)}`
-        : redirectAfterLogin
-
-      await waitForSession()
       mutateUnreadCount().catch(() => {})
-      router.push(targetPath)
+      router.replace(`/auth/finalize?next=${encodeURIComponent(redirectAfterLogin)}`)
       router.refresh()
     } catch (error: any) {
       setError(error.message || '로그인에 실패했습니다.')

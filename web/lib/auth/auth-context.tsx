@@ -7,6 +7,7 @@ import { supabase, isSupabaseConfigured } from '../supabase/supabase'
 import { useCartStore, useWishlistStore } from '../store'
 import { clearCartSyncFlag, setCartItems } from '../cart/cart-db'
 import { setCartStorageUserId } from '../cart/cart-storage-key'
+import { deriveAuthState } from './auth-state'
 
 const ONBOARDING_AUTH_PATHS = [
   '/auth/login',
@@ -47,6 +48,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasSyncedRef = useRef(false)
   /** 세션당 cart/wishlist merge는 1회만. checkSession과 onAuthStateChange가 동시에 돌아가도 한 쪽만 보내도록 */
   const bootstrapCartSentRef = useRef(false)
+  /** 동일 accessToken으로 bootstrap 중복 호출 방지 (in-flight promise 공유) */
+  const bootstrapInFlightRef = useRef<Map<string, Promise<any>>>(new Map())
   /** bootstrap 중복 호출 시 "가장 마지막에 시작한 응답"만 setCartItems/setUser 반영. 응답 순서 비결정성 제거 */
   const bootstrapCallIdRef = useRef(0)
   /** 적용한 bootstrap callId. hasSyncedRef(boolean)만 쓰면 먼저 도착한 응답이 true를 세워 최신 응답 적용이 막힘 → callId 비교로 "더 최신면 적용" */
@@ -65,6 +68,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { user: null, sync: null, onboarding: null }
       }
 
+      const existing = bootstrapInFlightRef.current.get(accessToken)
+      if (existing) {
+        return await existing
+      }
+
       const requestedMerge = options?.includeCartForMerge !== false
       const includeCartForMerge = requestedMerge && !bootstrapCartSentRef.current
       if (includeCartForMerge) bootstrapCartSentRef.current = true
@@ -74,35 +82,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ? useCartStore.getState().items.filter((item) => item.id?.startsWith('cart-'))
           : []
 
-      const res = await fetch('/api/auth/bootstrap?includeSync=1', {
-        method: 'POST',
-        cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          cart: localCartItems,
-          wishlist: localWishlistItems,
-        }),
-      })
-      const data = await res.json().catch(() => ({}))
+      const promise = (async () => {
+        const res = await fetch('/api/auth/bootstrap?includeSync=1', {
+          method: 'POST',
+          cache: 'no-store',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            cart: localCartItems,
+            wishlist: localWishlistItems,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
 
-      if (!res.ok) {
-        return { user: null, sync: null, onboarding: null }
+        if (!res.ok) {
+          return { user: null, sync: null, onboarding: null }
+        }
+
+        const onboarding = data?.onboarding ?? null
+        const state = deriveAuthState({
+          authenticated: true,
+          status: data?.user?.status ?? onboarding?.status ?? 'pending',
+          requiresPhoneVerification: Boolean(onboarding?.requiresPhoneVerification),
+          nameMissing: Boolean(onboarding?.nameMissing),
+        })
+
+        return {
+          user: state === 'ACTIVE' ? session.user : null,
+          sync: data?.sync ?? null,
+          onboarding,
+          state,
+        }
+      })()
+
+      bootstrapInFlightRef.current.set(accessToken, promise)
+      try {
+        return await promise
+      } finally {
+        // 짧은 시간 내 중복 호출만 막으면 충분 → 잠깐 유지 후 해제
+        globalThis.setTimeout(() => {
+          bootstrapInFlightRef.current.delete(accessToken)
+        }, 2000)
       }
-
-      const onboarding = data?.onboarding ?? null
-      const requiresPhoneVerification = Boolean(onboarding?.requiresPhoneVerification)
-      const isActive = data?.user?.status === 'active'
-
-      if (!isActive || requiresPhoneVerification) {
-        return { user: null, sync: data?.sync ?? null, onboarding }
-      }
-
-      return { user: session.user, sync: data?.sync ?? null, onboarding }
     } catch {
-      return { user: null, sync: null, onboarding: null }
+      return { user: null, sync: null, onboarding: null, state: 'LOGGED_OUT' as const }
     }
   }
 

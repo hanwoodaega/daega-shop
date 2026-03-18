@@ -3,6 +3,8 @@ import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getUserFromServer } from '@/lib/auth/auth-server'
 import { generateOtpCode, hashOtp, normalizePhone, normalizeUsername } from '@/lib/auth/otp-utils'
 import { sendOtpSms } from '@/lib/notifications'
+import { getClientIpFromHeaders, rateLimitOrThrow } from '@/lib/auth/rate-limit'
+import { buildServerTimingHeader } from '@/lib/utils/server-timing'
 
 const OTP_EXPIRES_MINUTES = 3
 const RESEND_COOLDOWN_SECONDS = 60
@@ -21,9 +23,15 @@ const SOCIAL_LOGIN_MESSAGE = '카카오/네이버 계정으로 가입되어 있�
  * POST /api/auth/send-verification-code
  */
 export async function POST(request: NextRequest) {
+  const t0 = Date.now()
   try {
+    const ip = getClientIpFromHeaders(request.headers)
+    // OTP 발송은 남용 위험이 커서 더 타이트하게 제한
+    rateLimitOrThrow({ key: `auth:send-otp:${ip}`, limit: 20, windowMs: 60_000 })
+
     const body = await request.json()
     const { phone, purpose, username, allowMerge } = body
+    const tParse = Date.now()
 
     if (!phone || !purpose) {
       return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
@@ -39,6 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     const supabaseAdmin = createSupabaseAdminClient()
+    const tClient = Date.now()
 
     if (purpose === 'signup' || purpose === 'verify_phone') {
       let currentUserId: string | null = null
@@ -148,6 +157,7 @@ export async function POST(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
+    const tReadOtp = Date.now()
 
     if (latestOtp?.locked_until && new Date(latestOtp.locked_until) > now) {
       const remaining = Math.ceil((new Date(latestOtp.locked_until).getTime() - now.getTime()) / 1000)
@@ -192,14 +202,25 @@ export async function POST(request: NextRequest) {
       sendDetail = result.detail || null
     } catch (smsError: any) {
       console.error('SMS 발송 실패:', smsError)
+      const headers = new Headers()
+      headers.set(
+        'Server-Timing',
+        buildServerTimingHeader([
+          { name: 'parse', durMs: tParse - t0 },
+          { name: 'db', durMs: tReadOtp - tClient },
+          { name: 'sms', durMs: Date.now() - tReadOtp },
+          { name: 'total', durMs: Date.now() - t0 },
+        ])
+      )
       return NextResponse.json(
         {
           error: '인증번호 발송에 실패했습니다. 잠시 후 다시 시도해주세요.',
           detail: smsError?.message || 'sms_exception',
         },
-        { status: 500 }
+        { status: 500, headers }
       )
     }
+    const tSms = Date.now()
 
     if (!sendSuccess) {
       return NextResponse.json(
@@ -222,20 +243,48 @@ export async function POST(request: NextRequest) {
         resend_available_at: resendAvailableAt,
         locked_until: null,
       })
+    const tInsert = Date.now()
 
     if (insertError) {
-      return NextResponse.json({ error: '인증번호 저장에 실패했습니다.' }, { status: 500 })
+      const headers = new Headers()
+      headers.set(
+        'Server-Timing',
+        buildServerTimingHeader([
+          { name: 'parse', durMs: tParse - t0 },
+          { name: 'db', durMs: tReadOtp - tClient },
+          { name: 'sms', durMs: tSms - tReadOtp },
+          { name: 'insert', durMs: tInsert - tSms },
+          { name: 'total', durMs: tInsert - t0 },
+        ])
+      )
+      return NextResponse.json({ error: '인증번호 저장에 실패했습니다.' }, { status: 500, headers })
     }
 
+    const headers = new Headers()
+    headers.set(
+      'Server-Timing',
+      buildServerTimingHeader([
+        { name: 'parse', durMs: tParse - t0 },
+        { name: 'db', durMs: tReadOtp - tClient },
+        { name: 'sms', durMs: tSms - tReadOtp },
+        { name: 'insert', durMs: tInsert - tSms },
+        { name: 'total', durMs: tInsert - t0 },
+      ])
+    )
     return NextResponse.json({
       success: true,
       message: '인증번호가 발송되었습니다.',
       sentVia: 'sms',
       ...(process.env.NODE_ENV === 'development' && { code: verificationCode }),
-    })
+    }, { headers })
   } catch (error: any) {
+    if (error?.code === 'rate_limited') {
+      return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 })
+    }
     console.error('인증번호 발송 오류:', error)
-    return NextResponse.json({ error: error.message || '서버 오류가 발생했습니다.' }, { status: 500 })
+    const headers = new Headers()
+    headers.set('Server-Timing', buildServerTimingHeader([{ name: 'total', durMs: Date.now() - t0 }]))
+    return NextResponse.json({ error: error.message || '서버 오류가 발생했습니다.' }, { status: 500, headers })
   }
 }
 

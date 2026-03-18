@@ -1,0 +1,99 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { getUserFromRequest } from '@/lib/auth/auth-server'
+import { deriveAuthState, getPostAuthRedirect } from '@/lib/auth/auth-state'
+import { buildServerTimingHeader } from '@/lib/utils/server-timing'
+
+export const dynamic = 'force-dynamic'
+
+export async function GET(request: NextRequest) {
+  const t0 = Date.now()
+  const marks: Array<{ name: string; at: number }> = [{ name: 'start', at: t0 }]
+  try {
+    const nextPath = request.nextUrl.searchParams.get('next') || '/'
+
+    const user = await getUserFromRequest(request)
+    marks.push({ name: 'auth', at: Date.now() })
+    if (!user) {
+      const state = deriveAuthState({
+        authenticated: false,
+        status: null,
+        requiresPhoneVerification: false,
+      })
+      const headers = new Headers()
+      headers.set(
+        'Server-Timing',
+        buildServerTimingHeader([
+          { name: 'auth', durMs: marks[marks.length - 1].at - t0 },
+          { name: 'total', durMs: Date.now() - t0 },
+        ])
+      )
+      return NextResponse.json(
+        {
+        authenticated: false,
+        state,
+        redirectTo: getPostAuthRedirect({ state, nextPath }),
+        },
+        { headers }
+      )
+    }
+
+    const supabase = await createSupabaseServerClient()
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('phone, phone_verified_at, name, status')
+      .eq('id', user.id)
+      .maybeSingle()
+    marks.push({ name: 'profile', at: Date.now() })
+
+    if (profileError) {
+      const headers = new Headers()
+      headers.set(
+        'Server-Timing',
+        buildServerTimingHeader([
+          { name: 'auth', durMs: (marks.find((m) => m.name === 'auth')?.at ?? t0) - t0 },
+          { name: 'profile', durMs: Date.now() - (marks.find((m) => m.name === 'auth')?.at ?? t0) },
+          { name: 'total', durMs: Date.now() - t0 },
+        ])
+      )
+      return NextResponse.json(
+        { error: '사용자 상태 조회에 실패했습니다.' },
+        { status: 500, headers }
+      )
+    }
+
+    const requiresPhoneVerification = !profile?.phone || !profile?.phone_verified_at
+    const state = deriveAuthState({
+      authenticated: true,
+      status: profile?.status || 'pending',
+      requiresPhoneVerification,
+      nameMissing: !profile?.name,
+    })
+
+    const headers = new Headers()
+    const authAt = marks.find((m) => m.name === 'auth')?.at ?? t0
+    const profileAt = marks.find((m) => m.name === 'profile')?.at ?? Date.now()
+    headers.set(
+      'Server-Timing',
+      buildServerTimingHeader([
+        { name: 'auth', durMs: authAt - t0 },
+        { name: 'profile', durMs: profileAt - authAt },
+        { name: 'total', durMs: Date.now() - t0 },
+      ])
+    )
+    return NextResponse.json(
+      {
+        authenticated: true,
+        state,
+        redirectTo: getPostAuthRedirect({ state, nextPath }),
+      },
+      { headers }
+    )
+  } catch (error: any) {
+    console.error('auth finalize 오류:', error)
+    const headers = new Headers()
+    headers.set('Server-Timing', buildServerTimingHeader([{ name: 'total', durMs: Date.now() - t0 }]))
+    return NextResponse.json({ error: error?.message || '서버 오류' }, { status: 500, headers })
+  }
+}
+

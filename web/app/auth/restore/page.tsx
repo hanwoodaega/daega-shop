@@ -23,17 +23,12 @@ function RestoreAccountContent() {
         router.replace('/auth/login')
         return
       }
-      const res = await fetch('/api/auth/onboarding-status', {
+      const res = await fetch(`/api/auth/finalize?next=${encodeURIComponent(nextPath)}`, {
         cache: 'no-store',
         headers: { Authorization: `Bearer ${accessToken}` },
       })
       const data = await res.json().catch(() => ({}))
       if (!isMounted) return
-
-      if (data?.authenticated === false) {
-        router.replace('/auth/login')
-        return
-      }
 
       if (!res.ok) {
         setError(data?.error || '복구 정보를 확인할 수 없습니다.')
@@ -41,8 +36,9 @@ function RestoreAccountContent() {
         return
       }
 
-      if (data?.status !== 'deleted') {
-        router.replace(nextPath)
+      if (data?.state !== 'DELETED_RESTORE_REQUIRED') {
+        const redirectTo = typeof data?.redirectTo === 'string' ? data.redirectTo : nextPath
+        router.replace(redirectTo)
         return
       }
 
@@ -74,7 +70,7 @@ function RestoreAccountContent() {
       if (!res.ok) {
         throw new Error(data?.error || '계정 복구에 실패했습니다.')
       }
-      router.push(`/auth/onboarding?next=${encodeURIComponent(nextPath)}`)
+      router.replace(`/auth/finalize?next=${encodeURIComponent(nextPath)}`)
     } catch (err: any) {
       setError(err?.message || '계정 복구에 실패했습니다.')
     } finally {

@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       order: {
         id: order.id,
         order_number: order.order_number,
@@ -37,6 +37,22 @@ export async function GET(request: NextRequest) {
         shipping_phone: order.shipping_phone ?? null,
       },
     })
+
+    // 비회원 주문이면 세션용 조회 쿠키 설정 (order-lookup 전용, 짧은 만료)
+    if (!order.user_id) {
+      const payload = {
+        orderId: order.id,
+        createdAt: new Date().toISOString(),
+      }
+      res.cookies.set('guest_order_lookup', JSON.stringify(payload), {
+        path: '/api/orders/lookup',
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 60 * 30, // 30분
+      })
+    }
+
+    return res
   } catch (e) {
     console.error('[by-toss-order-id]', e)
     return NextResponse.json(

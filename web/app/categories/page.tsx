@@ -16,8 +16,9 @@ const CATEGORY_ICONS: { [key: string]: string } = {
   '한돈': '/images/categories/pork.svg',
   '수입육': '/images/categories/imported.svg',
   '닭·오리': '/images/categories/chicken.svg',
-  '가공육': '/images/categories/processed.svg',
   '양념육': '/images/categories/cooked.svg',
+  '가공육': '/images/categories/processed.svg',
+  '바베큐': '/images/categories/bbq.svg',
   '과일·야채': '/images/categories/vegetable.svg',
   '선물세트': '/images/categories/gift.svg',
 }

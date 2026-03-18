@@ -18,8 +18,10 @@ interface HeroSliderProps {
 export default function HeroSlider({ initialSlides }: HeroSliderProps) {
   const [slides, setSlides] = useState<HeroSlide[]>(initialSlides ?? [])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [loading, setLoading] = useState(!initialSlides)
   const [isDesktop, setIsDesktop] = useState(false)
+  const [mobileTransitionEnabled, setMobileTransitionEnabled] = useState(true)
+  const [mobileTranslatePct, setMobileTranslatePct] = useState(-100)
+  const [mobileAnimating, setMobileAnimating] = useState(false)
 
   // 화면 크기 기준으로 데스크톱 여부 판별 (lg 기준)
   useEffect(() => {
@@ -34,7 +36,6 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
 
   useEffect(() => {
     if (initialSlides && initialSlides.length > 0) {
-      setLoading(false)
       return
     }
 
@@ -47,8 +48,6 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
         }
       } catch (error) {
         console.error('히어로 슬라이드 조회 실패:', error)
-      } finally {
-        setLoading(false)
       }
     }
 
@@ -61,9 +60,7 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
   const visibleSlides = useMemo(() => {
     if (slideCount === 0) return [] as HeroSlide[]
 
-    if (!isDesktop) {
-      return [slides[currentIndex]]
-    }
+    if (!isDesktop) return [] as HeroSlide[]
 
     const group: HeroSlide[] = []
     const maxTiles = Math.min(4, slideCount)
@@ -74,28 +71,74 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
     return group
   }, [slides, slideCount, isDesktop, currentIndex])
 
+  const mobileTriplet = useMemo(() => {
+    if (slideCount === 0) return [] as HeroSlide[]
+    const prev = slides[(currentIndex - 1 + slideCount) % slideCount]
+    const curr = slides[currentIndex]
+    const next = slides[(currentIndex + 1) % slideCount]
+    return [prev, curr, next]
+  }, [slides, slideCount, currentIndex])
+
+  const scheduleMobileReset = (nextIndex: number) => {
+    window.setTimeout(() => {
+      setMobileTransitionEnabled(false)
+      setCurrentIndex(nextIndex)
+      setMobileTranslatePct(-100)
+      // 다음 tick에서 transition 복구
+      window.setTimeout(() => {
+        setMobileTransitionEnabled(true)
+        setMobileAnimating(false)
+      }, 30)
+    }, 600)
+  }
+
   // 자동 슬라이드 전환 (4초마다 한 장씩)
   useEffect(() => {
     if (slideCount <= 1) return
 
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % slideCount)
+      if (typeof window === 'undefined') return
+      if (isDesktop) {
+        setCurrentIndex((prev) => (prev + 1) % slideCount)
+        return
+      }
+      if (mobileAnimating) return
+      setMobileAnimating(true)
+      setMobileTranslatePct(-200)
+      const nextIndex = (currentIndex + 1) % slideCount
+      scheduleMobileReset(nextIndex)
     }, 4000)
 
     return () => clearInterval(interval)
-  }, [slideCount])
+  }, [slideCount, isDesktop, mobileAnimating, currentIndex])
 
   const handlePrev = () => {
     if (slideCount <= 1) return
-    setCurrentIndex((prev) => (prev - 1 + slideCount) % slideCount)
+    if (isDesktop) {
+      setCurrentIndex((prev) => (prev - 1 + slideCount) % slideCount)
+      return
+    }
+    if (mobileAnimating) return
+    setMobileAnimating(true)
+    setMobileTranslatePct(0)
+    const nextIndex = (currentIndex - 1 + slideCount) % slideCount
+    scheduleMobileReset(nextIndex)
   }
 
   const handleNext = () => {
     if (slideCount <= 1) return
-    setCurrentIndex((prev) => (prev + 1) % slideCount)
+    if (isDesktop) {
+      setCurrentIndex((prev) => (prev + 1) % slideCount)
+      return
+    }
+    if (mobileAnimating) return
+    setMobileAnimating(true)
+    setMobileTranslatePct(-200)
+    const nextIndex = (currentIndex + 1) % slideCount
+    scheduleMobileReset(nextIndex)
   }
 
-  const renderTile = (slide: HeroSlide, key: string, shouldPriority: boolean) => {
+  const renderTile = (slide: HeroSlide, shouldPriority: boolean) => {
     const image = (
       <Image
         src={slide.image_url}
@@ -105,13 +148,13 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
         // PC에서는 가운데 2장(각 480px), 모바일/탭에서는 전체 너비 사용
         sizes="(min-width: 1024px) 480px, 100vw"
         priority={shouldPriority}
+        loading={shouldPriority ? 'eager' : 'lazy'}
       />
     )
 
     if (slide.link_url) {
       return (
         <Link
-          key={key}
           href={slide.link_url}
           prefetch={false}
           className="relative block w-full h-full overflow-hidden"
@@ -122,37 +165,52 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
     }
 
     return (
-      <div key={key} className="relative w-full h-full overflow-hidden">
+      <div className="relative w-full h-full overflow-hidden">
         {image}
       </div>
     )
   }
 
   return (
-    <section className="relative overflow-hidden">
+    <section className="relative overflow-hidden bg-white">
       <div className="w-full relative">
-        {/* 모바일/태블릿: 5:3 배너 1장 */}
-        {visibleSlides[0] && (
-          <div className="relative w-full aspect-[5/3] lg:hidden">
-            {renderTile(visibleSlides[0], visibleSlides[0].id, true)}
+        {/* 모바일/태블릿: 5:3 배너 1장 (좌로 자연스럽게 슬라이드) */}
+        {mobileTriplet.length === 3 && (
+          <div className="relative w-full aspect-[5/3] lg:hidden overflow-hidden">
+            <div
+              className="flex h-full w-[300%]"
+              style={{
+                transform: `translateX(${mobileTranslatePct}%)`,
+                transition: mobileTransitionEnabled ? 'transform 600ms ease' : 'none',
+              }}
+            >
+              {mobileTriplet.map((slide, idx) => (
+                <div key={`${slide.id}-${idx}`} className="relative w-full h-full flex-shrink-0">
+                  {renderTile(slide, idx === 1)}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {/* PC: 가운데 2장은 1000px 고정, 양옆은 화면 여유에 따라 노출 */}
         <div className="hidden lg:block px-2 pt-0 pb-2">
-          <div className="relative max-w-[1000px] mx-auto h-[288px] overflow-visible">
+          <div className="relative w-full h-[288px] overflow-hidden">
             {visibleSlides.map((slide, idx) => {
-              const offset = idx - 1 // -1,0,1,2
+              // 가운데를 기준으로 양 옆으로 대칭 배치
+              // maxTiles 4일 때 centerIndex = 1.5 → offset: -1.5, -0.5, 0.5, 1.5
+              const maxTiles = Math.min(4, slideCount)
+              const centerIndex = (maxTiles - 1) / 2
+              const offset = idx - centerIndex
               return (
                 <div
-                  key={slide.id}
-                  className="absolute top-0 w-[480px] h-[288px] transition-transform duration-700"
-                    style={{
-                    left: `calc(${offset} * (480px + 8px))`,
-                    transitionDelay: `${idx * 120}ms`,
+                  key={idx}
+                  className="absolute top-0 left-1/2 w-[480px] h-[288px] transition-transform duration-700 will-change-transform"
+                  style={{
+                    transform: `translateX(calc(-50% + ${offset} * (480px + 8px)))`,
                   }}
                 >
-                  {renderTile(slide, `${slide.id}-${idx}`, idx === 1)}
+                  {renderTile(slide, true)}
                   {idx === 2 && slideCount > 1 && (
                     <div className="absolute bottom-2 right-2 px-2 py-1 rounded-full bg-black/60 text-white text-xs font-medium">
                       {currentIndex + 1}/{slideCount}

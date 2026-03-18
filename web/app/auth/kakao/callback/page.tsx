@@ -77,8 +77,7 @@ function KakaoCallbackContent() {
       if (!tokenHash) {
         const { data: existingSession } = await supabase.auth.getSession()
         if (existingSession?.session) {
-          const goPath = nextPath.startsWith('/auth/login') ? '/' : nextPath
-          router.replace(goPath)
+          router.replace(`/auth/finalize?next=${encodeURIComponent(nextPath)}`)
           return
         }
       }
@@ -136,36 +135,7 @@ function KakaoCallbackContent() {
         setMessage(mapErrorMessage('verify_failed'))
         return
       }
-
-      const bootstrapRes = await fetch('/api/auth/bootstrap?includeSync=0', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({}),
-      })
-      const bootstrapData = await bootstrapRes.json().catch(() => ({}))
-      if (!bootstrapRes.ok || bootstrapData?.authenticated === false) {
-        setErrorCode('verify_failed')
-        setStatus('error')
-        setMessage(mapErrorMessage('verify_failed'))
-        return
-      }
-
-      const isDeleted = bootstrapData?.user?.status === 'deleted'
-      const requiresPhone = Boolean(bootstrapData?.onboarding?.requiresPhoneVerification)
-      const safeNext = nextPath.startsWith('/auth/login') ? '/' : nextPath
-      let targetPath: string
-      if (isDeleted) {
-        targetPath = `/auth/restore?next=${encodeURIComponent(safeNext)}`
-      } else if (requiresPhone) {
-        targetPath = `/auth/verify-phone?next=${encodeURIComponent(safeNext)}`
-      } else {
-        targetPath = safeNext
-      }
-
-      window.location.href = targetPath
+      window.location.href = `/auth/finalize?next=${encodeURIComponent(nextPath)}`
     } catch (error: any) {
       const fallbackCode = 'verify_failed'
       setErrorCode(fallbackCode)

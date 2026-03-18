@@ -13,40 +13,7 @@ function OnboardingContent() {
   useEffect(() => {
     let isMounted = true
     const run = async () => {
-      const { data: sessionData } = await supabase.auth.getSession()
-      const accessToken = sessionData?.session?.access_token
-      if (!accessToken) {
-        router.replace('/auth/login')
-        return
-      }
-      const res = await fetch('/api/auth/onboarding-status', {
-        cache: 'no-store',
-        headers: { Authorization: `Bearer ${accessToken}` },
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!isMounted) return
-      if (!res.ok) {
-        setError(data?.error || '온보딩 정보를 확인할 수 없습니다.')
-        return
-      }
-      if (data?.authenticated === false) {
-        router.replace('/auth/login')
-        return
-      }
-
-      if (data?.status === 'deleted') {
-        router.replace(`/auth/restore?next=${encodeURIComponent(nextPath)}`)
-        return
-      }
-
-      const requiresPhoneVerification = Boolean(data?.requiresPhoneVerification)
-
-      if (requiresPhoneVerification) {
-        router.replace(`/auth/verify-phone?next=${encodeURIComponent(nextPath)}`)
-        return
-      }
-
-      router.replace(nextPath)
+      router.replace(`/auth/finalize?next=${encodeURIComponent(nextPath)}`)
     }
 
     run().catch((e) => {

@@ -39,7 +39,7 @@ export default function PrivacyPage() {
             <div className="bg-gray-50 p-4 rounded-lg mb-4">
               <p className="font-semibold mb-2">회원가입 시</p>
               <ul className="list-disc list-inside space-y-1 text-gray-700 ml-2">
-                <li>필수항목: 이름, 휴대전화번호, 이메일</li>
+                <li>필수항목: 이름, 휴대전화번호</li>
                 <li>선택항목: 생년월일</li>
               </ul>
             </div>
