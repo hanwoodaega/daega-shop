@@ -50,12 +50,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const bootstrapCartSentRef = useRef(false)
   /** 동일 accessToken으로 bootstrap 중복 호출 방지 (in-flight promise 공유) */
   const bootstrapInFlightRef = useRef<Map<string, Promise<any>>>(new Map())
+  /** includeSync=1 동기화는 로그인 후 백그라운드로 1회만 실행 */
+  const deferredSyncInFlightRef = useRef<Map<string, Promise<void>>>(new Map())
   /** bootstrap 중복 호출 시 "가장 마지막에 시작한 응답"만 setCartItems/setUser 반영. 응답 순서 비결정성 제거 */
   const bootstrapCallIdRef = useRef(0)
   /** 적용한 bootstrap callId. hasSyncedRef(boolean)만 쓰면 먼저 도착한 응답이 true를 세워 최신 응답 적용이 막힘 → callId 비교로 "더 최신면 적용" */
   const lastAppliedBootstrapIdRef = useRef(0)
   const currentUserRef = useRef<User | null>(null)
   const initialGetUserTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const runDeferredSync = async (
+    accessToken: string,
+    userId: string,
+    localCartItems: any[],
+    localWishlistItems: any[]
+  ) => {
+    const existing = deferredSyncInFlightRef.current.get(accessToken)
+    if (existing) {
+      await existing
+      return
+    }
+
+    const promise = (async () => {
+      try {
+        const res = await fetch('/api/auth/bootstrap?includeSync=1', {
+          method: 'POST',
+          cache: 'no-store',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            cart: localCartItems,
+            wishlist: localWishlistItems,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || data?.authenticated === false) return
+        if (currentUserRef.current?.id !== userId) return
+
+        const cartItems = data?.sync?.cart?.items
+        const wishlistItems = data?.sync?.wishlist?.items
+        if (data?.sync?.cart?.done && Array.isArray(cartItems)) {
+          setCartItems(cartItems, 'bootstrap')
+        }
+        if (data?.sync?.wishlist?.done && Array.isArray(wishlistItems)) {
+          useWishlistStore.setState({ items: wishlistItems })
+        }
+        hasSyncedRef.current = true
+      } catch {
+        // 동기화 실패는 로그인 성공을 막지 않음
+      }
+    })()
+
+    deferredSyncInFlightRef.current.set(accessToken, promise)
+    try {
+      await promise
+    } finally {
+      globalThis.setTimeout(() => {
+        deferredSyncInFlightRef.current.delete(accessToken)
+      }, 2000)
+    }
+  }
 
   const runPostLoginBootstrap = async (
     session: { user?: User | null; access_token?: string | null },
@@ -83,17 +139,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           : []
 
       const promise = (async () => {
-        const res = await fetch('/api/auth/bootstrap?includeSync=1', {
+        const res = await fetch('/api/auth/bootstrap?includeSync=0', {
           method: 'POST',
           cache: 'no-store',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({
-            cart: localCartItems,
-            wishlist: localWishlistItems,
-          }),
+          body: JSON.stringify({}),
         })
         const data = await res.json().catch(() => ({}))
 
@@ -111,7 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return {
           user: state === 'ACTIVE' ? session.user : null,
-          sync: data?.sync ?? null,
+          sync: null,
           onboarding,
           state,
         }
@@ -119,7 +172,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       bootstrapInFlightRef.current.set(accessToken, promise)
       try {
-        return await promise
+        const result = await promise
+        if (includeCartForMerge && session.user?.id) {
+          void runDeferredSync(accessToken, session.user.id, localCartItems, localWishlistItems)
+        }
+        return result
       } finally {
         // 짧은 시간 내 중복 호출만 막으면 충분 → 잠깐 유지 후 해제
         globalThis.setTimeout(() => {
