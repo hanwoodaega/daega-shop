@@ -31,7 +31,7 @@ function NotificationsPageContent() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/auth/login?next=/notifications')
+      router.push('/auth/login')
     }
   }, [authLoading, user, router])
 

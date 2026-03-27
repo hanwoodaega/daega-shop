@@ -374,7 +374,6 @@ export default function ProductDetailPageClient({
         show={showLoginPrompt}
         onClose={() => setShowLoginPrompt(false)}
         onGuestCheckout={() => router.push('/checkout')}
-        loginNextUrl="/checkout"
       />
       
       <PromotionModalWrapper />

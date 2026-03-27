@@ -34,7 +34,7 @@ function OrdersPageContent() {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/auth/login?next=/orders')
+      router.push('/auth/login')
     }
   }, [user, loading, router])
 

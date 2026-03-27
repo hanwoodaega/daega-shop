@@ -152,7 +152,7 @@ export default function BottomNavbar() {
                 if (user) {
                   router.push('/profile')
                 } else {
-                  router.push('/auth/login?next=/profile')
+                  router.push('/auth/login')
                 }
               }}
               className={`flex flex-col items-center justify-center flex-1 py-2 ${

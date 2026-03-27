@@ -120,10 +120,10 @@ function ProfileEditContent() {
           setLoadingData(false)
           return
         }
-        router.push('/auth/login?next=/profile/edit')
+        router.push('/auth/login')
       }
       checkLocalSession().catch(() => {
-        router.push('/auth/login?next=/profile/edit')
+        router.push('/auth/login')
       })
     }
   }, [user, loading, router])

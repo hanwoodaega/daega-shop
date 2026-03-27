@@ -8,6 +8,7 @@ import { useCartStore, useWishlistStore } from '../store'
 import { clearCartSyncFlag, setCartItems } from '../cart/cart-db'
 import { setCartStorageUserId } from '../cart/cart-storage-key'
 import { deriveAuthState } from './auth-state'
+import { sendAuthTelemetry } from './auth-telemetry'
 
 const ONBOARDING_AUTH_PATHS = [
   '/auth/login',
@@ -21,6 +22,8 @@ const ONBOARDING_AUTH_PATHS = [
   '/auth/find-password',
   '/auth/signup',
 ]
+
+const POST_LOGIN_FORCE_REDIRECT = ['/auth/onboarding', '/auth/verify-phone', '/auth/restore']
 
 interface AuthContextType {
   user: User | null
@@ -52,6 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const bootstrapInFlightRef = useRef<Map<string, Promise<any>>>(new Map())
   /** includeSync=1 동기화는 로그인 후 백그라운드로 1회만 실행 */
   const deferredSyncInFlightRef = useRef<Map<string, Promise<void>>>(new Map())
+  /** post-login finalize는 accessToken당 1회 */
+  const finalizeInFlightRef = useRef<Map<string, Promise<void>>>(new Map())
   /** bootstrap 중복 호출 시 "가장 마지막에 시작한 응답"만 setCartItems/setUser 반영. 응답 순서 비결정성 제거 */
   const bootstrapCallIdRef = useRef(0)
   /** 적용한 bootstrap callId. hasSyncedRef(boolean)만 쓰면 먼저 도착한 응답이 true를 세워 최신 응답 적용이 막힘 → callId 비교로 "더 최신면 적용" */
@@ -191,6 +196,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const shouldRedirectToOnboarding = (pathname: string | null) => {
     if (!pathname) return false
     return ONBOARDING_AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
+  }
+
+  const consumePostLoginNext = () => {
+    if (typeof window === 'undefined') return null
+    const value = sessionStorage.getItem('post_login_next')
+    if (!value) return null
+    sessionStorage.removeItem('post_login_next')
+    return value
+  }
+
+  const consumePostLoginProvider = () => {
+    if (typeof window === 'undefined') return 'unknown'
+    const value = sessionStorage.getItem('post_login_provider')
+    if (!value) return 'unknown'
+    sessionStorage.removeItem('post_login_provider')
+    return value as 'kakao' | 'naver' | 'google' | 'password' | 'unknown'
+  }
+
+  const runBackgroundFinalize = async (accessToken: string, nextPath: string, provider: 'kakao' | 'naver' | 'google' | 'password' | 'unknown') => {
+    const existing = finalizeInFlightRef.current.get(accessToken)
+    if (existing) {
+      await existing
+      return
+    }
+
+    const promise = (async () => {
+      const startedAt = Date.now()
+      try {
+        const res = await fetch(`/api/auth/finalize?next=${encodeURIComponent(nextPath)}`, {
+          cache: 'no-store',
+          headers: { Authorization: `Bearer ${accessToken}` },
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) return
+        const redirectTo = typeof data?.redirectTo === 'string' ? data.redirectTo : '/'
+        const currentPath = pathnameRef.current || '/'
+        const shouldForce = POST_LOGIN_FORCE_REDIRECT.some((p) => redirectTo.startsWith(p))
+        await sendAuthTelemetry({
+          type: 'background_finalize',
+          provider,
+          success: true,
+          redirect_to: redirectTo,
+          duration_ms: Date.now() - startedAt,
+        })
+        if (shouldForce && redirectTo !== currentPath) {
+          router.replace(redirectTo)
+        }
+      } catch {
+        await sendAuthTelemetry({
+          type: 'background_finalize',
+          provider,
+          success: false,
+          duration_ms: Date.now() - startedAt,
+        })
+        // 실패해도 로그인 유지
+      }
+    })()
+
+    finalizeInFlightRef.current.set(accessToken, promise)
+    try {
+      await promise
+    } finally {
+      globalThis.setTimeout(() => {
+        finalizeInFlightRef.current.delete(accessToken)
+      }, 2000)
+    }
   }
 
   useEffect(() => {
@@ -346,6 +417,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         hasSyncedRef.current = true
       }
       
+      if (justLoggedIn) {
+        const accessToken = typeof session?.access_token === 'string' ? session.access_token : ''
+        const nextPath = consumePostLoginNext() || '/'
+        if (accessToken) {
+          const provider = consumePostLoginProvider()
+          void runBackgroundFinalize(accessToken, nextPath, provider)
+        }
+      }
+
       if (wasLoggedOut) {
         hasSyncedRef.current = false
         bootstrapCartSentRef.current = false

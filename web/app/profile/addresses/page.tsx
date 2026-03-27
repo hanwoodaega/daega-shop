@@ -32,7 +32,7 @@ export default function AddressesPage() {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/auth/login?next=/profile/addresses')
+      router.push('/auth/login')
     }
   }, [user, loading, router])
 

@@ -146,7 +146,7 @@ function ProfilePageContent() {
             </>
           ) : (
             <div className="bg-pink-100 rounded-lg shadow-md px-6 pt-6 pb-4">
-              <Link href="/auth/login?next=/profile" className="flex items-center gap-2 hover:opacity-80 transition">
+              <Link href="/auth/login" className="flex items-center gap-2 hover:opacity-80 transition">
                 <h1 className="text-lg font-medium text-black">로그인</h1>
                 <span className="text-4xl font-medium text-black leading-none">·</span>
                 <h1 className="text-lg font-medium text-black">회원가입</h1>
@@ -324,7 +324,7 @@ function ProfilePageContent() {
             <div className="bg-pink-100 rounded-lg shadow-md px-6 pt-6 pb-4 mb-6">
               <div className="mb-3">
                 <Link
-                  href="/auth/login?next=/profile"
+                  href="/auth/login"
                   className="flex items-center gap-2 hover:opacity-80 transition"
                 >
                   <h1 className="text-lg font-medium text-black">

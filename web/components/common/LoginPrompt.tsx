@@ -1,6 +1,6 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import ConfirmModal from './ConfirmModal'
 
 interface LoginPromptProps {
@@ -20,11 +20,8 @@ export default function LoginPrompt({
   onGuestClick,
 }: LoginPromptProps) {
   const router = useRouter()
-  const pathname = usePathname()
-
   const handleLogin = () => {
-    const next = encodeURIComponent(pathname || '/')
-    router.push(`/auth/login?next=${next}`)
+    router.push('/auth/login')
     onClose()
   }
 

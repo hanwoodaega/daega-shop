@@ -36,7 +36,10 @@ function LoginForm() {
       const { data: sessionData } = await supabase.auth.getSession()
       if (!isMounted) return
       if (sessionData?.session?.access_token) {
-        router.replace(`/auth/finalize?next=${encodeURIComponent(redirectAfterLogin)}`)
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('post_login_next', redirectAfterLogin)
+        }
+        router.replace(redirectAfterLogin)
       }
     }
     checkExistingSession().catch(() => {})
@@ -71,7 +74,11 @@ function LoginForm() {
         throw error
       }
       mutateUnreadCount().catch(() => {})
-      router.replace(`/auth/finalize?next=${encodeURIComponent(redirectAfterLogin)}`)
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('post_login_next', redirectAfterLogin)
+        sessionStorage.setItem('post_login_provider', 'password')
+      }
+      router.replace(redirectAfterLogin)
       router.refresh()
     } catch (error: any) {
       setError(error.message || '로그인에 실패했습니다.')
@@ -81,6 +88,10 @@ function LoginForm() {
 
   const handleSocialLogin = async (provider: 'kakao' | 'google' | 'naver') => {
     try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('post_login_next', redirectAfterLogin)
+        sessionStorage.setItem('post_login_provider', provider)
+      }
       if (provider === 'kakao') {
         setSocialLoading('kakao')
         await handleKakaoLogin()
@@ -117,7 +128,10 @@ function LoginForm() {
     }
 
     // 기존 세션이 남아있으면 콜백에서 갱신이 스킵됨
-    await supabase.auth.signOut()
+    const { data: existingSession } = await supabase.auth.getSession()
+    if (existingSession?.session) {
+      await supabase.auth.signOut()
+    }
 
     const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
     const redirectUri = `${baseUrl}/api/auth/kakao`
@@ -161,7 +175,10 @@ function LoginForm() {
     }
 
     // 기존 세션이 남아있으면 콜백에서 갱신이 스킵됨
-    await supabase.auth.signOut()
+    const { data: existingSession } = await supabase.auth.getSession()
+    if (existingSession?.session) {
+      await supabase.auth.signOut()
+    }
     
     const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
     const redirectUri = `${baseUrl}/api/auth/naver`

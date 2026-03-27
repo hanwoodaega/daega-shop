@@ -1,20 +1,18 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useUnreadCount } from '@/lib/swr'
 
 export default function NotificationBell() {
   const router = useRouter()
-  const pathname = usePathname()
   const { user } = useAuth()
   const { unreadCount } = useUnreadCount()
 
   // 알림 페이지로 이동
   const handleClick = () => {
     if (!user) {
-      const next = encodeURIComponent(pathname || '/')
-      router.push(`/auth/login?next=${next}`)
+      router.push('/auth/login')
       return
     }
     router.push('/notifications')

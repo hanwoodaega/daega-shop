@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/supabase'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+import { sendAuthTelemetry } from '@/lib/auth/auth-telemetry'
 
 function KakaoCallbackContent() {
   const router = useRouter()
@@ -15,13 +16,13 @@ function KakaoCallbackContent() {
   const [errorDescription, setErrorDescription] = useState<string | null>(null)
   const handledRef = useRef(false)
 
-  /** setSession 직후엔 verifyData.session이 있으므로 최대 1~2회만 짧게 확인 (기존 6회×200ms 제거) */
+  /** setSession 직후에도 getSession이 비어있을 수 있어 1회만 확인 */
   const getSessionOnce = async (fallbackToken: string | null) => {
     const { data } = await supabase.auth.getSession()
-    if (data?.session?.access_token) return data.session.access_token
-    await new Promise((r) => setTimeout(r, 80))
-    const { data: data2 } = await supabase.auth.getSession()
-    return data2?.session?.access_token || fallbackToken
+    if (data?.session?.access_token) {
+      return { token: data.session.access_token, usedFallback: false, foundSession: true }
+    }
+    return { token: fallbackToken, usedFallback: true, foundSession: false }
   }
 
   useEffect(() => {
@@ -55,6 +56,7 @@ function KakaoCallbackContent() {
 
   const handleKakaoCallback = async () => {
     try {
+      const startedAt = Date.now()
       const tokenHash = searchParams.get('token_hash')
       const code = searchParams.get('code')
       const state = searchParams.get('state')
@@ -77,7 +79,10 @@ function KakaoCallbackContent() {
       if (!tokenHash) {
         const { data: existingSession } = await supabase.auth.getSession()
         if (existingSession?.session) {
-          router.replace(`/auth/finalize?next=${encodeURIComponent(nextPath)}`)
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('post_login_next', nextPath)
+          }
+          router.replace(nextPath)
           return
         }
       }
@@ -127,7 +132,16 @@ function KakaoCallbackContent() {
         })
       }
 
-      const accessToken = await getSessionOnce(initialToken)
+      const sessionResult = await getSessionOnce(initialToken)
+      const accessToken = sessionResult.token
+
+      await sendAuthTelemetry({
+        type: 'oauth_session_check',
+        provider: 'kakao',
+        session_found: sessionResult.foundSession,
+        used_fallback: sessionResult.usedFallback,
+        duration_ms: Date.now() - startedAt,
+      })
 
       if (!accessToken) {
         setErrorCode('verify_failed')
@@ -135,7 +149,10 @@ function KakaoCallbackContent() {
         setMessage(mapErrorMessage('verify_failed'))
         return
       }
-      window.location.href = `/auth/finalize?next=${encodeURIComponent(nextPath)}`
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('post_login_next', nextPath)
+      }
+      window.location.href = nextPath
     } catch (error: any) {
       const fallbackCode = 'verify_failed'
       setErrorCode(fallbackCode)

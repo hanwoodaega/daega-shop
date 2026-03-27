@@ -18,7 +18,7 @@ export default function PointsPage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/auth/login?next=/profile/points')
+      router.push('/auth/login')
     }
   }, [user, authLoading, router])
 

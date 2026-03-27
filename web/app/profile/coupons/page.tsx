@@ -17,7 +17,7 @@ export default function CouponsPage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/auth/login?next=/profile/coupons')
+      router.push('/auth/login')
     }
   }, [user, authLoading, router])
 

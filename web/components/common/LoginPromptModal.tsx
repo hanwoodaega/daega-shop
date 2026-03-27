@@ -7,7 +7,7 @@ interface LoginPromptModalProps {
   onClose: () => void
   /** 비회원 주문 클릭 시 호출 (예: 체크아웃으로 이동) */
   onGuestCheckout?: () => void
-  /** 로그인 후 리다이렉트할 URL (기본: /cart) */
+  /** 로그인 후 리다이렉트할 URL (제공 시에만 next 사용) */
   loginNextUrl?: string
 }
 
@@ -15,7 +15,7 @@ export default function LoginPromptModal({
   show,
   onClose,
   onGuestCheckout,
-  loginNextUrl = '/cart',
+  loginNextUrl,
 }: LoginPromptModalProps) {
   const router = useRouter()
 
@@ -27,7 +27,11 @@ export default function LoginPromptModal({
   }
 
   const handleLogin = () => {
-    router.push(`/auth/login?next=${encodeURIComponent(loginNextUrl)}`)
+    if (loginNextUrl) {
+      router.push(`/auth/login?next=${encodeURIComponent(loginNextUrl)}`)
+    } else {
+      router.push('/auth/login')
+    }
     onClose()
   }
 

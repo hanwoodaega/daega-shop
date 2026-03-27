@@ -280,7 +280,7 @@ function OrderLookupResult({
           {order.status === 'DELIVERED' && (
             <button
               type="button"
-              onClick={() => { window.location.href = `/auth/login?next=${encodeURIComponent('/orders')}` }}
+              onClick={() => { window.location.href = '/auth/login' }}
               className="flex-1 min-w-[100px] py-2.5 rounded-lg text-sm font-medium bg-primary-100 text-primary-900 hover:bg-primary-200 transition"
             >
               구매확정
@@ -289,7 +289,7 @@ function OrderLookupResult({
           {order.status === 'CONFIRMED' && (
             <button
               type="button"
-              onClick={() => { window.location.href = `/auth/login?next=${encodeURIComponent('/profile/reviews')}` }}
+              onClick={() => { window.location.href = '/auth/login' }}
               className="flex-1 min-w-[100px] py-2.5 rounded-lg text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 transition"
             >
               후기 작성

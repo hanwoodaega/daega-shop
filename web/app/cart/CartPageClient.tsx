@@ -277,6 +277,7 @@ function CartPageContent() {
         show={showLoginPrompt}
         onClose={closeLoginPrompt}
         onGuestCheckout={() => handleGuestCheckout(serverPricing?.discountedTotal)}
+        loginNextUrl="/cart"
       />
 
       <Footer />

@@ -87,13 +87,12 @@ export default function ProfileLayout({
   useEffect(() => {
     if (loading) return
     if (!user) {
-      const next = pathname || '/profile'
       if (typeof window !== 'undefined' && sessionStorage.getItem('logout_redirect')) {
         sessionStorage.removeItem('logout_redirect')
         router.replace('/auth/login')
         return
       }
-      router.replace(`/auth/login?next=${encodeURIComponent(next)}`)
+      router.replace('/auth/login')
     }
   }, [loading, user, pathname, router])
 
