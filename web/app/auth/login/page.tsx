@@ -130,7 +130,7 @@ function LoginForm() {
     // 기존 세션이 남아있으면 콜백에서 갱신이 스킵됨
     const { data: existingSession } = await supabase.auth.getSession()
     if (existingSession?.session) {
-      await supabase.auth.signOut()
+      void supabase.auth.signOut()
     }
 
     const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
@@ -177,7 +177,7 @@ function LoginForm() {
     // 기존 세션이 남아있으면 콜백에서 갱신이 스킵됨
     const { data: existingSession } = await supabase.auth.getSession()
     if (existingSession?.session) {
-      await supabase.auth.signOut()
+      void supabase.auth.signOut()
     }
     
     const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, '')
@@ -335,10 +335,7 @@ function LoginForm() {
                 className="w-full bg-[#FEE500] text-[#000000] py-3 rounded-lg font-semibold hover:bg-[#FDD835] transition flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {socialLoading === 'kakao' ? (
-                  <>
-                    <span className="inline-block w-5 h-5 border-2 border-[#000000] border-t-transparent rounded-full animate-spin" aria-hidden />
-                    <span>이동 중...</span>
-                  </>
+                  <span className="inline-block w-5 h-5 border-2 border-[#000000] border-t-transparent rounded-full animate-spin" aria-hidden />
                 ) : (
                   <>
                     <img 
@@ -358,10 +355,7 @@ function LoginForm() {
                 className="w-full bg-[#03C75A] text-white py-3 rounded-lg font-semibold hover:bg-[#02B350] transition flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {socialLoading === 'naver' ? (
-                  <>
-                    <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden />
-                    <span>이동 중...</span>
-                  </>
+                  <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden />
                 ) : (
                   <>
                     <span className="text-white font-bold text-lg">N</span>

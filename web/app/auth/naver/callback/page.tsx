@@ -3,15 +3,13 @@
 import { useEffect, useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/supabase'
-import Header from '@/components/layout/Header'
-import Footer from '@/components/layout/Footer'
 import { sendAuthTelemetry } from '@/lib/auth/auth-telemetry'
 
 function NaverCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
-  const [message, setMessage] = useState('네이버 로그인 처리 중...')
+  const [message, setMessage] = useState('로그인 처리 중...')
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const [errorDescription, setErrorDescription] = useState<string | null>(null)
   const handledRef = useRef(false)
@@ -88,7 +86,7 @@ function NaverCallbackContent() {
       }
 
       if (linked) {
-        setMessage('이미 가입된 계정이 있어 연결 중입니다...')
+        setMessage('기존 계정 확인 중...')
       }
 
       const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
@@ -149,42 +147,36 @@ function NaverCallbackContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-
-      <main className="flex-1 bg-gray-50 flex items-center justify-center py-12 px-4">
-        <div className="max-w-md w-full">
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            {status === 'loading' && (
-              <>
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#03C75A] mx-auto mb-4" />
-                <p className="text-gray-700">{message}</p>
-              </>
-            )}
-            {status === 'error' && (
-              <>
-                <div className="text-6xl mb-4">❌</div>
-                <h2 className="text-2xl font-bold mb-4 text-red-600">로그인 실패</h2>
-                <p className="text-gray-600 mb-2">{message}</p>
-                {errorDescription && (
-                  <p className="text-xs text-gray-400 mb-2">{errorDescription}</p>
-                )}
-                {errorCode && (
-                  <p className="text-xs text-gray-400 mb-4">오류 코드: {errorCode}</p>
-                )}
-                <button
-                  onClick={() => router.push('/auth/login')}
-                  className="bg-primary-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-900 transition"
-                >
-                  다시 시도하기
-                </button>
-              </>
-            )}
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="max-w-md w-full">
+        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          {status === 'loading' && (
+            <>
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-800 mx-auto mb-4" />
+              <p className="text-gray-700">네이버 로그인중</p>
+            </>
+          )}
+          {status === 'error' && (
+            <>
+              <div className="text-6xl mb-4">❌</div>
+              <h2 className="text-2xl font-bold mb-4 text-red-600">로그인 실패</h2>
+              <p className="text-gray-600 mb-2">{message}</p>
+              {errorDescription && (
+                <p className="text-xs text-gray-400 mb-2">{errorDescription}</p>
+              )}
+              {errorCode && (
+                <p className="text-xs text-gray-400 mb-4">오류 코드: {errorCode}</p>
+              )}
+              <button
+                onClick={() => router.push('/auth/login')}
+                className="bg-primary-800 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-900 transition"
+              >
+                다시 시도하기
+              </button>
+            </>
+          )}
         </div>
-      </main>
-
-      <Footer />
+      </div>
     </div>
   )
 }
@@ -192,17 +184,13 @@ function NaverCallbackContent() {
 export default function NaverCallbackPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 bg-gray-50 flex items-center justify-center py-12 px-4">
-          <div className="max-w-md w-full">
-            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#03C75A] mx-auto mb-4"></div>
-              <p className="text-gray-700">로딩 중...</p>
-            </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-800 mx-auto mb-4"></div>
+            <p className="text-gray-700">네이버 로그인중</p>
           </div>
-        </main>
-        <Footer />
+        </div>
       </div>
     }>
       <NaverCallbackContent />
