@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getUserFromServer } from '@/lib/auth/auth-server'
 import { usePoints } from '@/lib/point/points'
-import { sendOrderCompleteAlimtalk, sendGiftNotification } from '@/lib/notifications'
-import { getServerBaseUrl } from '@/lib/utils/server-url'
+import { sendOrderCompleteSms } from '@/lib/notifications'
 import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 import crypto from 'crypto'
 import { calculateOrderPricing, OrderInput, OrderItemSnapshot, PricingResult } from '@/lib/order/order-pricing.server'
@@ -669,7 +668,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 주문 완료 알림톡 수신 번호·선물용 baseUrl(선물일 때만 사용) 미리 준비
+    // 주문 완료 SMS 수신 번호 준비
     const orderCompletePhone = payload.is_gift
       ? String(payload.orderer_phone ?? '').replace(/\D/g, '').slice(0, 13)
       : (() => {
@@ -678,57 +677,31 @@ export async function POST(request: NextRequest) {
           const fromOrder = String(order?.shipping_phone ?? '').replace(/\D/g, '').slice(0, 13)
           return fromOrder.length >= 10 ? fromOrder : fromPayload
         })()
-    let giftBaseUrl: string | null = null
-    if (payload.is_gift && payload.gift_recipient_phone) {
-      giftBaseUrl = (await getServerBaseUrl()) || process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin
-    }
 
     const totalQty = itemSnapshots.reduce((sum, s) => sum + s.quantity, 0)
     const sortedByPrice = [...itemSnapshots].sort((a, b) => (b.final_unit_price ?? 0) - (a.final_unit_price ?? 0))
     const topProductName = sortedByPrice[0]?.product_name || '상품'
     const productName = totalQty <= 1 ? topProductName : `${topProductName} 외 ${totalQty - 1}개`
 
-    // 3) 알림톡: 서버리스에서 응답 후 작업이 보장되지 않으므로 await 후 반환 (누락 방지)
+    // 3) 주문 완료 SMS
     if (orderCompletePhone.length >= 10) {
       try {
-        const result = await sendOrderCompleteAlimtalk({
-          to: orderCompletePhone,
+        const result = await sendOrderCompleteSms({
+          phone: orderCompletePhone,
           orderNumber,
-          productName,
         })
         if (!result.success) {
-          console.error('[Alimtalk] 주문 완료 알림톡 발송 실패 (SMS fallback은 알리고에서 처리):', result.detail)
+          console.error('[SMS] 주문 완료 발송 실패:', result.detail)
         }
       } catch (e) {
-        console.error('주문 완료 알림톡 발송 실패:', e)
+        console.error('주문 완료 SMS 발송 실패:', e)
       }
     } else {
-      console.warn('[Alimtalk] 주문 완료 알림톡 미발송: 수신 번호 부족', {
+      console.warn('[SMS] 주문 완료 SMS 미발송: 수신 번호 부족', {
         orderNumber,
         is_gift: payload.is_gift,
         orderCompletePhoneLength: orderCompletePhone.length,
       })
-    }
-    if (payload.is_gift && giftToken && payload.gift_recipient_phone && giftExpiresAt && giftBaseUrl) {
-      try {
-        const receiveUrl = `${giftBaseUrl.replace(/\/$/, '')}/gift/receive/${giftToken}`
-        const senderName = (payload.gift_sender_name || payload.shipping_name || '보내는 분').trim() || '보내는 분'
-        const recipientName = (payload.gift_recipient_name || '').trim() || undefined
-        const d = new Date(giftExpiresAt)
-        const expiresAtFormatted = `${d.getMonth() + 1}월 ${d.getDate()}일`
-        await sendGiftNotification({
-          to: payload.gift_recipient_phone,
-          senderName,
-          recipientName,
-          message: payload.gift_message ?? null,
-          productName,
-          token: giftToken,
-          receiveUrl,
-          expiresAtFormatted,
-        })
-      } catch (e) {
-        console.error('선물 알림톡 발송 실패:', e)
-      }
     }
 
     const redirectPayload = buildRedirectResponse(order, payload)

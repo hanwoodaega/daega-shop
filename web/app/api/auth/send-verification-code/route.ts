@@ -16,10 +16,8 @@ const MAX_DAILY_SENDS: Record<string, number> = {
 }
 const LOCK_MINUTES = 10
 
-const SOCIAL_LOGIN_MESSAGE = '카카오/네이버 계정으로 가입되어 있습니다.\n카카오/네이버 로그인을 이용해주세요.'
-
 /**
- * 인증번호 발송 API (카카오 알림톡 + SMS fallback)
+ * 인증번호 발송 API (SMS)
  * POST /api/auth/send-verification-code
  */
 export async function POST(request: NextRequest) {
@@ -30,7 +28,7 @@ export async function POST(request: NextRequest) {
     rateLimitOrThrow({ key: `auth:send-otp:${ip}`, limit: 20, windowMs: 60_000 })
 
     const body = await request.json()
-    const { phone, purpose, username, allowMerge } = body
+    const { phone, purpose, username } = body
     const tParse = Date.now()
 
     if (!phone || !purpose) {
@@ -50,36 +48,11 @@ export async function POST(request: NextRequest) {
     const tClient = Date.now()
 
     if (purpose === 'signup' || purpose === 'verify_phone') {
-      let currentUserId: string | null = null
       if (purpose === 'verify_phone') {
         const user = await getUserFromServer()
         if (!user) {
           return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
         }
-        currentUserId = user.id
-      }
-
-      const { data: existingPhone } = await supabaseAdmin
-        .from('users')
-        .select('id, username_normalized')
-        .eq('phone', phoneNumber)
-        .maybeSingle()
-
-      if (existingPhone && existingPhone.id !== currentUserId && !allowMerge) {
-        if (!existingPhone.username_normalized) {
-          return NextResponse.json(
-            { error: SOCIAL_LOGIN_MESSAGE, code: 'PHONE_EXISTS' },
-            { status: 409 }
-          )
-        }
-        return NextResponse.json(
-          {
-            error: SOCIAL_LOGIN_MESSAGE,
-            code: 'PHONE_EXISTS',
-            actions: ['login', 'find-id', 'reset-password'],
-          },
-          { status: 409 }
-        )
       }
 
       if (username) {
@@ -114,7 +87,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (!existingUser.username_normalized) {
-        return NextResponse.json({ error: SOCIAL_LOGIN_MESSAGE }, { status: 409 })
+        return NextResponse.json({ error: '일치하는 사용자 정보가 없습니다.' }, { status: 404 })
       }
     }
 
@@ -131,10 +104,6 @@ export async function POST(request: NextRequest) {
         .select('id, username_normalized')
         .eq('phone', phoneNumber)
         .maybeSingle()
-
-      if (phoneUser && !phoneUser.username_normalized) {
-        return NextResponse.json({ error: SOCIAL_LOGIN_MESSAGE }, { status: 409 })
-      }
 
       const { data: existingUser } = await supabaseAdmin
         .from('users')

@@ -15,6 +15,7 @@ const ONBOARDING_AUTH_PATHS = [
   '/auth/onboarding',
   '/auth/verify-phone',
   '/auth/restore',
+  '/auth/signup/terms',
   '/auth/naver/callback',
   '/auth/kakao/callback',
   '/auth/callback',
@@ -23,7 +24,7 @@ const ONBOARDING_AUTH_PATHS = [
   '/auth/signup',
 ]
 
-const POST_LOGIN_FORCE_REDIRECT = ['/auth/onboarding', '/auth/verify-phone', '/auth/restore']
+const POST_LOGIN_FORCE_REDIRECT = ['/auth/onboarding', '/auth/verify-phone', '/auth/restore', '/auth/signup/terms']
 
 interface AuthContextType {
   user: User | null
@@ -165,6 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           status: data?.user?.status ?? onboarding?.status ?? 'pending',
           requiresPhoneVerification: Boolean(onboarding?.requiresPhoneVerification),
           nameMissing: Boolean(onboarding?.nameMissing),
+          termsRequired: Boolean(onboarding?.termsRequired),
         })
 
         return {

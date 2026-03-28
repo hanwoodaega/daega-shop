@@ -104,7 +104,6 @@ function VerifyPhoneContent() {
         body: JSON.stringify({
           phone: phone.replace(/[^0-9]/g, ''),
           purpose: 'verify_phone',
-          allowMerge: true,
         }),
       })
 
@@ -139,7 +138,6 @@ function VerifyPhoneContent() {
           phone: phone.replace(/[^0-9]/g, ''),
           code: verificationCode,
           name: name.trim(),
-          allowMerge: true,
         }),
       })
 
@@ -158,8 +156,8 @@ function VerifyPhoneContent() {
         }
       }
 
-      router.replace(nextPath)
-      router.refresh()
+      await supabase.auth.refreshSession()
+      router.replace(`/auth/finalize?next=${encodeURIComponent(nextPath)}`)
     } catch (err: any) {
       setError(err.message || '인증에 실패했습니다.')
     } finally {

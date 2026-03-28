@@ -4,7 +4,7 @@
  */
 
 import { getSmsServiceConfig, normalizePhone, isValidPhone, middleServerPost } from './aligo-core'
-import { getOtpMessage, getOrderLookupOtpMessage } from './templates'
+import { getOtpMessage, getOrderLookupOtpMessage, getOrderCompleteMessage } from './templates'
 
 export interface SendSmsResult {
   success: boolean
@@ -61,6 +61,39 @@ export async function sendOrderLookupOtpSms(phone: string, code: string): Promis
     return { success: true }
   }
   console.error('[SMS] 주문조회 OTP 발송 실패:', result.status, result.error)
+  return {
+    success: false,
+    detail: result.error || `http_${result.status}`,
+  }
+}
+
+/**
+ * 주문 완료 SMS 발송
+ */
+export async function sendOrderCompleteSms(params: {
+  phone: string
+  orderNumber: string
+}): Promise<SendSmsResult> {
+  const config = getSmsServiceConfig()
+  if (!config) {
+    console.warn('[SMS] 설정 없음: SMS_SERVICE_URL, SMS_SERVICE_TOKEN')
+    return { success: false, detail: 'config_missing' }
+  }
+
+  const to = normalizePhone(params.phone)
+  if (!isValidPhone(to)) {
+    return { success: false, detail: 'invalid_phone' }
+  }
+
+  const result = await middleServerPost('/sms/send-order-complete', {
+    to,
+    order_number: params.orderNumber,
+  })
+
+  if (result.ok) {
+    return { success: true }
+  }
+  console.error('[SMS] 주문 완료 발송 실패:', result.status, result.error)
   return {
     success: false,
     detail: result.error || `http_${result.status}`,

@@ -12,3 +12,12 @@ export function getOtpMessage(code: string, brandName = '대가정육마트'): s
 export function getOrderLookupOtpMessage(code: string, brandName = '대가정육마트'): string {
   return `[${brandName}] 주문조회 인증번호는 ${code}입니다.\n(타인에게 공유하지 마세요)`
 }
+
+/** 주문 완료 문자 본문 */
+export function getOrderCompleteMessage(
+  params: { orderNumber: string },
+  brandName = '대가'
+): string {
+  const { orderNumber } = params
+  return `[${brandName}] 주문이 완료되었습니다.\n주문번호: ${orderNumber}\n주문조회: https://thedaega.com/o`
+}

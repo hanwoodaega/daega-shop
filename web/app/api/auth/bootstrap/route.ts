@@ -68,6 +68,33 @@ export async function POST(request: NextRequest) {
     const status = profile?.status || 'pending'
     const requiresPhoneVerification = !profile?.phone || !profile?.phone_verified_at
     const nameMissing = !profile?.name
+    const metadataProvider = (user.user_metadata as any)?.provider
+    const appProvider = (user as any)?.app_metadata?.provider
+    const provider = metadataProvider || appProvider || 'phone'
+    const isSocialProvider = provider === 'kakao' || provider === 'naver'
+    const requiredTerms = ['service', 'privacy', 'third_party', 'age14']
+    let termsRequired = false
+
+    if (isSocialProvider && requiresPhoneVerification) {
+      const { data: termsRows, error: termsError } = await supabase
+        .from('user_terms')
+        .select('terms_type, agreed')
+        .eq('user_id', user.id)
+        .in('terms_type', requiredTerms)
+
+      if (termsError) {
+        console.error('약관 동의 조회 실패:', termsError)
+        termsRequired = true
+      } else {
+        const agreedByType = new Map<string, boolean>()
+        ;(termsRows || []).forEach((row: any) => {
+          if (row?.terms_type) {
+            agreedByType.set(row.terms_type, row.agreed === true)
+          }
+        })
+        termsRequired = requiredTerms.some((type) => !agreedByType.get(type))
+      }
+    }
 
     const baseResponse = {
       authenticated: true,
@@ -76,6 +103,7 @@ export async function POST(request: NextRequest) {
         status,
         requiresPhoneVerification,
         nameMissing,
+        termsRequired,
       },
     }
 

@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { phone, code, allowMerge, name } = body
+    const { phone, code, name } = body
 
     if (!phone || !code) {
       return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
@@ -28,21 +28,6 @@ export async function POST(request: NextRequest) {
     }
 
     const supabaseAdmin = createSupabaseAdminClient()
-
-    const existingPhone = await supabaseAdmin
-      .from('users')
-      .select('id, status')
-      .eq('phone', phoneNumber)
-      .neq('id', user.id)
-      .maybeSingle()
-
-    const existingUser = existingPhone?.data || null
-    const isDeletedAccount = existingUser?.status === 'deleted'
-    const shouldMerge = Boolean(existingUser) && (allowMerge || isDeletedAccount)
-
-    if (existingUser && !shouldMerge) {
-      return NextResponse.json({ error: '이미 가입된 휴대폰 번호입니다.' }, { status: 409 })
-    }
 
     const now = new Date()
     const { data: latestOtp } = await supabaseAdmin
@@ -99,104 +84,40 @@ export async function POST(request: NextRequest) {
       .eq('id', latestOtp.id)
 
     const nowIso = now.toISOString()
-    let targetUserId = user.id
-    let merged = false
+    const targetUserId = user.id
 
     const trimmedName = typeof name === 'string' ? name.trim() : ''
 
-    if (existingUser && shouldMerge) {
-      targetUserId = existingUser.id
-      merged = true
-
-      await supabaseAdmin
-        .from('oauth_identities')
-        .update({ user_id: targetUserId, updated_at: nowIso })
-        .eq('user_id', user.id)
-
-      const { data: targetProfile } = await supabaseAdmin
-        .from('users')
-        .select('name')
-        .eq('id', targetUserId)
-        .maybeSingle()
-
-      const updateData: Record<string, string> = { phone_verified_at: nowIso }
-      if (!targetProfile?.name && trimmedName) {
-        updateData.name = trimmedName
-      }
-      if (isDeletedAccount) {
-        updateData.phone = phoneNumber
-        updateData.restored_at = nowIso
-      }
-
-      await supabaseAdmin
-        .from('users')
-        .update(updateData)
-        .eq('id', targetUserId)
-
-      // 병합 성공 시 임시 계정 정리 (public.users + auth.users)
-      try {
-        await supabaseAdmin.from('users').delete().eq('id', user.id)
-        const adminAuth: any = supabaseAdmin.auth.admin as any
-        if (typeof adminAuth?.deleteUser === 'function') {
-          await adminAuth.deleteUser(user.id)
-        }
-      } catch (cleanupError) {
-        console.error('임시 계정 정리 실패:', cleanupError)
-      }
-    } else {
-      const updateData: Record<string, string> = {
-        phone: phoneNumber,
-        phone_verified_at: nowIso,
-      }
-      if (trimmedName) {
-        updateData.name = trimmedName
-      }
-      await supabaseAdmin
-        .from('users')
-        .update(updateData)
-        .eq('id', user.id)
+    const profilePayload: Record<string, string> = {
+      id: targetUserId,
+      phone: phoneNumber,
+      phone_verified_at: nowIso,
+      status: 'active',
+      updated_at: nowIso,
     }
-
-    const statusUpdate: Record<string, string> = { status: 'active' }
-    if (isDeletedAccount) {
-      statusUpdate.restored_at = nowIso
+    if (trimmedName) {
+      profilePayload.name = trimmedName
     }
-    await supabaseAdmin
+    const { error: upsertError } = await supabaseAdmin
       .from('users')
-      .update(statusUpdate)
-      .eq('id', targetUserId)
+      .upsert(profilePayload, { onConflict: 'id' })
+    if (upsertError) {
+      console.error('사용자 정보 업데이트 실패:', upsertError)
+      const errorMessage = upsertError?.message || ''
+      if (errorMessage.includes('users_phone_unique')) {
+        return NextResponse.json(
+          { error: '이미 사용 중인 휴대폰 번호입니다.' },
+          { status: 409 }
+        )
+      }
+      const detail = errorMessage ? ` (${errorMessage})` : ''
+      throw new Error(`사용자 정보 업데이트에 실패했습니다.${detail}`)
+    }
 
     try {
       await issuePhoneVerificationCoupon({ userId: targetUserId, phone: phoneNumber })
     } catch (couponError) {
       console.error('휴대폰 인증 쿠폰 지급 실패:', couponError)
-    }
-
-    if (merged) {
-      const { data: targetUser } = await supabaseAdmin.auth.admin.getUserById(targetUserId)
-      const targetEmail = targetUser?.user?.email
-      if (!targetEmail) {
-        return NextResponse.json({ error: '계정 연결에 실패했습니다.' }, { status: 500 })
-      }
-      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'magiclink',
-        email: targetEmail,
-        options: {
-          redirectTo: `${new URL(request.url).origin}/auth/callback`,
-        },
-      })
-      if (linkError || !linkData?.properties?.hashed_token) {
-        return NextResponse.json({ error: '계정 연결에 실패했습니다.' }, { status: 500 })
-      }
-
-      return NextResponse.json({
-        success: true,
-        merged: true,
-        token_hash: linkData.properties.hashed_token,
-        type: 'magiclink',
-        verificationToken,
-        expiresIn: VERIFICATION_TOKEN_MINUTES * 60,
-      })
     }
 
     return NextResponse.json({

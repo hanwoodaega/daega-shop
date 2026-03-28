@@ -39,7 +39,7 @@ function LoginForm() {
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('post_login_next', redirectAfterLogin)
         }
-        router.replace(redirectAfterLogin)
+        router.replace(`/auth/finalize?next=${encodeURIComponent(redirectAfterLogin)}`)
       }
     }
     checkExistingSession().catch(() => {})
@@ -78,8 +78,7 @@ function LoginForm() {
         sessionStorage.setItem('post_login_next', redirectAfterLogin)
         sessionStorage.setItem('post_login_provider', 'password')
       }
-      router.replace(redirectAfterLogin)
-      router.refresh()
+      router.replace(`/auth/finalize?next=${encodeURIComponent(redirectAfterLogin)}`)
     } catch (error: any) {
       setError(error.message || '로그인에 실패했습니다.')
       setLoading(false)

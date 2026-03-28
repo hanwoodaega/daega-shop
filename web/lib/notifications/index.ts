@@ -9,6 +9,7 @@ export type { SmsServiceConfig } from './aligo-core'
 export {
   sendOtpSms,
   sendOrderLookupOtpSms,
+  sendOrderCompleteSms,
   sendSms,
 } from './send-sms'
 export type { SendSmsResult } from './send-sms'
@@ -20,4 +21,4 @@ export {
 } from './send-alimtalk'
 export type { SendAlimtalkResult } from './send-alimtalk'
 
-export { getOtpMessage, getOrderLookupOtpMessage } from './templates'
+export { getOtpMessage, getOrderLookupOtpMessage, getOrderCompleteMessage } from './templates'

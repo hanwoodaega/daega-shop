@@ -60,16 +60,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '아이디는 최소 6자 이상이어야 합니다.' }, { status: 400 })
     }
 
-    const { data: existingPhone } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('phone', normalizedPhone)
-      .maybeSingle()
     const tPhoneCheck = Date.now()
-
-    if (existingPhone) {
-      return NextResponse.json({ error: '이미 가입된 휴대폰 번호입니다.' }, { status: 409 })
-    }
 
     const { data: existingUsername } = await supabaseAdmin
       .from('users')
@@ -119,9 +110,6 @@ export async function POST(request: NextRequest) {
       const message = String(profileError.message || '')
       const code = String(profileError.code || '')
       if (code === '23505' || message.includes('unique')) {
-        if (message.includes('users_phone_unique')) {
-          return NextResponse.json({ error: '이미 가입된 휴대폰 번호입니다.' }, { status: 409 })
-        }
         if (message.includes('users_username_unique') || message.includes('users_username_normalized_unique')) {
           return NextResponse.json({ error: '이미 사용 중인 아이디입니다.' }, { status: 409 })
         }

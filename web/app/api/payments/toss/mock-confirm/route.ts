@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getUserFromServer } from '@/lib/auth/auth-server'
 import { usePoints } from '@/lib/point/points'
-import { sendOrderCompleteAlimtalk } from '@/lib/notifications'
-import { getServerBaseUrl } from '@/lib/utils/server-url'
+import { sendOrderCompleteSms } from '@/lib/notifications'
 import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 import crypto from 'crypto'
 import { calculateOrderPricing, OrderInput } from '@/lib/order/order-pricing.server'
@@ -204,7 +203,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 주문 완료 알림톡 (선물이면 주문자 연락처로, 아니면 수령인 연락처로 발송)
+    // 주문 완료 SMS (선물이면 주문자 연락처로, 아니면 수령인 연락처로 발송)
     const orderCompletePhone = payload.is_gift
       ? String(payload.orderer_phone ?? '').replace(/\D/g, '').slice(0, 13)
       : (() => {
@@ -219,16 +218,15 @@ export async function POST(request: NextRequest) {
         const sortedByPrice = [...itemSnapshots].sort((a, b) => (b.final_unit_price ?? 0) - (a.final_unit_price ?? 0))
         const topProductName = sortedByPrice[0]?.product_name || '상품'
         const productName = totalQty <= 1 ? topProductName : `${topProductName} 외 ${totalQty - 1}개`
-        const result = await sendOrderCompleteAlimtalk({
-          to: orderCompletePhone,
+        const result = await sendOrderCompleteSms({
+          phone: orderCompletePhone,
           orderNumber,
-          productName,
         })
         if (!result.success) {
-          console.error('[Alimtalk] 주문 완료 알림톡 발송 실패 (SMS fallback은 알리고에서 처리):', result.detail)
+          console.error('[SMS] 주문 완료 발송 실패:', result.detail)
         }
       } catch (e) {
-        console.error('주문 완료 알림톡 발송 실패:', e)
+        console.error('주문 완료 SMS 발송 실패:', e)
       }
     }
 

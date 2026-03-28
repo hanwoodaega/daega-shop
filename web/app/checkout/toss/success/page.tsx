@@ -195,15 +195,7 @@ function TossSuccessContent() {
             }
           }
 
-          const refreshUserId = data.cartUserId ?? user?.id
-          if (refreshUserId) {
-            try {
-              const freshItems = await loadCartFromDB(refreshUserId)
-              setCartItems(freshItems, 'paymentSuccess')
-            } catch {
-              // 장바구니 갱신 실패해도 주문 완료는 유지
-            }
-          } else if (data.cartRemove?.length) {
+          if (data.cartRemove?.length) {
             const removeSet = new Set(
               data.cartRemove.map((x: { productId: string; promotionGroupId?: string | null }) => `${x.productId}::${x.promotionGroupId ?? ''}`)
             )
@@ -212,6 +204,18 @@ function TossSuccessContent() {
               (item) => !removeSet.has(`${item.productId}::${item.promotion_group_id ?? ''}`)
             )
             setCartItems(filtered, 'paymentSuccess')
+          }
+
+          if (!data.processingPending) {
+            const refreshUserId = data.cartUserId ?? user?.id
+            if (refreshUserId) {
+              try {
+                const freshItems = await loadCartFromDB(refreshUserId)
+                setCartItems(freshItems, 'paymentSuccess')
+              } catch {
+                // 장바구니 갱신 실패해도 주문 완료는 유지
+              }
+            }
           }
 
           if (meta?.isDirectPurchase) {

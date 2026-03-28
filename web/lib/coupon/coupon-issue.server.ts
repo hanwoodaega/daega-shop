@@ -31,11 +31,12 @@ export async function issuePhoneVerificationCoupon(params: {
   }
 
   const { error: claimError } = await supabaseAdmin
-    .from('coupon_claims')
+    .from('welcome_coupon_claims')
     .insert({
-      campaign_id: campaignId,
+      eligibility_key: normalizedPhone,
+      campaign_code: campaignId,
       user_id: userId,
-      phone: normalizedPhone,
+      granted_coupon_id: coupon.id,
     })
 
   if (claimError) {

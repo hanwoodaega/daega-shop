@@ -7,7 +7,7 @@ import crypto from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { usePoints } from '@/lib/point/points'
-import { sendOrderCompleteAlimtalk, sendGiftNotification } from '@/lib/notifications'
+import { sendOrderCompleteSms, sendGiftNotification } from '@/lib/notifications'
 import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 import type { OrderInput, OrderItemSnapshot, PricingResult } from '@/lib/order/order-pricing.server'
 
@@ -287,9 +287,12 @@ export async function persistDraftToOrder(draftId: string): Promise<PersistResul
 
     if (orderCompletePhone.length >= 10) {
       try {
-        await sendOrderCompleteAlimtalk({ to: orderCompletePhone, orderNumber, productName })
+        const result = await sendOrderCompleteSms({ phone: orderCompletePhone, orderNumber })
+        if (!result.success) {
+          console.error('[toss-persist] 주문 완료 SMS 실패:', result.detail)
+        }
       } catch (e) {
-        console.error('[toss-persist] 주문 완료 알림톡 실패:', e)
+        console.error('[toss-persist] 주문 완료 SMS 실패:', e)
       }
     }
     if (payload.is_gift && giftToken && payload.gift_recipient_phone && giftExpiresAt && giftBaseUrl) {

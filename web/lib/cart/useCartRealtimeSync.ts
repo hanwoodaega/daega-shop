@@ -81,6 +81,11 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
         if (items?.length) refreshGuestCartDetails()
         else if (items) setCartItems(items, 'storageSync')
       }
+      const handlePageShow = () => {
+        const items = readCartFromStorage()
+        if (items?.length) refreshGuestCartDetails()
+        else if (items) setCartItems(items, 'storageSync')
+      }
       const handleVisibility = () => {
         if (document.visibilityState === 'visible') {
           const items = readCartFromStorage()
@@ -89,6 +94,7 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
         }
       }
       window.addEventListener('focus', handleFocus)
+      window.addEventListener('pageshow', handlePageShow)
       document.addEventListener('visibilitychange', handleVisibility)
       // 마운트 시 한 번 갱신 (장바구니 페이지 진입 시 최신 정보 반영)
       if (readCartFromStorage().length > 0) refreshGuestCartDetails()
@@ -131,6 +137,7 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
 
       return () => {
         window.removeEventListener('focus', handleFocus)
+        window.removeEventListener('pageshow', handlePageShow)
         document.removeEventListener('visibilitychange', handleVisibility)
         window.removeEventListener('storage', handleStorage)
         if (channelRef.current) {
@@ -184,6 +191,11 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
+    const handlePageShow = () => {
+      scheduleLoadCart(0)
+    }
+    window.addEventListener('pageshow', handlePageShow)
+
     const handleStorage = (event: StorageEvent) => {
       if (!event.key || event.storageArea !== window.localStorage) return
       const currentKey = getCartStorageKey()
@@ -229,6 +241,7 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
     return () => {
       window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pageshow', handlePageShow)
       window.removeEventListener('storage', handleStorage)
       if (reloadTimeoutRef.current) {
         clearTimeout(reloadTimeoutRef.current)
