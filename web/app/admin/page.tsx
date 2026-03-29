@@ -44,11 +44,9 @@ async function getOrderCounts() {
 }
 
 export default async function AdminPage() {
-  // 서버 사이드 인증 체크
   try {
-    assertAdmin()
-  } catch (error) {
-    // 인증 실패 시 로그인 페이지로 리다이렉트
+    await assertAdmin()
+  } catch {
     redirect('/admin/login?next=/admin')
   }
 

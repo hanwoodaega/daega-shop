@@ -51,10 +51,9 @@ async function getProducts(): Promise<Product[]> {
 }
 
 export default async function BannersPage() {
-  // 서버 사이드 인증 체크
   try {
-    assertAdmin()
-    } catch (error) {
+    await assertAdmin()
+  } catch {
     redirect('/admin/login?next=/admin/banners')
   }
 

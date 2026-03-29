@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { cookies } from 'next/headers'
-
-async function verifyAdmin() {
-  const cookieStore = await cookies()
-  const adminAuth = cookieStore.get('admin_auth')
-  return adminAuth?.value === '1'
-}
+import { hasValidAdminCookie } from '@/lib/auth/admin-auth'
 
 const ORDER_SELECT = `
   *,
@@ -39,7 +33,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const isAdmin = await verifyAdmin()
+    const isAdmin = await hasValidAdminCookie()
     if (!isAdmin) {
       return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 })
     }

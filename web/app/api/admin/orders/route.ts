@@ -1,21 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { cookies } from 'next/headers'
+import { hasValidAdminCookie } from '@/lib/auth/admin-auth'
 import { VALID_ORDER_STATUSES } from '@/lib/utils/constants'
 import { handleOrderCancellationPoints, addPoints } from '@/lib/point/points'
 import { cancelTossPayment } from '@/lib/payments/toss-server'
 
-// 관리자 인증 확인 (쿠키 기반)
-async function verifyAdmin() {
-  const cookieStore = await cookies()
-  const adminAuth = cookieStore.get('admin_auth')
-  return adminAuth?.value === '1'
-}
-
 // GET: 주문 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin()
+    const isAdmin = await hasValidAdminCookie()
     if (!isAdmin) {
       return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 })
     }
@@ -230,7 +223,7 @@ export async function GET(request: NextRequest) {
 // PATCH: 주문 상태 변경
 export async function PATCH(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin()
+    const isAdmin = await hasValidAdminCookie()
     if (!isAdmin) {
       return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 })
     }

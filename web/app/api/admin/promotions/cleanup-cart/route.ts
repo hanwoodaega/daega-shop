@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { assertAdmin } from '@/lib/auth/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 
 // POST: 프로모션 삭제 시 장바구니에서 해당 상품 제거
 export async function POST(request: NextRequest) {
+  try {
+    await assertAdmin()
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const { product_ids } = await request.json()
 

@@ -43,6 +43,7 @@ function AdminLoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           className="w-full border rounded px-3 py-2 mb-3"
           placeholder="관리자 비밀번호"
+          autoComplete="current-password"
           required
         />
         {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
@@ -60,16 +61,16 @@ function AdminLoginForm() {
 
 export default function AdminLoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-sm bg-white p-6 rounded-lg shadow">
-          <div className="animate-pulse">로딩 중...</div>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+          <div className="w-full max-w-sm bg-white p-6 rounded-lg shadow">
+            <div className="animate-pulse">로딩 중...</div>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <AdminLoginForm />
     </Suspense>
   )
 }
-
-

@@ -248,8 +248,7 @@ export default function AddressesPage() {
             <h2 className="text-2xl font-bold text-primary-900 text-center">배송지 관리</h2>
           </div>
 
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-base font-semibold text-gray-900">배송지 목록</div>
+          <div className="flex items-center justify-end mb-4">
             <button
               onClick={handleOpenAddModal}
               className="bg-white text-red-600 border border-red-600 px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-50 transition"
@@ -348,8 +347,7 @@ export default function AddressesPage() {
       <main className="flex-1 container mx-auto px-4 py-4 pb-24 lg:py-6 lg:pb-6 lg:max-w-none">
         {/* 모바일 전용 */}
         <div className="lg:hidden">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center text-base font-semibold text-gray-900">배송지 목록</div>
+          <div className="flex items-center justify-end mb-4">
             <button
               onClick={handleOpenAddModal}
               className="bg-white text-red-600 border border-red-600 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-blue-50 transition"
@@ -360,7 +358,6 @@ export default function AddressesPage() {
 
           {addresses.length === 0 ? (
             <div className="text-center py-20">
-              <div className="text-6xl mb-4">📍</div>
               <p className="text-xl text-gray-600 mb-6">등록된 배송지가 없습니다.</p>
               <button
                 onClick={handleOpenAddModal}

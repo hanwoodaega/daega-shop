@@ -113,10 +113,9 @@ async function getPromotedProductIds(): Promise<string[]> {
 }
 
 export default async function CollectionsPage() {
-  // 서버 사이드 인증 체크
   try {
-    assertAdmin()
-  } catch (error) {
+    await assertAdmin()
+  } catch {
     redirect('/admin/login?next=/admin/collections')
   }
 
