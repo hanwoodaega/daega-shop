@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, useState } from 'react'
-import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+import { getTossPayments } from '@/lib/payments/toss-payments-loader'
 import { showError } from '@/lib/utils/error-handler'
 
 interface TossPaymentWidgetProps {
@@ -42,7 +42,7 @@ export default function TossPaymentWidget({
           : 'guest'
 
       try {
-        const tossPayments = await loadTossPayments(clientKey)
+        const tossPayments = await getTossPayments(clientKey)
         if (cancelled) return
 
         const created = tossPayments.widgets({ customerKey: safeCustomerKey })

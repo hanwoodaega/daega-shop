@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+import { getTossPayments, preloadTossPayments } from '@/lib/payments/toss-payments-loader'
 import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useDefaultAddress, useUserProfile } from '@/lib/address/useAddress'
@@ -21,6 +21,10 @@ import { phoneDigitsOnly, sanitizePhoneDigits } from '@/lib/phone/kr'
 
 const TOTAL_GIFT_STEPS = 3
 
+/** draft 선갱신 debounce · 결제 시 재사용 시 만료 여유 */
+const DRAFT_PREFETCH_DEBOUNCE_MS = 500
+const DRAFT_REUSE_EXPIRY_BUFFER_MS = 60_000
+
 interface UseCheckoutOptions {
   isGiftMode: boolean
 }
@@ -31,6 +35,14 @@ export function useCheckout(options: UseCheckoutOptions) {
   const { user } = useAuth()
   const timeoutsRef = useRef<number[]>([])
   const tossWidgetsRef = useRef<any>(null)
+  const draftCacheRef = useRef<{
+    fingerprint: string
+    orderId: string
+    amount: number
+    taxFreeAmount: number
+    expiresAtMs: number
+  } | null>(null)
+  const draftPrefetchGenRef = useRef(0)
 
   // Cart & Direct Purchase
   const cartItems = useCartStore((state) => state.items)
@@ -205,6 +217,10 @@ export function useCheckout(options: UseCheckoutOptions) {
   }, [initOnMount])
 
   useEffect(() => {
+    preloadTossPayments()
+  }, [])
+
+  useEffect(() => {
     if (defaultAddress) {
       applyAddress(defaultAddress)
     } else if (!hasDefaultAddress) {
@@ -359,6 +375,127 @@ export function useCheckout(options: UseCheckoutOptions) {
     giftData.recipientPhone,
     paymentMethod,
     items,
+  ])
+
+  const isOrderInputReadyForDraftPrefetch = useCallback((): boolean => {
+    if (items.length === 0) return false
+    if (isGiftMode) {
+      if (currentStep < TOTAL_GIFT_STEPS) return false
+      const recipientPhone = phoneDigitsOnly(giftData.recipientPhone || '')
+      if (recipientPhone.length < 10) return false
+      if (!(giftData.recipientName || '').trim()) return false
+      if (!(giftData.message || '').trim()) return false
+      if (!formData.name?.trim() || !formData.phone?.trim()) return false
+      return true
+    }
+    if (!formData.name?.trim() || !formData.phone?.trim()) return false
+    if (deliveryMethod === 'pickup') return !!pickupTime
+    if (deliveryMethod === 'quick') {
+      return !!(quickDeliveryArea && formData.address?.trim() && quickDeliveryTime)
+    }
+    if (deliveryMethod === 'regular') return !!formData.address?.trim()
+    return false
+  }, [
+    items.length,
+    isGiftMode,
+    currentStep,
+    giftData.recipientPhone,
+    giftData.recipientName,
+    giftData.message,
+    formData.name,
+    formData.phone,
+    formData.address,
+    deliveryMethod,
+    pickupTime,
+    quickDeliveryArea,
+    quickDeliveryTime,
+  ])
+
+  const orderInputFingerprint = useMemo(
+    () => JSON.stringify(buildOrderInput()),
+    [
+      isGiftMode,
+      deliveryMethod,
+      pickupTime,
+      quickDeliveryTime,
+      formData.address,
+      formData.addressDetail,
+      formData.name,
+      formData.phone,
+      formData.message,
+      selectedCoupon?.id,
+      usedPoints,
+      giftData.message,
+      giftData.recipientName,
+      giftData.recipientPhone,
+      paymentMethod,
+      itemsSignature,
+      currentStep,
+    ]
+  )
+
+  useEffect(() => {
+    if (!isOrderInputReadyForDraftPrefetch()) {
+      draftCacheRef.current = null
+      return
+    }
+
+    const myGen = ++draftPrefetchGenRef.current
+    const timer = window.setTimeout(async () => {
+      if (myGen !== draftPrefetchGenRef.current) return
+
+      try {
+        const orderInput = buildOrderInput()
+        const res = await fetch('/api/orders/draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderInput }),
+        })
+
+        if (myGen !== draftPrefetchGenRef.current) return
+
+        if (!res.ok) {
+          draftCacheRef.current = null
+          return
+        }
+
+        const data = await res.json()
+        if (myGen !== draftPrefetchGenRef.current) return
+
+        const orderId = data.orderId as string
+        const amount = Number(data.amount)
+        const taxFreeAmount = Number(data.taxFreeAmount ?? 0)
+        const expiresAtRaw = data.expiresAt as string | undefined
+        const expiresAtMs = expiresAtRaw
+          ? new Date(expiresAtRaw).getTime()
+          : Date.now() + 30 * 60 * 1000
+
+        if (!orderId || !Number.isFinite(amount) || amount < 0) {
+          draftCacheRef.current = null
+          return
+        }
+
+        draftCacheRef.current = {
+          fingerprint: JSON.stringify(orderInput),
+          orderId,
+          amount,
+          taxFreeAmount,
+          expiresAtMs,
+        }
+      } catch {
+        if (myGen === draftPrefetchGenRef.current) {
+          draftCacheRef.current = null
+        }
+      }
+    }, DRAFT_PREFETCH_DEBOUNCE_MS)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [
+    orderInputFingerprint,
+    isOrderInputReadyForDraftPrefetch,
+    buildOrderInput,
   ])
 
   useEffect(() => {
@@ -580,25 +717,56 @@ export function useCheckout(options: UseCheckoutOptions) {
         (!tossClientKey && process.env.NODE_ENV !== 'production')
 
       const orderInput = buildOrderInput()
+      const fp = JSON.stringify(orderInput)
 
-      const draftRes = await fetch('/api/orders/draft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderInput }),
-      })
+      const now = Date.now()
+      const cache = draftCacheRef.current
+      const cacheReusable =
+        cache &&
+        cache.fingerprint === fp &&
+        cache.orderId &&
+        Number.isFinite(cache.amount) &&
+        cache.expiresAtMs - DRAFT_REUSE_EXPIRY_BUFFER_MS > now
 
-      if (!draftRes.ok) {
-        const errorData = await draftRes.json().catch(() => ({}))
-        throw new Error(errorData.error || '주문 초안 생성에 실패했습니다.')
-      }
+      let orderId: string
+      let amount: number
+      let taxFreeAmount: number
 
-      const draftData = await draftRes.json()
-      const orderId = draftData.orderId
-      const amount = Number(draftData.amount)
-      const taxFreeAmount = Number(draftData.taxFreeAmount ?? 0)
+      if (cacheReusable) {
+        orderId = cache.orderId
+        amount = cache.amount
+        taxFreeAmount = cache.taxFreeAmount
+      } else {
+        const draftRes = await fetch('/api/orders/draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderInput }),
+        })
 
-      if (!orderId || !Number.isFinite(amount) || amount < 0) {
-        throw new Error('주문 정보를 불러오지 못했습니다.')
+        if (!draftRes.ok) {
+          const errorData = await draftRes.json().catch(() => ({}))
+          throw new Error(errorData.error || '주문 초안 생성에 실패했습니다.')
+        }
+
+        const draftData = await draftRes.json()
+        orderId = draftData.orderId
+        amount = Number(draftData.amount)
+        taxFreeAmount = Number(draftData.taxFreeAmount ?? 0)
+
+        if (!orderId || !Number.isFinite(amount) || amount < 0) {
+          throw new Error('주문 정보를 불러오지 못했습니다.')
+        }
+
+        const expiresAtRaw = draftData.expiresAt as string | undefined
+        draftCacheRef.current = {
+          fingerprint: fp,
+          orderId,
+          amount,
+          taxFreeAmount,
+          expiresAtMs: expiresAtRaw
+            ? new Date(expiresAtRaw).getTime()
+            : Date.now() + 30 * 60 * 1000,
+        }
       }
 
       const meta = {
@@ -692,7 +860,7 @@ export function useCheckout(options: UseCheckoutOptions) {
         return
       }
 
-      const tossPayments = await loadTossPayments(tossClientKey)
+      const tossPayments = await getTossPayments(tossClientKey)
       const payment = (tossPayments as any).payment({ customerKey })
       await payment.requestPayment(paymentOptions)
     }
