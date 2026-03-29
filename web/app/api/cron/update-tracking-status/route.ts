@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireCronSecret } from '@/lib/auth/internal-job-auth'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -12,13 +13,11 @@ export const runtime = 'nodejs'
  */
 export async function GET(request: NextRequest) {
   try {
-    // Cron job 인증
-    const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET
-    
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const denied = requireCronSecret(request)
+    if (denied) return denied
+
+    const workerAuth =
+      process.env.WORKER_SECRET?.trim() || process.env.CRON_SECRET?.trim()
 
     // Worker 서비스 URL (환경 변수에서 가져오거나 자동 감지)
     const workerUrl = process.env.WORKER_SERVICE_URL || process.env.RENDER_SERVICE_URL?.replace('web', 'worker')
@@ -38,10 +37,7 @@ export async function GET(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Worker 서비스 간 인증 (선택사항)
-        ...(process.env.WORKER_SECRET && {
-          'Authorization': `Bearer ${process.env.WORKER_SECRET}`
-        })
+        ...(workerAuth ? { Authorization: `Bearer ${workerAuth}` } : {}),
       },
       // 타임아웃 설정 (Worker가 오래 걸릴 수 있으므로 충분히 설정)
       signal: AbortSignal.timeout(300000) // 5분

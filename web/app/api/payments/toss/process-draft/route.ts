@@ -1,21 +1,19 @@
 /**
  * draft(approved_not_persisted) 1건을 주문으로 확정하는 worker 엔드포인트.
  * - confirm에서 fire-and-forget으로 호출하거나, cron/process-drafts에서 호출.
- * - CRON_SECRET으로 인증 (선택).
+ * - production: CRON_SECRET + Bearer 필수 (`requireCronSecret`).
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { persistDraftToOrder } from '@/lib/payments/toss-persist-order'
+import { requireCronSecret } from '@/lib/auth/internal-job-auth'
 
 export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const denied = requireCronSecret(request)
+    if (denied) return denied
 
     const body = await request.json().catch(() => ({}))
     const orderId = body.orderId ?? body.draftId

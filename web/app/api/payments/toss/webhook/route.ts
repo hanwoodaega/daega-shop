@@ -1,3 +1,8 @@
+/**
+ * 토스 웹훅: PAYMENT_STATUS_CHANGED 등
+ * - 공식 문서: `tosspayments-webhook-signature` 헤더는 payout.changed / seller.changed 에만 포함됨.
+ *   결제 상태 변경은 서명 헤더 없이 올 수 있으므로, 아래에서는 paymentKey로 결제 조회 API로 상태를 재확인한다.
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 
@@ -63,14 +68,22 @@ export async function POST(request: NextRequest) {
       return OK()
     }
 
-    // 로그: eventType, paymentKey, orderId (추적용)
-    console.log('[Toss webhook]', { eventType, paymentKey: paymentKey || '(없음)', orderId: orderId || '(없음)' })
-
-    if (paymentKey) {
-      const payment = await fetchPaymentFromToss(paymentKey)
-      if (payment?.orderId) orderId = payment.orderId
-      if (payment?.status) status = payment.status as TossPaymentStatus
+    // 본문만 믿고 DB를 갱신하지 않음: paymentKey로 토스 API 재조회로 검증
+    if (!paymentKey) {
+      console.warn('[Toss webhook] PAYMENT_STATUS_CHANGED without paymentKey, skip')
+      return OK()
     }
+
+    const payment = await fetchPaymentFromToss(paymentKey)
+    if (!payment) {
+      console.warn('[Toss webhook] paymentKey 조회 실패:', paymentKey)
+      return OK()
+    }
+    orderId = typeof payment.orderId === 'string' ? payment.orderId : orderId
+    status = (payment.status as TossPaymentStatus) || status
+
+    // 로그: eventType, paymentKey, orderId (추적용)
+    console.log('[Toss webhook]', { eventType, paymentKey, orderId: orderId || '(없음)' })
 
     if (!orderId) {
       return OK()

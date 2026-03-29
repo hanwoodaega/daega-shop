@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getTrackingStatus, mapTrackingStatusToOrderStatus } from '@/lib/tracking/tracking-api'
+import { requireWorkerSharedSecret } from '@/lib/auth/internal-job-auth'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 /**
- * Worker: 배송 상태 업데이트 작업 실행
- * Render Worker 서비스에서 호출되는 엔드포인트
- * 
- * 인증: Worker 서비스 내부에서만 호출되므로 추가 인증 불필요
- * (또는 Worker 서비스 간 인증 토큰 사용 가능)
+ * Worker: 배송 상태 업데이트
+ * `Authorization: Bearer ${WORKER_SECRET || CRON_SECRET}` (production 필수)
  */
 export async function POST(request: NextRequest) {
   try {
+    const denied = requireWorkerSharedSecret(request)
+    if (denied) return denied
+
     const supabase = createSupabaseAdminClient()
 
     // 송장번호가 있고 배송 완료되지 않은 주문 조회
@@ -108,14 +109,15 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * GET: Worker 상태 확인용
- */
+/** GET: 상태 확인 — production에서는 Worker와 동일한 Bearer 필요 */
 export async function GET(request: NextRequest) {
-  return NextResponse.json({ 
+  const denied = requireWorkerSharedSecret(request)
+  if (denied) return denied
+
+  return NextResponse.json({
     status: 'ok',
     service: 'tracking-status-worker',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   })
 }
 

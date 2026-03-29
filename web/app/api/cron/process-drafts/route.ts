@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { persistDraftToOrder } from '@/lib/payments/toss-persist-order'
+import { requireCronSecret } from '@/lib/auth/internal-job-auth'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -13,11 +14,8 @@ export const maxDuration = 120
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const denied = requireCronSecret(request)
+    if (denied) return denied
 
     const supabase = createSupabaseAdminClient()
     const { data: drafts, error } = await supabase
