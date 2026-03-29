@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 
 // GET: 컬렉션 목록 조회
 export async function GET(request: NextRequest) {
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { data, error } = await supabaseAdmin
@@ -19,23 +17,19 @@ export async function GET(request: NextRequest) {
       .order('type', { ascending: true })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/collections GET', error)
     }
 
     return NextResponse.json({ collections: data || [] })
-  } catch (error: any) {
-    console.error('컬렉션 조회 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/collections GET', error)
   }
 }
 
 // POST: 컬렉션 생성
 export async function POST(request: NextRequest) {
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const body = await request.json()
@@ -93,13 +87,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/collections POST', error)
     }
 
     return NextResponse.json({ collection: data })
-  } catch (error: any) {
-    console.error('컬렉션 생성 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/collections POST', error)
   }
 }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import sharp from 'sharp'
 import { randomUUID } from 'crypto'
 
@@ -10,11 +10,8 @@ const BUCKET = 'product-descriptions'
 const MAX_WIDTH = 1000
 
 export async function POST(request: NextRequest) {
-  try {
-    await assertAdmin()
-  } catch (e: unknown) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const formData = await request.formData()

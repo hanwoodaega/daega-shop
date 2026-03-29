@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { hashToken, normalizePhone, normalizeUsername, usernameToEmail } from '@/lib/auth/otp-utils'
 import { issuePhoneVerificationCoupon } from '@/lib/coupon/coupon-issue.server'
@@ -172,10 +173,9 @@ export async function POST(request: NextRequest) {
     if (error?.code === 'rate_limited') {
       return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 })
     }
-    console.error('Signup error:', error)
     const headers = new Headers()
     headers.set('Server-Timing', buildServerTimingHeader([{ name: 'total', durMs: Date.now() - t0 }]))
-    return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500, headers })
+    return unknownErrorResponse('auth/signup', error, headers)
   }
 }
 

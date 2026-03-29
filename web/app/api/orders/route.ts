@@ -3,6 +3,9 @@ import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 import { usePoints } from '@/lib/point/points'
 import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
+import { parseJsonBody } from '@/lib/api/parse-json'
+import { orderCreateBodySchema } from '@/lib/validation/schemas/order-payment'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,11 +60,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (ordersError) {
-      console.error('주문 목록 조회 실패:', ordersError)
-      return NextResponse.json({ 
-        error: '주문 목록 조회 실패', 
-        details: ordersError.message 
-      }, { status: 500 })
+      return dbErrorResponse('orders GET list', ordersError)
     }
 
     if (!orders || orders.length === 0) {
@@ -132,12 +131,8 @@ export async function GET(request: NextRequest) {
     }))
 
     return NextResponse.json({ orders: ordersWithDetails })
-  } catch (error: any) {
-    console.error('주문 조회 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('orders GET', error)
   }
 }
 
@@ -155,7 +150,9 @@ export async function POST(request: NextRequest) {
     }
     const user = authResult.user
 
-    const body = await request.json()
+    const parsed = await parseJsonBody(request, orderCreateBodySchema)
+    if (!parsed.ok) return parsed.response
+
     const {
       delivery_type,
       delivery_time,
@@ -167,15 +164,11 @@ export async function POST(request: NextRequest) {
       used_points,
       is_gift,
       gift_message,
-      items: rawItems
-    } = body
-
-    if (!rawItems || rawItems.length === 0) {
-      return NextResponse.json({ error: '주문 상품이 없습니다.' }, { status: 400 })
-    }
+      items: rawItems,
+    } = parsed.data
 
     const orderInput = {
-      items: rawItems.map((item: { productId: string; quantity: number; promotion_group_id?: string | null }) => ({
+      items: rawItems.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
         promotion_group_id: item.promotion_group_id ?? null,
@@ -232,8 +225,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (orderError || !order) {
-      console.error('주문 생성 실패:', orderError)
-      return NextResponse.json({ error: '주문 생성 실패', details: orderError?.message || '알 수 없는 오류' }, { status: 500 })
+      return dbErrorResponse('orders POST insert', orderError ?? new Error('no order'))
     }
 
     // 2. 주문 상품 생성 (서버 계산된 단가 사용)
@@ -286,11 +278,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, order })
-  } catch (error: any) {
-    console.error('주문 처리 예외:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('orders POST', error)
   }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { hasValidAdminCookie } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { VALID_ORDER_STATUSES } from '@/lib/utils/constants'
 import { handleOrderCancellationPoints, addPoints } from '@/lib/point/points'
 import { cancelTossPayment } from '@/lib/payments/toss-server'
@@ -8,10 +8,8 @@ import { cancelTossPayment } from '@/lib/payments/toss-server'
 // GET: 주문 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    const isAdmin = await hasValidAdminCookie()
-    if (!isAdmin) {
-      return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 })
-    }
+    const unauthorized = await ensureAdminApi()
+    if (unauthorized) return unauthorized
 
     const { searchParams } = new URL(request.url)
     const deliveryType = searchParams.get('delivery_type')
@@ -223,10 +221,8 @@ export async function GET(request: NextRequest) {
 // PATCH: 주문 상태 변경
 export async function PATCH(request: NextRequest) {
   try {
-    const isAdmin = await hasValidAdminCookie()
-    if (!isAdmin) {
-      return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 })
-    }
+    const unauthorized = await ensureAdminApi()
+    if (unauthorized) return unauthorized
 
     const body = await request.json()
     const { orderId, status, trackingNumber, trackingCompany } = body

@@ -5,7 +5,11 @@ import { usePoints } from '@/lib/point/points'
 import { sendOrderCompleteSms } from '@/lib/notifications'
 import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 import crypto from 'crypto'
-import { calculateOrderPricing, OrderInput } from '@/lib/order/order-pricing.server'
+import { calculateOrderPricing, type OrderInput } from '@/lib/order/order-pricing.server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
+import { parseJsonBody } from '@/lib/api/parse-json'
+import { mockConfirmBodySchema, normalizeToOrderInput } from '@/lib/validation/schemas/order-payment'
+import { sanitizePhoneDigits } from '@/lib/phone/kr'
 
 export async function POST(request: NextRequest) {
   const allowMockInProd =
@@ -24,16 +28,16 @@ export async function POST(request: NextRequest) {
 
     const user = await getUserFromServer()
 
-    const { orderId, orderInput } = await request.json()
-    if (!orderId || !orderInput) {
-      return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
-    }
+    const parsed = await parseJsonBody(request, mockConfirmBodySchema)
+    if (!parsed.ok) return parsed.response
+    const { orderId, orderInput: rawOrderInput } = parsed.data
+    const orderInput = normalizeToOrderInput(rawOrderInput)
 
     const supabaseAdmin = createSupabaseAdminClient()
     const { pricing, itemSnapshots } = await calculateOrderPricing({
       supabaseAdmin,
       userId: user?.id ?? null,
-      input: orderInput as OrderInput,
+      input: orderInput,
     })
 
     const today = new Date()
@@ -80,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     const payload: OrderInput = orderInput
-    const normalizedPhone = String(payload.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+    const normalizedPhone = sanitizePhoneDigits(String(payload.shipping_phone || ''))
     const giftToken = payload.is_gift ? crypto.randomBytes(32).toString('hex') : null
     const giftExpiresAt = payload.is_gift ? getGiftExpiresAtEndOfDayKST() : null
 
@@ -109,7 +113,7 @@ export async function POST(request: NextRequest) {
       orderInsertData.gift_token = giftToken
       orderInsertData.gift_expires_at = giftExpiresAt
       if (payload.gift_recipient_phone) {
-        orderInsertData.gift_recipient_phone = String(payload.gift_recipient_phone).replace(/\D/g, '').slice(0, 13)
+        orderInsertData.gift_recipient_phone = sanitizePhoneDigits(String(payload.gift_recipient_phone))
       }
     }
 
@@ -120,12 +124,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (orderError || !order) {
-      const message = orderError?.message || '주문 생성 실패'
-      console.error('[mock-confirm] 주문 insert 실패:', orderError)
-      return NextResponse.json(
-        { error: '주문 생성 실패', details: orderError, message },
-        { status: 500 }
-      )
+      return dbErrorResponse('[mock-confirm] orders insert', orderError ?? new Error('no order'))
     }
 
     const orderItems = itemSnapshots.map((item) => ({
@@ -141,10 +140,7 @@ export async function POST(request: NextRequest) {
         .insert(orderItems)
 
       if (itemsError) {
-        return NextResponse.json(
-          { error: '주문 상품 저장 실패', details: itemsError },
-          { status: 500 }
-        )
+        return dbErrorResponse('[mock-confirm] order_items insert', itemsError)
       }
     }
 
@@ -205,11 +201,11 @@ export async function POST(request: NextRequest) {
 
     // 주문 완료 SMS (선물이면 주문자 연락처로, 아니면 수령인 연락처로 발송)
     const orderCompletePhone = payload.is_gift
-      ? String(payload.orderer_phone ?? '').replace(/\D/g, '').slice(0, 13)
+      ? sanitizePhoneDigits(String(payload.orderer_phone ?? ''))
       : (() => {
-          const fromPayload = String(payload.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+          const fromPayload = sanitizePhoneDigits(String(payload.shipping_phone || ''))
           if (fromPayload.length >= 10) return fromPayload
-          const fromOrder = String(order?.shipping_phone ?? '').replace(/\D/g, '').slice(0, 13)
+          const fromOrder = sanitizePhoneDigits(String(order?.shipping_phone ?? ''))
           return fromOrder.length >= 10 ? fromOrder : fromPayload
         })()
     if (orderCompletePhone.length >= 10) {
@@ -231,15 +227,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, order, gift_token: giftToken })
-  } catch (error: any) {
-    console.error('모의 결제 승인 처리 오류:', error)
-    const status = error?.message ? 400 : 500
-    return NextResponse.json(
-      {
-        error: error?.message || '서버 오류',
-        details: error?.details || error,
-      },
-      { status }
-    )
+  } catch (error: unknown) {
+    return unknownErrorResponse('payments/toss/mock-confirm', error)
   }
 }

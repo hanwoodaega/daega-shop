@@ -6,6 +6,8 @@ import Link from 'next/link'
 import Footer from '@/components/layout/Footer'
 import Header from '@/components/layout/Header'
 import { supabase } from '@/lib/supabase/supabase'
+import { sanitizeOtpCodeInput } from '@/lib/phone/kr'
+import { formatPhoneDisplay, parsePhoneInput, extractPhoneNumbers } from '@/lib/utils/format-phone'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -136,15 +138,6 @@ export default function SignupPage() {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${String(secs).padStart(2, '0')}`
-  }
-
-  const normalizePhoneInput = (value: string) => {
-    const digits = value.replace(/[^0-9]/g, '').slice(0, 11)
-    if (digits.length <= 3) return digits
-    if (digits.length <= 7) {
-      return `${digits.slice(0, 3)}-${digits.slice(3)}`
-    }
-    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
   }
 
   const handleSendCode = async () => {
@@ -367,19 +360,20 @@ export default function SignupPage() {
                 <div className="flex-1 min-w-0 flex flex-col sm:flex-row gap-2 sm:items-center">
                   <input
                     type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
+                    value={formatPhoneDisplay(phone)}
+                    onChange={(e) => setPhone(parsePhoneInput(e.target.value))}
                     required
                     autoComplete="tel"
                     className="flex-1 min-w-0 w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-900 placeholder:text-gray-400"
                     placeholder="휴대폰 번호를 입력해주세요"
+                    maxLength={13}
                   />
                   <button
                     type="button"
                     onClick={handleSendCode}
-                    disabled={loading || username.trim().length < 6 || phone.replace(/\D/g, '').length < 10}
+                    disabled={loading || username.trim().length < 6 || extractPhoneNumbers(phone).length < 10}
                     className={`w-full sm:w-auto flex-shrink-0 px-3 py-2.5 rounded-lg font-semibold transition disabled:opacity-50 whitespace-nowrap border ${
-                      loading || username.trim().length < 6 || phone.replace(/\D/g, '').length < 10
+                      loading || username.trim().length < 6 || extractPhoneNumbers(phone).length < 10
                         ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
                         : 'border-blue-900 bg-blue-900 text-white hover:bg-blue-950'
                     }`}
@@ -431,7 +425,7 @@ export default function SignupPage() {
                 <div className="flex-1 min-w-0 flex flex-col sm:flex-row gap-2 sm:items-center">
                   <input
                     type="tel"
-                    value={phone}
+                    value={formatPhoneDisplay(phone)}
                     readOnly
                     className="flex-1 min-w-0 w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-700"
                   />
@@ -466,7 +460,7 @@ export default function SignupPage() {
                       <input
                         type="text"
                         value={verificationCode}
-                        onChange={(e) => setVerificationCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                        onChange={(e) => setVerificationCode(sanitizeOtpCodeInput(e.target.value))}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600 placeholder:text-gray-400"
                         placeholder="6자리 숫자"
                         maxLength={6}

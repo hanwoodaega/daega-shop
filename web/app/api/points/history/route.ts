@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 
@@ -32,20 +33,12 @@ export async function GET(request: NextRequest) {
       .range(offset, offset + limit - 1)
 
     if (error) {
-      console.error('포인트 히스토리 조회 실패:', error)
-      return NextResponse.json({ 
-        error: '포인트 히스토리 조회 실패',
-        details: error.message 
-      }, { status: 500 })
+      return dbErrorResponse('points/history GET', error)
     }
     
     return NextResponse.json({ history: history || [] })
-  } catch (error: any) {
-    console.error('포인트 히스토리 조회 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('points/history GET', error)
   }
 }
 

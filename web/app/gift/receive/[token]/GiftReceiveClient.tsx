@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useDaumPostcode } from '@/lib/postcode/useDaumPostcode'
 import toast from 'react-hot-toast'
+import { formatPhoneDisplay, parsePhoneInput } from '@/lib/utils/format-phone'
 
 interface OrderItem {
   id: string
@@ -146,16 +147,7 @@ export default function GiftReceiveClient() {
   }
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const numbers = e.target.value.replace(/[^0-9]/g, '')
-    setFormData(prev => ({ ...prev, recipient_phone: numbers }))
-  }
-
-  const formatPhone = (value: string) => {
-    const numbers = value.replace(/[^0-9]/g, '')
-    const len = numbers.length
-    if (len <= 3) return numbers
-    if (len <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`
-    return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`
+    setFormData(prev => ({ ...prev, recipient_phone: parsePhoneInput(e.target.value) }))
   }
 
   // 배송정보 입력 여부 체크
@@ -426,7 +418,7 @@ export default function GiftReceiveClient() {
                 <input
                   type="tel"
                   name="recipient_phone"
-                  value={formatPhone(formData.recipient_phone)}
+                  value={formatPhoneDisplay(formData.recipient_phone)}
                   onChange={handlePhoneChange}
                   required
                   placeholder="휴대폰 번호를 입력해주세요"

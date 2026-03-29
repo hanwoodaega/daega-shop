@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { serverErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 
 // GET: 관리자가 사용자 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    try { await assertAdmin() } catch (e: any) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const unauthorized = await ensureAdminApi()
+    if (unauthorized) return unauthorized
 
     const supabase = createSupabaseAdminClient()
     
@@ -25,10 +25,7 @@ export async function GET(request: NextRequest) {
         })
         
         if (usersError) {
-          console.error('사용자 목록 조회 실패:', usersError)
-          return NextResponse.json({ 
-            error: `사용자 목록을 불러올 수 없습니다: ${usersError.message || usersError}` 
-          }, { status: 500 })
+          return serverErrorResponse('admin users listUsers', usersError)
         }
 
         if (usersData && usersData.users) {
@@ -38,11 +35,8 @@ export async function GET(request: NextRequest) {
         } else {
           hasMore = false
         }
-      } catch (error: any) {
-        console.error('사용자 목록 조회 중 오류:', error)
-        return NextResponse.json({ 
-          error: `사용자 목록 조회 중 오류가 발생했습니다: ${error.message || error}` 
-        }, { status: 500 })
+      } catch (error: unknown) {
+        return serverErrorResponse('admin users listUsers page', error)
       }
     }
 
@@ -73,9 +67,8 @@ export async function GET(request: NextRequest) {
     }))
 
     return NextResponse.json({ users })
-  } catch (error) {
-    console.error('사용자 목록 조회 오류:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin users GET', error)
   }
 }
 

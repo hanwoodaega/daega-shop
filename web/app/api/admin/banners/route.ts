@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag, revalidatePath } from 'next/cache'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 
 // GET: 배너 목록 조회
 export async function GET(request: NextRequest) {
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { data, error } = await supabaseAdmin
@@ -19,23 +17,19 @@ export async function GET(request: NextRequest) {
       .order('sort_order', { ascending: true })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/banners GET', error)
     }
 
     return NextResponse.json({ banners: data || [] })
-  } catch (error: any) {
-    console.error('배너 조회 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/banners GET', error)
   }
 }
 
 // POST: 배너 생성
 export async function POST(request: NextRequest) {
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const body = await request.json()
@@ -77,7 +71,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/banners POST', error)
     }
 
     // 캐시 무효화
@@ -85,9 +79,8 @@ export async function POST(request: NextRequest) {
     revalidatePath('/')
 
     return NextResponse.json({ banner: data })
-  } catch (error: any) {
-    console.error('배너 생성 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/banners POST', error)
   }
 }
 

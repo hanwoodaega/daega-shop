@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 
 // POST: 프로모션 삭제 시 장바구니에서 해당 상품 제거
 export async function POST(request: NextRequest) {
-  try {
-    await assertAdmin()
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { product_ids } = await request.json()
@@ -96,9 +94,8 @@ export async function POST(request: NextRequest) {
       message: `${deletedCount}개의 장바구니 아이템이 제거되었습니다.`,
       deletedCount
     })
-  } catch (error: any) {
-    console.error('[cleanup-cart] 에러:', error)
-    return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/promotions/cleanup-cart', error)
   }
 }
 

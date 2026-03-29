@@ -1,10 +1,11 @@
 import crypto from 'crypto'
+import { phoneDigitsOnly } from '@/lib/phone/kr'
 
 const OTP_SECRET = process.env.OTP_SECRET || 'dev-otp-secret'
 const USERNAME_DOMAIN = process.env.AUTH_USERNAME_DOMAIN || 'thedaega.local'
 
 export function normalizePhone(phone: string) {
-  return phone.replace(/[^0-9]/g, '')
+  return phoneDigitsOnly(phone)
 }
 
 export function normalizeUsername(username: string) {

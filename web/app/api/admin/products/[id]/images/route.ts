@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,10 +10,9 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
-  const { id } = await params
   try {
     const { id } = 'then' in params ? await params : params
-    
+
     const { data, error } = await supabaseAdmin
       .from('product_images')
       .select('*')
@@ -21,17 +21,12 @@ export async function GET(
       .order('created_at', { ascending: true })
 
     if (error) {
-      console.error('이미지 목록 조회 실패:', error)
-      return NextResponse.json({ 
-        error: error.message || '이미지 목록 조회 실패',
-        code: error.code 
-      }, { status: 500 })
+      return dbErrorResponse('admin product_images GET', error)
     }
 
     return NextResponse.json({ images: data || [] })
-  } catch (e: any) {
-    console.error('이미지 목록 조회 에러:', e)
-    return NextResponse.json({ error: e?.message || '서버 오류' }, { status: 500 })
+  } catch (e: unknown) {
+    return unknownErrorResponse('admin product_images GET', e)
   }
 }
 
@@ -40,12 +35,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
-  const { id } = await params
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { id } = 'then' in params ? await params : params
@@ -83,24 +74,12 @@ export async function POST(
       .single()
 
     if (error) {
-      console.error('이미지 추가 실패:', error)
-      console.error('에러 상세:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      })
-      return NextResponse.json({ 
-        error: error.message || '이미지 추가 실패',
-        code: error.code,
-        details: error.details
-      }, { status: 500 })
+      return dbErrorResponse('admin product_images POST', error)
     }
 
     return NextResponse.json({ image: data })
-  } catch (e: any) {
-    console.error('이미지 추가 에러:', e)
-    return NextResponse.json({ error: e?.message || '서버 오류' }, { status: 500 })
+  } catch (e: unknown) {
+    return unknownErrorResponse('admin product_images POST', e)
   }
 }
 

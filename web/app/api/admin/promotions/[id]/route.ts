@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { getProductMainImageUrlMap } from '@/lib/product/product-image-utils'
 
 // GET: 프로모션 상세 조회
@@ -9,11 +10,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     // 프로모션 정보
@@ -47,7 +45,7 @@ export async function GET(
       .order('created_at', { ascending: true })
 
     if (productsError) {
-      return NextResponse.json({ error: productsError.message }, { status: 400 })
+      return dbErrorResponse('admin/promotions/[id] GET products', productsError)
     }
 
     // product_images에서 이미지 URL 가져오기
@@ -79,9 +77,8 @@ export async function GET(
       promotion,
       products: productsWithImages,
     })
-  } catch (error: any) {
-    console.error('프로모션 조회 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/promotions/[id] GET', error)
   }
 }
 
@@ -91,11 +88,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const body = await request.json()
@@ -134,13 +128,12 @@ export async function PUT(
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/promotions/[id] PUT', error)
     }
 
     return NextResponse.json({ promotion: data })
-  } catch (error: any) {
-    console.error('프로모션 수정 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/promotions/[id] PUT', error)
   }
 }
 
@@ -150,11 +143,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { error } = await supabaseAdmin
@@ -163,13 +153,12 @@ export async function DELETE(
       .eq('id', id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/promotions/[id] DELETE', error)
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('프로모션 삭제 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/promotions/[id] DELETE', error)
   }
 }
 

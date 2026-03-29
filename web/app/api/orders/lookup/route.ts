@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { normalizePhoneForOrderMatch } from '@/lib/phone/kr'
+import { orderLookupGetQuerySchema } from '@/lib/validation/schemas/phone-kr'
 
 export const dynamic = 'force-dynamic'
-
-/** 전화번호 정규화: 숫자만 추출 (10~11자리) */
-function normalizePhone(value: string): string {
-  return value.replace(/\D/g, '').slice(-11).padStart(10, '0').slice(0, 11)
-}
 
 /**
  * GET: 주문조회 (비회원 포함)
@@ -16,23 +13,18 @@ function normalizePhone(value: string): string {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const orderNumber = searchParams.get('order_number')?.trim()
-    const phone = searchParams.get('phone')?.trim()
-
-    if (!orderNumber || !phone) {
-      return NextResponse.json(
-        { error: '주문번호와 수령인 연락처를 입력해주세요.' },
-        { status: 400 }
-      )
+    const qParsed = orderLookupGetQuerySchema.safeParse({
+      order_number: searchParams.get('order_number') ?? '',
+      phone: searchParams.get('phone') ?? '',
+    })
+    if (!qParsed.success) {
+      const msg =
+        qParsed.error.issues[0]?.message ?? '주문번호와 수령인 연락처를 입력해주세요.'
+      return NextResponse.json({ error: msg }, { status: 400 })
     }
 
-    const normalizedPhone = normalizePhone(phone)
-    if (normalizedPhone.length < 10) {
-      return NextResponse.json(
-        { error: '연락처를 올바르게 입력해주세요.' },
-        { status: 400 }
-      )
-    }
+    const orderNumber = qParsed.data.order_number
+    const normalizedPhone = qParsed.data.phone
 
     const supabase = createSupabaseAdminClient()
 
@@ -68,7 +60,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const orderPhoneNorm = normalizePhone(order.shipping_phone)
+    const orderPhoneNorm = normalizePhoneForOrderMatch(order.shipping_phone || '')
     if (orderPhoneNorm !== normalizedPhone) {
       return NextResponse.json(
         { error: '주문을 찾을 수 없습니다. 주문번호와 수령인 연락처를 확인해주세요.' },

@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 
 // PATCH: 추천 상품의 sort_order 수정
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; productId: string }> }
 ) {
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { id, productId } = await params
@@ -31,13 +29,12 @@ export async function PATCH(
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/recommendations/[id]/products/[productId] PATCH', error)
     }
 
     return NextResponse.json({ product: data })
-  } catch (error: any) {
-    console.error('상품 순서 수정 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/recommendations/[id]/products/[productId] PATCH', error)
   }
 }
 

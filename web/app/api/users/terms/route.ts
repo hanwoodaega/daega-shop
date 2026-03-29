@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 
 /**
@@ -48,9 +49,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, message: '약관 동의가 저장되었습니다.' })
-  } catch (error: any) {
-    console.error('약관 동의 저장 에러:', error)
-    return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('users/terms', error)
   }
 }
 

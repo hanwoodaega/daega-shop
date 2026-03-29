@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { getProductMainImageUrlMap } from '@/lib/product/product-image-utils'
-import { normalizeCategoryProduct } from '@/app/admin/gift-management/_utils/fetchers'
+import { normalizeCategoryProduct } from '@/app/admin/(protected)/gift-management/_utils/fetchers'
 
 // GET: 선물 카테고리 상세 조회 (상품 목록 포함)
 export async function GET(
@@ -10,11 +11,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { id } = await params
@@ -59,7 +57,7 @@ export async function GET(
       .order('created_at', { ascending: true })
 
     if (productsError) {
-      return NextResponse.json({ error: productsError.message }, { status: 400 })
+      return dbErrorResponse('admin/gift-categories/[id] GET products', productsError)
     }
 
     // product_images에서 이미지 URL 가져오기
@@ -91,10 +89,8 @@ export async function GET(
       category,
       products: productsWithImages,
     })
-  } catch (error: any) {
-    console.error('선물 카테고리 조회 실패:', error)
-    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/gift-categories/[id] GET', error)
   }
 }
 
@@ -104,11 +100,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { id } = await params
@@ -129,14 +122,12 @@ export async function PUT(
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/gift-categories/[id] PUT', error)
     }
 
     return NextResponse.json({ category: data })
-  } catch (error: any) {
-    console.error('선물 카테고리 수정 실패:', error)
-    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/gift-categories/[id] PUT', error)
   }
 }
 
@@ -146,11 +137,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { id } = await params
@@ -162,14 +150,12 @@ export async function DELETE(
       .eq('id', id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/gift-categories/[id] DELETE', error)
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('선물 카테고리 삭제 실패:', error)
-    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/gift-categories/[id] DELETE', error)
   }
 }
 

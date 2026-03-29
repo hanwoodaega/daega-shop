@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { phoneDigitsOnly } from '@/lib/phone/kr'
 
 const PROVIDER = 'naver'
 const OAUTH_EMAIL_DOMAIN = 'provider.local'
@@ -7,10 +8,6 @@ const PROFILE_REFRESH_TTL_MS = 24 * 60 * 60 * 1000
 
 const buildOauthEmail = (providerUserId: string) => {
   return `${PROVIDER}_${providerUserId}@${OAUTH_EMAIL_DOMAIN}`
-}
-
-const normalizePhone = (value?: string | null) => {
-  return value ? value.replace(/[^0-9]/g, '') : null
 }
 
 const sanitizeNextPath = (raw?: string | null) => {
@@ -115,7 +112,8 @@ async function processNaverOAuth(params: {
   }
 
   const name = userData?.response?.name || null
-  const phoneNumber = normalizePhone(userData?.response?.mobile)
+  const mobileRaw = userData?.response?.mobile
+  const phoneNumber = mobileRaw ? phoneDigitsOnly(String(mobileRaw)) : null
 
   const supabaseAdmin = createSupabaseAdminClient()
 

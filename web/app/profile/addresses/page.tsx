@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useAddressesSWR, mutateAddresses, type Address } from '@/lib/swr'
-import { formatPhoneNumber } from '@/lib/utils/format-phone'
+import { formatPhoneNumber, formatPhoneDisplay, parsePhoneInput, extractPhoneNumbers } from '@/lib/utils/format-phone'
 import { useDaumPostcodeScript, openDaumPostcode, AddressSearchResult } from '@/lib/postcode/useDaumPostcode'
 import { useCartStore } from '@/lib/store'
 
@@ -61,7 +61,7 @@ export default function AddressesPage() {
     setEditingAddress(address)
     setFormData({
       recipient_name: address.recipient_name,
-      recipient_phone: address.recipient_phone,
+      recipient_phone: extractPhoneNumbers(address.recipient_phone),
       zipcode: address.zipcode || '',
       address: address.address,
       address_detail: address.address_detail || '',
@@ -84,7 +84,7 @@ export default function AddressesPage() {
       const addressData = {
         name: addressName,
         recipient_name: formData.recipient_name.trim(),
-        recipient_phone: formData.recipient_phone,
+        recipient_phone: extractPhoneNumbers(formData.recipient_phone),
         zipcode: formData.zipcode.trim() || null,
         address: formData.address.trim(),
         address_detail: formData.address_detail.trim() || null,
@@ -462,21 +462,10 @@ export default function AddressesPage() {
                 </label>
                 <input
                   type="tel"
-                  value={formData.recipient_phone}
-                  onChange={(e) => {
-                    const numbers = e.target.value.replace(/[^0-9]/g, '')
-                    let formatted = numbers
-
-                    if (numbers.length > 3 && numbers.length <= 7) {
-                      // 0101234 -> 010-1234
-                      formatted = `${numbers.slice(0, 3)}-${numbers.slice(3)}`
-                    } else if (numbers.length > 7) {
-                      // 01012345678 -> 010-1234-5678
-                      formatted = `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`
-                    }
-
-                    setFormData({ ...formData, recipient_phone: formatted })
-                  }}
+                  value={formatPhoneDisplay(formData.recipient_phone)}
+                  onChange={(e) =>
+                    setFormData({ ...formData, recipient_phone: parsePhoneInput(e.target.value) })
+                  }
                   required
                   maxLength={13}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"

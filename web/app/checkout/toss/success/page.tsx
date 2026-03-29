@@ -6,6 +6,7 @@ import { useCartStore, useDirectPurchaseStore } from '@/lib/store'
 import { loadCartFromDB, setCartItems } from '@/lib/cart/cart-db'
 import { useAuth } from '@/lib/auth/auth-context'
 import { mutateProfileRelated, mutateAddresses, mutateOrders, mutateUnreadCount } from '@/lib/swr'
+import { sanitizePhoneDigits } from '@/lib/phone/kr'
 
 /** sessionStorage용 메타 (배송지 저장 등 부가 처리만, confirm은 서버 draft 기준) */
 interface CheckoutMeta {
@@ -37,7 +38,7 @@ function buildFinalRedirect(order: {
     return `/orders?giftToken=${encodeURIComponent(order.gift_token)}`
   }
   if (!order.user_id) {
-    const phone = String(order.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+    const phone = sanitizePhoneDigits(String(order.shipping_phone || ''))
     return `/order-lookup?order_number=${encodeURIComponent(order.order_number || '')}&phone=${encodeURIComponent(phone)}&done=1`
   }
   return '/orders'
@@ -135,9 +136,12 @@ function TossSuccessContent() {
         const data = await res.json()
 
         if (!res.ok) {
-          const detailMsg = data.details?.message || data.details?.code
-          const fullMsg = data.error + (detailMsg ? ` (${detailMsg})` : '')
-          throw new Error(fullMsg || '결제 승인에 실패했습니다.')
+          const detailMsg =
+            typeof data.detail === 'string'
+              ? data.detail
+              : data.details?.message || data.details?.code
+          const parts = [data.error, detailMsg].filter(Boolean)
+          throw new Error(parts.join(' — ') || '결제 승인에 실패했습니다.')
         }
 
         if (data.redirectTo) {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { getUserFromRequest } from '@/lib/auth/auth-server'
 import { fetchCartItemsForUser } from '@/lib/cart/cart-service'
@@ -255,10 +256,9 @@ export async function POST(request: NextRequest) {
       { ...baseResponse, sync: syncResult },
       { headers }
     )
-  } catch (error: any) {
-    console.error('부트스트랩 처리 오류:', error)
+  } catch (error: unknown) {
     const headers = new Headers()
     headers.set('Server-Timing', buildServerTimingHeader([{ name: 'total', durMs: Date.now() - t0 }]))
-    return NextResponse.json({ error: error?.message || '서버 오류' }, { status: 500, headers })
+    return unknownErrorResponse('auth/bootstrap', error, headers)
   }
 }

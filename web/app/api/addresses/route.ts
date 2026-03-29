@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 
@@ -24,17 +25,12 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('주소 조회 실패:', error)
-      return NextResponse.json({ error: '주소 조회 실패' }, { status: 500 })
+      return dbErrorResponse('addresses GET', error)
     }
 
     return NextResponse.json({ addresses: addresses || [] })
-  } catch (error: any) {
-    console.error('주소 조회 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('addresses GET', error)
   }
 }
 
@@ -80,17 +76,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('주소 추가 실패:', error)
-      return NextResponse.json({ error: '주소 추가 실패' }, { status: 500 })
+      return dbErrorResponse('addresses POST', error)
     }
 
     return NextResponse.json({ address: data })
-  } catch (error: any) {
-    console.error('주소 추가 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('addresses POST', error)
   }
 }
 

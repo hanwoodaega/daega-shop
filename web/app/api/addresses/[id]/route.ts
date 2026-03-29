@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 
@@ -55,17 +56,12 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('주소 수정 실패:', error)
-      return NextResponse.json({ error: '주소 수정 실패' }, { status: 500 })
+      return dbErrorResponse('addresses/[id] PUT', error)
     }
 
     return NextResponse.json({ address: data })
-  } catch (error: any) {
-    console.error('주소 수정 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('addresses/[id] PUT', error)
   }
 }
 
@@ -95,17 +91,12 @@ export async function DELETE(
       .eq('user_id', user.id)
 
     if (error) {
-      console.error('주소 삭제 실패:', error)
-      return NextResponse.json({ error: '주소 삭제 실패' }, { status: 500 })
+      return dbErrorResponse('addresses/[id] DELETE', error)
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('주소 삭제 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('addresses/[id] DELETE', error)
   }
 }
 

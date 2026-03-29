@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 
 export const dynamic = 'force-dynamic'
@@ -40,11 +41,7 @@ export async function GET(request: NextRequest) {
       .range(offset, offset + limit - 1)
 
     if (error) {
-      console.error('리뷰 이미지 조회 실패:', error)
-      return NextResponse.json({ 
-        error: '리뷰 이미지 조회 실패', 
-        details: error.message 
-      }, { status: 500 })
+      return dbErrorResponse('reviews/images GET', error)
     }
 
     const images: string[] = []
@@ -69,9 +66,8 @@ export async function GET(request: NextRequest) {
       hasMore: page < totalPages,
       totalReviews: count || 0
     })
-  } catch (error) {
-    console.error('리뷰 이미지 조회 에러:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('reviews/images GET', error)
   }
 }
 

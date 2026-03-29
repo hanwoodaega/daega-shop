@@ -10,6 +10,7 @@ import { usePoints } from '@/lib/point/points'
 import { sendOrderCompleteSms, sendGiftNotification } from '@/lib/notifications'
 import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 import type { OrderInput, OrderItemSnapshot, PricingResult } from '@/lib/order/order-pricing.server'
+import { sanitizePhoneDigits } from '@/lib/phone/kr'
 
 const CONFIRM_STATUS = {
   APPROVED_NOT_PERSISTED: 'approved_not_persisted',
@@ -147,7 +148,7 @@ export async function persistDraftToOrder(draftId: string): Promise<PersistResul
     }
 
     const payload = orderInput
-    const normalizedPhone = String(payload.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+    const normalizedPhone = sanitizePhoneDigits(String(payload.shipping_phone || ''))
     const giftToken = payload.is_gift ? crypto.randomBytes(32).toString('hex') : null
     const giftExpiresAt = payload.is_gift ? getGiftExpiresAtEndOfDayKST() : null
 
@@ -175,7 +176,7 @@ export async function persistDraftToOrder(draftId: string): Promise<PersistResul
       ;(orderInsertData as any).gift_token = giftToken
       ;(orderInsertData as any).gift_expires_at = giftExpiresAt
       if (payload.gift_recipient_phone) {
-        ;(orderInsertData as any).gift_recipient_phone = String(payload.gift_recipient_phone).replace(/\D/g, '').slice(0, 13)
+        ;(orderInsertData as any).gift_recipient_phone = sanitizePhoneDigits(String(payload.gift_recipient_phone))
       }
     }
 
@@ -273,11 +274,11 @@ export async function persistDraftToOrder(draftId: string): Promise<PersistResul
     }
 
     const orderCompletePhone = payload.is_gift
-      ? String(payload.orderer_phone ?? '').replace(/\D/g, '').slice(0, 13)
+      ? sanitizePhoneDigits(String(payload.orderer_phone ?? ''))
       : (() => {
-          const fromPayload = String(payload.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+          const fromPayload = sanitizePhoneDigits(String(payload.shipping_phone || ''))
           if (fromPayload.length >= 10) return fromPayload
-          return String(order?.shipping_phone ?? '').replace(/\D/g, '').slice(0, 13)
+          return sanitizePhoneDigits(String(order?.shipping_phone ?? ''))
         })()
     const giftBaseUrl = getBaseUrl()
     const totalQty = itemSnapshots.reduce((sum, s) => sum + s.quantity, 0)

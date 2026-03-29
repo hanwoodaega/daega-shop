@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 
@@ -102,12 +103,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, discountAmount })
-  } catch (error: any) {
-    console.error('쿠폰 사용 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('coupons/use POST', error)
   }
 }
 

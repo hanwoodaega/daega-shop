@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { PRODUCT_SELECT_FIELDS, enrichProductsServer } from '@/lib/product/product.service'
 
@@ -97,15 +98,8 @@ export async function GET(request: NextRequest) {
     const { data: products, error, count } = await query
 
     if (error) {
-      console.error('[API/products] 상품 조회 실패:', error)
-      console.error('[API/products] 에러 코드:', error.code)
-      console.error('[API/products] 에러 메시지:', error.message)
-      console.error('[API/products] 에러 상세:', error.details)
       console.error('[API/products] 쿼리 파라미터:', { page, limit, sort, category, filter, searchQuery })
-      return NextResponse.json({ 
-        error: error.message || '상품 조회 실패',
-        code: error.code 
-      }, { status: 500 })
+      return dbErrorResponse('products GET', error)
     }
 
     if (!products || products.length === 0) {
@@ -135,9 +129,8 @@ export async function GET(request: NextRequest) {
     response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=60')
 
     return response
-  } catch (error) {
-    console.error('상품 목록 조회 에러:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('products GET', error)
   }
 }
 

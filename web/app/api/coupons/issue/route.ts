@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { getCouponExpiresAtEndOfDayKST } from '@/lib/coupon/expires'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
+import { parseJsonBody } from '@/lib/api/parse-json'
+import { couponIssuePairSchema } from '@/lib/validation/schemas/admin-coupon'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,21 +17,15 @@ export const dynamic = 'force-dynamic'
  */
 // POST: 쿠폰 지급 (관리자 전용)
 export async function POST(request: NextRequest) {
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
+
   try {
-    // 관리자 인증 필수
-    await assertAdmin()
-
     const supabase = createSupabaseAdminClient()
-    const body = await request.json()
-    const { couponId, userId } = body
+    const parsed = await parseJsonBody(request, couponIssuePairSchema)
+    if (!parsed.ok) return parsed.response
 
-    if (!couponId) {
-      return NextResponse.json({ error: '쿠폰 ID가 필요합니다.' }, { status: 400 })
-    }
-
-    if (!userId) {
-      return NextResponse.json({ error: '사용자 ID가 필요합니다.' }, { status: 400 })
-    }
+    const { couponId, userId } = parsed.data
 
     // 중복 발급 방지: 같은 쿠폰은 평생 딱 한번만 받을 수 있음 (사용 여부와 관계없이)
     const { count: existingCount } = await supabase
@@ -91,15 +88,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, userCoupon })
-  } catch (error: any) {
-    if (error.status === 401) {
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
-    }
-    console.error('쿠폰 지급 오류:', error)
-    return NextResponse.json({
-      error: '서버 오류',
-      details: error?.message || '알 수 없는 오류',
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('coupons/issue', error)
   }
 }
 

@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 
 // GET: 모든 추천 카테고리 조회 (관리자용)
 export async function GET(request: NextRequest) {
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { data, error } = await supabaseAdmin
@@ -18,23 +16,19 @@ export async function GET(request: NextRequest) {
       .order('sort_order', { ascending: true })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/recommendations GET', error)
     }
 
     return NextResponse.json({ categories: data || [] })
-  } catch (error: any) {
-    console.error('추천 카테고리 조회 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/recommendations GET', error)
   }
 }
 
 // POST: 추천 카테고리 생성
 export async function POST(request: NextRequest) {
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const body = await request.json()
@@ -55,13 +49,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/recommendations POST', error)
     }
 
     return NextResponse.json({ category: data })
-  } catch (error: any) {
-    console.error('추천 카테고리 생성 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/recommendations POST', error)
   }
 }
 

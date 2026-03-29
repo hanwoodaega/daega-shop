@@ -3,15 +3,16 @@ import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { hashToken, normalizePhone } from '@/lib/auth/otp-utils'
 import { handleOrderCancellationPoints } from '@/lib/point/points'
 import { cancelTossPayment } from '@/lib/payments/toss-server'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
+import { parseJsonBody } from '@/lib/api/parse-json'
+import { guestOrderCancelBodySchema } from '@/lib/validation/schemas/order-lookup'
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { orderId, token } = body as { orderId?: string; token?: string }
+    const parsed = await parseJsonBody(request, guestOrderCancelBodySchema)
+    if (!parsed.ok) return parsed.response
 
-    if (!orderId || !token) {
-      return NextResponse.json({ error: '주문 ID와 토큰이 필요합니다.' }, { status: 400 })
-    }
+    const { orderId, token } = parsed.data
 
     // guestCancelToken 검증 (stateless HMAC 서명)
     let decoded: string
@@ -142,12 +143,7 @@ export async function POST(request: NextRequest) {
       success: true,
     })
   } catch (error: unknown) {
-    const err = error instanceof Error ? error : new Error(String(error))
-    console.error('비회원 주문 취소 실패:', err)
-    return NextResponse.json(
-      { error: err.message || '서버 오류' },
-      { status: 500 }
-    )
+    return unknownErrorResponse('orders/lookup/cancel', error)
   }
 }
 

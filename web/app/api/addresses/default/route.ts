@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 
@@ -27,8 +28,7 @@ export async function GET(request: NextRequest) {
       .maybeSingle()
 
     if (error && error.code !== 'PGRST116') {
-      console.error('기본 주소 조회 실패:', error)
-      return NextResponse.json({ error: '기본 주소 조회 실패' }, { status: 500 })
+      return dbErrorResponse('addresses/default GET', error)
     }
 
     // 기본 주소가 없으면 첫 번째 주소 조회
@@ -51,12 +51,8 @@ export async function GET(request: NextRequest) {
       address: defaultAddr,
       hasDefaultAddress: true
     })
-  } catch (error: any) {
-    console.error('기본 주소 조회 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('addresses/default GET', error)
   }
 }
 

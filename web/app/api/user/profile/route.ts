@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { getUserFromServer } from '@/lib/auth/auth-server'
 
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
       .maybeSingle()
 
     if (statusError) {
-      return NextResponse.json({ error: '사용자 상태 조회 실패' }, { status: 500 })
+      return dbErrorResponse('user profile GET status', statusError)
     }
 
     if (statusRow?.status === 'deleted') {
@@ -37,17 +38,12 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('사용자 정보 조회 실패:', error)
-      return NextResponse.json({ error: '사용자 정보 조회 실패' }, { status: 500 })
+      return dbErrorResponse('user profile GET', error)
     }
 
     return NextResponse.json({ profile: profile || null })
-  } catch (error: any) {
-    console.error('사용자 정보 조회 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('user profile GET', error)
   }
 }
 
@@ -67,7 +63,7 @@ export async function PUT(request: NextRequest) {
       .maybeSingle()
 
     if (statusError) {
-      return NextResponse.json({ error: '사용자 상태 조회 실패' }, { status: 500 })
+      return dbErrorResponse('user profile PUT status', statusError)
     }
 
     if (statusRow?.status === 'deleted') {
@@ -99,17 +95,12 @@ export async function PUT(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('사용자 프로필 수정 실패:', error)
-      return NextResponse.json({ error: '사용자 프로필 수정 실패' }, { status: 500 })
+      return dbErrorResponse('user profile PUT', error)
     }
 
     return NextResponse.json({ profile: data })
-  } catch (error: any) {
-    console.error('사용자 프로필 수정 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('user profile PUT', error)
   }
 }
 
@@ -129,7 +120,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
 
     if (statusError) {
-      return NextResponse.json({ error: '사용자 상태 조회 실패' }, { status: 500 })
+      return dbErrorResponse('user profile POST status', statusError)
     }
 
     if (statusRow?.status === 'deleted') {
@@ -161,17 +152,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('사용자 프로필 생성/업데이트 실패:', error)
-      return NextResponse.json({ error: '사용자 프로필 생성/업데이트 실패' }, { status: 500 })
+      return dbErrorResponse('user profile POST', error)
     }
 
     return NextResponse.json({ profile: data })
-  } catch (error: any) {
-    console.error('사용자 프로필 생성/업데이트 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('user profile POST', error)
   }
 }
 

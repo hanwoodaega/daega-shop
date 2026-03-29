@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { logApiError, unknownErrorResponse } from '@/lib/api/api-errors'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { addPoints } from '@/lib/point/points'
 
 // POST: 관리자가 고객에게 포인트 적립 및 알림 발송
 export async function POST(request: NextRequest) {
   try {
-    try { 
-      await assertAdmin() 
-    } catch (e: any) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const unauthorized = await ensureAdminApi()
+    if (unauthorized) return unauthorized
 
     const supabase = createSupabaseAdminClient()
     const body = await request.json()
@@ -70,9 +68,9 @@ export async function POST(request: NextRequest) {
         }
 
         results.success.push(userId)
-      } catch (error: any) {
-        console.error(`사용자 ${userId} 처리 실패:`, error)
-        results.failed.push({ userId, error: error.message || '처리 실패' })
+      } catch (error: unknown) {
+        logApiError(`admin points/add user ${userId}`, error)
+        results.failed.push({ userId, error: '처리 실패' })
       }
     }
 
@@ -89,9 +87,8 @@ export async function POST(request: NextRequest) {
       message: `${results.success.length}명에게 포인트가 적립되었습니다.`,
       count: results.success.length,
     })
-  } catch (error) {
-    console.error('포인트 적립 오류:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin points/add', error)
   }
 }
 

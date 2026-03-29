@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { requireCronSecret } from '@/lib/auth/internal-job-auth'
 
@@ -27,8 +28,7 @@ export async function GET(request: NextRequest) {
       .select('id')
 
     if (error) {
-      console.error('[cleanup-drafts]', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return dbErrorResponse('cron/cleanup-drafts', error)
     }
 
     const deletedCount = data?.length ?? 0
@@ -42,10 +42,6 @@ export async function GET(request: NextRequest) {
       timestamp: now,
     })
   } catch (error: unknown) {
-    console.error('[cleanup-drafts]', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : '서버 오류' },
-      { status: 500 }
-    )
+    return unknownErrorResponse('cron/cleanup-drafts', error)
   }
 }

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { handleOrderCancellationPoints } from '@/lib/point/points'
 import { cancelTossPayment } from '@/lib/payments/toss-server'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
+import { parseJsonBody } from '@/lib/api/parse-json'
+import { orderIdBodySchema } from '@/lib/validation/schemas/order-payment'
 
 /**
  * 주문 취소 API
@@ -20,12 +23,9 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createSupabaseAdminClient()
-    const body = await request.json()
-    const { orderId } = body
-
-    if (!orderId) {
-      return NextResponse.json({ error: '주문 ID가 필요합니다.' }, { status: 400 })
-    }
+    const parsed = await parseJsonBody(request, orderIdBodySchema)
+    if (!parsed.ok) return parsed.response
+    const { orderId } = parsed.data
 
     const { data: order, error: orderError } = await supabase
       .from('orders')
@@ -99,12 +99,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error: unknown) {
-    const err = error instanceof Error ? error : new Error(String(error))
-    console.error('주문 취소 실패:', err)
-    return NextResponse.json(
-      { error: err.message || '서버 오류' },
-      { status: 500 }
-    )
+    return unknownErrorResponse('orders/cancel', error)
   }
 }
 

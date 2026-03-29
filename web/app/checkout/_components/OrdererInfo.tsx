@@ -1,6 +1,6 @@
 'use client'
 
-import { formatPhoneDisplay } from '@/lib/utils/format-phone'
+import { formatPhoneDisplay, parsePhoneInput } from '@/lib/utils/format-phone'
 
 interface OrdererInfoProps {
   formData: {
@@ -42,10 +42,7 @@ export default function OrdererInfo({
             type="tel"
             name="phone"
             value={formatPhoneDisplay(formData.phone)}
-            onChange={(e) => {
-              const numbers = e.target.value.replace(/[^0-9]/g, '').slice(0, 11)
-              onPhoneChange(numbers)
-            }}
+            onChange={(e) => onPhoneChange(parsePhoneInput(e.target.value))}
             required
             placeholder="휴대폰 번호를 입력해주세요"
             maxLength={13}

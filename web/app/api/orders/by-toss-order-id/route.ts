@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 
 export async function GET(request: NextRequest) {
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
       .maybeSingle()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return dbErrorResponse('orders/by-toss-order-id', error)
     }
     if (!order) {
       return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 })
@@ -53,11 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     return res
-  } catch (e) {
-    console.error('[by-toss-order-id]', e)
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : '서버 오류' },
-      { status: 500 }
-    )
+  } catch (e: unknown) {
+    return unknownErrorResponse('orders/by-toss-order-id', e)
   }
 }

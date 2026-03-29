@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logApiError, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { addPoints } from '@/lib/point/points'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 
 /**
  * 자동 구매확정 API (관리자 수동 실행)
@@ -11,13 +13,8 @@ import { addPoints } from '@/lib/point/points'
  */
 export async function GET(request: NextRequest) {
   try {
-    // 관리자 인증 확인
-    const { assertAdmin } = await import('@/lib/auth/admin-auth')
-    try {
-      await assertAdmin()
-    } catch (e: any) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const unauthorized = await ensureAdminApi()
+    if (unauthorized) return unauthorized
 
     const supabase = createSupabaseAdminClient()
 
@@ -156,9 +153,9 @@ export async function GET(request: NextRequest) {
           }
           successCount++
         }
-      } catch (error: any) {
-        console.error(`주문 #${order.id} 자동 구매확정 실패:`, error)
-        errors.push(`주문 #${order.id}: ${error.message || '처리 실패'}`)
+      } catch (error: unknown) {
+        logApiError(`admin auto-confirm order ${order.id}`, error)
+        errors.push(`주문 #${order.id}: 처리 실패`)
       }
     }
 
@@ -169,11 +166,8 @@ export async function GET(request: NextRequest) {
       totalOrders: oldDeliveredOrders.length,
       errors: errors.length > 0 ? errors : undefined
     })
-  } catch (error: any) {
-    console.error('자동 구매확정 실패:', error)
-    return NextResponse.json({ 
-      error: error.message || '서버 오류' 
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin orders auto-confirm', error)
   }
 }
 

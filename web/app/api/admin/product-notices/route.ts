@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
+import { API_ERROR_TEXT, apiJsonError, dbErrorResponse } from '@/lib/api/api-errors'
 
 // GET: 메타 + 특정 상품의 고시값 조회
 export async function GET(request: NextRequest) {
-  try {
-    await assertAdmin()
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   const productId = request.nextUrl.searchParams.get('product_id')
 
@@ -31,16 +29,13 @@ export async function GET(request: NextRequest) {
   ])
 
   if (catRes.error) {
-    console.error('[product-notices] categories error:', catRes.error)
-    return NextResponse.json({ error: catRes.error.message }, { status: 500 })
+    return dbErrorResponse('[product-notices] categories', catRes.error)
   }
   if (fieldRes.error) {
-    console.error('[product-notices] fields error:', fieldRes.error)
-    return NextResponse.json({ error: fieldRes.error.message }, { status: 500 })
+    return dbErrorResponse('[product-notices] fields', fieldRes.error)
   }
   if (valueRes.error) {
-    console.error('[product-notices] values error:', valueRes.error)
-    return NextResponse.json({ error: valueRes.error.message }, { status: 500 })
+    return dbErrorResponse('[product-notices] values', valueRes.error)
   }
   if (productRes.error && productId) {
     console.error('[product-notices] product error:', productRes.error)
@@ -56,11 +51,8 @@ export async function GET(request: NextRequest) {
 
 // POST: 상품별 고시 카테고리 및 값 저장
 export async function POST(request: NextRequest) {
-  try {
-    await assertAdmin()
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   let body: {
     product_id?: string
@@ -70,7 +62,10 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return apiJsonError(400, {
+      error: API_ERROR_TEXT.invalidRequest,
+      code: 'INVALID_JSON',
+    })
   }
 
   const productId = body.product_id?.trim()
@@ -85,8 +80,7 @@ export async function POST(request: NextRequest) {
     .eq('id', productId)
 
   if (updateError) {
-    console.error('[product-notices] update product error:', updateError)
-    return NextResponse.json({ error: updateError.message || '상품 업데이트 실패' }, { status: 500 })
+    return dbErrorResponse('[product-notices] update product', updateError)
   }
 
   // 2) 기존 값 삭제 후 재삽입 (간단한 구조)
@@ -96,8 +90,7 @@ export async function POST(request: NextRequest) {
     .eq('product_id', productId)
 
   if (deleteError) {
-    console.error('[product-notices] delete old values error:', deleteError)
-    return NextResponse.json({ error: deleteError.message || '기존 값 삭제 실패' }, { status: 500 })
+    return dbErrorResponse('[product-notices] delete values', deleteError)
   }
 
   const cleanValues = (body.values || [])
@@ -119,8 +112,7 @@ export async function POST(request: NextRequest) {
       .insert(insertPayload)
 
     if (insertError) {
-      console.error('[product-notices] insert values error:', insertError)
-      return NextResponse.json({ error: insertError.message || '값 저장 실패' }, { status: 500 })
+      return dbErrorResponse('[product-notices] insert values', insertError)
     }
   }
 

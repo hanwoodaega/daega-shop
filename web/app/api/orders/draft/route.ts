@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getUserFromServer } from '@/lib/auth/auth-server'
-import { calculateOrderPricing, OrderInput } from '@/lib/order/order-pricing.server'
+import { calculateOrderPricing } from '@/lib/order/order-pricing.server'
 import { toPricingResponse } from '@/lib/order/pricing-types'
 import { DRAFT_EXPIRY_MINUTES } from '@/lib/utils/constants'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
+import { parseJsonBody } from '@/lib/api/parse-json'
+import { draftPostBodySchema, normalizeToOrderInput } from '@/lib/validation/schemas/order-payment'
 
 /**
  * 결제 전 주문 초안(draft) 생성.
@@ -13,16 +16,16 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromServer()
 
-    const { orderInput } = await request.json()
-    if (!orderInput) {
-      return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
-    }
+    const parsed = await parseJsonBody(request, draftPostBodySchema)
+    if (!parsed.ok) return parsed.response
+
+    const orderInput = normalizeToOrderInput(parsed.data.orderInput)
 
     const supabaseAdmin = createSupabaseAdminClient()
     const { pricing, itemSnapshots } = await calculateOrderPricing({
       supabaseAdmin,
       userId: user?.id ?? null,
-      input: orderInput as OrderInput,
+      input: orderInput,
     })
 
     const amount = pricing.finalTotal
@@ -32,7 +35,7 @@ export async function POST(request: NextRequest) {
     expiresAt.setMinutes(expiresAt.getMinutes() + DRAFT_EXPIRY_MINUTES)
 
     const payload = {
-      orderInput: orderInput as OrderInput,
+      orderInput,
       itemSnapshots,
       pricing: {
         finalTotal: pricing.finalTotal,
@@ -66,8 +69,7 @@ export async function POST(request: NextRequest) {
       expiresAt: expiresAt.toISOString(),
       pricing: toPricingResponse(pricing),
     })
-  } catch (error: any) {
-    console.error('[orders/draft]', error)
-    return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('orders/draft', error)
   }
 }

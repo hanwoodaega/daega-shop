@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { getUserFromRequest } from '@/lib/auth/auth-server'
 import { deriveAuthState, getPostAuthRedirect } from '@/lib/auth/auth-state'
@@ -117,11 +118,10 @@ export async function GET(request: NextRequest) {
       },
       { headers }
     )
-  } catch (error: any) {
-    console.error('auth finalize 오류:', error)
+  } catch (error: unknown) {
     const headers = new Headers()
     headers.set('Server-Timing', buildServerTimingHeader([{ name: 'total', durMs: Date.now() - t0 }]))
-    return NextResponse.json({ error: error?.message || '서버 오류' }, { status: 500, headers })
+    return unknownErrorResponse('auth/finalize', error, headers)
   }
 }
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
 
 /**
  * 선물 토큰으로 주문 정보 조회
@@ -7,7 +8,6 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
-  const { token } = await params
   try {
     const { token } = await params
 
@@ -141,8 +141,8 @@ export async function GET(
       order: orderWithImages,
       expires_at: expiresAt?.toISOString() || null
     })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('gift GET', error)
   }
 }
 
@@ -153,7 +153,6 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
-  const { token } = await params
   try {
     const { token } = await params
     const body = await request.json()
@@ -235,8 +234,8 @@ export async function POST(
       message: '선물 수령 정보가 등록되었습니다.',
       order: updatedOrder 
     })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('gift POST', error)
   }
 }
 

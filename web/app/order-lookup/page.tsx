@@ -8,7 +8,8 @@ import Header from '@/components/layout/Header'
 import BottomNavbar from '@/components/layout/BottomNavbar'
 import { OrderWithItems } from '@/lib/order/order-types'
 import { formatPrice } from '@/lib/utils/utils'
-import { formatPhoneNumber } from '@/lib/utils/format-phone'
+import { sanitizeOtpCodeInput } from '@/lib/phone/kr'
+import { formatPhoneNumber, formatPhoneDisplay, parsePhoneInput, extractPhoneNumbers } from '@/lib/utils/format-phone'
 import { getStatusText, getDeliveryTypeText, getStatusTextColor } from '@/lib/order/order-utils'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -321,18 +322,11 @@ function OrderLookupContent() {
 
   const doneMessage = searchParams?.get('done') === '1'
 
-  const normalizePhoneInput = (value: string) => {
-    const digits = value.replace(/\D/g, '').slice(0, 11)
-    if (digits.length <= 3) return digits
-    if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`
-    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
-  }
-
   useEffect(() => {
     const num = searchParams?.get('order_number') ?? ''
     const ph = searchParams?.get('phone') ?? ''
     if (num) setOrderNumber(num)
-    if (ph) setPhone(normalizePhoneInput(ph))
+    if (ph) setPhone(parsePhoneInput(ph))
   }, [searchParams])
 
   // 회원은 /order-lookup 대신 /orders로 이동
@@ -386,7 +380,7 @@ function OrderLookupContent() {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     const num = orderNumber.trim()
-    const ph = phone.trim()
+    const ph = extractPhoneNumbers(phone)
     if (!num || !ph) {
       setError('주문번호와 휴대폰 번호를 입력해주세요.')
       return
@@ -416,7 +410,7 @@ function OrderLookupContent() {
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
     const num = orderNumber.trim()
-    const ph = phone.replace(/\D/g, '').trim()
+    const ph = extractPhoneNumbers(phone).trim()
     const code = otpCode.trim()
     if (!num || !ph || !code) {
       setError('인증번호를 입력해주세요.')
@@ -572,8 +566,8 @@ function OrderLookupContent() {
                 <input
                   id="phone"
                   type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
+                  value={formatPhoneDisplay(phone)}
+                  onChange={(e) => setPhone(parsePhoneInput(e.target.value))}
                   placeholder="휴대폰 번호를 입력해주세요."
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
                   autoComplete="tel"
@@ -609,7 +603,7 @@ function OrderLookupContent() {
                   inputMode="numeric"
                   maxLength={6}
                   value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) => setOtpCode(sanitizeOtpCodeInput(e.target.value))}
                   placeholder="6자리 숫자"
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600 text-center text-lg tracking-widest"
                   autoComplete="one-time-code"

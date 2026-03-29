@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useCartStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase/supabase'
+import { digitsOnlyMax, sanitizeOtpCodeInput } from '@/lib/phone/kr'
+import { formatPhoneNumber, formatPhoneDisplay, parsePhoneInput, extractPhoneNumbers } from '@/lib/utils/format-phone'
 
 function ProfileEditContent() {
   const router = useRouter()
@@ -33,22 +35,6 @@ function ProfileEditContent() {
   const [verificationCode, setVerificationCode] = useState('')
   const [isPhoneVerified, setIsPhoneVerified] = useState(false)
   const [isSendingCode, setIsSendingCode] = useState(false)
-
-  // 전화번호 포맷팅 함수
-  const formatPhoneNumber = (phoneNumber: string) => {
-    if (!phoneNumber) return '-'
-    const numbers = phoneNumber.replace(/[^0-9]/g, '')
-    if (numbers.length === 11) {
-      return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`
-    } else if (numbers.length === 10) {
-      if (numbers.startsWith('02')) {
-        return `${numbers.slice(0, 2)}-${numbers.slice(2, 6)}-${numbers.slice(6)}`
-      } else {
-        return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6)}`
-      }
-    }
-    return phoneNumber
-  }
 
   // 생년월일 포맷팅 함수
   const formatBirthday = (birthdayValue: string) => {
@@ -165,13 +151,13 @@ function ProfileEditContent() {
         }
         
         setName(loadedName)
-        setPhone(loadedPhone)
+        setPhone(extractPhoneNumbers(loadedPhone))
         setBirthday(loadedBirthday)
         setNewPhone('')
         
         // 원래 값 저장
         setOriginalName(loadedName)
-        setOriginalPhone(loadedPhone)
+        setOriginalPhone(extractPhoneNumbers(loadedPhone))
         setOriginalBirthday(loadedBirthday)
       }
     } catch (error) {
@@ -188,8 +174,8 @@ function ProfileEditContent() {
 
     try {
       // 전화번호가 변경된 경우 인증 확인
-      const phoneToSave = newPhone ? newPhone.replace(/[^0-9]/g, '') : phone.replace(/[^0-9]/g, '')
-      const originalPhoneNumbers = originalPhone.replace(/[^0-9]/g, '')
+      const phoneToSave = newPhone ? extractPhoneNumbers(newPhone) : extractPhoneNumbers(phone)
+      const originalPhoneNumbers = extractPhoneNumbers(originalPhone)
 
       // 전화번호가 변경되었고 인증이 완료되지 않은 경우
       if (phoneToSave !== originalPhoneNumbers && !isPhoneVerified) {
@@ -268,7 +254,7 @@ function ProfileEditContent() {
 
   // 인증번호 발송
   const handleSendVerificationCode = async () => {
-    if (!newPhone || newPhone.replace(/[^0-9]/g, '').length < 10) {
+    if (!newPhone || newPhone.length < 10) {
       setMessage({ type: 'error', text: '올바른 전화번호를 입력해주세요.' })
       return
     }
@@ -282,7 +268,7 @@ function ProfileEditContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone: newPhone.replace(/[^0-9]/g, ''),
+          phone: extractPhoneNumbers(newPhone),
           purpose: 'verify_phone',
         }),
       })
@@ -316,7 +302,7 @@ function ProfileEditContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          phone: newPhone.replace(/[^0-9]/g, ''),
+          phone: extractPhoneNumbers(newPhone),
           code: verificationCode,
         }),
       })
@@ -326,7 +312,7 @@ function ProfileEditContent() {
       }
 
       setIsPhoneVerified(true)
-      setPhone(newPhone.replace(/[^0-9]/g, ''))
+      setPhone(extractPhoneNumbers(newPhone))
       setMessage({ type: 'success', text: '전화번호 인증이 완료되었습니다.' })
       setIsVerifyingPhone(false)
     } catch (error: any) {
@@ -461,7 +447,7 @@ function ProfileEditContent() {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-sm font-normal text-gray-500">전화번호</div>
-                  <div className="text-base font-semibold text-gray-900">{formatPhoneNumber(phone)}</div>
+                  <div className="text-base font-semibold text-gray-900">{formatPhoneNumber(phone) || '-'}</div>
                 </div>
               </div>
 
@@ -553,7 +539,7 @@ function ProfileEditContent() {
                 전화번호 *
               </label>
               {(() => {
-                const originalPhone = phone.replace(/[^0-9]/g, '')
+                const originalPhone = extractPhoneNumbers(phone)
                 const currentPhone = newPhone || originalPhone
                 const isPhoneChanged = currentPhone !== originalPhone
                 
@@ -562,7 +548,7 @@ function ProfileEditContent() {
                     <div className="flex items-center gap-2">
                       <input
                         type="tel"
-                        value={formatPhoneNumber(phone)}
+                        value={formatPhoneDisplay(phone)}
                         disabled
                         className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
                       />
@@ -576,9 +562,9 @@ function ProfileEditContent() {
                     <div className="flex flex-col sm:flex-row gap-2 mb-2">
                       <input
                         type="tel"
-                        value={newPhone || phone}
+                        value={formatPhoneDisplay(parsePhoneInput(newPhone || phone))}
                         onChange={(e) => {
-                          const numbers = e.target.value.replace(/[^0-9]/g, '')
+                          const numbers = parsePhoneInput(e.target.value)
                           setNewPhone(numbers)
                           if (numbers === originalPhone) {
                             setIsPhoneVerified(false)
@@ -588,7 +574,7 @@ function ProfileEditContent() {
                         }}
                         className="flex-1 min-w-0 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         placeholder="휴대폰 번호를 입력해주세요"
-                        maxLength={11}
+                        maxLength={13}
                         disabled={isVerifyingPhone}
                         required
                       />
@@ -596,7 +582,7 @@ function ProfileEditContent() {
                         <button
                           type="button"
                           onClick={handleSendVerificationCode}
-                          disabled={isSendingCode || !newPhone || newPhone.replace(/[^0-9]/g, '').length < 10}
+                          disabled={isSendingCode || !newPhone || newPhone.length < 10}
                           className="w-full sm:w-auto flex-shrink-0 px-4 py-2 bg-primary-800 text-white text-sm font-medium rounded-lg hover:bg-primary-900 transition disabled:bg-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
                         >
                           {isSendingCode ? '발송중...' : '인증번호 발송'}
@@ -609,8 +595,7 @@ function ProfileEditContent() {
                           type="text"
                           value={verificationCode}
                           onChange={(e) => {
-                            const code = e.target.value.replace(/[^0-9]/g, '').slice(0, 6)
-                            setVerificationCode(code)
+                            setVerificationCode(sanitizeOtpCodeInput(e.target.value))
                           }}
                           className="flex-1 min-w-0 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="인증번호 6자리"
@@ -653,9 +638,7 @@ function ProfileEditContent() {
                     return birthday
                   })()}
                   onChange={(e) => {
-                    // 하이픈 제거하고 숫자만 저장
-                    const numbers = e.target.value.replace(/[^0-9]/g, '').slice(0, 8)
-                    setBirthday(numbers)
+                    setBirthday(digitsOnlyMax(e.target.value, 8))
                   }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="19900101"
@@ -671,7 +654,7 @@ function ProfileEditContent() {
                 // 변경 감지
                 const phoneToCheck = newPhone || phone
                 const isNameChanged = name.trim() !== originalName
-                const isPhoneChanged = phoneToCheck.replace(/[^0-9]/g, '') !== originalPhone.replace(/[^0-9]/g, '')
+                const isPhoneChanged = extractPhoneNumbers(phoneToCheck) !== extractPhoneNumbers(originalPhone)
                 const isBirthdayChanged = birthday !== originalBirthday
                 const hasChanges = isNameChanged || isPhoneChanged || isBirthdayChanged
                 

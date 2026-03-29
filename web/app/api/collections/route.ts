@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 
 export const dynamic = 'force-dynamic'
@@ -17,13 +18,12 @@ export async function GET(request: NextRequest) {
       .order('type', { ascending: true })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('collections GET', error)
     }
 
     return NextResponse.json({ collections: collections || [] })
-  } catch (error: any) {
-    console.error('메인페이지 컬렉션 조회 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('collections GET', error)
   }
 }
 

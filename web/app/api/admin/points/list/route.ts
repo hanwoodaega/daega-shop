@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 
 // GET: 관리자가 모든 사용자의 포인트 정보 조회
 export async function GET(request: NextRequest) {
   try {
-    try { 
-      await assertAdmin() 
-    } catch (e: any) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const unauthorized = await ensureAdminApi()
+    if (unauthorized) return unauthorized
 
     const supabase = createSupabaseAdminClient()
     

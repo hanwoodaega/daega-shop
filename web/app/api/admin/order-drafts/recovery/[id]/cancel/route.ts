@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { cancelTossPayment } from '@/lib/payments/toss-server'
-import { hasValidAdminCookie } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 
 /** 승인 후 주문 미생성 건 → 토스 결제 취소(환불) 후 draft 삭제 */
 export async function POST(
@@ -9,10 +9,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const isAdmin = await hasValidAdminCookie()
-    if (!isAdmin) {
-      return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 })
-    }
+    const unauthorized = await ensureAdminApi()
+    if (unauthorized) return unauthorized
 
     const { id } = await params
     if (!id) {

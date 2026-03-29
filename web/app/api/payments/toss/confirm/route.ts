@@ -9,6 +9,10 @@ import { calculateOrderPricing, OrderInput, OrderItemSnapshot, PricingResult } f
 import { cancelTossPayment } from '@/lib/payments/toss-server'
 import type { User } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
+import { parseJsonBody } from '@/lib/api/parse-json'
+import { normalizeToOrderInput, tossConfirmBodySchema } from '@/lib/validation/schemas/order-payment'
+import { sanitizePhoneDigits } from '@/lib/phone/kr'
 
 /** draft 기준 응답: 주문은 아직 없으므로 success 페이지에서 정리 중 + 폴링 후 리다이렉트 */
 function buildPendingRedirectResponse(
@@ -44,7 +48,7 @@ function buildRedirectResponse(
   if (giftToken) {
     redirectTo = '/orders?giftToken=' + encodeURIComponent(giftToken)
   } else if (isGuest) {
-    const phone = String(payload.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+    const phone = sanitizePhoneDigits(String(payload.shipping_phone || ''))
     redirectTo = `/order-lookup?order_number=${encodeURIComponent(orderNumber)}&phone=${encodeURIComponent(phone)}&done=1`
   } else {
     redirectTo = '/orders'
@@ -78,7 +82,7 @@ function buildRedirectResponseFromOrder(
   if (giftToken) {
     redirectTo = '/orders?giftToken=' + encodeURIComponent(giftToken)
   } else if (isGuest) {
-    const phone = String(order.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+    const phone = sanitizePhoneDigits(String(order.shipping_phone || ''))
     redirectTo = `/order-lookup?order_number=${encodeURIComponent(orderNumber)}&phone=${encodeURIComponent(phone)}&done=1`
   } else {
     redirectTo = '/orders'
@@ -122,7 +126,7 @@ async function createOrderWithPaymentError(params: {
   const suffix = crypto.randomBytes(2).toString('hex').toUpperCase().slice(0, 4)
   const orderNumber = `${datePrefix}-${suffix}`
 
-  const normalizedPhone = String(payload.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+  const normalizedPhone = sanitizePhoneDigits(String(payload.shipping_phone || ''))
   const orderInsertData: Record<string, unknown> = {
     user_id: user?.id ?? null,
     order_number: orderNumber,
@@ -142,7 +146,7 @@ async function createOrderWithPaymentError(params: {
     toss_payment_key: paymentKey,
   }
   if (payload.is_gift && payload.gift_recipient_phone) {
-    orderInsertData.gift_recipient_phone = String(payload.gift_recipient_phone).replace(/\D/g, '').slice(0, 13)
+    orderInsertData.gift_recipient_phone = sanitizePhoneDigits(String(payload.gift_recipient_phone))
   }
 
   const { data: order, error: orderError } = await supabaseAdmin
@@ -172,14 +176,20 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromServer()
 
-    const body = await request.json()
-    const { paymentKey, orderId, orderInput: orderInputBody, mock } = body
+    const parsed = await parseJsonBody(request, tossConfirmBodySchema)
+    if (!parsed.ok) return parsed.response
+    const { paymentKey, orderId, orderInput: orderInputBody, mock } = parsed.data
     const isMock = !!mock
 
-    // ---------- 1단계: 사전검사 ----------
-    if (!orderId || (!paymentKey && !isMock)) {
+    // ---------- 1단계: 사전검사 (draft의 orderId 또는 레거시 orderInput)
+    const hasDraftId = !!(orderId && String(orderId).trim())
+    const hasLegacyInput = !!(orderInputBody && orderInputBody.items?.length)
+    if ((!hasDraftId && !hasLegacyInput) || (!paymentKey && !isMock)) {
       return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
     }
+
+    /** 비-mock 분기에서 토스 API에 넘길 결제키 (위 조건으로 존재 보장) */
+    const paymentKeyForToss = !isMock ? String(paymentKey) : ''
 
     if (isMock && process.env.NODE_ENV === 'production') {
       return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 404 })
@@ -281,12 +291,13 @@ export async function POST(request: NextRequest) {
       }
     } else if (orderInputBody) {
       // 레거시: orderId 없이 orderInput만 전달 (draft 미사용 구간)
+      const normalized = normalizeToOrderInput(orderInputBody)
       const result = await calculateOrderPricing({
         supabaseAdmin,
         userId: user?.id ?? null,
-        input: orderInputBody as OrderInput,
+        input: normalized,
       })
-      orderInput = orderInputBody as OrderInput
+      orderInput = normalized
       itemSnapshots = result.itemSnapshots
       pricing = result.pricing
       serverTotalAmount = result.pricing.finalTotal
@@ -299,7 +310,7 @@ export async function POST(request: NextRequest) {
     if (!isMock) {
       // 토스 승인 요청: 금액은 반드시 draft.amount(serverTotalAmount)만 사용
       const confirmBody: Record<string, unknown> = {
-        paymentKey,
+        paymentKey: paymentKeyForToss,
         orderId,
         amount: serverTotalAmount,
       }
@@ -365,14 +376,14 @@ export async function POST(request: NextRequest) {
               error:
                 '결제 승인에 실패했습니다. (허용되지 않은 요청입니다.) ' +
                 '테스트/실결제 환경이 일치하는지 확인해주세요. 결제창에 사용한 클라이언트 키와 서버 시크릿 키가 같은 환경(테스트 또는 실결제)이어야 합니다.',
-              details: responseData,
+              code: 'TOSS_FORBIDDEN',
             },
             { status: 400 }
           )
         }
         console.error('[toss/confirm] 토스 승인 실패', confirmRes.status, responseData)
         return NextResponse.json(
-          { error: '결제 승인에 실패했습니다.', details: responseData },
+          { error: '결제 승인에 실패했습니다.', code: 'TOSS_CONFIRM_FAILED' },
           { status: 400 }
         )
       }
@@ -392,8 +403,8 @@ export async function POST(request: NextRequest) {
         const orderNumber = await createOrderWithPaymentError({
           supabaseAdmin,
           user,
-          orderId,
-          paymentKey,
+          orderId: orderId ?? '',
+          paymentKey: paymentKeyForToss,
           payload: orderInput as OrderInput,
           serverTotalAmount,
           serverTaxFreeAmount,
@@ -412,7 +423,7 @@ export async function POST(request: NextRequest) {
         })
 
         const cancelResult = await cancelTossPayment(
-          paymentKey,
+          paymentKeyForToss,
           '결제 검증 불일치로 자동 취소(금액 불일치)'
         )
         if (!cancelResult.ok) {
@@ -524,7 +535,7 @@ export async function POST(request: NextRequest) {
     }
 
     const payload: OrderInput = orderInput
-    const normalizedPhone = String(payload.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+    const normalizedPhone = sanitizePhoneDigits(String(payload.shipping_phone || ''))
 
     const giftToken = payload.is_gift ? crypto.randomBytes(32).toString('hex') : null
     const giftExpiresAt = payload.is_gift ? getGiftExpiresAtEndOfDayKST() : null
@@ -556,7 +567,7 @@ export async function POST(request: NextRequest) {
       orderInsertData.gift_token = giftToken
       orderInsertData.gift_expires_at = giftExpiresAt
       if (payload.gift_recipient_phone) {
-        orderInsertData.gift_recipient_phone = String(payload.gift_recipient_phone).replace(/\D/g, '').slice(0, 13)
+        orderInsertData.gift_recipient_phone = sanitizePhoneDigits(String(payload.gift_recipient_phone))
       }
     }
 
@@ -670,11 +681,11 @@ export async function POST(request: NextRequest) {
 
     // 주문 완료 SMS 수신 번호 준비
     const orderCompletePhone = payload.is_gift
-      ? String(payload.orderer_phone ?? '').replace(/\D/g, '').slice(0, 13)
+      ? sanitizePhoneDigits(String(payload.orderer_phone ?? ''))
       : (() => {
-          const fromPayload = String(payload.shipping_phone || '').replace(/\D/g, '').slice(0, 13)
+          const fromPayload = sanitizePhoneDigits(String(payload.shipping_phone || ''))
           if (fromPayload.length >= 10) return fromPayload
-          const fromOrder = String(order?.shipping_phone ?? '').replace(/\D/g, '').slice(0, 13)
+          const fromOrder = sanitizePhoneDigits(String(order?.shipping_phone ?? ''))
           return fromOrder.length >= 10 ? fromOrder : fromPayload
         })()
 
@@ -737,10 +748,6 @@ export async function POST(request: NextRequest) {
       )
     }
   } catch (error: unknown) {
-    console.error('결제 승인 처리 오류:', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : '서버 오류' },
-      { status: 500 }
-    )
+    return unknownErrorResponse('payments/toss/confirm', error)
   }
 }

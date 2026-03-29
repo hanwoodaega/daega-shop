@@ -17,6 +17,7 @@ import { useCoupons } from '@/lib/swr'
 import { isCouponValid } from '@/lib/coupon/coupons'
 import { UserCoupon, Coupon } from '@/lib/supabase/supabase'
 import { removeFromCartDB } from '@/lib/cart/cart-db'
+import { phoneDigitsOnly, sanitizePhoneDigits } from '@/lib/phone/kr'
 
 const TOTAL_GIFT_STEPS = 3
 
@@ -278,7 +279,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       used_points: usedPoints,
       is_gift: isGiftMode,
       gift_message: null,
-      gift_recipient_phone: isGiftMode ? (giftData.recipientPhone || '').replace(/\D/g, '').slice(0, 13) : undefined,
+      gift_recipient_phone: isGiftMode ? sanitizePhoneDigits(giftData.recipientPhone || '') : undefined,
       items: items.map(item => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -302,7 +303,7 @@ export function useCheckout(options: UseCheckoutOptions) {
   )
 
   const buildOrderInput = useCallback(() => {
-    const normalizedPhone = (formData.phone || '').replace(/\D/g, '').slice(0, 13)
+    const normalizedPhone = sanitizePhoneDigits(formData.phone || '')
     const shippingAddress = isGiftMode
       ? '선물 수령 대기'
       : deliveryMethod === 'pickup'
@@ -330,7 +331,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       used_points: usedPoints,
       is_gift: isGiftMode,
       gift_message: isGiftMode ? giftData.message : null,
-      gift_recipient_phone: isGiftMode ? (giftData.recipientPhone || '').replace(/\D/g, '').slice(0, 13) : undefined,
+      gift_recipient_phone: isGiftMode ? sanitizePhoneDigits(giftData.recipientPhone || '') : undefined,
       gift_recipient_name: isGiftMode ? (giftData.recipientName || '').trim() || undefined : undefined,
       orderer_phone: isGiftMode ? normalizedPhone : undefined,
       gift_sender_name: isGiftMode ? (formData.name || '').trim() || undefined : undefined,
@@ -460,7 +461,7 @@ export function useCheckout(options: UseCheckoutOptions) {
         toast.error('받는 분 이름을 입력해주세요.')
         return
       }
-      const phone = (giftData.recipientPhone || '').replace(/\D/g, '')
+      const phone = phoneDigitsOnly(giftData.recipientPhone || '')
       if (phone.length < 10) {
         toast.error('받는 분 휴대폰 번호를 입력해주세요.')
         return
@@ -478,8 +479,12 @@ export function useCheckout(options: UseCheckoutOptions) {
     e.preventDefault()
 
     const validateBeforeSubmit = (): boolean => {
+      const validationToast = (msg: string) => {
+        toast.error(msg, { icon: null, duration: 2000 })
+      }
+
       if (items.length === 0) {
-        showError({ message: '주문할 상품이 없습니다.' })
+        validationToast('주문할 상품이 없습니다.')
         router.push(isDirectPurchase ? '/products' : '/cart')
         return false
       }
@@ -490,64 +495,64 @@ export function useCheckout(options: UseCheckoutOptions) {
       }
 
       if (isGiftMode) {
-        const recipientPhone = (giftData.recipientPhone || '').replace(/\D/g, '')
+        const recipientPhone = phoneDigitsOnly(giftData.recipientPhone || '')
         if (recipientPhone.length < 10) {
-          showError({ message: '받는 분 휴대폰 번호를 입력해주세요.' })
+          validationToast('받는 분 휴대폰 번호를 입력해주세요.')
           return false
         }
         if (!(giftData.recipientName || '').trim()) {
-          showError({ message: '받는 분 이름을 입력해주세요.' })
+          validationToast('받는 분 이름을 입력해주세요.')
           return false
         }
         if (!(giftData.message || '').trim()) {
-          showError({ message: '선물 메시지를 입력해주세요.' })
+          validationToast('선물 메시지를 입력해주세요.')
           return false
         }
         if (!formData.name?.trim() || !formData.phone?.trim()) {
-          showError({ message: '보내는 분 정보를 입력해주세요.' })
+          validationToast('보내는 분 정보를 입력해주세요.')
           return false
         }
       }
 
       if (!isGiftMode) {
         if (!formData.name || !formData.phone) {
-          showError({ message: '필수 항목을 모두 입력해주세요.' })
+          validationToast('필수 항목을 모두 입력해주세요.')
           return false
         }
 
         if (deliveryMethod === 'pickup' && !pickupTime) {
-          showError({ message: '픽업 시간을 선택해주세요.' })
+          validationToast('픽업 시간을 선택해주세요.')
           return false
         }
 
         if (deliveryMethod === 'quick') {
           if (!quickDeliveryArea) {
-            showError({ message: '배달 지역을 선택해주세요.' })
+            validationToast('배달 지역을 선택해주세요.')
             return false
           }
           if (!formData.address) {
-            showError({ message: '상세 주소를 입력해주세요.' })
+            validationToast('상세 주소를 입력해주세요.')
             return false
           }
           if (!quickDeliveryTime) {
-            showError({ message: '배달 시간을 선택해주세요.' })
+            validationToast('배달 시간을 선택해주세요.')
             return false
           }
         }
 
         if (deliveryMethod === 'regular' && !formData.address) {
-          showError({ message: '배송 주소를 입력해주세요.' })
+          validationToast('배송 주소를 입력해주세요.')
           return false
         }
       }
 
       if (user && usedPoints > 0) {
         if (usedPoints > userPoints) {
-          showError({ message: '보유 포인트보다 많이 사용할 수 없습니다.' })
+          validationToast('보유 포인트보다 많이 사용할 수 없습니다.')
           return false
         }
         if (usedPoints > displayAfterCouponDiscount) {
-          showError({ message: '결제 금액보다 많은 포인트를 사용할 수 없습니다.' })
+          validationToast('결제 금액보다 많은 포인트를 사용할 수 없습니다.')
           return false
         }
       }
@@ -629,7 +634,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       const successUrl = `${baseUrl}/checkout/toss/success`
       const failUrl = `${baseUrl}/checkout/toss/fail`
 
-      const sanitizedPhone = (formData.phone || '').replace(/\D/g, '')
+      const sanitizedPhone = phoneDigitsOnly(formData.phone || '')
       if (sanitizedPhone.length < 10 || sanitizedPhone.length > 11) {
         throw new Error('휴대폰 번호를 확인해주세요.')
       }

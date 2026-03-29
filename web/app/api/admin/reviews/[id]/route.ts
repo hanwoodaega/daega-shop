@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { dbErrorResponse, logApiError, unknownErrorResponse } from '@/lib/api/api-errors'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 // PATCH /api/admin/reviews/:id  { status: 'approved' | 'rejected' }
 export async function PATCH(
@@ -8,9 +9,8 @@ export async function PATCH(
 ) {
   const { id } = await params
   try {
-    try { await assertAdmin() } catch (e: any) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const unauthorized = await ensureAdminApi()
+    if (unauthorized) return unauthorized
     const reviewId = id
     const supabase = await createSupabaseServerClient()
     const supabaseAdmin = createSupabaseAdminClient() // RLS 우회를 위한 관리자 클라이언트
@@ -61,12 +61,7 @@ export async function PATCH(
         hint: updateError.hint,
         code: updateError.code
       })
-      return NextResponse.json({ 
-        error: `상태 업데이트 실패: ${updateError.message || '알 수 없는 오류'}`,
-        details: updateError.details,
-        hint: updateError.hint,
-        code: updateError.code
-      }, { status: 500 })
+      return dbErrorResponse('admin reviews PATCH update', updateError)
     }
 
     // 업데이트 확인
@@ -76,10 +71,15 @@ export async function PATCH(
         actual: updatedReview.status,
         reviewId
       })
-      return NextResponse.json({ 
-        error: '상태 업데이트가 제대로 반영되지 않았습니다.',
-        details: `예상: ${status}, 실제: ${updatedReview.status}`
-      }, { status: 500 })
+      logApiError('admin reviews PATCH status mismatch', {
+        expected: status,
+        actual: updatedReview.status,
+        reviewId,
+      })
+      return NextResponse.json(
+        { error: '상태 업데이트가 제대로 반영되지 않았습니다.', code: 'STATE_MISMATCH' },
+        { status: 500 }
+      )
     }
 
     // products 테이블의 average_rating과 review_count 업데이트 (승인 시 포인트 지급 없음, 작성 시 이미 지급됨)
@@ -124,12 +124,8 @@ export async function PATCH(
     }
 
     return NextResponse.json({ ok: true })
-  } catch (error: any) {
-    console.error('관리자 리뷰 상태변경 실패:', error)
-    return NextResponse.json({ 
-      error: error.message || '서버 오류가 발생했습니다.',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin reviews PATCH', error)
   }
 }
 
@@ -140,9 +136,8 @@ export async function DELETE(
 ) {
   const { id } = await params
   try {
-    try { await assertAdmin() } catch (e: any) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const unauthorized = await ensureAdminApi()
+    if (unauthorized) return unauthorized
     const reviewId = id
     const supabaseAdmin = createSupabaseAdminClient() // RLS 우회를 위한 관리자 클라이언트
 
@@ -159,7 +154,7 @@ export async function DELETE(
       .update({ status: 'deleted', updated_at: new Date().toISOString() })
       .eq('id', reviewId)
     if (updateError) {
-      return NextResponse.json({ error: '리뷰 삭제 실패' }, { status: 500 })
+      return dbErrorResponse('admin reviews DELETE', updateError)
     }
 
     // products 테이블의 average_rating과 review_count 업데이트
@@ -202,9 +197,8 @@ export async function DELETE(
     }
 
     return NextResponse.json({ ok: true })
-  } catch (error) {
-    console.error('관리자 리뷰 삭제 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin reviews DELETE', error)
   }
 }
 

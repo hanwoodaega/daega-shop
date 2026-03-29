@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { requireCronSecret } from '@/lib/auth/internal-job-auth'
 
 export const dynamic = 'force-dynamic'
@@ -46,10 +47,10 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text()
       console.error(`[Cron Trigger] Worker 호출 실패: ${response.status} - ${errorText}`)
-      return NextResponse.json({ 
-        error: `Worker 호출 실패: ${response.status}`,
-        details: errorText
-      }, { status: response.status })
+      return NextResponse.json(
+        { error: 'Worker 호출에 실패했습니다.', code: 'WORKER_CALL_FAILED' },
+        { status: response.status >= 500 ? 502 : response.status }
+      )
     }
 
     const result = await response.json()
@@ -62,21 +63,18 @@ export async function GET(request: NextRequest) {
       workerResult: result,
       timestamp: new Date().toISOString()
     })
-  } catch (error: any) {
-    console.error('[Cron Trigger] Worker 트리거 실패:', error)
-    
-    // 타임아웃 오류 처리
-    if (error.name === 'AbortError' || error.name === 'TimeoutError') {
-      return NextResponse.json({ 
-        error: 'Worker 호출 타임아웃',
-        message: 'Worker가 응답하지 않았지만 작업은 계속 진행 중일 수 있습니다.'
-      }, { status: 504 })
+  } catch (error: unknown) {
+    if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
+      return NextResponse.json(
+        {
+          error: 'Worker 호출 타임아웃',
+          detail: 'Worker가 응답하지 않았지만 작업은 계속 진행 중일 수 있습니다.',
+          code: 'WORKER_TIMEOUT',
+        },
+        { status: 504 }
+      )
     }
-
-    return NextResponse.json({ 
-      error: error.message || '서버 오류',
-      timestamp: new Date().toISOString()
-    }, { status: 500 })
+    return unknownErrorResponse('cron/update-tracking-status', error)
   }
 }
 

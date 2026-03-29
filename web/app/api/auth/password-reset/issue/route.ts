@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { generateToken, hashToken, normalizePhone, normalizeUsername } from '@/lib/auth/otp-utils'
 
@@ -70,9 +71,8 @@ export async function POST(request: NextRequest) {
       resetToken,
       expiresIn: RESET_TOKEN_MINUTES * 60,
     })
-  } catch (error: any) {
-    console.error('Reset token issue error:', error)
-    return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('auth/password-reset/issue', error)
   }
 }
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 
@@ -39,11 +40,7 @@ export async function GET(request: NextRequest) {
           .single()
 
         if (insertError) {
-          console.error('포인트 초기화 실패:', insertError)
-          return NextResponse.json({
-            error: '포인트 초기화 실패',
-            details: insertError.message
-          }, { status: 500 })
+          return dbErrorResponse('points GET init insert', insertError)
         }
 
         return NextResponse.json({
@@ -51,23 +48,14 @@ export async function GET(request: NextRequest) {
         })
       }
 
-      console.error('포인트 조회 실패:', error)
-      return NextResponse.json({
-        error: '포인트 조회 실패',
-        details: error.message,
-        code: error.code
-      }, { status: 500 })
+      return dbErrorResponse('points GET', error)
     }
 
     return NextResponse.json({
       userPoints: { total_points: userPoints?.total_points ?? 0, purchase_count: userPoints?.purchase_count ?? 0 }
     })
-  } catch (error: any) {
-    console.error('포인트 조회 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('points GET', error)
   }
 }
 

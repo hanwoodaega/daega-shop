@@ -4,6 +4,8 @@
  * - env: SMS_SERVICE_URL, SMS_SERVICE_TOKEN
  */
 
+import { normalizePhoneLast11, isValidKrMobileDigitLength } from '@/lib/phone/kr'
+
 export interface SmsServiceConfig {
   url: string
   token: string
@@ -24,12 +26,11 @@ export function getSmsServiceConfig(): SmsServiceConfig | null {
 
 /** 수신번호 정규화 (숫자만 10~11자리) */
 export function normalizePhone(value: string): string {
-  return String(value).replace(/\D/g, '').slice(-11).slice(0, 11)
+  return normalizePhoneLast11(value)
 }
 
 export function isValidPhone(phone: string): boolean {
-  const p = normalizePhone(phone)
-  return p.length >= 10 && p.length <= 11
+  return isValidKrMobileDigitLength(normalizePhone(phone))
 }
 
 /** 중간 서버 POST (JSON body, Bearer 인증) */

@@ -35,16 +35,18 @@ export async function defaultFetcher<T = unknown>(url: string): Promise<T> {
   }
 
   if (!res.ok) {
-    const message =
-      (body && typeof body === 'object' && 'error' in body && typeof (body as { error: unknown }).error === 'string')
-        ? (body as { error: string }).error
-        : res.status === 401
-          ? '로그인이 필요합니다.'
-          : res.status === 403
-            ? '접근 권한이 없습니다.'
-            : res.status >= 500
-              ? '일시적인 오류가 발생했습니다.'
-              : res.statusText || '요청에 실패했습니다.'
+    const message = (() => {
+      if (body && typeof body === 'object') {
+        const o = body as { error?: unknown; detail?: unknown; details?: unknown }
+        if (typeof o.detail === 'string' && o.detail.trim()) return o.detail
+        if (typeof o.details === 'string' && o.details.trim()) return o.details
+        if (typeof o.error === 'string' && o.error.trim()) return o.error
+      }
+      if (res.status === 401) return '로그인이 필요합니다.'
+      if (res.status === 403) return '접근 권한이 없습니다.'
+      if (res.status >= 500) return '일시적인 오류가 발생했습니다.'
+      return res.statusText || '요청에 실패했습니다.'
+    })()
     throw new FetcherError(message, res.status, body)
   }
 

@@ -1,38 +1,52 @@
 /**
- * 전화번호 포맷팅 유틸리티
+ * 전화번호 포맷팅 (표시·입력). 숫자 규칙은 `@/lib/phone/kr`와 동일.
  */
 
+import {
+  KOREAN_MOBILE_MAX_DIGITS,
+  phoneDigitsOnly,
+  isValidKrMobilePattern,
+} from '@/lib/phone/kr'
+
+export { KOREAN_MOBILE_MAX_DIGITS } from '@/lib/phone/kr'
+
+/** 하이픈 포함 표시 시 입력창 maxLength (예: 010-1234-5678) */
+export const KOREAN_PHONE_INPUT_MAX_LENGTH = 13
+
 /**
- * 전화번호에서 숫자만 추출
- * @param phone - 전화번호 문자열
- * @returns 숫자만 포함된 문자열
+ * 전화번호에서 숫자만 추출 (길이 제한 없음)
  */
 export function extractPhoneNumbers(phone: string): string {
-  return phone.replace(/[^0-9]/g, '')
+  return phoneDigitsOnly(phone)
 }
 
 /**
- * 전화번호 표시용 포맷팅 (하이픈 추가)
+ * 입력 필드 onChange용: 숫자만 남기고 최대 11자리 (휴대폰)
+ */
+export function parsePhoneInput(value: string): string {
+  return phoneDigitsOnly(value).slice(0, KOREAN_MOBILE_MAX_DIGITS)
+}
+
+/**
+ * 완성된 번호 표시용 (저장값·목록 등)
  * @param phone - 전화번호 문자열 (숫자만 또는 하이픈 포함)
- * @returns 포맷팅된 전화번호 (예: 010-1234-5678)
  */
 export function formatPhoneNumber(phone: string): string {
   if (!phone) return ''
-  
-  // 숫자만 추출
+
   const numbers = extractPhoneNumbers(phone)
-  
-  // 11자리 전화번호 (010-XXXX-XXXX)
+
   if (numbers.length === 11) {
     return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`
   }
-  
-  // 10자리 전화번호 (02-XXX-XXXX 등)
+
   if (numbers.length === 10) {
-    return `${numbers.slice(0, 2)}-${numbers.slice(2, 6)}-${numbers.slice(6)}`
+    if (numbers.startsWith('02')) {
+      return `${numbers.slice(0, 2)}-${numbers.slice(2, 6)}-${numbers.slice(6)}`
+    }
+    return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6)}`
   }
-  
-  // 그 외는 원본 반환
+
   return phone
 }
 
@@ -42,7 +56,7 @@ export function formatPhoneNumber(phone: string): string {
  */
 export function formatPhoneDisplay(phone: string): string {
   if (!phone) return ''
-  const n = phone.replace(/[^0-9]/g, '')
+  const n = parsePhoneInput(phone)
   if (n.length <= 3) return n
   // 02 지역번호 (10자리)
   if (n.startsWith('02')) {
@@ -56,13 +70,7 @@ export function formatPhoneDisplay(phone: string): string {
 
 /**
  * 전화번호 유효성 검사
- * @param phone - 전화번호 문자열
- * @returns 유효한 전화번호인지 여부
  */
 export function isValidPhoneNumber(phone: string): boolean {
-  const numbers = extractPhoneNumbers(phone)
-  
-  // 10자리 또는 11자리 숫자
-  return /^01[0-9]{8,9}$/.test(numbers)
+  return isValidKrMobilePattern(phoneDigitsOnly(phone))
 }
-

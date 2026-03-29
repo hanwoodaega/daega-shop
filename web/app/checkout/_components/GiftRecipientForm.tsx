@@ -1,12 +1,6 @@
 'use client'
 
-/** 숫자만 있는 휴대폰 번호를 010-1234-5678 형식으로 포맷 */
-function formatPhoneWithHyphen(digits: string): string {
-  const d = digits.replace(/\D/g, '').slice(0, 11)
-  if (d.length <= 3) return d
-  if (d.length <= 7) return `${d.slice(0, 3)}-${d.slice(3)}`
-  return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`
-}
+import { formatPhoneDisplay, parsePhoneInput } from '@/lib/utils/format-phone'
 
 interface GiftRecipientFormProps {
   giftData: {
@@ -51,11 +45,8 @@ export default function GiftRecipientForm({
           </label>
           <input
             type="tel"
-            value={formatPhoneWithHyphen(giftData.recipientPhone)}
-            onChange={(e) => {
-              const numbers = e.target.value.replace(/[^0-9]/g, '').slice(0, 11)
-              onRecipientPhoneChange(numbers)
-            }}
+            value={formatPhoneDisplay(giftData.recipientPhone)}
+            onChange={(e) => onRecipientPhoneChange(parsePhoneInput(e.target.value))}
             placeholder="휴대폰 번호를 입력해주세요"
             maxLength={13}
             required

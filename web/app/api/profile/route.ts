@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logApiError, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { Coupon, UserCoupon } from '@/lib/supabase/supabase'
 
@@ -86,26 +87,22 @@ export async function GET(request: NextRequest) {
       }).length
     }
 
-    // 에러가 있어도 기본값 반환
+    if (userError) logApiError('profile GET user', userError)
+    if (orderError) logApiError('profile GET orders', orderError)
+    if (couponError) logApiError('profile GET coupons', couponError)
+
     return NextResponse.json({
       name: userData?.name || null,
       orderCount: orderCount || 0,
       couponCount: validCouponCount,
       errors: {
-        user: userError?.message || null,
-        order: orderError?.message || null,
-        coupon: couponError?.message || null,
-      }
+        user: userError ? 'unavailable' : null,
+        order: orderError ? 'unavailable' : null,
+        coupon: couponError ? 'unavailable' : null,
+      },
     })
-  } catch (error: any) {
-    console.error('마이페이지 데이터 조회 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류',
-      name: null,
-      orderCount: 0,
-      couponCount: 0
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('profile GET', error)
   }
 }
 

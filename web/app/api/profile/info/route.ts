@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logApiError, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 import { Coupon, UserCoupon } from '@/lib/supabase/supabase'
@@ -117,28 +118,27 @@ export async function GET(request: NextRequest) {
       points = 0
     }
 
+    if (userData.error) logApiError('profile/info user', userData.error)
+    if (orderCount.error) logApiError('profile/info orders', orderCount.error)
+    if (couponData.error) logApiError('profile/info coupons', couponData.error)
+    if (pointsData.error && pointsData.error.code !== 'PGRST116') {
+      logApiError('profile/info points', pointsData.error)
+    }
+
     return NextResponse.json({
       name: userData.data?.name || null,
       orders_count: orderCount.count || 0,
       coupons_count: validCouponCount,
       points: points,
       errors: {
-        user: userData.error?.message || null,
-        order: orderCount.error?.message || null,
-        coupon: couponData.error?.message || null,
-        points: pointsData.error?.message || null,
-      }
+        user: userData.error ? 'unavailable' : null,
+        order: orderCount.error ? 'unavailable' : null,
+        coupon: couponData.error ? 'unavailable' : null,
+        points: pointsData.error && pointsData.error.code !== 'PGRST116' ? 'unavailable' : null,
+      },
     })
-  } catch (error: any) {
-    console.error('마이페이지 정보 조회 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류',
-      name: null,
-      orders_count: 0,
-      coupons_count: 0,
-      points: 0
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('profile/info', error)
   }
 }
 

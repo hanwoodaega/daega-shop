@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 
 // POST: 선물 카테고리에 상품 추가
 export async function POST(
@@ -8,11 +9,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { id } = await params
@@ -46,14 +44,12 @@ export async function POST(
       .insert(insertData)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/gift-categories/[id]/products POST', error)
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('상품 추가 실패:', error)
-    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/gift-categories/[id]/products POST', error)
   }
 }
 
@@ -63,11 +59,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { id } = await params
@@ -87,14 +80,12 @@ export async function DELETE(
       .in('product_id', productIds)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/gift-categories/[id]/products DELETE', error)
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('상품 제거 실패:', error)
-    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/gift-categories/[id]/products DELETE', error)
   }
 }
 
@@ -104,11 +95,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { id } = await params
@@ -132,14 +120,12 @@ export async function PATCH(
       .eq('product_id', product_id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/gift-categories/[id]/products PATCH', error)
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('상품 priority 업데이트 실패:', error)
-    const errorMessage = process.env.NODE_ENV === 'development' ? error.message : '서버 오류'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/gift-categories/[id]/products PATCH', error)
   }
 }
 

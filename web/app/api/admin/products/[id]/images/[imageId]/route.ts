@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,11 +10,8 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string; imageId: string }> | { id: string; imageId: string } }
 ) {
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { id, imageId } = 'then' in params ? await params : params
@@ -25,17 +23,12 @@ export async function DELETE(
       .eq('product_id', id)
 
     if (error) {
-      console.error('이미지 삭제 실패:', error)
-      return NextResponse.json({ 
-        error: error.message || '이미지 삭제 실패',
-        code: error.code 
-      }, { status: 500 })
+      return dbErrorResponse('admin product_images DELETE', error)
     }
 
     return NextResponse.json({ success: true })
-  } catch (e: any) {
-    console.error('이미지 삭제 에러:', e)
-    return NextResponse.json({ error: e?.message || '서버 오류' }, { status: 500 })
+  } catch (e: unknown) {
+    return unknownErrorResponse('admin product_images DELETE', e)
   }
 }
 
@@ -44,11 +37,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string; imageId: string }> | { id: string; imageId: string } }
 ) {
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { id, imageId } = 'then' in params ? await params : params
@@ -68,17 +58,12 @@ export async function PATCH(
       .single()
 
     if (error) {
-      console.error('이미지 우선순위 변경 실패:', error)
-      return NextResponse.json({ 
-        error: error.message || '이미지 우선순위 변경 실패',
-        code: error.code 
-      }, { status: 500 })
+      return dbErrorResponse('admin product_images PATCH', error)
     }
 
     return NextResponse.json({ image: data })
-  } catch (e: any) {
-    console.error('이미지 우선순위 변경 에러:', e)
-    return NextResponse.json({ error: e?.message || '서버 오류' }, { status: 500 })
+  } catch (e: unknown) {
+    return unknownErrorResponse('admin product_images PATCH', e)
   }
 }
 

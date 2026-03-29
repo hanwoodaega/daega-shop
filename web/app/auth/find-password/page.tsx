@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Footer from '@/components/layout/Footer'
 import Header from '@/components/layout/Header'
+import { sanitizeOtpCodeInput } from '@/lib/phone/kr'
+import { formatPhoneDisplay, parsePhoneInput, extractPhoneNumbers } from '@/lib/utils/format-phone'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -50,15 +52,6 @@ export default function FindPasswordPage() {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${String(secs).padStart(2, '0')}`
-  }
-
-  const normalizePhoneInput = (value: string) => {
-    const digits = value.replace(/[^0-9]/g, '').slice(0, 11)
-    if (digits.length <= 3) return digits
-    if (digits.length <= 7) {
-      return `${digits.slice(0, 3)}-${digits.slice(3)}`
-    }
-    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
   }
 
   const sendCode = async () => {
@@ -197,8 +190,8 @@ export default function FindPasswordPage() {
                     )}
                     <input
                       type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
+                      value={formatPhoneDisplay(phone)}
+                      onChange={(e) => setPhone(parsePhoneInput(e.target.value))}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600 text-left"
                       placeholder=" "
                       maxLength={13}
@@ -207,7 +200,7 @@ export default function FindPasswordPage() {
                   <button
                     type="button"
                     onClick={sendCode}
-                    disabled={loading || username.trim().length < 6 || phone.length < 10}
+                    disabled={loading || username.trim().length < 6 || extractPhoneNumbers(phone).length < 10}
                     className="w-full sm:w-auto flex-shrink-0 px-4 py-2.5 rounded-lg font-semibold transition whitespace-nowrap disabled:opacity-50 disabled:bg-gray-100 disabled:border disabled:border-gray-300 disabled:text-gray-700 bg-blue-900 text-white hover:bg-blue-950"
                   >
                     인증 요청
@@ -238,8 +231,8 @@ export default function FindPasswordPage() {
                     )}
                     <input
                       type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
+                      value={formatPhoneDisplay(phone)}
+                      onChange={(e) => setPhone(parsePhoneInput(e.target.value))}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600 text-left"
                       placeholder=" "
                       maxLength={13}
@@ -248,7 +241,7 @@ export default function FindPasswordPage() {
                   <button
                     type="button"
                     onClick={sendCode}
-                    disabled={loading || username.trim().length < 6 || phone.length < 10}
+                    disabled={loading || username.trim().length < 6 || extractPhoneNumbers(phone).length < 10}
                     className="w-full sm:w-auto flex-shrink-0 px-4 py-2.5 rounded-lg font-semibold transition whitespace-nowrap disabled:opacity-50 disabled:bg-gray-100 disabled:border disabled:border-gray-300 disabled:text-gray-700 bg-blue-900 text-white hover:bg-blue-950"
                   >
                     인증 요청
@@ -274,7 +267,7 @@ export default function FindPasswordPage() {
                   <input
                     type="text"
                     value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                    onChange={(e) => setCode(sanitizeOtpCodeInput(e.target.value))}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
                     placeholder="6자리 숫자"
                     maxLength={6}

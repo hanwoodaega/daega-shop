@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse } from '@/lib/api/api-errors'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    await assertAdmin()
-  } catch (e: unknown) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   const { id } = await params
   if (!id) {
@@ -36,8 +34,7 @@ export async function PATCH(
     .single()
 
   if (error) {
-    console.error('[product-description-images] PATCH error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return dbErrorResponse('admin product_description_images PATCH', error)
   }
 
   return NextResponse.json({ image: data })
@@ -47,11 +44,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    await assertAdmin()
-  } catch (e: unknown) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   const { id } = await params
   if (!id) {
@@ -74,8 +68,7 @@ export async function DELETE(
     .eq('id', id)
 
   if (deleteError) {
-    console.error('[product-description-images] DELETE error:', deleteError)
-    return NextResponse.json({ error: deleteError.message }, { status: 500 })
+    return dbErrorResponse('admin product_description_images DELETE', deleteError)
   }
 
   // image_url에서 storage 경로 추출

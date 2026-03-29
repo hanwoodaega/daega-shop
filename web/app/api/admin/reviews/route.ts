@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 
 // GET /api/admin/reviews?status=pending|approved|rejected&page=&limit=
 export async function GET(request: NextRequest) {
   try {
-    try { await assertAdmin() } catch (e: any) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const unauthorized = await ensureAdminApi()
+    if (unauthorized) return unauthorized
     const supabase = await createSupabaseServerClient()
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status') || 'pending'

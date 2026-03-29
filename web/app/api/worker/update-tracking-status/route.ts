@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getTrackingStatus, mapTrackingStatusToOrderStatus } from '@/lib/tracking/tracking-api'
 import { requireWorkerSharedSecret } from '@/lib/auth/internal-job-auth'
@@ -28,8 +29,7 @@ export async function POST(request: NextRequest) {
       .in('status', ['IN_TRANSIT'])
 
     if (fetchError) {
-      console.error('주문 조회 실패:', fetchError)
-      return NextResponse.json({ error: '주문 조회 실패' }, { status: 500 })
+      return dbErrorResponse('worker/update-tracking-status fetch', fetchError)
     }
 
     if (!orders || orders.length === 0) {
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
           if (updateError) {
             console.error(`[Worker] 주문 ${order.id} 상태 업데이트 실패:`, updateError)
-            errors.push(`주문 ${order.id}: ${updateError.message}`)
+            errors.push(`주문 ${order.id}: 상태 업데이트 실패`)
           } else {
             updatedCount++
             console.log(`[Worker] 주문 ${order.id} 상태 업데이트: ${order.status} -> ${newStatus}`)
@@ -83,9 +83,9 @@ export async function POST(request: NextRequest) {
         } else {
           console.log(`[Worker] 주문 ${order.id}: 상태 변경 없음 (현재: ${order.status})`)
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`[Worker] 주문 ${order.id} 배송조회 실패:`, error)
-        errors.push(`주문 ${order.id}: ${error.message || '배송조회 실패'}`)
+        errors.push(`주문 ${order.id}: 배송조회 실패`)
       }
     }
 
@@ -100,12 +100,8 @@ export async function POST(request: NextRequest) {
     console.log(`[Worker] 작업 완료:`, result)
 
     return NextResponse.json(result)
-  } catch (error: any) {
-    console.error('[Worker] 배송 상태 업데이트 실패:', error)
-    return NextResponse.json({ 
-      error: error.message || '서버 오류',
-      timestamp: new Date().toISOString()
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('worker/update-tracking-status', error)
   }
 }
 

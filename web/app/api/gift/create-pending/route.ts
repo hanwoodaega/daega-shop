@@ -3,6 +3,8 @@ import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/sup
 import crypto from 'crypto'
 import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 import { calculateOrderPricing, OrderInput } from '@/lib/order/order-pricing.server'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
+import { sanitizePhoneDigits } from '@/lib/phone/kr'
 
 /**
  * 선물 주문 미리 생성 (결제 전 상태)
@@ -84,7 +86,7 @@ export async function POST(request: NextRequest) {
       is_gift: true,
       gift_token: giftToken,
       gift_message: gift_message,
-      gift_recipient_phone: gift_recipient_phone ? String(gift_recipient_phone).replace(/\D/g, '').slice(0, 13) : null,
+      gift_recipient_phone: gift_recipient_phone ? sanitizePhoneDigits(String(gift_recipient_phone)) : null,
       gift_expires_at: expiresAtISO,
     }
 
@@ -119,8 +121,8 @@ export async function POST(request: NextRequest) {
       order,
       gift_token: giftToken,
     })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('gift/create-pending', error)
   }
 }
 

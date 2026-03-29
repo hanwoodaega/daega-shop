@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getUserFromRequest } from '@/lib/auth/auth-server'
 
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ restored: true })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('auth/restore', error)
   }
 }

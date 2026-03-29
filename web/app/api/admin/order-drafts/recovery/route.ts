@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { hasValidAdminCookie } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 
 /** 승인 후 주문 미생성 draft 목록 (복구 대상: approved_not_persisted + failed) */
 export async function GET() {
   try {
-    const isAdmin = await hasValidAdminCookie()
-    if (!isAdmin) {
-      return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 })
-    }
+    const unauthorized = await ensureAdminApi()
+    if (unauthorized) return unauthorized
 
     const supabase = createSupabaseAdminClient()
     const { data, error } = await supabase
@@ -18,7 +17,7 @@ export async function GET() {
       .order('toss_approved_at', { ascending: false })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return dbErrorResponse('admin order-drafts recovery GET', error)
     }
 
     const list = (data || []).map((row) => {
@@ -39,7 +38,7 @@ export async function GET() {
     })
 
     return NextResponse.json({ items: list })
-  } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+  } catch (e: unknown) {
+    return unknownErrorResponse('admin order-drafts recovery GET', e)
   }
 }

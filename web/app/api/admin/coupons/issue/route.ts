@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { getCouponExpiresAtEndOfDayKST } from '@/lib/coupon/expires'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
+import { parseJsonBody } from '@/lib/api/parse-json'
+import { adminCouponBulkIssueSchema } from '@/lib/validation/schemas/admin-coupon'
 
 /**
  * 쿠폰 일괄 지급 API
@@ -16,16 +19,15 @@ import { getCouponExpiresAtEndOfDayKST } from '@/lib/coupon/expires'
  * - conditions.min_purchase_count: 최소 구매 횟수
  */
 export async function POST(request: NextRequest) {
-  try {
-    await assertAdmin()
-    
-    const supabase = createSupabaseAdminClient()
-    const body = await request.json()
-    const { coupon_id, conditions } = body
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
-    if (!coupon_id) {
-      return NextResponse.json({ error: '쿠폰 ID가 필요합니다.' }, { status: 400 })
-    }
+  try {
+    const supabase = createSupabaseAdminClient()
+    const parsed = await parseJsonBody(request, adminCouponBulkIssueSchema)
+    if (!parsed.ok) return parsed.response
+
+    const { coupon_id, conditions } = parsed.data
 
     // 쿠폰 정보 확인
     const { data: coupon, error: couponError } = await supabase
@@ -168,12 +170,8 @@ export async function POST(request: NextRequest) {
         issued: successCount,
       },
     })
-  } catch (error: any) {
-    if (error.status === 401) {
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
-    }
-    console.error('쿠폰 일괄 지급 실패:', error)
-    return NextResponse.json({ error: error.message || '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/coupons/issue', error)
   }
 }
 

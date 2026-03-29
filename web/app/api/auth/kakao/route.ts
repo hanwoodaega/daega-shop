@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
+import { normalizeKakaoStylePhoneToKrDigits } from '@/lib/phone/kr'
 
 const PROVIDER = 'kakao'
 const OAUTH_EMAIL_DOMAIN = 'provider.local'
@@ -7,15 +8,6 @@ const PROFILE_REFRESH_TTL_MS = 24 * 60 * 60 * 1000
 
 const buildOauthEmail = (providerUserId: string) => {
   return `${PROVIDER}_${providerUserId}@${OAUTH_EMAIL_DOMAIN}`
-}
-
-const normalizePhone = (value?: string | null) => {
-  if (!value) return null
-  let digits = value.replace(/[^0-9]/g, '')
-  if (digits.startsWith('82') && digits.length >= 11) {
-    digits = `0${digits.slice(2)}`
-  }
-  return digits
 }
 
 const sanitizeNextPath = (raw?: string | null) => {
@@ -123,7 +115,7 @@ async function processKakaoOAuth(params: {
   const profile = kakaoAccount?.profile || {}
 
   const name = profile?.nickname || null
-  const phoneNumber = normalizePhone(kakaoAccount?.phone_number)
+  const phoneNumber = normalizeKakaoStylePhoneToKrDigits(kakaoAccount?.phone_number)
 
   const supabaseAdmin = createSupabaseAdminClient()
 

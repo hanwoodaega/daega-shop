@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
+import { API_ERROR_TEXT, apiJsonError, dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { nameToSlug } from '@/lib/utils/utils'
 import { extractActivePromotion } from '@/lib/product/product.service'
 
 export async function GET(request: Request) {
-  try { await assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
   const { searchParams } = new URL(request.url)
   const category = searchParams.get('category')
   const tag = searchParams.get('tag')
@@ -58,7 +60,7 @@ export async function GET(request: Request) {
     query = query.or(`name.ilike.${like},brand.ilike.${like}`)
   }
   const { data, error, count } = await query.range(from, to)
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (error) return dbErrorResponse('admin/products GET', error)
 
   const items = (data || []).map((product: any) => {
     const promotion = extractActivePromotion(product)
@@ -83,14 +85,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  try { await assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
-  
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
+
   let body: any = {}
   try {
     body = await request.json()
-  } catch (e) {
-    console.error('JSON parse error:', e)
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  } catch {
+    return apiJsonError(400, { error: API_ERROR_TEXT.invalidRequest, code: 'INVALID_JSON' })
   }
 
   const required = ['name', 'price', 'category']
@@ -177,13 +179,11 @@ export async function POST(request: Request) {
   try {
     const { data, error } = await supabaseAdmin.from('products').insert([payload]).select('id')
     if (error) {
-      console.error('Supabase insert error:', error)
-      return NextResponse.json({ error: error.message || 'Database error' }, { status: 400 })
+      return dbErrorResponse('admin/products POST', error)
     }
     return NextResponse.json({ ok: true, product: data?.[0] })
-  } catch (e: any) {
-    console.error('Unexpected error:', e)
-    return NextResponse.json({ error: e?.message || 'Unknown error' }, { status: 500 })
+  } catch (e: unknown) {
+    return unknownErrorResponse('admin/products POST', e)
   }
 }
 

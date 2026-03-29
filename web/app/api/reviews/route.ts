@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { addPoints } from '@/lib/point/points'
 
@@ -142,10 +143,7 @@ export async function GET(request: NextRequest) {
         })
       }
       
-      return NextResponse.json({ 
-        error: '리뷰 조회 실패', 
-        details: error.message 
-      }, { status: 500 })
+      return dbErrorResponse('reviews GET', error)
     }
 
     const maskName = (name: string) => {
@@ -295,10 +293,7 @@ export async function POST(request: NextRequest) {
         message: orderItemError.message,
         code: orderItemError.code
       })
-      return NextResponse.json({ 
-        error: '주문에 해당 상품이 없습니다.',
-        details: orderItemError.message 
-      }, { status: 400 })
+      return dbErrorResponse('reviews POST order_items', orderItemError)
     }
 
     if (!orderItems || orderItems.length === 0) {
@@ -451,9 +446,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ review }, { status: 201 })
-  } catch (error) {
-    console.error('리뷰 작성 에러:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('reviews POST', error)
   }
 }
 

@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
+import { apiJsonError, dbErrorResponse } from '@/lib/api/api-errors'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { nameToSlug } from '@/lib/utils/utils'
 
 export const dynamic = 'force-dynamic'
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
-  try { await assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
   const { id } = await context.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   
@@ -69,13 +71,14 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     .update({ status: 'deleted' })
     .eq('id', id)
   
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (error) return dbErrorResponse('admin/products/[id] DELETE', error)
   
   return NextResponse.json({ ok: true })
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  try { await assertAdmin() } catch (e: any) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
   const { id } = await context.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   
@@ -183,16 +186,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   
   const { error } = await supabaseAdmin.from('products').update(updates).eq('id', id)
   if (error) {
-    console.error('Product update error:', error)
-    
-    // description 필드 관련 에러인 경우 특별 처리
     if (error.message?.includes('description')) {
-      return NextResponse.json({ 
-        error: '데이터베이스 트리거 오류: description 필드가 없습니다. 관리자에게 문의하세요.' 
-      }, { status: 400 })
+      return apiJsonError(400, {
+        error: '상품 정보를 저장할 수 없습니다. 관리자에게 문의해 주세요.',
+        code: 'PRODUCT_UPDATE_SCHEMA',
+      })
     }
-    
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    return dbErrorResponse('admin/products/[id] PATCH', error)
   }
   
   return NextResponse.json({ ok: true })

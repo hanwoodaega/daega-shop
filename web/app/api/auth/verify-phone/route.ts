@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getUserFromServer } from '@/lib/auth/auth-server'
 import { generateToken, hashOtp, hashToken, normalizePhone } from '@/lib/auth/otp-utils'
@@ -126,8 +127,7 @@ export async function POST(request: NextRequest) {
       verificationToken,
       expiresIn: VERIFICATION_TOKEN_MINUTES * 60,
     })
-  } catch (error: any) {
-    console.error('휴대폰 인증 오류:', error)
-    return NextResponse.json({ error: error.message || '서버 오류가 발생했습니다.' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('auth/verify-phone', error)
   }
 }

@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { hasValidAdminCookie } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const isAdmin = await hasValidAdminCookie()
-    if (!isAdmin) {
-      return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 })
-    }
+    const unauthorized = await ensureAdminApi()
+    if (unauthorized) return unauthorized
 
     const { id } = await params
     if (!id) {
@@ -25,14 +24,14 @@ export async function GET(
       .maybeSingle()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return dbErrorResponse('admin order-drafts recovery [id] GET', error)
     }
     if (!data) {
       return NextResponse.json({ error: 'draft 없음' }, { status: 404 })
     }
 
     return NextResponse.json({ draft: data })
-  } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+  } catch (e: unknown) {
+    return unknownErrorResponse('admin order-drafts recovery [id] GET', e)
   }
 }

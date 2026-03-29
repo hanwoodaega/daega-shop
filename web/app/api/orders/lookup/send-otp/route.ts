@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { generateOtpCode, hashOtp, normalizePhone } from '@/lib/auth/otp-utils'
 import { sendOrderLookupOtpSms } from '@/lib/notifications'
+import { parseJsonBody } from '@/lib/api/parse-json'
+import { orderLookupSendOtpBodySchema } from '@/lib/validation/schemas/order-lookup'
+import { normalizePhoneForOrderMatch } from '@/lib/phone/kr'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,10 +16,6 @@ async function sendOtpSms(phone: string, code: string): Promise<{ success: boole
   return sendOrderLookupOtpSms(phone, code)
 }
 
-function normalizePhoneLookup(value: string): string {
-  return value.replace(/\D/g, '').slice(-11).padStart(10, '0').slice(0, 11)
-}
-
 /**
  * POST: 주문조회용 인증번호 발송
  * - body: { order_number, phone }
@@ -24,31 +23,20 @@ function normalizePhoneLookup(value: string): string {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { order_number: orderNumber, phone } = body
+    const parsed = await parseJsonBody(request, orderLookupSendOtpBodySchema)
+    if (!parsed.ok) return parsed.response
 
-    if (!orderNumber || !phone) {
-      return NextResponse.json(
-        { error: '주문번호와 휴대폰 번호를 입력해주세요.' },
-        { status: 400 }
-      )
-    }
+    const { order_number: orderNumber, phone } = parsed.data
 
     const normalizedPhone = normalizePhone(phone)
-    const normalizedLookup = normalizePhoneLookup(phone)
-    if (normalizedPhone.length < 10 || normalizedPhone.length > 11) {
-      return NextResponse.json(
-        { error: '올바른 휴대폰 번호를 입력해주세요.' },
-        { status: 400 }
-      )
-    }
+    const normalizedLookup = normalizePhoneForOrderMatch(phone)
 
     const supabase = createSupabaseAdminClient()
 
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .select('id, shipping_phone')
-      .eq('order_number', String(orderNumber).trim())
+      .eq('order_number', orderNumber)
       .maybeSingle()
 
     if (orderError || !order) {
@@ -58,7 +46,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const orderPhoneNorm = normalizePhoneLookup(order.shipping_phone || '')
+    const orderPhoneNorm = normalizePhoneForOrderMatch(order.shipping_phone || '')
     if (orderPhoneNorm !== normalizedLookup) {
       return NextResponse.json(
         { error: '주문을 찾을 수 없습니다. 주문번호와 휴대폰 번호를 확인해주세요.' },

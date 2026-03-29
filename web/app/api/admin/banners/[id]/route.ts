@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag, revalidatePath } from 'next/cache'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
-import { assertAdmin } from '@/lib/auth/admin-auth'
+import { ensureAdminApi } from '@/lib/auth/admin-auth'
+import { apiJsonError, dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 
 // GET: 배너 조회 (상품 목록 포함)
 export async function GET(
@@ -9,11 +10,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { data: banner, error: bannerError } = await supabaseAdmin
@@ -23,7 +21,7 @@ export async function GET(
       .single()
 
     if (bannerError || !banner) {
-      return NextResponse.json({ error: bannerError?.message || '배너를 찾을 수 없습니다.' }, { status: 404 })
+      return apiJsonError(404, { error: '배너를 찾을 수 없습니다.', code: 'NOT_FOUND' })
     }
 
     // 배너 상품 목록 조회
@@ -50,9 +48,8 @@ export async function GET(
       banner,
       products: bannerProducts || []
     })
-  } catch (error: any) {
-    console.error('배너 조회 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/banners/[id] GET', error)
   }
 }
 
@@ -62,11 +59,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const body = await request.json()
@@ -109,7 +103,7 @@ export async function PUT(
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/banners/[id] PUT', error)
     }
 
     // 캐시 무효화
@@ -117,9 +111,8 @@ export async function PUT(
     revalidatePath('/')
 
     return NextResponse.json({ banner: data })
-  } catch (error: any) {
-    console.error('배너 수정 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/banners/[id] PUT', error)
   }
 }
 
@@ -129,11 +122,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const unauthorized = await ensureAdminApi()
+  if (unauthorized) return unauthorized
 
   try {
     const { error } = await supabaseAdmin
@@ -142,7 +132,7 @@ export async function DELETE(
       .eq('id', id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return dbErrorResponse('admin/banners/[id] DELETE', error)
     }
 
     // 캐시 무효화
@@ -150,9 +140,8 @@ export async function DELETE(
     revalidatePath('/')
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('배너 삭제 실패:', error)
-    return NextResponse.json({ error: '서버 오류' }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('admin/banners/[id] DELETE', error)
   }
 }
 

@@ -4,6 +4,7 @@ import { getUserFromServer } from '@/lib/auth/auth-server'
 import { generateOtpCode, hashOtp, normalizePhone, normalizeUsername } from '@/lib/auth/otp-utils'
 import { sendOtpSms } from '@/lib/notifications'
 import { getClientIpFromHeaders, rateLimitOrThrow } from '@/lib/auth/rate-limit'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { buildServerTimingHeader } from '@/lib/utils/server-timing'
 
 const OTP_EXPIRES_MINUTES = 3
@@ -250,10 +251,9 @@ export async function POST(request: NextRequest) {
     if (error?.code === 'rate_limited') {
       return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 })
     }
-    console.error('인증번호 발송 오류:', error)
     const headers = new Headers()
     headers.set('Server-Timing', buildServerTimingHeader([{ name: 'total', durMs: Date.now() - t0 }]))
-    return NextResponse.json({ error: error.message || '서버 오류가 발생했습니다.' }, { status: 500, headers })
+    return unknownErrorResponse('auth/send-verification-code', error, headers)
   }
 }
 

@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { hashOtp, hashToken, normalizePhone } from '@/lib/auth/otp-utils'
+import { parseJsonBody } from '@/lib/api/parse-json'
+import { orderLookupVerifyBodySchema } from '@/lib/validation/schemas/order-lookup'
+import { normalizePhoneForOrderMatch } from '@/lib/phone/kr'
 
 export const dynamic = 'force-dynamic'
 
 const MAX_ATTEMPTS = 5
 const LOCK_MINUTES = 10
-
-function normalizePhoneLookup(value: string): string {
-  return value.replace(/\D/g, '').slice(-11).padStart(10, '0').slice(0, 11)
-}
 
 /**
  * POST: 주문조회 OTP 검증 후 주문 내역 반환
@@ -17,24 +16,13 @@ function normalizePhoneLookup(value: string): string {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { order_number: orderNumber, phone, code } = body
+    const parsed = await parseJsonBody(request, orderLookupVerifyBodySchema)
+    if (!parsed.ok) return parsed.response
 
-    if (!orderNumber || !phone || !code) {
-      return NextResponse.json(
-        { error: '주문번호, 휴대폰 번호, 인증번호를 모두 입력해주세요.' },
-        { status: 400 }
-      )
-    }
+    const { order_number: orderNumber, phone, code } = parsed.data
 
     const normalizedPhone = normalizePhone(phone)
-    const normalizedLookup = normalizePhoneLookup(phone)
-    if (normalizedPhone.length < 10 || normalizedPhone.length > 11) {
-      return NextResponse.json(
-        { error: '올바른 휴대폰 번호를 입력해주세요.' },
-        { status: 400 }
-      )
-    }
+    const normalizedLookup = normalizePhoneForOrderMatch(phone)
 
     const supabase = createSupabaseAdminClient()
     const purpose = 'order_lookup'
@@ -128,7 +116,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const orderPhoneNorm = normalizePhoneLookup(order.shipping_phone || '')
+    const orderPhoneNorm = normalizePhoneForOrderMatch(order.shipping_phone || '')
     if (orderPhoneNorm !== normalizedLookup) {
       return NextResponse.json(
         { error: '주문을 찾을 수 없습니다.' },

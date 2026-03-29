@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { addPoints } from '@/lib/point/points'
+import { unknownErrorResponse } from '@/lib/api/api-errors'
+import { parseJsonBody } from '@/lib/api/parse-json'
+import { orderIdBodySchema } from '@/lib/validation/schemas/order-payment'
 
 /**
  * 구매확정 API
@@ -18,12 +21,9 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createSupabaseAdminClient()
-    const body = await request.json()
-    const { orderId } = body
-
-    if (!orderId) {
-      return NextResponse.json({ error: '주문 ID가 필요합니다.' }, { status: 400 })
-    }
+    const parsed = await parseJsonBody(request, orderIdBodySchema)
+    if (!parsed.ok) return parsed.response
+    const { orderId } = parsed.data
 
     // 주문 정보 조회
     const { data: order, error: orderError } = await supabase
@@ -171,11 +171,8 @@ export async function POST(request: NextRequest) {
       message: '구매확정이 완료되었습니다.',
       pointsEarned: pointsToAdd
     })
-  } catch (error: any) {
-    console.error('구매확정 실패:', error)
-    return NextResponse.json({ 
-      error: error.message || '서버 오류' 
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('orders/confirm', error)
   }
 }
 

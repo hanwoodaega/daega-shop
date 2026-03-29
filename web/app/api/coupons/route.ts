@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 import { Coupon, UserCoupon } from '@/lib/supabase/supabase'
@@ -81,11 +82,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query.order('created_at', { ascending: false })
 
     if (error) {
-      console.error('사용자 쿠폰 조회 실패:', error)
-      return NextResponse.json({ 
-        error: '쿠폰 조회 실패',
-        details: error.message || '알 수 없는 오류'
-      }, { status: 500 })
+      return dbErrorResponse('coupons GET', error)
     }
 
     // 디버깅: 조회된 데이터 확인
@@ -136,12 +133,8 @@ export async function GET(request: NextRequest) {
         }
       })
     })
-  } catch (error: any) {
-    console.error('쿠폰 조회 오류:', error)
-    return NextResponse.json({ 
-      error: '서버 오류', 
-      details: error?.message || '알 수 없는 오류'
-    }, { status: 500 })
+  } catch (error: unknown) {
+    return unknownErrorResponse('coupons GET', error)
   }
 }
 

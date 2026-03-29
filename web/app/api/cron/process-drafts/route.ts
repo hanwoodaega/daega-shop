@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { persistDraftToOrder } from '@/lib/payments/toss-persist-order'
 import { requireCronSecret } from '@/lib/auth/internal-job-auth'
@@ -24,8 +25,7 @@ export async function GET(request: NextRequest) {
       .in('confirm_status', ['approved_not_persisted', 'failed'])
 
     if (error) {
-      console.error('[cron/process-drafts] draft 조회 실패:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return dbErrorResponse('cron/process-drafts', error)
     }
 
     const list = drafts ?? []
@@ -41,11 +41,7 @@ export async function GET(request: NextRequest) {
       results,
       timestamp: new Date().toISOString(),
     })
-  } catch (e) {
-    console.error('[cron/process-drafts]', e)
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : '서버 오류' },
-      { status: 500 }
-    )
+  } catch (e: unknown) {
+    return unknownErrorResponse('cron/process-drafts', e)
   }
 }

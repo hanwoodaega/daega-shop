@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/supabase'
 import Header from '@/components/layout/Header'
+import { sanitizeOtpCodeInput } from '@/lib/phone/kr'
+import { formatPhoneDisplay, parsePhoneInput, extractPhoneNumbers } from '@/lib/utils/format-phone'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -83,15 +85,6 @@ function VerifyPhoneContent() {
     return `${mins}:${String(secs).padStart(2, '0')}`
   }
 
-  const normalizePhoneInput = (value: string) => {
-    const digits = value.replace(/[^0-9]/g, '').slice(0, 11)
-    if (digits.length <= 3) return digits
-    if (digits.length <= 7) {
-      return `${digits.slice(0, 3)}-${digits.slice(3)}`
-    }
-    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
-  }
-
   const handleSendCode = async () => {
     setError('')
     setMessage('')
@@ -102,7 +95,7 @@ function VerifyPhoneContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone: phone.replace(/[^0-9]/g, ''),
+          phone: extractPhoneNumbers(phone),
           purpose: 'verify_phone',
         }),
       })
@@ -135,7 +128,7 @@ function VerifyPhoneContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone: phone.replace(/[^0-9]/g, ''),
+          phone: extractPhoneNumbers(phone),
           code: verificationCode,
           name: name.trim(),
         }),
@@ -232,8 +225,8 @@ function VerifyPhoneContent() {
               <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                 <input
                   type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(normalizePhoneInput(e.target.value))}
+                  value={formatPhoneDisplay(phone)}
+                  onChange={(e) => setPhone(parsePhoneInput(e.target.value))}
                   className="flex-1 min-w-0 w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
                   placeholder="휴대폰 번호를 입력해주세요"
                   maxLength={13}
@@ -242,7 +235,7 @@ function VerifyPhoneContent() {
                 <button
                   type="button"
                   onClick={handleSendCode}
-                  disabled={loading || cooldown > 0 || phone.length < 10}
+                  disabled={loading || cooldown > 0 || extractPhoneNumbers(phone).length < 10}
                   className="w-full sm:w-auto flex-shrink-0 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 whitespace-nowrap"
                 >
                   인증 요청
@@ -264,7 +257,7 @@ function VerifyPhoneContent() {
               <input
                 type="text"
                 value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                onChange={(e) => setVerificationCode(sanitizeOtpCodeInput(e.target.value))}
                 className="w-full px-1 py-2 border-b border-gray-300 focus:outline-none focus:border-red-600"
                 placeholder="6자리 숫자"
                 maxLength={6}
