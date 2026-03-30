@@ -120,7 +120,7 @@ async function createOrderWithPaymentError(params: {
   const orderNumber = `${datePrefix}-${suffix}`
 
   const normalizedPhone = sanitizePhoneDigits(String(payload.recipient_phone || ''))
-  const ordererName = String(payload.orderer_name || payload.shipping_name || '').trim()
+  const ordererName = String(payload.orderer_name || payload.recipient_name || '').trim()
   const ordererPhone = sanitizePhoneDigits(String(payload.orderer_phone || payload.recipient_phone || ''))
   const recipientName = String(payload.recipient_name || payload.orderer_name || '').trim()
   const recipientPhone = sanitizePhoneDigits(String(payload.recipient_phone || payload.orderer_phone || ''))
@@ -525,7 +525,7 @@ export async function POST(request: NextRequest) {
 
     const payload: OrderInput = orderInput
     const normalizedPhone = sanitizePhoneDigits(String(payload.recipient_phone || ''))
-    const ordererName = String(payload.orderer_name || payload.shipping_name || '').trim()
+    const ordererName = String(payload.orderer_name || payload.recipient_name || '').trim()
     const ordererPhone = sanitizePhoneDigits(String(payload.orderer_phone || payload.recipient_phone || ''))
     const recipientName = String(payload.recipient_name || payload.orderer_name || '').trim()
     const recipientPhone = sanitizePhoneDigits(String(payload.recipient_phone || payload.orderer_phone || ''))
