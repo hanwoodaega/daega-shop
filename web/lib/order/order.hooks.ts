@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback } from 'react'
 import { OrderWithItems } from './order-types'
 import { cancelOrder, confirmOrder } from './order.service'
 import { mutateOrders } from '@/lib/swr/useOrders'
@@ -8,7 +8,6 @@ import { formatPrice } from '@/lib/utils/utils'
 
 interface UseOrdersParams {
   userId?: string | null
-  giftToken?: string | null
   /** 기간(개월). 기본 1. 1,3,6,12,36 등 */
   orderPeriodMonths?: number
 }
@@ -19,7 +18,6 @@ interface UseOrdersReturn {
   cancelingOrderId: string | null
   confirmingOrderId: string | null
   expandedOrders: Set<string>
-  giftOrder: OrderWithItems | null
   orderPeriodMonths: number
   setOrderPeriodMonths: (months: number) => void
   toggleOrderExpand: (orderId: string) => void
@@ -50,18 +48,13 @@ function getTrackingUrl(trackingNumber: string, carrierName?: string | null): st
   return `https://tracker.delivery/#/${code}/${trackingNumber}`
 }
 
-export function useOrders({ userId, giftToken, orderPeriodMonths: initialMonths = 1 }: UseOrdersParams): UseOrdersReturn {
+export function useOrders({ userId, orderPeriodMonths: initialMonths = 1 }: UseOrdersParams): UseOrdersReturn {
   const [orderPeriodMonths, setOrderPeriodMonths] = useState(initialMonths)
   const [cancelingOrderId, setCancelingOrderId] = useState<string | null>(null)
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null)
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set())
 
   const { orders, isLoading: loadingOrders, mutate } = useOrdersSWR(orderPeriodMonths)
-
-  const giftOrder = useMemo(() => {
-    if (!giftToken || orders.length === 0) return null
-    return orders.find((o) => o.gift_token === giftToken) ?? null
-  }, [giftToken, orders])
 
   const handleCancelOrder = useCallback(async (orderId: string) => {
     const order = orders.find(o => o.id === orderId)
@@ -157,7 +150,6 @@ export function useOrders({ userId, giftToken, orderPeriodMonths: initialMonths 
     cancelingOrderId,
     confirmingOrderId,
     expandedOrders,
-    giftOrder,
     orderPeriodMonths,
     setOrderPeriodMonths,
     toggleOrderExpand,

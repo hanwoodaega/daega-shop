@@ -1,10 +1,8 @@
-export type DeliveryMethod = 'pickup' | 'quick' | 'regular'
+export type DeliveryMethod = 'pickup' | 'regular'
 
 export interface DeliveryState {
   method: DeliveryMethod
   pickupTime: string
-  quickDeliveryArea: string
-  quickDeliveryTime: string
 }
 
 export interface FormData {
@@ -24,7 +22,6 @@ export interface Flags {
 }
 
 export interface GiftData {
-  message: string
   recipientName: string
   recipientPhone: string
 }

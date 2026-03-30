@@ -12,9 +12,7 @@ export interface OrderWithItems extends Order {
     }
   }>
   is_confirmed?: boolean  // 구매확정 여부
-  gift_token?: string | null
   gift_card_design?: string | null
-  gift_message?: string | null
   tracking_number?: string | null
   tracking_company?: string | null
   refund_completed_at?: string | null

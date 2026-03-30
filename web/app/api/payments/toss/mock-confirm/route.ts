@@ -3,7 +3,6 @@ import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getUserFromServer } from '@/lib/auth/auth-server'
 import { usePoints } from '@/lib/point/points'
 import { sendOrderCompleteSms } from '@/lib/notifications'
-import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 import crypto from 'crypto'
 import { calculateOrderPricing, type OrderInput } from '@/lib/order/order-pricing.server'
 import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
@@ -12,8 +11,8 @@ import { mockConfirmBodySchema, normalizeToOrderInput } from '@/lib/validation/s
 import { sanitizePhoneDigits } from '@/lib/phone/kr'
 
 export async function POST(request: NextRequest) {
-  const allowMockInProd =
-    process.env.NEXT_PUBLIC_TOSS_MOCK === 'true' || process.env.TOSS_ALLOW_MOCK === 'true'
+  // 프로덕션에서는 서버 전용 플래그만 허용 (NEXT_PUBLIC_*는 번들에 노출되므로 결제 우회 여부 판단에 쓰지 않음)
+  const allowMockInProd = process.env.TOSS_ALLOW_MOCK === 'true'
   if (process.env.NODE_ENV === 'production' && !allowMockInProd) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -58,8 +57,7 @@ export async function POST(request: NextRequest) {
       }
       const { data: existingOrder } = await existingQuery.maybeSingle()
       if (existingOrder) {
-        const giftToken = existingOrder.gift_token ?? null
-        return NextResponse.json({ success: true, order: existingOrder, gift_token: giftToken })
+        return NextResponse.json({ success: true, order: existingOrder })
       }
     }
 
@@ -84,10 +82,11 @@ export async function POST(request: NextRequest) {
     }
 
     const payload: OrderInput = orderInput
-    const normalizedPhone = sanitizePhoneDigits(String(payload.shipping_phone || ''))
-    const giftToken = payload.is_gift ? crypto.randomBytes(32).toString('hex') : null
-    const giftExpiresAt = payload.is_gift ? getGiftExpiresAtEndOfDayKST() : null
-
+    const normalizedPhone = sanitizePhoneDigits(String(payload.recipient_phone || ''))
+    const ordererName = String(payload.orderer_name || payload.shipping_name || '').trim()
+    const ordererPhone = sanitizePhoneDigits(String(payload.orderer_phone || payload.recipient_phone || ''))
+    const recipientName = String(payload.recipient_name || payload.orderer_name || '').trim()
+    const recipientPhone = sanitizePhoneDigits(String(payload.recipient_phone || payload.orderer_phone || ''))
     const orderInsertData: any = {
       user_id: user?.id ?? null,
       order_number: orderNumber,
@@ -99,23 +98,14 @@ export async function POST(request: NextRequest) {
       delivery_type: payload.delivery_type,
       delivery_time: payload.delivery_time,
       shipping_address: payload.shipping_address,
-      shipping_name: payload.shipping_name,
-      shipping_phone: payload.is_gift ? '' : normalizedPhone,
+      orderer_name: ordererName || null,
+      orderer_phone: ordererPhone || null,
+      recipient_name: recipientName || null,
+      recipient_phone: recipientPhone || null,
       delivery_note: payload.delivery_note,
-      is_gift: payload.is_gift,
-      gift_message: payload.gift_message,
-      payment_method: payload.payment_method || 'toss_card',
     }
     orderInsertData.toss_order_id = orderId
     orderInsertData.toss_payment_key = `MOCK_${orderId}`
-
-    if (payload.is_gift) {
-      orderInsertData.gift_token = giftToken
-      orderInsertData.gift_expires_at = giftExpiresAt
-      if (payload.gift_recipient_phone) {
-        orderInsertData.gift_recipient_phone = sanitizePhoneDigits(String(payload.gift_recipient_phone))
-      }
-    }
 
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
@@ -199,15 +189,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 주문 완료 SMS (선물이면 주문자 연락처로, 아니면 수령인 연락처로 발송)
-    const orderCompletePhone = payload.is_gift
-      ? sanitizePhoneDigits(String(payload.orderer_phone ?? ''))
-      : (() => {
-          const fromPayload = sanitizePhoneDigits(String(payload.shipping_phone || ''))
-          if (fromPayload.length >= 10) return fromPayload
-          const fromOrder = sanitizePhoneDigits(String(order?.shipping_phone ?? ''))
-          return fromOrder.length >= 10 ? fromOrder : fromPayload
-        })()
+    // 주문 완료 SMS (orderer_phone 우선)
+    const orderCompletePhone = sanitizePhoneDigits(String(order?.orderer_phone ?? payload.orderer_phone ?? ''))
     if (orderCompletePhone.length >= 10) {
       try {
         const totalQty = itemSnapshots.reduce((sum, s) => sum + s.quantity, 0)
@@ -226,7 +209,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, order, gift_token: giftToken })
+    return NextResponse.json({ success: true, order })
   } catch (error: unknown) {
     return unknownErrorResponse('payments/toss/mock-confirm', error)
   }

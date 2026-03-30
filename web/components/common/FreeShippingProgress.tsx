@@ -7,7 +7,7 @@ import { useMemo } from 'react'
 interface FreeShippingProgressProps {
   totalPrice: number
   threshold?: number
-  deliveryMethod?: 'pickup' | 'quick' | 'regular'
+  deliveryMethod?: 'pickup' | 'regular'
   className?: string
 }
 

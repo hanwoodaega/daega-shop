@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
 import { requireActiveUserFromServer } from '@/lib/auth/auth-server'
 import { usePoints } from '@/lib/point/points'
-import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 import { parseJsonBody } from '@/lib/api/parse-json'
 import { orderCreateBodySchema } from '@/lib/validation/schemas/order-payment'
@@ -43,14 +42,10 @@ export async function GET(request: NextRequest) {
         delivery_type,
         delivery_time,
         shipping_address,
-        shipping_name,
-        shipping_phone,
+        recipient_name,
+        recipient_phone,
         delivery_note,
         tracking_number,
-        is_gift,
-        gift_token,
-        gift_message,
-        gift_expires_at,
         refund_completed_at,
         created_at,
         updated_at
@@ -157,13 +152,13 @@ export async function POST(request: NextRequest) {
       delivery_type,
       delivery_time,
       shipping_address,
-      shipping_name,
-      shipping_phone,
+      recipient_name,
+      recipient_phone,
+      orderer_name,
+      orderer_phone,
       delivery_note,
       used_coupon_id,
       used_points,
-      is_gift,
-      gift_message,
       items: rawItems,
     } = parsed.data
 
@@ -176,13 +171,15 @@ export async function POST(request: NextRequest) {
       delivery_type: delivery_type || 'regular',
       delivery_time: delivery_time ?? null,
       shipping_address: shipping_address || '',
-      shipping_name: shipping_name || '',
-      shipping_phone: shipping_phone || '',
+      shipping_name: recipient_name || '',
+      shipping_phone: recipient_phone || '',
+      orderer_name: orderer_name || recipient_name || '',
+      orderer_phone: orderer_phone || recipient_phone || '',
+      recipient_name: recipient_name || '',
+      recipient_phone: recipient_phone || '',
       delivery_note: delivery_note ?? null,
       used_coupon_id: used_coupon_id ?? null,
       used_points: Number(used_points) || 0,
-      is_gift: !!is_gift,
-      gift_message: gift_message ?? null,
     } as import('@/lib/order/order-pricing.server').OrderInput
 
     const { calculateOrderPricing } = await import('@/lib/order/order-pricing.server')
@@ -205,17 +202,14 @@ export async function POST(request: NextRequest) {
       delivery_type: orderInput.delivery_type,
       delivery_time: orderInput.delivery_time,
       shipping_address: orderInput.shipping_address,
-      shipping_name: orderInput.shipping_name,
-      shipping_phone: orderInput.shipping_phone,
+      orderer_name: orderInput.orderer_name || orderInput.recipient_name || '',
+      orderer_phone: orderInput.orderer_phone || orderInput.recipient_phone || '',
+      recipient_name: orderInput.recipient_name || '',
+      recipient_phone: orderInput.recipient_phone || '',
       delivery_note: orderInput.delivery_note,
-      is_gift: orderInput.is_gift,
-      gift_message: orderInput.gift_message,
     }
 
-    if (orderInput.is_gift) {
-      orderInsertData.gift_token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
-      orderInsertData.gift_expires_at = getGiftExpiresAtEndOfDayKST()
-    }
+    // gift-token flow removed
 
     // 1. 주문 생성
     const { data: order, error: orderError } = await supabaseAdmin

@@ -97,9 +97,9 @@ export async function GET(
     }
 
     let shipping = 0
-    if (order.delivery_type === 'pickup') shipping = 0
-    else if (order.delivery_type === 'quick') shipping = 5000
-    else {
+    if (order.delivery_type === 'pickup') {
+      shipping = 0
+    } else {
       const afterDiscounts = (productOriginalTotal > 0 ? productOriginalTotal : productOrderedTotal) - couponDiscount - usedPoints
       shipping = afterDiscounts >= 50000 ? 0 : 3000
     }

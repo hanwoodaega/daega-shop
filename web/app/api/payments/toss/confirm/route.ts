@@ -3,7 +3,6 @@ import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getUserFromServer } from '@/lib/auth/auth-server'
 import { usePoints } from '@/lib/point/points'
 import { sendOrderCompleteSms } from '@/lib/notifications'
-import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
 import crypto from 'crypto'
 import { calculateOrderPricing, OrderInput, OrderItemSnapshot, PricingResult } from '@/lib/order/order-pricing.server'
 import { cancelTossPayment } from '@/lib/payments/toss-server'
@@ -37,18 +36,15 @@ function buildPendingRedirectResponse(
 
 /** 리다이렉트용 응답 생성 (confirm 성공 시 클라이언트가 redirectTo만 쓰면 됨) */
 function buildRedirectResponse(
-  order: { order_number?: string | null; user_id?: string | null; gift_token?: string | null; shipping_phone?: string | null },
+  order: { order_number?: string | null; user_id?: string | null; recipient_phone?: string | null },
   payload: OrderInput
-): { ok: true; orderNumber: string; isGuest: boolean; giftToken: string | null; redirectTo: string; cartRemove: Array<{ productId: string; promotionGroupId?: string | null }> } {
+): { ok: true; orderNumber: string; isGuest: boolean; redirectTo: string; cartRemove: Array<{ productId: string; promotionGroupId?: string | null }> } {
   const orderNumber = order.order_number || ''
   const isGuest = !order.user_id
-  const giftToken = order.gift_token ?? null
 
   let redirectTo: string
-  if (giftToken) {
-    redirectTo = '/orders?giftToken=' + encodeURIComponent(giftToken)
-  } else if (isGuest) {
-    const phone = sanitizePhoneDigits(String(payload.shipping_phone || ''))
+  if (isGuest) {
+    const phone = sanitizePhoneDigits(String(payload.recipient_phone || ''))
     redirectTo = `/order-lookup?order_number=${encodeURIComponent(orderNumber)}&phone=${encodeURIComponent(phone)}&done=1`
   } else {
     redirectTo = '/orders'
@@ -66,23 +62,20 @@ function buildRedirectResponse(
   })
   const cartRemove = Array.from(cartRemoveMap.values())
 
-  return { ok: true, orderNumber, isGuest, giftToken, redirectTo, cartRemove }
+  return { ok: true, orderNumber, isGuest, redirectTo, cartRemove }
 }
 
 /** 이미 확정된 주문(idempotency)용 리다이렉트 응답 (order_items 기준 cartRemove) */
 function buildRedirectResponseFromOrder(
-  order: { order_number?: string | null; user_id?: string | null; gift_token?: string | null; shipping_phone?: string | null },
+  order: { order_number?: string | null; user_id?: string | null; recipient_phone?: string | null },
   orderItems: Array<{ product_id: string }>
-): { ok: true; orderNumber: string; isGuest: boolean; giftToken: string | null; redirectTo: string; cartRemove: Array<{ productId: string; promotionGroupId?: string | null }> } {
+): { ok: true; orderNumber: string; isGuest: boolean; redirectTo: string; cartRemove: Array<{ productId: string; promotionGroupId?: string | null }> } {
   const orderNumber = order.order_number || ''
   const isGuest = !order.user_id
-  const giftToken = order.gift_token ?? null
 
   let redirectTo: string
-  if (giftToken) {
-    redirectTo = '/orders?giftToken=' + encodeURIComponent(giftToken)
-  } else if (isGuest) {
-    const phone = sanitizePhoneDigits(String(order.shipping_phone || ''))
+  if (isGuest) {
+    const phone = sanitizePhoneDigits(String(order.recipient_phone || ''))
     redirectTo = `/order-lookup?order_number=${encodeURIComponent(orderNumber)}&phone=${encodeURIComponent(phone)}&done=1`
   } else {
     redirectTo = '/orders'
@@ -97,7 +90,7 @@ function buildRedirectResponseFromOrder(
   })
   const cartRemove = Array.from(cartRemoveMap.values())
 
-  return { ok: true, orderNumber, isGuest, giftToken, redirectTo, cartRemove }
+  return { ok: true, orderNumber, isGuest, redirectTo, cartRemove }
 }
 
 /** 검증 불일치 시 payment_error 상태로 주문만 저장 (감사/로그용), 포인트/쿠폰/장바구니/알림은 처리하지 않음 */
@@ -126,7 +119,11 @@ async function createOrderWithPaymentError(params: {
   const suffix = crypto.randomBytes(2).toString('hex').toUpperCase().slice(0, 4)
   const orderNumber = `${datePrefix}-${suffix}`
 
-  const normalizedPhone = sanitizePhoneDigits(String(payload.shipping_phone || ''))
+  const normalizedPhone = sanitizePhoneDigits(String(payload.recipient_phone || ''))
+  const ordererName = String(payload.orderer_name || payload.shipping_name || '').trim()
+  const ordererPhone = sanitizePhoneDigits(String(payload.orderer_phone || payload.recipient_phone || ''))
+  const recipientName = String(payload.recipient_name || payload.orderer_name || '').trim()
+  const recipientPhone = sanitizePhoneDigits(String(payload.recipient_phone || payload.orderer_phone || ''))
   const orderInsertData: Record<string, unknown> = {
     user_id: user?.id ?? null,
     order_number: orderNumber,
@@ -136,17 +133,13 @@ async function createOrderWithPaymentError(params: {
     delivery_type: payload.delivery_type,
     delivery_time: payload.delivery_time,
     shipping_address: payload.shipping_address,
-    shipping_name: payload.shipping_name,
-    shipping_phone: payload.is_gift ? '' : normalizedPhone,
+    orderer_name: ordererName || null,
+    orderer_phone: ordererPhone || null,
+    recipient_name: recipientName || null,
+    recipient_phone: recipientPhone || null,
     delivery_note: payload.delivery_note,
-    is_gift: payload.is_gift,
-    gift_message: payload.gift_message,
-    payment_method: payload.payment_method || 'toss_card',
     toss_order_id: orderId,
     toss_payment_key: paymentKey,
-  }
-  if (payload.is_gift && payload.gift_recipient_phone) {
-    orderInsertData.gift_recipient_phone = sanitizePhoneDigits(String(payload.gift_recipient_phone))
   }
 
   const { data: order, error: orderError } = await supabaseAdmin
@@ -250,7 +243,6 @@ export async function POST(request: NextRequest) {
             const res = NextResponse.json({
               success: true,
               order: existingOrder,
-              gift_token: existingOrder.gift_token ?? null,
               ...redirectPayload,
             })
             if (redirectPayload.isGuest && existingOrder.id) {
@@ -357,7 +349,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({
               success: true,
               order: existingOrder,
-              gift_token: existingOrder.gift_token ?? null,
               ...buildRedirectResponseFromOrder(existingOrder, orderItems || []),
             })
           }
@@ -489,13 +480,11 @@ export async function POST(request: NextRequest) {
       }
       const { data: existingOrder } = await existingQuery.maybeSingle()
       if (existingOrder) {
-        const giftToken = existingOrder.gift_token ?? null
         const payloadLegacy = orderInput
         const redirectPayload = buildRedirectResponse(existingOrder, payloadLegacy)
         const res = NextResponse.json({
           success: true,
           order: existingOrder,
-          gift_token: giftToken,
           ...redirectPayload,
         })
         if (redirectPayload.isGuest && existingOrder.id) {
@@ -535,10 +524,11 @@ export async function POST(request: NextRequest) {
     }
 
     const payload: OrderInput = orderInput
-    const normalizedPhone = sanitizePhoneDigits(String(payload.shipping_phone || ''))
-
-    const giftToken = payload.is_gift ? crypto.randomBytes(32).toString('hex') : null
-    const giftExpiresAt = payload.is_gift ? getGiftExpiresAtEndOfDayKST() : null
+    const normalizedPhone = sanitizePhoneDigits(String(payload.recipient_phone || ''))
+    const ordererName = String(payload.orderer_name || payload.shipping_name || '').trim()
+    const ordererPhone = sanitizePhoneDigits(String(payload.orderer_phone || payload.recipient_phone || ''))
+    const recipientName = String(payload.recipient_name || payload.orderer_name || '').trim()
+    const recipientPhone = sanitizePhoneDigits(String(payload.recipient_phone || payload.orderer_phone || ''))
 
     const orderInsertData: any = {
       user_id: user?.id ?? null,
@@ -551,24 +541,15 @@ export async function POST(request: NextRequest) {
       delivery_type: payload.delivery_type,
       delivery_time: payload.delivery_time,
       shipping_address: payload.shipping_address,
-      shipping_name: payload.shipping_name,
-      shipping_phone: payload.is_gift ? '' : normalizedPhone,
+      orderer_name: ordererName || null,
+      orderer_phone: ordererPhone || null,
+      recipient_name: recipientName || null,
+      recipient_phone: recipientPhone || null,
       delivery_note: payload.delivery_note,
-      is_gift: payload.is_gift,
-      gift_message: payload.gift_message,
-      payment_method: payload.payment_method || 'toss_card',
     }
     orderInsertData.toss_order_id = orderId
     if (paymentKey) {
       orderInsertData.toss_payment_key = paymentKey
-    }
-
-    if (payload.is_gift) {
-      orderInsertData.gift_token = giftToken
-      orderInsertData.gift_expires_at = giftExpiresAt
-      if (payload.gift_recipient_phone) {
-        orderInsertData.gift_recipient_phone = sanitizePhoneDigits(String(payload.gift_recipient_phone))
-      }
     }
 
     const { data: order, error: orderError } = await supabaseAdmin
@@ -680,14 +661,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 주문 완료 SMS 수신 번호 준비
-    const orderCompletePhone = payload.is_gift
-      ? sanitizePhoneDigits(String(payload.orderer_phone ?? ''))
-      : (() => {
-          const fromPayload = sanitizePhoneDigits(String(payload.shipping_phone || ''))
-          if (fromPayload.length >= 10) return fromPayload
-          const fromOrder = sanitizePhoneDigits(String(order?.shipping_phone ?? ''))
-          return fromOrder.length >= 10 ? fromOrder : fromPayload
-        })()
+    const orderCompletePhone = sanitizePhoneDigits(String(order?.orderer_phone ?? payload.orderer_phone ?? ''))
 
     const totalQty = itemSnapshots.reduce((sum, s) => sum + s.quantity, 0)
     const sortedByPrice = [...itemSnapshots].sort((a, b) => (b.final_unit_price ?? 0) - (a.final_unit_price ?? 0))
@@ -710,7 +684,6 @@ export async function POST(request: NextRequest) {
     } else {
       console.warn('[SMS] 주문 완료 SMS 미발송: 수신 번호 부족', {
         orderNumber,
-        is_gift: payload.is_gift,
         orderCompletePhoneLength: orderCompletePhone.length,
       })
     }
@@ -719,7 +692,6 @@ export async function POST(request: NextRequest) {
     const res = NextResponse.json({
       success: true,
       order,
-      gift_token: giftToken,
       ...redirectPayload,
       cartUserId: order?.user_id ?? uid ?? null,
     })

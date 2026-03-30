@@ -1,14 +1,13 @@
 /**
  * draft(approved_not_persisted) → orders/order_items/포인트/쿠폰/장바구니/알림 처리
- * confirm API는 토스 승인 + draft 상태만 담당하고, 이 로직은 worker/cron에서 실행.
+ * confirm API는 토스 승인 + draft 상태만 담당하고, 이 로직은 process-draft 엔드포인트에서 실행.
  */
 
 import crypto from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { usePoints } from '@/lib/point/points'
-import { sendOrderCompleteSms, sendGiftNotification } from '@/lib/notifications'
-import { getGiftExpiresAtEndOfDayKST } from '@/lib/gift/expires'
+import { sendOrderCompleteSms } from '@/lib/notifications'
 import type { OrderInput, OrderItemSnapshot, PricingResult } from '@/lib/order/order-pricing.server'
 import { sanitizePhoneDigits } from '@/lib/phone/kr'
 
@@ -19,20 +18,13 @@ const CONFIRM_STATUS = {
   FAILED: 'failed',
 } as const
 
-function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
-  return ''
-}
-
 export interface PersistResult {
   ok: boolean
   order?: {
     id: string
     order_number: string | null
     user_id: string | null
-    gift_token: string | null
-    shipping_phone: string | null
+    recipient_phone: string | null
     [key: string]: unknown
   }
   error?: string
@@ -64,7 +56,7 @@ export async function persistDraftToOrder(draftId: string): Promise<PersistResul
     // 이미 처리 중이거나 완료 → order 있는지 확인 후 성공 처리
     const { data: existingOrder } = await supabaseAdmin
       .from('orders')
-      .select('id, order_number, user_id, gift_token, shipping_phone')
+      .select('id, order_number, user_id, recipient_phone')
       .eq('toss_order_id', draftId)
       .maybeSingle()
     if (existingOrder) {
@@ -85,7 +77,7 @@ export async function persistDraftToOrder(draftId: string): Promise<PersistResul
   // idempotency: 이미 order 있으면 done 처리 후 종료
   const { data: existingOrder } = await supabaseAdmin
     .from('orders')
-    .select('id, order_number, user_id, gift_token, shipping_phone')
+    .select('id, order_number, user_id, recipient_phone')
     .eq('toss_order_id', orderId)
     .maybeSingle()
 
@@ -148,10 +140,11 @@ export async function persistDraftToOrder(draftId: string): Promise<PersistResul
     }
 
     const payload = orderInput
-    const normalizedPhone = sanitizePhoneDigits(String(payload.shipping_phone || ''))
-    const giftToken = payload.is_gift ? crypto.randomBytes(32).toString('hex') : null
-    const giftExpiresAt = payload.is_gift ? getGiftExpiresAtEndOfDayKST() : null
-
+    const normalizedPhone = sanitizePhoneDigits(String(payload.recipient_phone || ''))
+    const ordererName = String(payload.orderer_name || payload.shipping_name || '').trim()
+    const ordererPhone = sanitizePhoneDigits(String(payload.orderer_phone || payload.recipient_phone || ''))
+    const recipientName = String(payload.recipient_name || payload.orderer_name || '').trim()
+    const recipientPhone = sanitizePhoneDigits(String(payload.recipient_phone || payload.orderer_phone || ''))
     const orderInsertData: Record<string, unknown> = {
       user_id: user?.id ?? null,
       order_number: orderNumber,
@@ -163,21 +156,13 @@ export async function persistDraftToOrder(draftId: string): Promise<PersistResul
       delivery_type: payload.delivery_type,
       delivery_time: payload.delivery_time,
       shipping_address: payload.shipping_address,
-      shipping_name: payload.shipping_name,
-      shipping_phone: payload.is_gift ? '' : normalizedPhone,
+      orderer_name: ordererName || null,
+      orderer_phone: ordererPhone || null,
+      recipient_name: recipientName || null,
+      recipient_phone: recipientPhone || null,
       delivery_note: payload.delivery_note,
-      is_gift: payload.is_gift,
-      gift_message: payload.gift_message,
-      payment_method: payload.payment_method || 'toss_card',
       toss_order_id: orderId,
       toss_payment_key: paymentKey ?? undefined,
-    }
-    if (payload.is_gift) {
-      ;(orderInsertData as any).gift_token = giftToken
-      ;(orderInsertData as any).gift_expires_at = giftExpiresAt
-      if (payload.gift_recipient_phone) {
-        ;(orderInsertData as any).gift_recipient_phone = sanitizePhoneDigits(String(payload.gift_recipient_phone))
-      }
     }
 
     const { data: order, error: orderError } = await supabaseAdmin
@@ -273,14 +258,7 @@ export async function persistDraftToOrder(draftId: string): Promise<PersistResul
       }
     }
 
-    const orderCompletePhone = payload.is_gift
-      ? sanitizePhoneDigits(String(payload.orderer_phone ?? ''))
-      : (() => {
-          const fromPayload = sanitizePhoneDigits(String(payload.shipping_phone || ''))
-          if (fromPayload.length >= 10) return fromPayload
-          return sanitizePhoneDigits(String(order?.shipping_phone ?? ''))
-        })()
-    const giftBaseUrl = getBaseUrl()
+    const orderCompletePhone = sanitizePhoneDigits(String(order?.orderer_phone ?? payload.orderer_phone ?? ''))
     const totalQty = itemSnapshots.reduce((sum, s) => sum + s.quantity, 0)
     const sortedByPrice = [...itemSnapshots].sort((a, b) => (b.final_unit_price ?? 0) - (a.final_unit_price ?? 0))
     const topProductName = sortedByPrice[0]?.product_name || '상품'
@@ -296,27 +274,7 @@ export async function persistDraftToOrder(draftId: string): Promise<PersistResul
         console.error('[toss-persist] 주문 완료 SMS 실패:', e)
       }
     }
-    if (payload.is_gift && giftToken && payload.gift_recipient_phone && giftExpiresAt && giftBaseUrl) {
-      try {
-        const receiveUrl = `${giftBaseUrl.replace(/\/$/, '')}/gift/receive/${giftToken}`
-        const senderName = (payload.gift_sender_name || payload.shipping_name || '보내는 분').trim() || '보내는 분'
-        const recipientName = (payload.gift_recipient_name ?? '').trim() || undefined
-        const d = new Date(giftExpiresAt)
-        const expiresAtFormatted = `${d.getMonth() + 1}월 ${d.getDate()}일`
-        await sendGiftNotification({
-          to: payload.gift_recipient_phone,
-          senderName,
-          recipientName,
-          message: payload.gift_message ?? null,
-          productName,
-          token: giftToken,
-          receiveUrl,
-          expiresAtFormatted,
-        })
-      } catch (e) {
-        console.error('[toss-persist] 선물 알림톡 실패:', e)
-      }
-    }
+    // gift notification flow removed
 
     await supabaseAdmin
       .from('order_drafts')
@@ -329,8 +287,7 @@ export async function persistDraftToOrder(draftId: string): Promise<PersistResul
         id: order.id,
         order_number: order.order_number,
         user_id: order.user_id,
-        gift_token: order.gift_token ?? null,
-        shipping_phone: order.shipping_phone ?? null,
+        recipient_phone: order.recipient_phone ?? null,
       },
     }
   } catch (err) {

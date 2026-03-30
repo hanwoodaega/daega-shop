@@ -9,9 +9,7 @@ import { useAuth } from '@/lib/auth/auth-context'
 import { useDefaultAddress, useUserProfile } from '@/lib/address/useAddress'
 import { openDaumPostcode, AddressSearchResult } from '@/lib/postcode/useDaumPostcode'
 import { showError, showSuccess, showInfo } from '@/lib/utils/error-handler'
-import { formatPrice } from '@/lib/utils/utils'
 import { DeliveryState, FormData, Flags, GiftData } from './checkout.types'
-import { GIFT_MIN_AMOUNT } from '@/lib/utils/constants'
 import type { PricingResult } from '@/lib/order/pricing-types'
 import { useCoupons } from '@/lib/swr'
 import { isCouponValid } from '@/lib/coupon/coupons'
@@ -19,7 +17,7 @@ import { UserCoupon, Coupon } from '@/lib/supabase/supabase'
 import { removeFromCartDB } from '@/lib/cart/cart-db'
 import { phoneDigitsOnly, sanitizePhoneDigits } from '@/lib/phone/kr'
 
-const TOTAL_GIFT_STEPS = 3
+const TOTAL_GIFT_STEPS = 1
 
 /** draft 선갱신 debounce · 결제 시 재사용 시 만료 여유 */
 const DRAFT_PREFETCH_DEBOUNCE_MS = 500
@@ -62,8 +60,6 @@ export function useCheckout(options: UseCheckoutOptions) {
   const [deliveryState, setDeliveryState] = useState<DeliveryState>({
     method: 'regular',
     pickupTime: '',
-    quickDeliveryArea: '',
-    quickDeliveryTime: '',
   })
 
   const [formData, setFormData] = useState<FormData>({
@@ -98,6 +94,10 @@ export function useCheckout(options: UseCheckoutOptions) {
   const [usedPointsInput, setUsedPointsInput] = useState('')
 
   const [paymentMethod, setPaymentMethod] = useState('card')
+  const [giftData, setGiftData] = useState<GiftData>({
+    recipientName: '',
+    recipientPhone: '',
+  })
 
   const [serverPricing, setServerPricing] = useState<PricingResult | null>(null)
   const [pricingLoading, setPricingLoading] = useState(false)
@@ -111,12 +111,6 @@ export function useCheckout(options: UseCheckoutOptions) {
     [items]
   )
 
-  const [giftData, setGiftData] = useState<GiftData>({
-    message: '',
-    recipientName: '',
-    recipientPhone: '',
-  })
-
   const [currentStep, setCurrentStep] = useState(1)
 
   // Hooks
@@ -124,7 +118,7 @@ export function useCheckout(options: UseCheckoutOptions) {
   const { profile: userProfile, loading: loadingUserProfile } = useUserProfile()
 
   // Derived values
-  const { method: deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime } = deliveryState
+  const { method: deliveryMethod, pickupTime } = deliveryState
   const { isProcessing, mounted, saveAsDefaultAddress } = flags
   const isGiftFinalStep = !isGiftMode || currentStep === TOTAL_GIFT_STEPS
   const gridColumnsClass = isGiftFinalStep ? 'lg:grid-cols-3' : 'lg:grid-cols-1'
@@ -167,40 +161,23 @@ export function useCheckout(options: UseCheckoutOptions) {
   const displayFinalTotal = Math.max(0, displayDiscountedTotal - displayCouponDiscount - displayUsedPoints)
   const displayOrderTotal = displayFinalTotal + displayShipping
 
-  // Memoized values
-  const pickupTimeSlots = useMemo(() => [
-    '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
-    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30',
-    '19:00', '19:30', '20:00'
-  ], [])
-
-  const quickDeliveryAreas = useMemo(() => [
-    '연향동', '조례동', '풍덕동', '해룡면'
-  ], [])
-
-  const quickDeliveryTimeSlots = useMemo(() => [
-    '10:00~11:00', '11:00~12:00', '12:00~13:00',
-    '13:00~14:00', '14:00~15:00', '15:00~16:00',
-    '16:00~17:00', '17:00~18:00', '18:00~19:00',
-    '19:00~20:00', '20:00~21:00', '21:00~22:00'
-  ], [])
-
   // Effects
   const restoreDeliveryFromSession = useCallback(() => {
-    const savedDeliveryMethod = sessionStorage.getItem('deliveryMethod') as 'pickup' | 'quick' | 'regular' | null
+    let savedDeliveryMethod = sessionStorage.getItem('deliveryMethod') as
+      | 'pickup'
+      | 'quick'
+      | 'regular'
+      | null
     const savedPickupTime = sessionStorage.getItem('pickupTime') || ''
-    const savedQuickArea = sessionStorage.getItem('quickDeliveryArea') || ''
-    const savedQuickTime = sessionStorage.getItem('quickDeliveryTime') || ''
-    
-    if (savedDeliveryMethod) {
-      setDeliveryState(prev => ({ 
-        ...prev, 
+    if (savedDeliveryMethod === 'quick') {
+      savedDeliveryMethod = 'regular'
+      sessionStorage.setItem('deliveryMethod', 'regular')
+    }
+    if (savedDeliveryMethod === 'pickup' || savedDeliveryMethod === 'regular') {
+      setDeliveryState({
         method: savedDeliveryMethod,
         pickupTime: savedPickupTime,
-        quickDeliveryArea: savedQuickArea,
-        quickDeliveryTime: savedQuickTime,
-      }))
+      })
     }
   }, [])
 
@@ -221,12 +198,24 @@ export function useCheckout(options: UseCheckoutOptions) {
   }, [])
 
   useEffect(() => {
+    if (isGiftMode) return
     if (defaultAddress) {
-      applyAddress(defaultAddress)
+      setFormData(prev => ({
+        ...prev,
+        zipcode: defaultAddress.zipcode || '',
+        address: defaultAddress.address || '',
+        addressDetail: defaultAddress.address_detail || '',
+        message: defaultAddress.delivery_note || '',
+      }))
+      setGiftData(prev => ({
+        ...prev,
+        recipientName: defaultAddress.recipient_name || '',
+        recipientPhone: defaultAddress.recipient_phone || '',
+      }))
     } else if (!hasDefaultAddress) {
       setFlags(prev => ({ ...prev, saveAsDefaultAddress: true }))
     }
-  }, [defaultAddress, hasDefaultAddress])
+  }, [defaultAddress, hasDefaultAddress, isGiftMode])
 
   useEffect(() => {
     if (userProfile) {
@@ -276,13 +265,7 @@ export function useCheckout(options: UseCheckoutOptions) {
   }, [user?.id])
 
   const buildPricingInput = useCallback(() => {
-    const deliveryTime = isGiftMode
-      ? null
-      : deliveryMethod === 'pickup'
-      ? pickupTime
-      : deliveryMethod === 'quick'
-      ? quickDeliveryTime
-      : null
+    const deliveryTime = isGiftMode ? null : deliveryMethod === 'pickup' ? pickupTime : null
 
     return {
       delivery_type: isGiftMode ? 'regular' : deliveryMethod,
@@ -293,7 +276,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       delivery_note: null,
       used_coupon_id: selectedCoupon?.id || null,
       used_points: usedPoints,
-      is_gift: isGiftMode,
+      is_gift: false,
       gift_message: null,
       gift_recipient_phone: isGiftMode ? sanitizePhoneDigits(giftData.recipientPhone || '') : undefined,
       items: items.map(item => ({
@@ -306,7 +289,6 @@ export function useCheckout(options: UseCheckoutOptions) {
     isGiftMode,
     deliveryMethod,
     pickupTime,
-    quickDeliveryTime,
     selectedCoupon?.id,
     usedPoints,
     items,
@@ -315,43 +297,39 @@ export function useCheckout(options: UseCheckoutOptions) {
   const pricingKey = useMemo(
     () => (items.length === 0 ? '' : JSON.stringify(buildPricingInput())),
     // itemsSignature 등 내용 기준으로만 변경. buildPricingInput 제외해 매 렌더 abort 방지
-    [itemsSignature, isGiftMode, deliveryMethod, pickupTime, quickDeliveryTime, selectedCoupon?.id, usedPoints]
+    [itemsSignature, isGiftMode, deliveryMethod, pickupTime, selectedCoupon?.id, usedPoints]
   )
 
   const buildOrderInput = useCallback(() => {
     const normalizedPhone = sanitizePhoneDigits(formData.phone || '')
-    const shippingAddress = isGiftMode
-      ? '선물 수령 대기'
-      : deliveryMethod === 'pickup'
+    const recipientPhone = sanitizePhoneDigits(giftData.recipientPhone || '')
+    const recipientName = (giftData.recipientName || '').trim()
+    const resolvedRecipientName = isGiftMode ? recipientName : (recipientName || formData.name)
+    const resolvedRecipientPhone = isGiftMode ? recipientPhone : (recipientPhone || normalizedPhone)
+    const shippingAddress = deliveryMethod === 'pickup'
       ? '매장 픽업'
-      : deliveryMethod === 'quick'
-      ? `${formData.address}${formData.addressDetail ? ' ' + formData.addressDetail : ''}`
       : `${formData.address}${formData.addressDetail ? ' ' + formData.addressDetail : ''}`
 
-    const deliveryTime = isGiftMode
-      ? null
-      : deliveryMethod === 'pickup'
-      ? pickupTime
-      : deliveryMethod === 'quick'
-      ? quickDeliveryTime
-      : null
+    const deliveryTime = isGiftMode ? null : deliveryMethod === 'pickup' ? pickupTime : null
 
     return {
       delivery_type: isGiftMode ? 'regular' : deliveryMethod,
       delivery_time: deliveryTime,
       shipping_address: shippingAddress,
-      shipping_name: isGiftMode ? '선물 수령 대기' : formData.name,
-      shipping_phone: isGiftMode ? '' : normalizedPhone,
+      shipping_name: resolvedRecipientName,
+      shipping_phone: resolvedRecipientPhone,
+      orderer_name: isGiftMode ? formData.name.trim() : formData.name,
+      orderer_phone: normalizedPhone,
+      recipient_name: resolvedRecipientName,
+      recipient_phone: resolvedRecipientPhone,
       delivery_note: formData.message.trim() || null,
       used_coupon_id: selectedCoupon?.id || null,
       used_points: usedPoints,
-      is_gift: isGiftMode,
-      gift_message: isGiftMode ? giftData.message : null,
-      gift_recipient_phone: isGiftMode ? sanitizePhoneDigits(giftData.recipientPhone || '') : undefined,
+      is_gift: false,
+      gift_message: null,
+      gift_recipient_phone: isGiftMode ? recipientPhone : undefined,
       gift_recipient_name: isGiftMode ? (giftData.recipientName || '').trim() || undefined : undefined,
-      orderer_phone: isGiftMode ? normalizedPhone : undefined,
-      gift_sender_name: isGiftMode ? (formData.name || '').trim() || undefined : undefined,
-      payment_method: paymentMethod,
+      gift_sender_name: undefined,
       items: items.map(item => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -362,7 +340,6 @@ export function useCheckout(options: UseCheckoutOptions) {
     isGiftMode,
     deliveryMethod,
     pickupTime,
-    quickDeliveryTime,
     formData.address,
     formData.addressDetail,
     formData.name,
@@ -370,7 +347,6 @@ export function useCheckout(options: UseCheckoutOptions) {
     formData.message,
     selectedCoupon?.id,
     usedPoints,
-    giftData.message,
     giftData.recipientName,
     giftData.recipientPhone,
     paymentMethod,
@@ -381,34 +357,28 @@ export function useCheckout(options: UseCheckoutOptions) {
     if (items.length === 0) return false
     if (isGiftMode) {
       if (currentStep < TOTAL_GIFT_STEPS) return false
+      if (!formData.name?.trim() || !formData.phone?.trim()) return false
+      if (!(giftData.recipientName || '').trim()) return false
       const recipientPhone = phoneDigitsOnly(giftData.recipientPhone || '')
       if (recipientPhone.length < 10) return false
-      if (!(giftData.recipientName || '').trim()) return false
-      if (!(giftData.message || '').trim()) return false
-      if (!formData.name?.trim() || !formData.phone?.trim()) return false
+      if (!formData.address?.trim()) return false
       return true
     }
     if (!formData.name?.trim() || !formData.phone?.trim()) return false
     if (deliveryMethod === 'pickup') return !!pickupTime
-    if (deliveryMethod === 'quick') {
-      return !!(quickDeliveryArea && formData.address?.trim() && quickDeliveryTime)
-    }
     if (deliveryMethod === 'regular') return !!formData.address?.trim()
     return false
   }, [
     items.length,
     isGiftMode,
     currentStep,
-    giftData.recipientPhone,
-    giftData.recipientName,
-    giftData.message,
     formData.name,
     formData.phone,
     formData.address,
+    giftData.recipientName,
+    giftData.recipientPhone,
     deliveryMethod,
     pickupTime,
-    quickDeliveryArea,
-    quickDeliveryTime,
   ])
 
   const orderInputFingerprint = useMemo(
@@ -417,7 +387,6 @@ export function useCheckout(options: UseCheckoutOptions) {
       isGiftMode,
       deliveryMethod,
       pickupTime,
-      quickDeliveryTime,
       formData.address,
       formData.addressDetail,
       formData.name,
@@ -425,7 +394,6 @@ export function useCheckout(options: UseCheckoutOptions) {
       formData.message,
       selectedCoupon?.id,
       usedPoints,
-      giftData.message,
       giftData.recipientName,
       giftData.recipientPhone,
       paymentMethod,
@@ -558,12 +526,15 @@ export function useCheckout(options: UseCheckoutOptions) {
   }) => {
     setFormData(prev => ({
       ...prev,
-      name: prev.name || address.recipient_name || '',
-      phone: prev.phone || address.recipient_phone || '',
       zipcode: address.zipcode || '',
       address: address.address || '',
       addressDetail: address.address_detail || '',
       message: address.delivery_note || '',
+    }))
+    setGiftData(prev => ({
+      ...prev,
+      recipientName: address.recipient_name || '',
+      recipientPhone: address.recipient_phone || '',
     }))
   }, [])
 
@@ -578,39 +549,32 @@ export function useCheckout(options: UseCheckoutOptions) {
     
     if (!isGiftMode || currentStep >= TOTAL_GIFT_STEPS) return
 
-    const expectedAmount = displayFinalTotal + displayShipping
-    
-    if (expectedAmount < GIFT_MIN_AMOUNT) {
-      toast.error(`선물하기는 결제 금액이 ${formatPrice(GIFT_MIN_AMOUNT)}원 이상이어야 합니다.`)
-      return
-    }
-
     if (currentStep === 1) {
-      // 1단계: 금액만 확인 (보내는 분은 2단계에서 입력)
+      // 1단계: 요약 확인
     }
 
     if (currentStep === 2) {
       if (!formData.name.trim() || !formData.phone.trim()) {
-        toast.error('보내는 분 정보를 입력해주세요.')
+        toast.error('주문자 정보를 입력해주세요.')
         return
       }
       if (!(giftData.recipientName || '').trim()) {
         toast.error('받는 분 이름을 입력해주세요.')
         return
       }
-      const phone = phoneDigitsOnly(giftData.recipientPhone || '')
-      if (phone.length < 10) {
-        toast.error('받는 분 휴대폰 번호를 입력해주세요.')
+      const recipientPhone = phoneDigitsOnly(giftData.recipientPhone || '')
+      if (recipientPhone.length < 10) {
+        toast.error('받는 분 연락처를 입력해주세요.')
         return
       }
-      if (!(giftData.message || '').trim()) {
-        toast.error('선물 메시지를 입력해주세요.')
+      if (!formData.address.trim()) {
+        toast.error('배송 주소를 입력해주세요.')
         return
       }
     }
 
     setCurrentStep(prev => Math.min(prev + 1, TOTAL_GIFT_STEPS))
-  }, [isGiftMode, currentStep, displayFinalTotal, displayShipping, formData.name, formData.phone, giftData.recipientName, giftData.recipientPhone, giftData.message])
+  }, [isGiftMode, currentStep, formData.name, formData.phone, formData.address, giftData.recipientName, giftData.recipientPhone])
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
@@ -632,21 +596,21 @@ export function useCheckout(options: UseCheckoutOptions) {
       }
 
       if (isGiftMode) {
-        const recipientPhone = phoneDigitsOnly(giftData.recipientPhone || '')
-        if (recipientPhone.length < 10) {
-          validationToast('받는 분 휴대폰 번호를 입력해주세요.')
+        if (!formData.name?.trim() || !formData.phone?.trim()) {
+          validationToast('주문자 정보를 입력해주세요.')
           return false
         }
         if (!(giftData.recipientName || '').trim()) {
           validationToast('받는 분 이름을 입력해주세요.')
           return false
         }
-        if (!(giftData.message || '').trim()) {
-          validationToast('선물 메시지를 입력해주세요.')
+        const recipientPhone = phoneDigitsOnly(giftData.recipientPhone || '')
+        if (recipientPhone.length < 10) {
+          validationToast('받는 분 연락처를 입력해주세요.')
           return false
         }
-        if (!formData.name?.trim() || !formData.phone?.trim()) {
-          validationToast('보내는 분 정보를 입력해주세요.')
+        if (!formData.address?.trim()) {
+          validationToast('받는 분 배송 정보를 입력해주세요.')
           return false
         }
       }
@@ -660,21 +624,6 @@ export function useCheckout(options: UseCheckoutOptions) {
         if (deliveryMethod === 'pickup' && !pickupTime) {
           validationToast('픽업 시간을 선택해주세요.')
           return false
-        }
-
-        if (deliveryMethod === 'quick') {
-          if (!quickDeliveryArea) {
-            validationToast('배달 지역을 선택해주세요.')
-            return false
-          }
-          if (!formData.address) {
-            validationToast('상세 주소를 입력해주세요.')
-            return false
-          }
-          if (!quickDeliveryTime) {
-            validationToast('배달 시간을 선택해주세요.')
-            return false
-          }
         }
 
         if (deliveryMethod === 'regular' && !formData.address) {
@@ -775,9 +724,8 @@ export function useCheckout(options: UseCheckoutOptions) {
         saveAsDefaultAddress,
         deliveryMethod,
         formData,
-        orderInput: {
+          orderInput: {
           shipping_phone: orderInput.shipping_phone,
-          orderer_phone: orderInput.orderer_phone,
         },
       }
       sessionStorage.setItem(`toss_checkout_${orderId}`, JSON.stringify(meta))
@@ -802,12 +750,18 @@ export function useCheckout(options: UseCheckoutOptions) {
       const successUrl = `${baseUrl}/checkout/toss/success`
       const failUrl = `${baseUrl}/checkout/toss/fail`
 
-      const sanitizedPhone = phoneDigitsOnly(formData.phone || '')
-      if (sanitizedPhone.length < 10 || sanitizedPhone.length > 11) {
+      const profileName = (userProfile?.name || '').trim()
+      const profilePhone = phoneDigitsOnly(userProfile?.phone || '')
+      const inputName = (formData.name || '').trim()
+      const inputPhone = phoneDigitsOnly(formData.phone || '')
+      const paymentCustomerName = user ? (profileName || inputName) : inputName
+      const paymentCustomerPhone = user ? (profilePhone || inputPhone) : inputPhone
+
+      if (paymentCustomerPhone.length < 10 || paymentCustomerPhone.length > 11) {
         throw new Error('휴대폰 번호를 확인해주세요.')
       }
 
-      const normalizedEmail = (formData.email || '').trim()
+      const normalizedEmail = (user ? (user.email || '') : (formData.email || '')).trim()
       const emailDomain = normalizedEmail.split('@')[1] || ''
       const isInternalEmail =
         normalizedEmail === (user?.email || '') &&
@@ -832,9 +786,9 @@ export function useCheckout(options: UseCheckoutOptions) {
         orderName,
         successUrl,
         failUrl,
-        customerName: formData.name.trim(),
+        customerName: paymentCustomerName,
         customerEmail: normalizedEmail && !isInternalEmail ? normalizedEmail : undefined,
-        customerMobilePhone: sanitizedPhone,
+        customerMobilePhone: paymentCustomerPhone,
       }
       if (Number.isFinite(taxFreeAmount) && taxFreeAmount >= 0) {
         paymentOptions.taxFreeAmount = taxFreeAmount
@@ -852,9 +806,9 @@ export function useCheckout(options: UseCheckoutOptions) {
           orderName,
           successUrl,
           failUrl,
-          customerName: formData.name.trim(),
+          customerName: paymentCustomerName,
           customerEmail: normalizedEmail && !isInternalEmail ? normalizedEmail : undefined,
-          customerMobilePhone: sanitizedPhone || undefined,
+          customerMobilePhone: paymentCustomerPhone || undefined,
           ...(Number.isFinite(taxFreeAmount) && taxFreeAmount >= 0 ? { taxFreeAmount } : {}),
         })
         return
@@ -867,7 +821,7 @@ export function useCheckout(options: UseCheckoutOptions) {
 
     const saveAddressIfNeeded = async () => {
       if (!saveAsDefaultAddress || !formData.address) return
-      if (deliveryMethod !== 'regular' && deliveryMethod !== 'quick') return
+      if (deliveryMethod !== 'regular') return
 
       try {
         const checkRes = await fetch('/api/addresses/check', {
@@ -889,8 +843,8 @@ export function useCheckout(options: UseCheckoutOptions) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               name: existing.name,
-              recipient_name: formData.name,
-              recipient_phone: formData.phone,
+              recipient_name: (giftData.recipientName || '').trim() || formData.name,
+              recipient_phone: sanitizePhoneDigits(giftData.recipientPhone || '') || formData.phone,
               zipcode: formData.zipcode || null,
               address: formData.address,
               address_detail: formData.addressDetail || null,
@@ -899,19 +853,16 @@ export function useCheckout(options: UseCheckoutOptions) {
             }),
           })
         } else {
-          const addressName = deliveryMethod === 'quick' 
-            ? `퀵배달 주소 ${addressCount}`
-            : addressCount === 1 
-              ? '기본 배송지'
-              : `배송지 ${addressCount}`
+          const addressName =
+            addressCount === 1 ? '기본 배송지' : `배송지 ${addressCount}`
           
           await fetch('/api/addresses', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               name: addressName,
-              recipient_name: formData.name,
-              recipient_phone: formData.phone,
+              recipient_name: (giftData.recipientName || '').trim() || formData.name,
+              recipient_phone: sanitizePhoneDigits(giftData.recipientPhone || '') || formData.phone,
               zipcode: formData.zipcode || null,
               address: formData.address,
               address_detail: formData.addressDetail || null,
@@ -1004,16 +955,13 @@ export function useCheckout(options: UseCheckoutOptions) {
     formData,
     deliveryMethod,
     pickupTime,
-    quickDeliveryArea,
-    quickDeliveryTime,
     usedPoints,
     userPoints,
     displayAfterCouponDiscount,
     user,
+    userProfile,
     router,
     isDirectPurchase,
-    displayFinalTotal,
-    displayShipping,
     selectedCoupon,
     giftData,
     saveAsDefaultAddress,
@@ -1085,8 +1033,6 @@ export function useCheckout(options: UseCheckoutOptions) {
     derived: {
       deliveryMethod,
       pickupTime,
-      quickDeliveryArea,
-      quickDeliveryTime,
       isProcessing,
       pricingLoading,
       mounted,
@@ -1102,9 +1048,6 @@ export function useCheckout(options: UseCheckoutOptions) {
       couponDiscount: displayCouponDiscount,
       afterCouponDiscount: displayAfterCouponDiscount,
       finalTotal: displayFinalTotal,
-      pickupTimeSlots,
-      quickDeliveryAreas,
-      quickDeliveryTimeSlots,
       defaultAddress,
       loadingDefaultAddress,
       hasDefaultAddress,

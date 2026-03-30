@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 토큰에 들어 있던 번호와 주문의 수령인 연락처가 일치하는지 한 번 더 확인
-    const orderPhoneNorm = normalizePhone(order.shipping_phone || '')
+    const orderPhoneNorm = normalizePhone(order.recipient_phone || '')
     if (orderPhoneNorm !== tokenPhone) {
       return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 })
     }

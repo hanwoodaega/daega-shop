@@ -9,18 +9,14 @@ interface CartItemForPrice {
   promotion_group_id?: string | null
 }
 
-type DeliveryMethod = 'pickup' | 'quick' | 'regular'
+type DeliveryMethod = 'pickup' | 'regular'
 
 function buildPriceInput(
   items: CartItemForPrice[],
   deliveryMethod: DeliveryMethod,
-  pickupTime: string,
-  quickDeliveryTime: string
+  pickupTime: string
 ): object {
-  const deliveryTime =
-    deliveryMethod === 'pickup' ? pickupTime || null
-    : deliveryMethod === 'quick' ? quickDeliveryTime || null
-    : null
+  const deliveryTime = deliveryMethod === 'pickup' ? pickupTime || null : null
 
   return {
     items: items.map((item) => ({
@@ -44,8 +40,7 @@ function buildPriceInput(
 export function useOrderPricing(
   items: CartItemForPrice[],
   deliveryMethod: DeliveryMethod,
-  pickupTime: string,
-  quickDeliveryTime: string
+  pickupTime: string
 ) {
   const [pricing, setPricing] = useState<PricingResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -56,10 +51,8 @@ export function useOrderPricing(
     () =>
       items.length === 0
         ? ''
-        : JSON.stringify(
-            buildPriceInput(items, deliveryMethod, pickupTime, quickDeliveryTime)
-          ),
-    [items, deliveryMethod, pickupTime, quickDeliveryTime]
+        : JSON.stringify(buildPriceInput(items, deliveryMethod, pickupTime)),
+    [items, deliveryMethod, pickupTime]
   )
 
   useEffect(() => {

@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('start_date')
     const endDate = searchParams.get('end_date')
     const status = searchParams.get('status')
+    const orderNumber = searchParams.get('order_number')
 
     const supabase = createSupabaseAdminClient()
     let query = supabase
@@ -73,6 +74,9 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       query = query.eq('status', status)
+    }
+    if (orderNumber) {
+      query = query.ilike('order_number', `%${orderNumber}%`)
     }
 
     const { data: orders, error } = await query
@@ -165,16 +169,13 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // 배송비 계산
+        // 배송비 계산 (DB 레거시 quick 는 택배와 동일 규칙)
         let shipping = 0
         if (order.delivery_type === 'pickup') {
           shipping = 0
-        } else if (order.delivery_type === 'quick') {
-          shipping = 5000 // QUICK_FEE
-        } else if (order.delivery_type === 'regular') {
-          // 즉시할인, 쿠폰, 포인트 적용 후 금액
+        } else {
           const afterDiscounts = (productOriginalTotal > 0 ? productOriginalTotal : productOrderedTotal) - couponDiscount - usedPoints
-          shipping = afterDiscounts >= 50000 ? 0 : 3000 // FREE_THRESHOLD, DEFAULT_FEE
+          shipping = afterDiscounts >= 50000 ? 0 : 3000
         }
 
         // 즉시할인 금액 계산

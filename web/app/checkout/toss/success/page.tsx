@@ -22,7 +22,7 @@ interface CheckoutMeta {
     zipcode?: string
     message?: string
   }
-  orderInput?: { shipping_phone?: string }
+  orderInput?: { recipient_phone?: string }
 }
 
 const POLL_INTERVAL_MS = 1500
@@ -31,14 +31,10 @@ const POLL_MAX_ATTEMPTS = 60 // ~90초
 function buildFinalRedirect(order: {
   order_number: string | null
   user_id: string | null
-  gift_token: string | null
-  shipping_phone: string | null
+  recipient_phone: string | null
 }): string {
-  if (order.gift_token) {
-    return `/orders?giftToken=${encodeURIComponent(order.gift_token)}`
-  }
   if (!order.user_id) {
-    const phone = sanitizePhoneDigits(String(order.shipping_phone || ''))
+    const phone = sanitizePhoneDigits(String(order.recipient_phone || ''))
     return `/order-lookup?order_number=${encodeURIComponent(order.order_number || '')}&phone=${encodeURIComponent(phone)}&done=1`
   }
   return '/orders'
@@ -54,11 +50,11 @@ function TossSuccessContent() {
   const confirmStartedRef = useRef(false)
   const pendingOrderIdRef = useRef<string | null>(null)
 
-  // confirmed=1 + orderId 있을 때 주문 폴링 (worker 완료 대기)
+  // status=pending + orderId 일 때 폴링 (worker 완료 대기). confirmed=1 URL 전환 없이도 동일하게 동작
   useEffect(() => {
-    const orderId = searchParams.get('orderId')
-    const confirmed = searchParams.get('confirmed') === '1'
-    if (status !== 'pending' || !confirmed || !orderId) return
+    if (status !== 'pending') return
+    const orderId = searchParams.get('orderId') ?? pendingOrderIdRef.current
+    if (!orderId) return
 
     let attempts = 0
     const timer = setInterval(async () => {
@@ -92,7 +88,7 @@ function TossSuccessContent() {
     const confirmed = searchParams.get('confirmed') === '1'
     const isMock = searchParams.get('mock') === '1'
 
-    // 이미 정리 중 페이지로 리다이렉트된 상태(confirmed=1, orderId만 있음) → confirm 재호출 없이 폴링만
+    // 북마크/직접 진입: confirmed=1·orderId만 있음 → confirm 없이 폴링만
     if (confirmed && orderId && !paymentKey) {
       pendingOrderIdRef.current = orderId
       setStatus('pending')
@@ -145,55 +141,70 @@ function TossSuccessContent() {
         }
 
         if (data.redirectTo) {
-          if (meta?.saveAsDefaultAddress && meta?.formData?.address && (meta.deliveryMethod === 'regular' || meta.deliveryMethod === 'quick')) {
-            try {
-              const checkRes = await fetch('/api/addresses/check', {
+          const runSaveDefaultAddress = async () => {
+            if (
+              !meta?.saveAsDefaultAddress ||
+              !meta?.formData?.address ||
+              meta.deliveryMethod !== 'regular'
+            ) {
+              return
+            }
+            const checkRes = await fetch('/api/addresses/check', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                address: meta.formData.address.trim(),
+                address_detail: (meta.formData.addressDetail || '').trim() || null,
+              }),
+            })
+            const checkData = await checkRes.json()
+            const existing = checkData.existing
+            const addressCount = (checkData.addressCount || 0) + 1
+            const fd = meta.formData!
+
+            if (existing) {
+              await fetch(`/api/addresses/${existing.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  name: existing.name,
+                  recipient_name: fd.name,
+                  recipient_phone: fd.phone,
+                  zipcode: fd.zipcode || null,
+                  address: fd.address,
+                  address_detail: fd.addressDetail || null,
+                  delivery_note: fd.message || null,
+                  is_default: true,
+                }),
+              })
+            } else {
+              const addressName =
+                addressCount === 1 ? '기본 배송지' : `배송지 ${addressCount}`
+              await fetch('/api/addresses', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  address: meta.formData.address.trim(),
-                  address_detail: (meta.formData.addressDetail || '').trim() || null,
+                  name: addressName,
+                  recipient_name: fd.name,
+                  recipient_phone: fd.phone,
+                  zipcode: fd.zipcode || null,
+                  address: fd.address,
+                  address_detail: fd.addressDetail || null,
+                  delivery_note: fd.message || null,
+                  is_default: true,
                 }),
               })
-              const checkData = await checkRes.json()
-              const existing = checkData.existing
-              const addressCount = (checkData.addressCount || 0) + 1
-              const fd = meta.formData!
+            }
+          }
 
-              if (existing) {
-                await fetch(`/api/addresses/${existing.id}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    name: existing.name,
-                    recipient_name: fd.name,
-                    recipient_phone: fd.phone,
-                    zipcode: fd.zipcode || null,
-                    address: fd.address,
-                    address_detail: fd.addressDetail || null,
-                    delivery_note: fd.message || null,
-                    is_default: true,
-                  }),
-                })
-              } else {
-                const addressName = meta.deliveryMethod === 'quick'
-                  ? `퀵배달 주소 ${addressCount}`
-                  : addressCount === 1 ? '기본 배송지' : `배송지 ${addressCount}`
-                await fetch('/api/addresses', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    name: addressName,
-                    recipient_name: fd.name,
-                    recipient_phone: fd.phone,
-                    zipcode: fd.zipcode || null,
-                    address: fd.address,
-                    address_detail: fd.addressDetail || null,
-                    delivery_note: fd.message || null,
-                    is_default: true,
-                  }),
-                })
-              }
+          // processingPending: 주문 확정(worker)과 분리 — 배송지 저장은 블로킹하지 않음
+          if (data.processingPending) {
+            void runSaveDefaultAddress().catch((e) =>
+              console.warn('[checkout/toss/success] 배송지 저장 실패', e)
+            )
+          } else {
+            try {
+              await runSaveDefaultAddress()
             } catch {
               // 배송지 저장 실패는 주문 성공과 분리
             }
@@ -237,7 +248,6 @@ function TossSuccessContent() {
           pendingOrderIdRef.current = data.orderId
           setStatus('pending')
           setMessage('주문 정보 처리중입니다.')
-          router.replace(data.redirectTo || `/checkout/toss/success?orderId=${encodeURIComponent(data.orderId)}&confirmed=1`)
           return
         }
 

@@ -38,14 +38,11 @@ export async function GET(request: NextRequest) {
         delivery_type,
         delivery_time,
         shipping_address,
-        shipping_name,
-        shipping_phone,
+        recipient_name,
+        recipient_phone,
         delivery_note,
         tracking_number,
         tracking_company,
-        is_gift,
-        gift_message,
-        gift_expires_at,
         refund_completed_at,
         created_at,
         updated_at
@@ -60,7 +57,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const orderPhoneNorm = normalizePhoneForOrderMatch(order.shipping_phone || '')
+    const orderPhoneNorm = normalizePhoneForOrderMatch(order.recipient_phone || '')
     if (orderPhoneNorm !== normalizedPhone) {
       return NextResponse.json(
         { error: '주문을 찾을 수 없습니다. 주문번호와 수령인 연락처를 확인해주세요.' },

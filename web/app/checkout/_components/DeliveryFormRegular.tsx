@@ -2,30 +2,44 @@
 
 import { useRouter } from 'next/navigation'
 import { formatPhoneNumber } from '@/lib/utils/format-phone'
+import { formatPhoneDisplay, parsePhoneInput } from '@/lib/utils/format-phone'
 
 interface DeliveryFormRegularProps {
+  title?: string
   formData: {
     zipcode: string
     address: string
     addressDetail: string
     message: string
   }
+  recipientName?: string
+  recipientPhone?: string
+  onRecipientNameChange?: (value: string) => void
+  onRecipientPhoneChange?: (value: string) => void
   defaultAddress: any
   hasDefaultAddress: boolean
   saveAsDefaultAddress: boolean
   /** 비회원이면 true → 기본 배송지 저장 체크란 숨김 */
   isGuest?: boolean
+  /** 선물 모드 등에서 기본 배송지 저장 UI 강제 숨김 */
+  hideSaveAsDefaultOption?: boolean
   onSearchAddress: () => void
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void
   onSaveAsDefaultChange: (checked: boolean) => void
 }
 
 export default function DeliveryFormRegular({
+  title = '배송 정보',
   formData,
+  recipientName,
+  recipientPhone,
+  onRecipientNameChange,
+  onRecipientPhoneChange,
   defaultAddress,
   hasDefaultAddress,
   saveAsDefaultAddress,
   isGuest = false,
+  hideSaveAsDefaultOption = false,
   onSearchAddress,
   onInputChange,
   onSaveAsDefaultChange,
@@ -34,7 +48,38 @@ export default function DeliveryFormRegular({
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-lg font-bold mb-4">배송 정보</h2>
+      <h2 className="text-lg font-bold mb-4">{title}</h2>
+      {onRecipientNameChange && onRecipientPhoneChange && (
+        <div className="space-y-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              이름 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={recipientName || ''}
+              onChange={(e) => onRecipientNameChange(e.target.value)}
+              required
+              placeholder="받는 분 이름을 입력해주세요"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-gray-400"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              연락처 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="tel"
+              value={formatPhoneDisplay(recipientPhone || '')}
+              onChange={(e) => onRecipientPhoneChange(parsePhoneInput(e.target.value))}
+              required
+              maxLength={13}
+              placeholder="받는 분 연락처를 입력해주세요"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-gray-400"
+            />
+          </div>
+        </div>
+      )}
       
       {defaultAddress ? (
         <div className="space-y-4">
@@ -148,7 +193,7 @@ export default function DeliveryFormRegular({
             <p className="text-xs text-gray-500 mt-1 text-right">{formData.message.length}/50</p>
           </div>
 
-          {!isGuest && !hasDefaultAddress && (
+          {!hideSaveAsDefaultOption && !isGuest && !hasDefaultAddress && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start">
                 <input

@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const supabase = createSupabaseAdminClient()
     const { data: order, error } = await supabase
       .from('orders')
-      .select('id, order_number, user_id, gift_token, shipping_phone')
+      .select('id, order_number, user_id, recipient_phone')
       .eq('toss_order_id', orderId)
       .maybeSingle()
 
@@ -34,8 +34,7 @@ export async function GET(request: NextRequest) {
         id: order.id,
         order_number: order.order_number,
         user_id: order.user_id,
-        gift_token: order.gift_token ?? null,
-        shipping_phone: order.shipping_phone ?? null,
+        recipient_phone: order.recipient_phone ?? null,
       },
     })
 

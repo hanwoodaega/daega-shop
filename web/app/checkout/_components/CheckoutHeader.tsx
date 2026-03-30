@@ -45,16 +45,16 @@ export default function CheckoutHeader({
           </h1>
         </div>
 
-        {isGiftMode && (
+        {isGiftMode && totalGiftSteps > 1 && (
           <div className="ml-auto mr-2 flex items-center gap-1.5">
-            {[1, 2, 3].map((step, index) => (
+            {Array.from({ length: totalGiftSteps }, (_, i) => i + 1).map((step, index) => (
               <Fragment key={step}>
                 <div
                   className={`w-2 h-2 rounded-full ${
                     step <= currentStep ? 'bg-primary-800' : 'bg-gray-300'
                   }`}
                 ></div>
-                {index < 2 && (
+                {index < totalGiftSteps - 1 && (
                   <div
                     className={`w-4 h-0.5 ${
                       currentStep > step ? 'bg-primary-800' : 'bg-gray-300'

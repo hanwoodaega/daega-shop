@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('id, shipping_phone')
+      .select('id, recipient_phone')
       .eq('order_number', orderNumber)
       .maybeSingle()
 
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const orderPhoneNorm = normalizePhoneForOrderMatch(order.shipping_phone || '')
+    const orderPhoneNorm = normalizePhoneForOrderMatch(order.recipient_phone || '')
     if (orderPhoneNorm !== normalizedLookup) {
       return NextResponse.json(
         { error: '주문을 찾을 수 없습니다. 주문번호와 휴대폰 번호를 확인해주세요.' },

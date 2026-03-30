@@ -15,11 +15,15 @@ export interface OrderItemInput {
 
 export interface OrderInput {
   items: OrderItemInput[]
-  delivery_type: 'pickup' | 'quick' | 'regular'
+  delivery_type: 'pickup' | 'regular'
   delivery_time: string | null
   shipping_address: string
   shipping_name: string
   shipping_phone: string
+  orderer_name?: string
+  orderer_phone?: string
+  recipient_name?: string
+  recipient_phone?: string
   delivery_note: string | null
   used_coupon_id: string | null
   used_points: number
@@ -28,11 +32,8 @@ export interface OrderInput {
   gift_recipient_phone?: string
   /** 선물 알림톡 템플릿용 받는 분 이름 */
   gift_recipient_name?: string
-  /** 선물 주문 시 주문 완료 알림톡 받을 주문자 연락처 */
-  orderer_phone?: string
   /** 선물 알림톡 발송 시 사용 (보내는 분 이름) */
   gift_sender_name?: string
-  payment_method?: string | null
 }
 
 function isCouponExpired(userCoupon: any, coupon: any): boolean {

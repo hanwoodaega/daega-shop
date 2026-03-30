@@ -9,8 +9,6 @@ interface OrderSummaryProps {
   selectedItems: CartItem[]
   deliveryMethod: DeliveryMethod
   pickupTime: string
-  quickDeliveryArea: string
-  quickDeliveryTime: string
   /** 서버에서 받은 금액만 표시. 없으면 로딩/안내 표시 */
   serverPricing: PricingResult | null
   pricingLoading?: boolean
@@ -20,8 +18,6 @@ export default function OrderSummary({
   selectedItems,
   deliveryMethod,
   pickupTime,
-  quickDeliveryArea,
-  quickDeliveryTime,
   serverPricing,
   pricingLoading = false,
 }: OrderSummaryProps) {
@@ -42,7 +38,6 @@ export default function OrderSummary({
           <span className="text-gray-600">배송 방법</span>
           <span className="font-semibold">
             {deliveryMethod === 'pickup' && '픽업'}
-            {deliveryMethod === 'quick' && '퀵배송'}
             {deliveryMethod === 'regular' && '택배배송'}
           </span>
         </div>
@@ -51,22 +46,6 @@ export default function OrderSummary({
             <span className="text-gray-600">픽업 시간</span>
             <span className="font-semibold">{pickupTime}</span>
           </div>
-        )}
-        {deliveryMethod === 'quick' && (
-          <>
-            {quickDeliveryArea && (
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-gray-600">배달 지역</span>
-                <span className="font-semibold">{quickDeliveryArea}</span>
-              </div>
-            )}
-            {quickDeliveryTime && (
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-gray-600">배달 시간</span>
-                <span className="font-semibold">{quickDeliveryTime}</span>
-              </div>
-            )}
-          </>
         )}
       </div>
 

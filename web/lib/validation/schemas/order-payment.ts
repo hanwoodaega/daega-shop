@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { OrderInput } from '@/lib/order/order-pricing.server'
 
-const deliveryTypeSchema = z.enum(['pickup', 'quick', 'regular'])
+const deliveryTypeSchema = z.enum(['pickup', 'regular'])
 
 /** 체크아웃·주문 API에서 쓰는 주문 라인 */
 export const orderLineItemBodySchema = z.object({
@@ -21,6 +21,10 @@ export const orderInputSchema = z.object({
   shipping_address: z.string(),
   shipping_name: z.string(),
   shipping_phone: z.string(),
+  orderer_name: z.string().optional(),
+  orderer_phone: z.string().optional(),
+  recipient_name: z.string().optional(),
+  recipient_phone: z.string().optional(),
   delivery_note: z.union([z.string(), z.null()]).optional(),
   used_coupon_id: z.union([z.string().uuid(), z.null()]).optional(),
   used_points: z.coerce.number().int().min(0).optional(),
@@ -28,9 +32,7 @@ export const orderInputSchema = z.object({
   gift_message: z.union([z.string(), z.null()]).optional(),
   gift_recipient_phone: z.string().optional(),
   gift_recipient_name: z.string().optional(),
-  orderer_phone: z.string().optional(),
   gift_sender_name: z.string().optional(),
-  payment_method: z.union([z.string(), z.null()]).optional(),
 })
 
 /** POST /api/orders — 본문이 평탄한 필드 + items */
@@ -40,6 +42,10 @@ export const orderCreateBodySchema = z.object({
   shipping_address: z.string().optional(),
   shipping_name: z.string().optional(),
   shipping_phone: z.string().optional(),
+  orderer_name: z.string().optional(),
+  orderer_phone: z.string().optional(),
+  recipient_name: z.string().optional(),
+  recipient_phone: z.string().optional(),
   delivery_note: z.union([z.string(), z.null()]).optional(),
   used_coupon_id: z.union([z.string().uuid(), z.null()]).optional(),
   used_points: z.coerce.number().optional(),
@@ -138,6 +144,10 @@ export function normalizeToOrderInput(raw: ParsedOrderInput): OrderInput {
     shipping_address: raw.shipping_address,
     shipping_name: raw.shipping_name,
     shipping_phone: raw.shipping_phone,
+    orderer_name: raw.orderer_name,
+    orderer_phone: raw.orderer_phone,
+    recipient_name: raw.recipient_name,
+    recipient_phone: raw.recipient_phone,
     delivery_note: raw.delivery_note ?? null,
     used_coupon_id: raw.used_coupon_id ?? null,
     used_points: raw.used_points ?? 0,
@@ -145,8 +155,6 @@ export function normalizeToOrderInput(raw: ParsedOrderInput): OrderInput {
     gift_message: raw.gift_message ?? null,
     gift_recipient_phone: raw.gift_recipient_phone,
     gift_recipient_name: raw.gift_recipient_name,
-    orderer_phone: raw.orderer_phone,
     gift_sender_name: raw.gift_sender_name,
-    payment_method: raw.payment_method ?? null,
   }
 }

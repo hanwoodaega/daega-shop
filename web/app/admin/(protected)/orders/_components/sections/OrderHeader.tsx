@@ -24,6 +24,10 @@ export default function OrderHeader({ order }: OrderHeaderProps) {
           <span className="ml-2 font-medium text-gray-900">{orderDate}</span>
         </p>
         <p className="text-gray-700">
+          <span className="text-gray-500">toss_payment_key</span>
+          <span className="ml-2 font-mono text-xs text-gray-900 break-all">{order.toss_payment_key || '-'}</span>
+        </p>
+        <p className="text-gray-700">
           <span className="text-gray-500">주문번호</span>
           <span className="ml-2 font-mono font-semibold text-gray-900">{orderNumber}</span>
         </p>

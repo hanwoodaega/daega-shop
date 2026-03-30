@@ -14,12 +14,8 @@ import { useCheckout } from '@/lib/checkout'
 import {
   CheckoutHeader,
   CouponModal,
-  GiftStep1Summary,
-  GiftSenderInfo,
   OrdererInfo,
-  DeliveryFormQuick,
   DeliveryFormRegular,
-  GiftRecipientForm,
   OrderSummaryBox,
   CheckoutBottomBar,
 } from './_components'
@@ -33,12 +29,7 @@ function CheckoutPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
-  
-  const isGiftMode = searchParams?.get('mode') === 'gift'
-
-  useEffect(() => {
-    if (!isGiftMode) return
-  }, [isGiftMode])
+  const isGiftMode = searchParams.get('mode') === 'gift'
   
   const { state, actions, derived } = useCheckout({ isGiftMode })
   
@@ -62,16 +53,15 @@ function CheckoutPageContent() {
   } = state
 
   const {
-    setDeliveryState,
     setFormData,
     setFlags,
     setSelectedCoupon,
     setShowCouponModal,
     setUsedPoints,
     setUsedPointsInput,
-    setGiftData,
     setCurrentStep,
     setPaymentMethod,
+    setGiftData,
     handleSubmit,
     handleNextStep,
     handleSearchAddress,
@@ -84,8 +74,6 @@ function CheckoutPageContent() {
   const {
     deliveryMethod,
     pickupTime,
-    quickDeliveryArea,
-    quickDeliveryTime,
     isProcessing,
     mounted,
     saveAsDefaultAddress,
@@ -100,9 +88,6 @@ function CheckoutPageContent() {
     couponDiscount,
     afterCouponDiscount,
     finalTotal,
-    pickupTimeSlots,
-    quickDeliveryAreas,
-    quickDeliveryTimeSlots,
     defaultAddress,
     loadingDefaultAddress,
     hasDefaultAddress,
@@ -110,8 +95,7 @@ function CheckoutPageContent() {
     loadingUserProfile,
   } = derived
 
-  const totalGiftSteps = 3
-  const isPaymentStepVisible = !isGiftMode || currentStep === 3
+  const totalGiftSteps = 1
 
   useEffect(() => {
     setCurrentStep(1)
@@ -120,12 +104,13 @@ function CheckoutPageContent() {
   useDaumPostcodeScript()
 
   useEffect(() => {
+    if (isGiftMode) return
     if (defaultAddress) {
       applyAddress(defaultAddress)
     } else if (!hasDefaultAddress) {
       setFlags(prev => ({ ...prev, saveAsDefaultAddress: true }))
     }
-  }, [defaultAddress, hasDefaultAddress, applyAddress, setFlags])
+  }, [defaultAddress, hasDefaultAddress, applyAddress, setFlags, isGiftMode])
 
   useEffect(() => {
     if (userProfile) {
@@ -208,68 +193,37 @@ function CheckoutPageContent() {
         <form id="checkout-form" onSubmit={handleSubmit}>
           <div className={`grid grid-cols-1 ${gridColumnsClass} ${isGiftFinalStep ? 'gap-4' : 'gap-8'}`}>
             <div className={`space-y-3 ${isGiftFinalStep ? 'lg:col-span-2' : 'lg:col-span-1'}`}>
-              {isGiftMode && currentStep === 1 && (
-                <GiftStep1Summary
-                  items={items}
-                  originalTotal={originalTotal}
-                  discountAmount={discountAmount}
-                  finalTotal={finalTotal}
-                  shipping={shipping}
-                />
-              )}
+              <OrdererInfo
+                title={isGiftMode ? '보내는 분' : '주문자'}
+                readOnly={false}
+                formData={formData}
+                onInputChange={handleInputChange}
+                onPhoneChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
+              />
 
-              {isGiftMode && currentStep === 2 && (
-                <div className="bg-white rounded-lg shadow-md p-6 mb-10">
-                  <GiftSenderInfo
-                    embedded
-                    formData={formData}
-                    onInputChange={handleInputChange}
-                    onPhoneChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
-                  />
-                  <GiftRecipientForm
-                    embedded
-                    giftData={giftData}
-                    onRecipientNameChange={(value) => setGiftData(prev => ({ ...prev, recipientName: value }))}
-                    onRecipientPhoneChange={(value) => setGiftData(prev => ({ ...prev, recipientPhone: value }))}
-                    onMessageChange={(message) => setGiftData(prev => ({ ...prev, message }))}
-                  />
-                </div>
-              )}
-
-              {!isGiftMode && (
-                <OrdererInfo
-                  formData={formData}
-                  onInputChange={handleInputChange}
-                  onPhoneChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
-                />
-              )}
-
-              {!isGiftMode && deliveryMethod === 'quick' && (
-                <DeliveryFormQuick
-                  formData={formData}
-                  hasDefaultAddress={hasDefaultAddress}
-                  saveAsDefaultAddress={saveAsDefaultAddress}
-                  isGuest={!user}
-                  onSearchAddress={handleSearchAddress}
-                  onInputChange={handleInputChange}
-                  onSaveAsDefaultChange={(checked) => setFlags(prev => ({ ...prev, saveAsDefaultAddress: checked }))}
-                />
-              )}
-
-              {!isGiftMode && deliveryMethod === 'regular' && (
+              {deliveryMethod === 'regular' && (
                 <DeliveryFormRegular
+                  title={isGiftMode ? '받는 분' : '배송 정보'}
                   formData={formData}
-                  defaultAddress={defaultAddress}
-                  hasDefaultAddress={hasDefaultAddress}
-                  saveAsDefaultAddress={saveAsDefaultAddress}
+                  recipientName={isGiftMode ? giftData.recipientName : undefined}
+                  recipientPhone={isGiftMode ? giftData.recipientPhone : undefined}
+                  onRecipientNameChange={isGiftMode ? ((value) => setGiftData(prev => ({ ...prev, recipientName: value }))) : undefined}
+                  onRecipientPhoneChange={isGiftMode ? ((value) => setGiftData(prev => ({ ...prev, recipientPhone: value }))) : undefined}
+                  defaultAddress={isGiftMode ? null : defaultAddress}
+                  hasDefaultAddress={isGiftMode ? false : hasDefaultAddress}
+                  saveAsDefaultAddress={isGiftMode ? false : saveAsDefaultAddress}
                   isGuest={!user}
+                  hideSaveAsDefaultOption={isGiftMode}
                   onSearchAddress={handleSearchAddress}
                   onInputChange={handleInputChange}
-                  onSaveAsDefaultChange={(checked) => setFlags(prev => ({ ...prev, saveAsDefaultAddress: checked }))}
+                  onSaveAsDefaultChange={(checked) => {
+                    if (isGiftMode) return
+                    setFlags(prev => ({ ...prev, saveAsDefaultAddress: checked }))
+                  }}
                 />
               )}
 
-              {user && (!isGiftMode || currentStep === 3) && (
+              {user && (!isGiftMode || currentStep === totalGiftSteps) && (
               <div className="bg-white rounded-lg shadow-md p-4">
                 <h2 className="text-lg font-bold mb-3">쿠폰</h2>
                 <div className="space-y-2">
@@ -313,7 +267,7 @@ function CheckoutPageContent() {
               </div>
               )}
 
-              {user && (!isGiftMode || currentStep === 3) && (
+              {user && (!isGiftMode || currentStep === totalGiftSteps) && (
               <div className="bg-white rounded-lg shadow-md p-4">
                 <h2 className="text-lg font-bold mb-3">포인트</h2>
                 {loadingPoints ? (
@@ -378,7 +332,7 @@ function CheckoutPageContent() {
               </div>
               )}
 
-              {(!isGiftMode || currentStep === 3) && (
+              {(!isGiftMode || currentStep === totalGiftSteps) && (
                 <div className="bg-white rounded-lg shadow-md p-4">
                   <h2 className="text-lg font-bold mb-3">결제 방법</h2>
                   <TossPaymentWidget
@@ -398,8 +352,6 @@ function CheckoutPageContent() {
                   isGiftMode={isGiftMode}
                   deliveryMethod={deliveryMethod}
                   pickupTime={pickupTime}
-                  quickDeliveryArea={quickDeliveryArea}
-                  quickDeliveryTime={quickDeliveryTime}
                   mounted={mounted}
                   originalTotal={originalTotal}
                   discountAmount={discountAmount}

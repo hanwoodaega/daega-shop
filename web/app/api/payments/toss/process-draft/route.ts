@@ -1,6 +1,6 @@
 /**
  * draft(approved_not_persisted) 1건을 주문으로 확정하는 worker 엔드포인트.
- * - confirm에서 fire-and-forget으로 호출하거나, cron/process-drafts에서 호출.
+ * - confirm에서 fire-and-forget으로 호출.
  * - production: CRON_SECRET + Bearer 필수 (`requireCronSecret`).
  */
 

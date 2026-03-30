@@ -76,6 +76,7 @@ export default function ProductDetailPageClient({
   const setDirectPurchaseItems = useDirectPurchaseStore((state) => state.setItems)
   const isWished = useWishlistStore((state) => product?.id ? state.items.includes(product.id) : false)
   const openPromotionModal = usePromotionModalStore((state) => state.openModal)
+  const isGiftSetCategory = product?.category === '선물세트'
   
   // Hydration 에러 방지
   useEffect(() => {
@@ -165,35 +166,40 @@ export default function ProductDetailPageClient({
     }
   }, [product?.id, isWished, user])
   
+  const fillDirectPurchaseStore = useCallback(() => {
+    if (!product) return
+    const finalDiscountPercent = getDiscountPercent()
+    setDirectPurchaseItems([
+      {
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        quantity,
+        imageUrl: product.image_url,
+        discount_percent: finalDiscountPercent > 0 ? finalDiscountPercent : undefined,
+        brand: product.brand ?? undefined,
+      },
+    ])
+  }, [product, quantity, getDiscountPercent, setDirectPurchaseItems])
+
   // 바로구매
   const handleDirectPurchase = useCallback(() => {
     if (!product) return
-    
-    const finalDiscountPercent = getDiscountPercent()
-    
-    setDirectPurchaseItems([{
-      productId: product.id,
-      name: product.name,
-      price: product.price,
-      quantity,
-      imageUrl: product.image_url,
-      discount_percent: finalDiscountPercent > 0 ? finalDiscountPercent : undefined,
-      brand: product.brand ?? undefined,
-    }])
-    
+    fillDirectPurchaseStore()
+    const checkoutPath = isGiftSetCategory ? '/checkout?mode=gift' : '/checkout'
     if (!user) {
       setShowLoginPrompt(true)
-    } else {
-      router.push('/checkout')
+      return
     }
-  }, [product, quantity, user, getDiscountPercent, setDirectPurchaseItems, router])
-  
+    router.push(checkoutPath)
+  }, [product, user, router, fillDirectPurchaseStore, isGiftSetCategory])
+
   // 수량 선택 패널 열기
   const handleOpenQuantitySheet = (action: 'cart' | 'buy') => {
     setPendingAction(action)
     setShowQty(true)
   }
-  
+
   // 수량 선택 확인
   const handleQuantityConfirm = () => {
     if (pendingAction === 'cart') {
@@ -231,7 +237,7 @@ export default function ProductDetailPageClient({
   if (!product) {
     return null
   }
-  
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* 모바일: 상품 상세용 간단 헤더 */}
@@ -338,6 +344,8 @@ export default function ProductDetailPageClient({
                   onBuyClick={handleDirectPurchase}
                   onCartClick={handleAddToCart}
                   onPromotionClick={() => openPromotionModal(productId)}
+                  primaryButtonLabel={isGiftSetCategory ? '선물하기' : '바로구매'}
+                  showGiftIcon={isGiftSetCategory}
                   staticPosition
                 />
               </div>
@@ -357,6 +365,8 @@ export default function ProductDetailPageClient({
         onBuyClick={() => handleOpenQuantitySheet('buy')}
         onCartClick={() => handleOpenQuantitySheet('cart')}
         onPromotionClick={() => openPromotionModal(productId)}
+        primaryButtonLabel={isGiftSetCategory ? '선물하기' : '바로구매'}
+        showGiftIcon={isGiftSetCategory}
       />
       </div>
       
@@ -373,7 +383,8 @@ export default function ProductDetailPageClient({
       <LoginPromptModal
         show={showLoginPrompt}
         onClose={() => setShowLoginPrompt(false)}
-        onGuestCheckout={() => router.push('/checkout')}
+        onGuestCheckout={() => router.push(isGiftSetCategory ? '/checkout?mode=gift' : '/checkout')}
+        loginNextUrl={isGiftSetCategory ? '/checkout?mode=gift' : '/checkout'}
       />
       
       <PromotionModalWrapper />

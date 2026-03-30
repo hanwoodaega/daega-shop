@@ -2,14 +2,12 @@ import { CartItem } from '@/lib/store'
 import { formatPrice } from '@/lib/utils/utils'
 import { GIFT_MIN_AMOUNT } from '@/lib/utils/constants'
 
-export type DeliveryMethod = 'pickup' | 'quick' | 'regular'
+export type DeliveryMethod = 'pickup' | 'regular'
 
 export interface CheckoutValidationInput {
   selectedItems: CartItem[]
   deliveryMethod: DeliveryMethod
   pickupTime?: string
-  quickDeliveryArea?: string
-  quickDeliveryTime?: string
   isGift?: boolean
   /** 서버에서 받은 할인 적용 후 상품 금액. 있으면 이 값으로 선물 최소 금액 검사 */
   serverDiscountedTotal?: number
@@ -25,7 +23,7 @@ export interface CheckoutValidationResult {
  * 일반 주문 검증
  */
 export function validateCheckout(input: CheckoutValidationInput): CheckoutValidationResult {
-  const { selectedItems, deliveryMethod, pickupTime, quickDeliveryArea, quickDeliveryTime } = input
+  const { selectedItems, deliveryMethod, pickupTime } = input
 
   // 상품 선택 검증
   if (selectedItems.length === 0) {
@@ -42,14 +40,6 @@ export function validateCheckout(input: CheckoutValidationInput): CheckoutValida
       valid: false,
       error: '픽업 시간을 선택해주세요.',
       errorIcon: '⏰',
-    }
-  }
-
-  if (deliveryMethod === 'quick' && (!quickDeliveryArea || !quickDeliveryTime)) {
-    return {
-      valid: false,
-      error: '배달 지역과 시간대를 선택해주세요.',
-      errorIcon: '🚚',
     }
   }
 

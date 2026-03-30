@@ -27,7 +27,7 @@ export function getStatusText(status: string, deliveryType?: string): string {
     }
   }
   
-  // 택배배달, 퀵배달의 경우
+  // 택배배송의 경우
   switch (status) {
     case 'pending':
       return '결제대기'
@@ -63,9 +63,8 @@ export function getDeliveryTypeText(deliveryType: string): string {
   switch (deliveryType) {
     case 'pickup':
       return '픽업'
-    case 'quick':
-      return '퀵배송'
     case 'regular':
+    case 'quick':
       return '택배배송'
     default:
       return deliveryType

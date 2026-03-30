@@ -70,11 +70,13 @@ export interface Order {
   /** 이 주문에서 실제 적용된 쿠폰 할인 금액 (스냅샷) */
   coupon_discount_amount?: number
   status: 'pending' | 'paid' | 'ORDER_RECEIVED' | 'PREPARING' | 'IN_TRANSIT' | 'DELIVERED' | 'CONFIRMED' | 'gift_received' | 'cancelled' | 'payment_error'
-  delivery_type: 'pickup' | 'quick' | 'regular'
+  delivery_type: 'pickup' | 'regular'
   delivery_time?: string | null
   shipping_address: string
-  shipping_name: string
-  shipping_phone: string
+  orderer_name?: string | null
+  orderer_phone?: string | null
+  recipient_name?: string | null
+  recipient_phone?: string | null
   delivery_note?: string | null
   tracking_number?: string | null  // 송장번호
   tracking_company?: string | null // 택배사명 (예: 롯데택배)

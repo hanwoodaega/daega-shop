@@ -1,41 +1,37 @@
 'use client'
 
 import { Suspense, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth/auth-context'
 import { useProfileInfo } from '@/lib/swr'
-import { useCartStore } from '@/lib/store'
+import { useCartStore, useWishlistStore } from '@/lib/store'
 import { useOrders } from '@/lib/order'
 import OrdersList from '@/app/orders/_components/OrdersList'
 import OrderSkeleton from '@/app/orders/_components/OrderSkeleton'
-import GiftShareBox from '@/app/orders/_components/GiftShareBox'
 
 function ProfilePageContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { user, loading, signOut } = useAuth()
   const { data: profileInfo, isLoading: loadingProfileInfo } = useProfileInfo()
-  const giftToken = searchParams?.get('giftToken')
   const {
     orders,
     loadingOrders,
     cancelingOrderId,
     confirmingOrderId,
     expandedOrders,
-    giftOrder,
     orderPeriodMonths,
     setOrderPeriodMonths,
     toggleOrderExpand,
     handleCancelOrder,
     handleTrackDelivery,
     handleConfirmPurchase,
-  } = useOrders({ userId: user?.id ?? undefined, giftToken: giftToken ?? undefined, orderPeriodMonths: 1 })
+  } = useOrders({ userId: user?.id ?? undefined, orderPeriodMonths: 1 })
   const userName = profileInfo?.name ?? user?.user_metadata?.name ?? '사용자'
   const orderCount = profileInfo?.orders_count ?? 0
   const points = profileInfo?.points ?? 0
   const couponCount = profileInfo?.coupons_count ?? 0
-  const giftCount = 0
+  const wishlistCount = useWishlistStore((state) => state.items.length)
   const cartCount = useCartStore((state) => state.getTotalItems())
   const loadingProfile = loading || (!!user?.id && loadingProfileInfo && !profileInfo)
 
@@ -129,9 +125,6 @@ function ProfilePageContent() {
                   </div>
                 </div>
               </div>
-              {giftToken && (
-                <GiftShareBox giftToken={giftToken} giftOrder={giftOrder} />
-              )}
               <OrdersList
                 orders={orders}
                 loadingOrders={loadingOrders}
@@ -197,11 +190,11 @@ function ProfilePageContent() {
                       <div className="text-lg font-semibold text-gray-900">{orderCount}건</div>
                     </Link>
                     <Link
-                      href="/profile/points"
+                      href="/wishlist"
                       className="px-4 py-2 bg-white rounded-lg hover:bg-gray-50 transition text-left border border-red-300"
                     >
-                      <div className="text-sm text-gray-900 mb-0.5">포인트</div>
-                      <div className="text-lg font-semibold text-gray-900">{points.toLocaleString()}원</div>
+                      <div className="text-sm text-gray-900 mb-0.5">나의 찜</div>
+                      <div className="text-lg font-semibold text-gray-900">{wishlistCount}개</div>
                     </Link>
                     <Link
                       href="/profile/coupons"
@@ -210,12 +203,13 @@ function ProfilePageContent() {
                       <div className="text-sm text-gray-900 mb-0.5">쿠폰</div>
                       <div className="text-lg font-semibold text-gray-900">{couponCount}장</div>
                     </Link>
-                    <div
-                      className="px-4 py-2 bg-white rounded-lg text-left cursor-default border border-red-300"
+                    <Link
+                      href="/profile/points"
+                      className="px-4 py-2 bg-white rounded-lg hover:bg-gray-50 transition text-left border border-red-300"
                     >
-                      <div className="text-sm text-gray-900 mb-0.5">선물함</div>
-                      <div className="text-lg font-semibold text-gray-900">{giftCount}건</div>
-                    </div>
+                      <div className="text-sm text-gray-900 mb-0.5">포인트</div>
+                      <div className="text-lg font-semibold text-gray-900">{points.toLocaleString()}원</div>
+                    </Link>
                   </div>
                 </div>
               </>

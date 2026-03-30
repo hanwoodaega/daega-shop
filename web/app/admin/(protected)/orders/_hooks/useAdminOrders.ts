@@ -13,7 +13,8 @@ export function useAdminOrders() {
     date: new Date().toISOString().split('T')[0],
     startDate: null,
     endDate: null,
-    status: 'all'
+    status: 'all',
+    orderNumber: '',
   })
 
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
@@ -33,9 +34,6 @@ export function useAdminOrders() {
     try {
       const params = new URLSearchParams()
       
-      if (filters.deliveryType !== 'all') {
-        params.append('delivery_type', filters.deliveryType)
-      }
       if (filters.startDate && filters.endDate) {
         params.append('start_date', filters.startDate)
         params.append('end_date', filters.endDate)
@@ -44,6 +42,9 @@ export function useAdminOrders() {
       }
       if (filters.status !== 'all') {
         params.append('status', filters.status)
+      }
+      if (filters.orderNumber.trim()) {
+        params.append('order_number', filters.orderNumber.trim())
       }
 
       const response = await fetch(`/api/admin/orders?${params.toString()}`)

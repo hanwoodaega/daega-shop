@@ -24,8 +24,10 @@ export interface Order {
   status: string
   delivery_type: string
   shipping_address: string
-  shipping_name: string
-  shipping_phone: string
+  orderer_name?: string | null
+  orderer_phone?: string | null
+  recipient_name?: string | null
+  recipient_phone?: string | null
   delivery_note?: string
   delivery_time?: string
   created_at: string
@@ -42,12 +44,11 @@ export interface Order {
   refund_completed_at?: string | null
   tracking_number?: string | null
   tracking_company?: string | null
-  is_gift?: boolean
-  payment_method?: string | null
+  toss_payment_key?: string | null
 }
 
 export type OrderStatus = 'all' | 'pending' | 'ORDER_RECEIVED' | 'PREPARING' | 'IN_TRANSIT' | 'DELIVERED' | 'cancelled' | 'payment_error'
-export type DeliveryType = 'all' | 'pickup' | 'quick' | 'regular'
+export type DeliveryType = 'all' | 'pickup' | 'regular'
 
 export interface OrderFilters {
   deliveryType: DeliveryType
@@ -55,5 +56,6 @@ export interface OrderFilters {
   startDate: string | null
   endDate: string | null
   status: OrderStatus | 'all'
+  orderNumber: string
 }
 

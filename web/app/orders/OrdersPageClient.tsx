@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
@@ -9,15 +9,11 @@ import { useAuth } from '@/lib/auth/auth-context'
 import { useOrders } from '@/lib/order'
 import OrderHeader from './_components/OrderHeader'
 import OrderSkeleton from './_components/OrderSkeleton'
-import GiftShareBox from './_components/GiftShareBox'
 import OrdersList from './_components/OrdersList'
 
 function OrdersPageContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { user, loading } = useAuth()
-
-  const giftToken = searchParams?.get('giftToken')
 
   const {
     orders,
@@ -25,12 +21,11 @@ function OrdersPageContent() {
     cancelingOrderId,
     confirmingOrderId,
     expandedOrders,
-    giftOrder,
     toggleOrderExpand,
     handleCancelOrder,
     handleTrackDelivery,
     handleConfirmPurchase,
-  } = useOrders({ userId: user?.id, giftToken })
+  } = useOrders({ userId: user?.id })
 
   useEffect(() => {
     if (!loading && !user) {
@@ -70,10 +65,6 @@ function OrdersPageContent() {
 
       <main className="flex-1 container mx-auto max-w-4xl px-4 py-6 pb-24 lg:pb-6">
         <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">주문내역</h2>
-        {giftToken && (
-          <GiftShareBox giftToken={giftToken} giftOrder={giftOrder} />
-        )}
-
         <OrdersList
           orders={orders}
           loadingOrders={loadingOrders}

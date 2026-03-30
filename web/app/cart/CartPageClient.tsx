@@ -36,9 +36,6 @@ function CartPageContent() {
     selectedAddressId,
     deliveryMethod,
     pickupTime,
-    quickDeliveryArea,
-    quickDeliveryTime,
-    isKakaoGiftAvailable,
     defaultAddress,
     loadingAddress,
     allAddresses,
@@ -50,8 +47,6 @@ function CartPageContent() {
     toggleSelectAll,
     setDeliveryMethod,
     setPickupTime,
-    setQuickDeliveryArea,
-    setQuickDeliveryTime,
     setShowLoginPrompt,
     setShowAddressModal,
     setSelectedAddressId,
@@ -60,7 +55,6 @@ function CartPageContent() {
     confirmAddressSelection,
     handleCheckout,
     handleGuestCheckout,
-    handleGiftCheckout,
     openAddressModal,
     removeCartItemWithDB,
     updateCartQuantityWithDB,
@@ -74,8 +68,7 @@ function CartPageContent() {
       promotion_group_id: item.promotion_group_id ?? null,
     })),
     deliveryMethod,
-    pickupTime,
-    quickDeliveryTime
+    pickupTime
   )
 
   return (
@@ -153,10 +146,6 @@ function CartPageContent() {
                 onDeliveryMethodChange={setDeliveryMethod}
                 pickupTime={pickupTime}
                 onPickupTimeChange={setPickupTime}
-                quickDeliveryArea={quickDeliveryArea}
-                onQuickDeliveryAreaChange={setQuickDeliveryArea}
-                quickDeliveryTime={quickDeliveryTime}
-                onQuickDeliveryTimeChange={setQuickDeliveryTime}
               />
 
               {/* 전체 선택 체크박스 */}
@@ -201,27 +190,13 @@ function CartPageContent() {
                 selectedItems={getSelectedItems()}
                 deliveryMethod={deliveryMethod}
                 pickupTime={pickupTime}
-                quickDeliveryArea={quickDeliveryArea}
-                quickDeliveryTime={quickDeliveryTime}
                 serverPricing={serverPricing}
                 pricingLoading={pricingLoading}
               />
               <div className="hidden lg:flex mt-2">
-                {deliveryMethod === 'regular' && (
-                <button
-                  type="button"
-                  onClick={() => handleGiftCheckout(serverPricing?.discountedTotal)}
-                  className="flex-[0.3] shrink-0 bg-gray-900 text-white py-3 text-base font-medium hover:bg-gray-800 flex items-center justify-center gap-2 border-0"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                    </svg>
-                    선물하기
-                  </button>
-                )}
                 <button
                   onClick={handleCheckout}
-                  className={`shrink-0 bg-red-600 text-white py-3 text-base font-medium hover:bg-red-600 border-0 ${deliveryMethod === 'regular' ? 'flex-[0.7] border-l border-white/30' : 'flex-1 min-w-0'}`}
+                  className="w-full shrink-0 bg-red-600 text-white py-3 text-[17px] font-medium hover:bg-red-600 border-0"
                   suppressHydrationWarning
                 >
                   주문하기 ({mounted ? getSelectedItems().filter(item => !isSoldOut(item.status)).reduce((total, item) => total + item.quantity, 0) : 0})
@@ -236,20 +211,9 @@ function CartPageContent() {
       <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
         <div className="w-full flex justify-center">
           <div className="w-full max-w-[480px] bg-white shadow-lg flex">
-            {deliveryMethod === 'regular' && (
-            <button
-              onClick={() => handleGiftCheckout(serverPricing?.discountedTotal)}
-              className="flex-[0.3] shrink-0 bg-gray-900 text-white py-3 text-base font-medium flex items-center justify-center gap-1 hover:bg-gray-800 border-0"
-            >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                </svg>
-                <span>선물하기</span>
-              </button>
-            )}
             <button
               onClick={handleCheckout}
-              className={`shrink-0 bg-red-600 text-white py-3 text-base font-medium hover:bg-red-600 border-0 ${deliveryMethod === 'regular' ? 'flex-[0.7] border-l border-white/30' : 'flex-1 min-w-0'}`}
+              className="w-full shrink-0 bg-red-600 text-white py-3 text-[17px] font-medium hover:bg-red-600 border-0"
               suppressHydrationWarning
             >
               주문하기 ({mounted ? getSelectedItems().filter(item => !isSoldOut(item.status)).reduce((total, item) => total + item.quantity, 0) : 0})

@@ -1,5 +1,5 @@
 'use client'
-
+import Image from 'next/image'
 import { Product } from '@/lib/supabase/supabase'
 
 interface ProductBottomBarProps {
@@ -11,6 +11,10 @@ interface ProductBottomBarProps {
   onBuyClick: () => void
   onCartClick: () => void
   onPromotionClick: () => void
+  /** 기본: 바로구매 · 선물세트 등에서는 선물하기 */
+  primaryButtonLabel?: string
+  /** 선물 버튼일 때 라벨 왼쪽 아이콘 표시 */
+  showGiftIcon?: boolean
   /** true면 고정이 아닌 문서 흐름 안에 배치 (PC용) */
   staticPosition?: boolean
 }
@@ -24,6 +28,8 @@ export default function ProductBottomBar({
   onBuyClick,
   onCartClick,
   onPromotionClick,
+  primaryButtonLabel = '바로구매',
+  showGiftIcon = false,
   staticPosition = false,
 }: ProductBottomBarProps) {
   if (soldOut) {
@@ -74,14 +80,24 @@ export default function ProductBottomBar({
             </button>
             <button
               onClick={onBuyClick}
-              className="bg-gray-900 text-white py-3 text-base font-semibold hover:bg-gray-800"
+              className="bg-gray-900 text-white py-3 text-[17px] font-semibold hover:bg-gray-800 flex items-center justify-center gap-1.5"
               style={{ width: '35%' }}
             >
-              바로구매
+              {showGiftIcon && (
+                <Image
+                  src="/images/categories/gift.svg"
+                  alt="선물세트"
+                  width={20}
+                  height={20}
+                  className="w-5 h-5 flex-shrink-0"
+                  style={{ filter: 'brightness(0) invert(1)' }}
+                />
+              )}
+              <span>{primaryButtonLabel}</span>
             </button>
             <button
               onClick={onCartClick}
-              className="bg-red-600 text-white py-3 text-base font-semibold hover:bg-red-600"
+              className="bg-red-600 text-white py-3 text-[17px] font-semibold hover:bg-red-600"
               style={{ width: '50%' }}
             >
               장바구니

@@ -24,11 +24,13 @@ export interface OrderWithItems {
   user_id: string
   total_amount: number
   status: OrderStatus
-  delivery_type: 'pickup' | 'quick' | 'regular'
+  delivery_type: 'pickup' | 'regular'
   delivery_time?: string | null
   shipping_address: string
-  shipping_name: string
-  shipping_phone: string
+  orderer_name?: string | null
+  orderer_phone?: string | null
+  recipient_name?: string | null
+  recipient_phone?: string | null
   delivery_note?: string | null
   tracking_number?: string | null  // 송장번호
   refund_completed_at?: string | null
@@ -78,7 +80,7 @@ export type OrderStatus =
   | 'DELIVERED'           // 배송완료 (관리자가 수동으로 변경)
   | 'cancelled'
   | 'payment_error'      // 결제 검증 실패 (금액 불일치 등)
-export type DeliveryType = 'pickup' | 'quick' | 'regular'
+export type DeliveryType = 'pickup' | 'regular'
 export type RefundStatus = 'pending' | 'processing' | 'completed'
 
 export const VALID_ORDER_STATUSES: OrderStatus[] = [
@@ -90,7 +92,7 @@ export const VALID_ORDER_STATUSES: OrderStatus[] = [
   'cancelled',
   'payment_error'
 ]
-export const VALID_DELIVERY_TYPES: DeliveryType[] = ['pickup', 'quick', 'regular']
+export const VALID_DELIVERY_TYPES: DeliveryType[] = ['pickup', 'regular']
 export const VALID_REFUND_STATUSES: RefundStatus[] = ['pending', 'processing', 'completed']
 
 // ==================== Form Types ====================
@@ -108,8 +110,6 @@ export interface CheckoutFormData {
 export interface DeliveryState {
   method: DeliveryType
   pickupTime: string
-  quickDeliveryArea: string
-  quickDeliveryTime: string
 }
 
 

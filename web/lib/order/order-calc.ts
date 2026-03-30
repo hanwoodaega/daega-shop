@@ -7,13 +7,10 @@ import { SHIPPING } from '../utils/constants'
  */
 export function calculateShipping(
   subtotal: number,
-  deliveryMethod: 'pickup' | 'quick' | 'regular' = 'regular'
+  deliveryMethod: 'pickup' | 'regular' = 'regular'
 ): number {
   if (deliveryMethod === 'pickup') {
     return 0
-  }
-  if (deliveryMethod === 'quick') {
-    return SHIPPING.QUICK_FEE
   }
   if (subtotal >= SHIPPING.FREE_THRESHOLD) {
     return 0

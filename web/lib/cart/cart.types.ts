@@ -1,3 +1,3 @@
-export type DeliveryMethod = 'pickup' | 'quick' | 'regular'
+export type DeliveryMethod = 'pickup' | 'regular'
 
 

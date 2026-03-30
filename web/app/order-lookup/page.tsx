@@ -79,7 +79,7 @@ function OrderLookupResult({
 
   const statusText = getStatusText(order.status, order.delivery_type)
   const statusColorClass = getStatusTextColor(order.status)
-  const shippingDisplay = order.gift_token ? '선물하기 주문' : (order.shipping_address || '-')
+  const shippingDisplay = order.shipping_address || '-'
   const items = order.order_items || []
   const displayItems = expanded ? items : items.slice(0, PREVIEW_ITEMS)
   const deliveryTypeLabel = getDeliveryTypeText(order.delivery_type)

@@ -11,7 +11,6 @@ const MAIN_MENUS = [
   { name: '홈', href: '/' },
   { name: '베스트', href: '/best' },
   { name: '특가', href: '/sale' },
-  { name: '선물관', href: '/gift' },
   { name: '한우대가No.9', href: '/no9' },
   { name: '리뷰이벤트', href: '/review-event' },
 ]

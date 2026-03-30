@@ -5,22 +5,6 @@ interface PaymentSummaryProps {
   order: Order
 }
 
-const paymentMethodLabels: Record<string, string> = {
-  toss_card: '카드결제',
-  toss_billing: '간편카드 결제',
-  tosspay: '토스페이',
-  naverpay: '네이버페이(카드)',
-  kakaopay: '카카오페이(카드)',
-  samsungpay: '삼성페이',
-  card: '카드결제',
-  easy: '간편카드 결제',
-}
-
-function getPaymentMethodLabel(method: string | null | undefined) {
-  if (!method) return '카드결제'
-  return paymentMethodLabels[method] || method
-}
-
 export default function PaymentSummary({ order }: PaymentSummaryProps) {
   const productTotal = order.order_items?.reduce((sum, item) => {
     const originalPrice = (item.product as any)?.price || item.price || 0
@@ -29,45 +13,43 @@ export default function PaymentSummary({ order }: PaymentSummaryProps) {
 
   const couponDiscount = order.coupon_discount_amount ?? order.couponDiscount ?? 0
   const pointsUsed = order.points_used ?? order.usedPoints ?? 0
+  const immediateDiscount = order.immediateDiscount ?? 0
+  const shipping = order.shipping ?? 0
 
   return (
     <div>
       <h3 className="text-base font-semibold text-gray-900 mb-3">결제 정보</h3>
-      <div className="space-y-3 text-base text-gray-700">
-        <div className="flex justify-between">
-          <span className="text-gray-600">결제방식</span>
-          <span className="font-medium text-gray-900">{getPaymentMethodLabel(order.payment_method)}</span>
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3 text-sm text-gray-700">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-gray-500">상품금액</span>
+          <span className="font-medium text-gray-900">{formatPrice(productTotal)}원</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-gray-600">상품금액</span>
-          <span className="font-medium">{formatPrice(productTotal)}원</span>
-        </div>
-        {(order.immediateDiscount ?? 0) > 0 && (
-          <div className="flex justify-between">
-            <span className="text-gray-600">할인</span>
-            <span className="font-medium text-red-600">(-) {formatPrice(order.immediateDiscount ?? 0)}원</span>
+        {immediateDiscount > 0 && (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-gray-500">할인</span>
+            <span className="font-medium text-red-600">- {formatPrice(immediateDiscount)}원</span>
           </div>
         )}
         {couponDiscount > 0 && (
-          <div className="flex justify-between">
-            <span className="text-gray-600">쿠폰</span>
-            <span className="font-medium text-red-600">(-) {formatPrice(couponDiscount)}원</span>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-gray-500">쿠폰</span>
+            <span className="font-medium text-red-600">- {formatPrice(couponDiscount)}원</span>
           </div>
         )}
         {pointsUsed > 0 && (
-          <div className="flex justify-between">
-            <span className="text-gray-600">포인트</span>
-            <span className="font-medium text-red-600">(-) {formatPrice(pointsUsed)}원</span>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-gray-500">포인트</span>
+            <span className="font-medium text-red-600">- {formatPrice(pointsUsed)}원</span>
           </div>
         )}
-        <div className="flex justify-between">
-          <span className="text-gray-600">배송비</span>
-          <span className="font-medium">
-            {(order.shipping ?? 0) === 0 ? '0원' : `(+) ${formatPrice(order.shipping ?? 0)}원`}
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-gray-500">배송비</span>
+          <span className="font-medium text-gray-900">
+            {shipping === 0 ? '0원' : `+ ${formatPrice(shipping)}원`}
           </span>
         </div>
-        <div className="flex justify-between pt-3 mt-3 border-t-2 border-gray-200">
-          <span className="text-lg font-semibold text-gray-900">총결제금액</span>
+        <div className="flex items-center justify-between pt-3 mt-1 border-t border-gray-200">
+          <span className="text-base font-semibold text-gray-900">총결제금액</span>
           <span className="text-xl font-bold text-primary-900">{formatPrice(order.total_amount)}원</span>
         </div>
       </div>

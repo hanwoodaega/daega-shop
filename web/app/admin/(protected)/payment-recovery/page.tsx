@@ -1,7 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 import AdminPageLayout from '@/app/admin/_components/AdminPageLayout'
 
 type RecoveryItem = {
@@ -21,18 +22,24 @@ export default function AdminPaymentRecoveryPage() {
   const [items, setItems] = useState<RecoveryItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    let cancelled = false
-    async function fetchList() {
+  const fetchList = useCallback(async () => {
+    setLoading(true)
+    try {
       const res = await fetch('/api/admin/order-drafts/recovery')
-      if (!res.ok || cancelled) return
+      if (!res.ok) {
+        toast.error('목록을 불러오지 못했습니다.')
+        return
+      }
       const json = await res.json()
-      if (!cancelled && json.items) setItems(json.items)
+      if (json.items) setItems(json.items)
+    } finally {
       setLoading(false)
     }
-    fetchList()
-    return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    fetchList()
+  }, [fetchList])
 
   const formatDate = (s: string | null) => {
     if (!s) return '-'
@@ -47,18 +54,29 @@ export default function AdminPaymentRecoveryPage() {
       title="결제 복구"
       description="승인 후 주문 미생성 · 미처리 결제 이상건 (일반 주문 목록과 분리)"
       extra={
-        <button
-          onClick={() => router.push('/admin')}
-          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-        >
-          관리자 홈
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => fetchList()}
+            disabled={loading}
+            className="px-4 py-2 bg-white border border-gray-300 text-gray-800 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+          >
+            새로고침
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push('/admin')}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+          >
+            관리자 홈
+          </button>
+        </div>
       }
     >
       <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
         <h2 className="text-lg font-semibold text-amber-900">결제 복구 필요</h2>
         <p className="text-sm text-amber-800 mt-1">
-          승인 후 주문 미생성 · 토스 결제는 완료됐으나 DB 주문 생성이 실패한 건만 표시됩니다.
+          승인 후 주문 미생성 · 토스 결제는 완료됐으나 DB 주문 생성이 실패한 건만 표시됩니다. 결제 직후 자동 확정은 confirm에서 1회 시도되며, 그래도 남은 건은 상세에서「재처리」하세요. (주기 크론 미사용 시)
         </p>
       </div>
 

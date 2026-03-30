@@ -1,5 +1,5 @@
 import type { OrderFilters } from '../_types'
-import { DeliveryType } from '../_types'
+import { OrderStatus } from '../_types'
 
 type SetFilterFunction = <K extends keyof OrderFilters>(key: K, value: OrderFilters[K]) => void
 
@@ -28,23 +28,6 @@ export default function OrderFilters({
           />
         </div>
 
-        {/* 배송 유형 필터 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            배송 유형
-          </label>
-          <select
-            value={filters.deliveryType}
-            onChange={(e) => onFilterChange('deliveryType', e.target.value as DeliveryType)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-800"
-          >
-            <option value="all">전체</option>
-            <option value="pickup">매장 픽업</option>
-            <option value="quick">퀵배달</option>
-            <option value="regular">택배배달</option>
-          </select>
-        </div>
-
         {/* 주문 상태 필터 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -52,7 +35,7 @@ export default function OrderFilters({
           </label>
           <select
             value={filters.status}
-            onChange={(e) => onFilterChange('status', e.target.value as any)}
+            onChange={(e) => onFilterChange('status', e.target.value as OrderStatus | 'all')}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-800"
           >
             <option value="all">전체</option>
@@ -63,6 +46,20 @@ export default function OrderFilters({
             <option value="DELIVERED">배송완료</option>
             <option value="cancelled">주문 취소</option>
           </select>
+        </div>
+
+        {/* 주문번호 검색 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            주문번호 검색
+          </label>
+          <input
+            type="text"
+            value={filters.orderNumber}
+            onChange={(e) => onFilterChange('orderNumber', e.target.value)}
+            placeholder="예: 20260330-AB12"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-800"
+          />
         </div>
       </div>
     </div>

@@ -37,12 +37,6 @@ const managementCards: AdminCard[] = [
     accent: 'bg-indigo-100 text-indigo-700',
   },
   {
-    title: '선물관 관리',
-    description: '선물 대상별 상품을 설정하고 관리하세요.',
-    href: '/admin/gift-management',
-    accent: 'bg-pink-100 text-pink-700',
-  },
-  {
     title: '컬렉션 관리',
     description: '베스트, 특가, 한우대가No.9 등 컬렉션을 관리하세요.',
     href: '/admin/collections',
@@ -233,45 +227,6 @@ export default function AdminDashboardClient({
           </div>
         </section>
 
-        <section className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm space-y-4">
-          <div>
-            <p className="text-sm text-neutral-500">Guides</p>
-            <h2 className="text-xl font-semibold">이번 주 체크리스트</h2>
-          </div>
-          <ul className="space-y-2 text-sm text-neutral-600">
-            <li>• 추석 기획전 상품을 상품 관리 &gt; 기획전 태그로 묶어주세요.</li>
-            <li>• 인기 한우 세트 재고를 확인하고, 품절 상품은 대체 상품을 등록합니다.</li>
-            <li>• 리뷰 관리에서 신고 리뷰 2건을 확인하고 답변을 남겨주세요.</li>
-          </ul>
-          <div className="flex flex-wrap gap-3">
-            <button 
-              onClick={() => handleNavigate('/admin/products')}
-              className="px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
-            >
-              상품 관리 열기
-            </button>
-            <button 
-              onClick={() => handleNavigate('/admin/support')}
-              className="px-4 py-2 rounded-lg border border-neutral-300 text-sm font-semibold text-neutral-700 hover:bg-neutral-100"
-            >
-              운영 가이드 보기
-            </button>
-          </div>
-        </section>
-
-        <section className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-neutral-200 bg-white rounded-2xl p-6 shadow-sm">
-          <div>
-            <p className="text-sm text-neutral-500">Support</p>
-            <h3 className="text-lg font-semibold">운영팀이 필요하신가요?</h3>
-            <p className="text-sm text-neutral-600 mt-1">Slack #daega-admin 또는 ops@daega.com 으로 문의해주세요.</p>
-          </div>
-          <button
-            onClick={() => handleNavigate('/admin/support')}
-            className="px-5 py-2.5 rounded-full bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-800"
-          >
-            운영 지원 요청
-          </button>
-        </section>
       </main>
     </div>
   )

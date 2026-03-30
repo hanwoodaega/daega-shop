@@ -44,13 +44,10 @@ export async function GET(request: NextRequest) {
         delivery_type,
         delivery_time,
         shipping_address,
-        shipping_name,
-        shipping_phone,
+        recipient_name,
+        recipient_phone,
         delivery_note,
         tracking_number,
-        is_gift,
-        gift_message,
-        gift_expires_at,
         refund_completed_at,
         created_at,
         updated_at
@@ -114,7 +111,7 @@ export async function GET(request: NextRequest) {
     })
 
     // 게스트 주문취소용 토큰 (기존 verify 로직과 동일)
-    const normalizedPhone = normalizePhone(order.shipping_phone || '')
+    const normalizedPhone = normalizePhone(order.recipient_phone || '')
     const cancelExpiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
     const payload = {
       orderId: order.id,

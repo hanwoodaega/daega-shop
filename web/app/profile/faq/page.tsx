@@ -45,9 +45,6 @@ export default function ProfileFAQPage() {
                   <p className="mb-2">
                     • <strong>택배배송:</strong> 주문 후 1~2일 소요 (영업일 기준)
                   </p>
-                  <p className="mb-2">
-                    • <strong>퀵배달:</strong> 선택한 시간대 내 신속 배달 (연향동, 조례동, 풍덕동, 해룡면)
-                  </p>
                   <p>
                     • <strong>매장 픽업:</strong> 당일 픽업 가능 (오전 9시 ~ 오후 9시)
                   </p>
@@ -72,7 +69,6 @@ export default function ProfileFAQPage() {
                     택배배송은 <strong>5만원 이상</strong> 구매 시 무료입니다.
                   </p>
                   <p className="mb-2">• 5만원 미만: 배송비 3,000원</p>
-                  <p className="mb-2">• 퀵배달: 항상 5,000원</p>
                   <p>• 매장 픽업: 무료</p>
                 </div>
               </details>
@@ -162,36 +158,6 @@ export default function ProfileFAQPage() {
                   <p className="mb-2">• 장기 보관 시 냉동(-18℃ 이하) 권장</p>
                   <p className="mb-2">• 냉동 보관 시 1~2개월 보관 가능</p>
                   <p>• 해동 후 재냉동은 피해주세요.</p>
-                </div>
-              </details>
-
-              {/* 퀵배달 */}
-              <details className="group">
-                <summary className="flex justify-between items-center cursor-pointer list-none p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                  <span className="font-medium text-gray-900">퀵배달 가능 지역은 어디인가요?</span>
-                  <svg
-                    className="w-5 h-5 text-gray-500 group-open:rotate-180 transition"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </summary>
-                <div className="mt-2 px-3 py-2 text-sm text-gray-700">
-                  <p className="mb-2">
-                    <strong>현재 퀵배달 가능 지역:</strong>
-                  </p>
-                  <p className="mb-2">• 연향동</p>
-                  <p className="mb-2">• 조례동</p>
-                  <p className="mb-2">• 풍덕동</p>
-                  <p className="mb-2">• 해룡면</p>
-                  <p className="mb-2">
-                    <strong>배달 시간:</strong> 오전 9시 ~ 오후 9시
-                  </p>
-                  <p>
-                    <strong>배달비:</strong> 5,000원 (고정)
-                  </p>
                 </div>
               </details>
 
@@ -300,9 +266,6 @@ export default function ProfileFAQPage() {
                   <p className="mb-2">
                     • <strong>택배배송:</strong> 주문 후 1~2일 소요 (영업일 기준)
                   </p>
-                  <p className="mb-2">
-                    • <strong>퀵배달:</strong> 선택한 시간대 내 신속 배달 (연향동, 조례동, 풍덕동, 해룡면)
-                  </p>
                   <p>
                     • <strong>매장 픽업:</strong> 당일 픽업 가능 (오전 9시 ~ 오후 9시)
                   </p>
@@ -328,7 +291,6 @@ export default function ProfileFAQPage() {
                     택배배송은 <strong>5만원 이상</strong> 구매 시 무료입니다.
                   </p>
                   <p className="mb-2">• 5만원 미만: 배송비 3,000원</p>
-                  <p className="mb-2">• 퀵배달: 항상 5,000원</p>
                   <p>• 매장 픽업: 무료</p>
                 </div>
               </details>

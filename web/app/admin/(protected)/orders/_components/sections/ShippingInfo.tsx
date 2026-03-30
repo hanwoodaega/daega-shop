@@ -38,30 +38,59 @@ export default function ShippingInfo({ order }: ShippingInfoProps) {
     window.open(trackingUrl, '_blank')
   }
 
-  const customerName = order.user?.name ?? order.shipping_name
-  const customerPhone = order.user?.phone ?? order.shipping_phone
+  const customerName = order.user?.name ?? order.orderer_name ?? order.recipient_name ?? '-'
+  const customerPhone = order.user?.phone ?? order.orderer_phone ?? order.recipient_phone ?? ''
+  const ordererName = order.orderer_name || customerName || '-'
+  const ordererPhone = order.orderer_phone || customerPhone || ''
+  const recipientName = order.recipient_name || '-'
+  const recipientPhone = order.recipient_phone || ''
 
   return (
     <div>
       <h3 className="text-base font-semibold text-gray-900 mb-3">배송 정보</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-base text-gray-700">
-        <div>
-          <p className="text-sm font-medium text-gray-500 mb-2">고객 정보</p>
-          <p><span className="font-medium text-gray-900">이름</span> {customerName}</p>
-          <p><span className="font-medium text-gray-900">연락처</span> {formatPhoneNumber(customerPhone)}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 text-sm text-gray-700">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <p className="text-xs font-semibold text-gray-500 mb-3">주문자</p>
+          <dl className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-gray-500">이름</dt>
+              <dd className="font-medium text-gray-900">{ordererName}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-gray-500">연락처</dt>
+              <dd className="font-medium text-gray-900">{formatPhoneNumber(ordererPhone)}</dd>
+            </div>
+          </dl>
         </div>
-        <div>
-          <p className="text-sm font-medium text-gray-500 mb-2">수령인</p>
-          <p><span className="font-medium text-gray-900">이름</span> {order.shipping_name}</p>
-          <p><span className="font-medium text-gray-900">연락처</span> {formatPhoneNumber(order.shipping_phone)}</p>
-          <p><span className="font-medium text-gray-900">주소</span> {order.shipping_address}</p>
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <p className="text-xs font-semibold text-gray-500 mb-3">받는 분</p>
+          <dl className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-gray-500">이름</dt>
+              <dd className="font-medium text-gray-900">{recipientName}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-gray-500">연락처</dt>
+              <dd className="font-medium text-gray-900">{formatPhoneNumber(recipientPhone)}</dd>
+            </div>
+          </dl>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 lg:col-span-1">
+          <p className="text-xs font-semibold text-gray-500 mb-3">배송지</p>
+          <p className="text-sm leading-6 text-gray-900 break-words">{order.shipping_address || '-'}</p>
         </div>
       </div>
-      {order.tracking_number && (
-        <div className="mt-3 pt-3 border-t border-gray-100">
+      {(order.tracking_number || order.tracking_company) && (
+        <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3 flex flex-wrap items-center gap-2 justify-between">
+          <div className="text-sm text-blue-900">
+            <span className="font-medium">택배사</span> {order.tracking_company || '-'}
+            <span className="mx-2 text-blue-300">|</span>
+            <span className="font-medium">송장번호</span> {order.tracking_number || '-'}
+          </div>
           <button
             onClick={handleTrackDelivery}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+            disabled={!order.tracking_number}
+            className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-md hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             배송조회 →
           </button>
