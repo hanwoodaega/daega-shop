@@ -31,10 +31,10 @@ export default function AddressModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
       <div className="relative w-full max-w-lg bg-white rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-        <div className="bg-primary-800 text-white px-5 py-4">
+        <div className="bg-[#0b1f5e] text-white px-5 py-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold">배송지 선택</h3>
-            <button onClick={onClose} className="text-white text-2xl">×</button>
+            <button type="button" onClick={onClose} className="text-white text-2xl">×</button>
           </div>
         </div>
         
@@ -47,6 +47,7 @@ export default function AddressModal({
             <div className="text-center py-8">
               <p className="text-gray-600 mb-4">등록된 배송지가 없습니다</p>
               <button
+                type="button"
                 onClick={() => {
                   onClose()
                   router.push('/profile/addresses')
@@ -92,6 +93,7 @@ export default function AddressModal({
         
         <div className="px-4 py-3 bg-gray-50 border-t flex gap-2">
           <button
+            type="button"
             onClick={() => {
               onClose()
               router.push('/profile/addresses')
@@ -101,8 +103,9 @@ export default function AddressModal({
             배송지 관리
           </button>
           <button
+            type="button"
             onClick={onConfirm}
-            className="flex-1 py-2.5 text-sm font-medium text-white bg-primary-800 rounded-lg hover:bg-primary-900"
+            className="flex-1 py-2.5 text-sm font-medium text-white bg-[#0b1f5e] rounded-lg hover:bg-[#09194c]"
           >
             확인
           </button>

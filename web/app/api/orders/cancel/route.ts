@@ -56,14 +56,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { data: pointUsage } = await supabase
-      .from('point_history')
-      .select('points')
-      .eq('order_id', orderId)
-      .eq('type', 'usage')
-      .maybeSingle()
-
-    const usedPoints = pointUsage ? Math.abs(pointUsage.points) : 0
+    const usedPoints = Math.max(0, Number(order.points_used || 0))
 
     const { error: updateError } = await supabase
       .from('orders')
@@ -74,6 +67,14 @@ export async function POST(request: NextRequest) {
       .eq('id', orderId)
 
     if (updateError) {
+      if (paymentKey) {
+        console.error('[orders/cancel] toss cancelled but order update failed', {
+          orderId,
+          userId: user.id,
+          paymentKey,
+          error: updateError,
+        })
+      }
       return NextResponse.json({
         error: '주문 취소 처리에 실패했습니다.',
       }, { status: 500 })
@@ -83,19 +84,37 @@ export async function POST(request: NextRequest) {
       user.id,
       orderId,
       order.total_amount,
-      usedPoints
+      usedPoints,
+      supabase,
+      order.order_number ?? null
     )
+    const pointErrors = [...pointResult.errors]
+    const pointStatus =
+      pointResult.status === 'success'
+        ? 'ok'
+        : 'needs_recovery'
+    if (pointStatus === 'needs_recovery') {
+      console.error('[orders/cancel] point recovery needed', {
+        orderId,
+        userId: user.id,
+        pointResult: { ...pointResult, errors: pointErrors },
+      })
+    }
 
     return NextResponse.json({
       success: true,
+      orderCancelled: true,
       message: '주문이 취소되었습니다. 환불이 완료되었습니다.',
       refund: {
         amount: order.total_amount,
         status: 'completed',
       },
+      pointStatus,
       points: {
         deducted: pointResult.deducted,
         refunded: pointResult.refunded,
+        status: pointResult.status,
+        errors: pointErrors,
       },
     })
   } catch (error: unknown) {

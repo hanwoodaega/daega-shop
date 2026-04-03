@@ -40,7 +40,10 @@ function FinalizeContent() {
       router.replace(redirectTo)
     }
 
-    run().catch((e) => setError(e?.message || '로그인 상태를 확인할 수 없습니다.'))
+    run().catch((e) => {
+      clearPendingGuestCheckout()
+      setError(e?.message || '로그인 상태를 확인할 수 없습니다.')
+    })
   }, [nextPath, router])
 
   if (error) {

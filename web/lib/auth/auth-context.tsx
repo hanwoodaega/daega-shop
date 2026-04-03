@@ -6,7 +6,12 @@ import { User } from '@supabase/supabase-js'
 import { supabase, isSupabaseConfigured } from '../supabase/supabase'
 import { useWishlistStore } from '../store'
 import { clearPendingGuestCheckout } from '../cart/pending-guest-checkout'
-import { clearCartSyncFlag, setCartItems } from '../cart/cart-db'
+import {
+  clearCartSyncFlag,
+  markBootstrapCartSyncDone,
+  markBootstrapCartSyncStart,
+  setCartItems,
+} from '../cart/cart-db'
 import { setCartStorageUserId } from '../cart/cart-storage-key'
 import { deriveAuthState } from './auth-state'
 import { sendAuthTelemetry } from './auth-telemetry'
@@ -72,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const promise = (async () => {
+      markBootstrapCartSyncStart()
       try {
         const res = await fetch('/api/auth/bootstrap?includeSync=1', {
           method: 'POST',
@@ -98,6 +104,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         hasSyncedRef.current = true
       } catch {
         // 동기화 실패는 로그인 성공을 막지 않음
+      } finally {
+        // 시작/종료 짝 보장: 실패/중단/성공과 무관하게 in-flight 해제
+        markBootstrapCartSyncDone()
       }
     })()
 
@@ -371,7 +380,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (justLoggedIn) {
         const accessToken = typeof session?.access_token === 'string' ? session.access_token : ''
         const nextPath = consumePostLoginNext() || '/'
-        if (accessToken) {
+        const currentPath = pathnameRef.current || ''
+        const isFinalizePage = currentPath === '/auth/finalize' || currentPath.startsWith('/auth/finalize?')
+        // /auth/finalize 페이지가 이미 호출할 예정이면 background finalize 중복 호출을 생략
+        if (accessToken && !isFinalizePage) {
           const provider = consumePostLoginProvider()
           void runBackgroundFinalize(accessToken, nextPath, provider)
         }

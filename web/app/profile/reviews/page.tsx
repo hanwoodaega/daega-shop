@@ -282,13 +282,7 @@ export default function ProfileReviewsPage() {
           ) : activeTab === 'reviewable' ? (
             reviewableProducts.length === 0 ? (
               <div className="bg-white rounded-lg border border-gray-200 p-8 text-center shadow-sm">
-                <div className="flex justify-center mb-4">
-                  <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                  </svg>
-                </div>
-                <p className="text-gray-600 mb-2">작성 가능한 리뷰가 없습니다.</p>
-                <p className="text-sm text-gray-500">배송 완료된 상품에 대해 리뷰를 작성할 수 있습니다.</p>
+                <p className="text-[17px] text-gray-600 mb-2">작성 가능한 리뷰가 없습니다</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -337,8 +331,14 @@ export default function ProfileReviewsPage() {
             ) : (
               <div className="space-y-4">
                 {myReviews.map((review) => (
-                  <div key={review.id} className="bg-white rounded-lg border border-gray-200 p-4 overflow-hidden shadow-sm">
-                    <div className="flex-1">
+                  <div key={review.id} className="relative bg-white rounded-lg border border-gray-200 p-4 overflow-hidden shadow-sm">
+                    <button
+                      onClick={() => handleEditReview(review)}
+                      className="absolute top-4 right-4 px-4 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                    >
+                      수정
+                    </button>
+                    <div className="flex-1 pr-16">
                       {review.product.brand && <p className="text-xs text-gray-600 mb-1">{review.product.brand}</p>}
                       <button
                         onClick={() => router.push(`/product/${review.product_id}`)}
@@ -361,14 +361,6 @@ export default function ProfileReviewsPage() {
                         </div>
                       )}
                       <p className="text-xs text-gray-500 mt-2">{formatDate(review.created_at)}</p>
-                      <div className="flex gap-2 mt-3">
-                        <button
-                          onClick={() => handleEditReview(review)}
-                          className="px-4 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50"
-                        >
-                          수정
-                        </button>
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -411,9 +403,7 @@ export default function ProfileReviewsPage() {
           ) : activeTab === 'reviewable' ? (
             reviewableProducts.length === 0 ? (
               <div className="text-center py-20">
-                <div className="text-6xl mb-4">📝</div>
-                <p className="text-gray-600 mb-2">작성 가능한 리뷰가 없습니다.</p>
-                <p className="text-sm text-gray-500">배송 완료된 상품에 대해 리뷰를 작성할 수 있습니다.</p>
+                <p className="text-[17px] text-gray-600 mb-2">작성 가능한 리뷰가 없습니다</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -458,8 +448,14 @@ export default function ProfileReviewsPage() {
             ) : (
               <div className="space-y-4">
                 {myReviews.map((review) => (
-                  <div key={review.id} className="border border-gray-200 rounded-lg p-4 overflow-hidden">
-                    <div className="flex-1">
+                  <div key={review.id} className="relative border border-gray-200 rounded-lg p-4 overflow-hidden">
+                    <button
+                      onClick={() => handleEditReview(review)}
+                      className="absolute top-4 right-4 px-4 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                    >
+                      수정
+                    </button>
+                    <div className="flex-1 pr-16">
                       {review.product.brand && <p className="text-xs text-gray-600 mb-1">{review.product.brand}</p>}
                       <button
                         onClick={() => router.push(`/product/${review.product_id}`)}
@@ -482,14 +478,6 @@ export default function ProfileReviewsPage() {
                         </div>
                       )}
                       <p className="text-xs text-gray-500 mt-2">{formatDate(review.created_at)}</p>
-                      <div className="flex gap-2 mt-3">
-                        <button
-                          onClick={() => handleEditReview(review)}
-                          className="px-4 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50"
-                        >
-                          수정
-                        </button>
-                      </div>
                     </div>
                   </div>
                 ))}

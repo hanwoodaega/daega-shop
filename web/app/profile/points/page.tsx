@@ -34,6 +34,10 @@ export default function PointsPage() {
         return '추천인 적립'
       case 'expired':
         return '포인트 만료'
+      case 'cancel_refund':
+        return '주문 취소 포인트 환불'
+      case 'cancel_deduction':
+        return '주문 취소 적립 회수'
       default:
         return type
     }
@@ -114,7 +118,7 @@ export default function PointsPage() {
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-2">보유 포인트</p>
               <p className="text-3xl font-bold text-primary-800">
-                {formatPrice(totalPoints)}
+                {formatPrice(totalPoints)}P
               </p>
               {pendingPoints > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
@@ -128,7 +132,7 @@ export default function PointsPage() {
                 </div>
               )}
               <p className="text-xs text-gray-500 mt-2">
-                주문 금액의 1% 적립 · 사진 리뷰 500P · 일반 리뷰 200P (작성 즉시 적립)
+                주문 금액의 1% 적립 · 사진 리뷰 500P · 일반 리뷰 200P
               </p>
             </div>
           </div>
@@ -192,7 +196,7 @@ export default function PointsPage() {
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-2">보유 포인트</p>
               <p className="text-3xl font-bold text-primary-800">
-                {formatPrice(totalPoints)}
+                {formatPrice(totalPoints)}P
               </p>
               {pendingPoints > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
@@ -206,7 +210,7 @@ export default function PointsPage() {
                 </div>
               )}
               <p className="text-xs text-gray-500 mt-2">
-                주문 금액의 1% 적립 · 사진 리뷰 500P · 일반 리뷰 200P (작성 즉시 적립)
+                주문 금액의 1% 적립 · 사진 리뷰 500P · 일반 리뷰 200P
               </p>
             </div>
           </div>

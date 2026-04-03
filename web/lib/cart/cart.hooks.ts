@@ -141,7 +141,7 @@ export function useCart() {
         reloadDefaultAddress()
       ])
 
-      toast.success('기본 배송지가 변경되었습니다.', { duration: 2000 })
+      toast.success('배송지가 변경되었습니다.', { duration: 2000 })
     } catch (error) {
       console.error('배송지 업데이트 실패:', error)
       toast.error('배송지 설정에 실패했습니다.', { duration: 3000 })

@@ -72,13 +72,14 @@ export async function GET(request: NextRequest) {
 
         // 포인트 적립 (최종 결제 금액의 1%)
         const pointsToAdd = Math.floor(Math.max(0, finalAmount) * 0.01)
+        const orderNumber = order.order_number || order.id.slice(0, 8)
         
         if (pointsToAdd > 0) {
           const success = await addPoints(
             order.user_id,
             pointsToAdd,
             'purchase',
-            `주문 #${order.id} 자동 구매확정 적립`,
+            `주문 #${orderNumber} 자동 구매확정 적립`,
             order.id,
             undefined,
             supabase
@@ -96,7 +97,6 @@ export async function GET(request: NextRequest) {
             }
 
             // 구매확정 알림 생성
-            const orderNumber = order.order_number || order.id.slice(0, 8)
             const notificationTitle = `구매확정 ${pointsToAdd.toLocaleString()}P 적립`
             const notificationContent = `주문번호 ${orderNumber}가 구매확정이 되어 포인트가 적립되었습니다.`
 

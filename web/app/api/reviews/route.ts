@@ -362,8 +362,14 @@ export async function POST(request: NextRequest) {
     const supabaseAdmin = createSupabaseAdminClient()
     const awardPoints = hasImages ? 500 : 200
     const pointDescription = hasImages ? '사진 리뷰 적립' : '텍스트 리뷰 적립'
+    let pointStatus: 'ok' | 'needs_recovery' = 'ok'
+    const pointErrors: string[] = []
     try {
-      await addPoints(user.id, awardPoints, 'review', pointDescription, undefined, review.id, supabaseAdmin)
+      const pointAdded = await addPoints(user.id, awardPoints, 'review', pointDescription, undefined, review.id, supabaseAdmin)
+      if (!pointAdded) {
+        pointStatus = 'needs_recovery'
+        pointErrors.push('REVIEW_POINT_ADD_FAILED')
+      }
       let productName = '상품'
       const { data: product } = await supabaseAdmin.from('products').select('name').eq('id', product_id).single()
       if (product?.name) productName = product.name
@@ -376,6 +382,8 @@ export async function POST(request: NextRequest) {
       })
     } catch (pointErr: any) {
       console.error('리뷰 포인트/알림 처리 실패:', pointErr)
+      pointStatus = 'needs_recovery'
+      pointErrors.push('REVIEW_POINT_OR_NOTIFICATION_FAILED')
     }
 
     // products 테이블의 average_rating과 review_count 업데이트
@@ -445,7 +453,11 @@ export async function POST(request: NextRequest) {
       console.error('상품 통계 업데이트 실패:', updateError)
     }
 
-    return NextResponse.json({ review }, { status: 201 })
+    return NextResponse.json({
+      review,
+      pointStatus,
+      pointErrors,
+    }, { status: 201 })
   } catch (error: unknown) {
     return unknownErrorResponse('reviews POST', error)
   }

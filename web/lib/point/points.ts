@@ -74,12 +74,43 @@ export async function addPoints(
 ): Promise<boolean> {
   const supabase = client || browserSupabase
   try {
+    // Idempotency guard: prevent duplicate accrual for the same business event.
+    if (type === 'review' && reviewId) {
+      const { data: existingReviewPoint } = await supabase
+        .from('point_history')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('type', 'review')
+        .eq('review_id', reviewId)
+        .maybeSingle()
+      if (existingReviewPoint) {
+        return true
+      }
+    }
+
+    // Refund entries also use type='purchase', so only guard "purchase confirmation accrual" cases.
+    if (type === 'purchase' && orderId && description.includes('구매확정 적립')) {
+      const { data: existingPurchaseAccrual } = await supabase
+        .from('point_history')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('type', 'purchase')
+        .eq('order_id', orderId)
+        .gte('points', 0)
+        .like('description', '%구매확정 적립%')
+        .maybeSingle()
+      if (existingPurchaseAccrual) {
+        return true
+      }
+    }
+
     let userPoints = await getUserPoints(userId, client)
     if (!userPoints) {
       userPoints = await initializeUserPoints(userId, client)
       if (!userPoints) return false
     }
 
+    let didUpdateUserPoints = false
     // 포인트가 0보다 클 때만 user_points 업데이트
     // 하지만 point_history에는 항상 기록 (구매확정 기록을 위해)
     if (points > 0) {
@@ -92,6 +123,7 @@ export async function addPoints(
         .eq('user_id', userId)
 
       if (updateError) throw updateError
+      didUpdateUserPoints = true
     }
 
     // point_history에는 항상 기록 (구매확정 기록을 위해 order_id 저장 필요)
@@ -121,12 +153,25 @@ export async function addPoints(
       historyPayload.review_id = reviewId
     }
 
-    const { error: historyError, data: insertedData } = await supabase
+    const { error: historyError } = await supabase
       .from('point_history')
       .insert(historyPayload)
       .select('id, order_id, type')
 
     if (historyError) {
+      // Best-effort compensation for race conditions where duplicate insert happened after point balance update.
+      if ((historyError as any)?.code === '23505') {
+        if (didUpdateUserPoints && points > 0) {
+          await supabase
+            .from('user_points')
+            .update({
+              total_points: Math.max(0, userPoints.total_points),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', userId)
+        }
+        return true
+      }
       console.error('Point history insert failed:', {
         error: historyError,
         payload: historyPayload,
@@ -264,55 +309,148 @@ export async function refundPoints(
 /**
  * Handle cancellation points
  */
+function cancellationPointDescriptions(orderId: string, orderNumber?: string | null) {
+  const ref = (orderNumber && String(orderNumber).trim()) || orderId.slice(0, 8)
+  return {
+    refund: `주문취소 #${ref} 포인트 환불`,
+    deduction: `주문취소 #${ref} 적립 회수`,
+    refundLegacy: `Order #${orderId} cancellation - point refund`,
+    deductionLegacy: `Order #${orderId} cancellation - point deduction`,
+  }
+}
+
 export async function handleOrderCancellationPoints(
   userId: string,
   orderId: string,
   finalAmount: number,
   usedPoints: number = 0,
-  client?: SupabaseClient
-): Promise<{ success: boolean; deducted: number; refunded: number }> {
+  client?: SupabaseClient,
+  orderNumber?: string | null
+): Promise<{
+  success: boolean
+  status: 'success' | 'partial_failure' | 'failure'
+  deducted: number
+  refunded: number
+  errors: Array<'POINT_DEDUCTION_FAILED' | 'POINT_REFUND_FAILED' | 'POINT_HISTORY_LOOKUP_FAILED'>
+}> {
   try {
+    const supabase = client || browserSupabase
     let deducted = 0
     let refunded = 0
+    const errors: Array<'POINT_DEDUCTION_FAILED' | 'POINT_REFUND_FAILED' | 'POINT_HISTORY_LOOKUP_FAILED'> = []
+    const desc = cancellationPointDescriptions(orderId, orderNumber)
 
-    const pointsEarned = Math.floor(finalAmount * 0.01)
-    if (pointsEarned > 0) {
+    // 취소 시 차감은 "이 주문으로 실제 적립된 포인트"가 있을 때만 수행
+    // (구매확정 전 취소에서는 적립 이력이 없으므로 차감하지 않음)
+    const { data: earnedRows, error: earnedError } = await supabase
+      .from('point_history')
+      .select('points')
+      .eq('user_id', userId)
+      .eq('order_id', orderId)
+      .eq('type', 'purchase')
+      .gt('points', 0)
+
+    if (earnedError) {
+      errors.push('POINT_HISTORY_LOOKUP_FAILED')
+      return {
+        success: false,
+        status: 'failure',
+        deducted,
+        refunded,
+        errors,
+      }
+    }
+
+    const actuallyEarned = (earnedRows || []).reduce((sum: number, row: any) => {
+      const p = Number(row?.points || 0)
+      return p > 0 ? sum + p : sum
+    }, 0)
+
+    if (actuallyEarned > 0) {
+      // Idempotency: if cancellation deduction was already recorded, skip duplicate deduction.
+      const { data: existingDeductionRows, error: existingDeductionError } = await supabase
+        .from('point_history')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('order_id', orderId)
+        .eq('type', 'usage')
+        .lt('points', 0)
+        .in('description', [desc.deduction, desc.deductionLegacy])
+        .limit(1)
+
+      if (existingDeductionError) {
+        errors.push('POINT_HISTORY_LOOKUP_FAILED')
+      } else if (existingDeductionRows && existingDeductionRows.length > 0) {
+        deducted = actuallyEarned
+      } else {
       const deductSuccess = await deductPoints(
         userId,
-        pointsEarned,
+        actuallyEarned,
         orderId,
-        `Order #${orderId} cancellation - point deduction`,
+        desc.deduction,
         client
       )
       if (deductSuccess) {
-        deducted = pointsEarned
+        deducted = actuallyEarned
+      } else {
+        errors.push('POINT_DEDUCTION_FAILED')
+      }
       }
     }
 
     if (usedPoints > 0) {
+      // Idempotency: if cancellation refund was already recorded, skip duplicate refund.
+      const { data: existingRefundRows, error: existingRefundError } = await supabase
+        .from('point_history')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('order_id', orderId)
+        .eq('type', 'purchase')
+        .gt('points', 0)
+        .in('description', [desc.refund, desc.refundLegacy])
+        .limit(1)
+
+      if (existingRefundError) {
+        errors.push('POINT_HISTORY_LOOKUP_FAILED')
+      } else if (existingRefundRows && existingRefundRows.length > 0) {
+        refunded = usedPoints
+      } else {
       const refundSuccess = await refundPoints(
         userId,
         usedPoints,
         orderId,
-        `Order #${orderId} cancellation - point refund`,
+        desc.refund,
         client
       )
       if (refundSuccess) {
         refunded = usedPoints
+      } else {
+        errors.push('POINT_REFUND_FAILED')
+      }
       }
     }
 
+    const status = errors.length === 0
+      ? 'success'
+      : deducted > 0 || refunded > 0
+        ? 'partial_failure'
+        : 'failure'
+
     return {
-      success: true,
+      success: status === 'success',
+      status,
       deducted,
       refunded,
+      errors,
     }
   } catch (error) {
     console.error('Cancellation points handling failed:', error)
     return {
       success: false,
+      status: 'failure',
       deducted: 0,
       refunded: 0,
+      errors: ['POINT_HISTORY_LOOKUP_FAILED'],
     }
   }
 }

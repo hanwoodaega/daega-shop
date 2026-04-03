@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Header from '@/components/layout/Header'
@@ -12,7 +12,9 @@ import { useDaumPostcodeScript } from '@/lib/postcode/useDaumPostcode'
 import { Coupon } from '@/lib/supabase/supabase'
 import { useCheckout } from '@/lib/checkout'
 import { consumePendingGuestCheckout } from '@/lib/cart/pending-guest-checkout'
+import { useAddresses } from '@/lib/address/useAddress'
 import { useDirectPurchaseStore } from '@/lib/store'
+import AddressModal from '@/app/cart/_components/AddressModal'
 import {
   CheckoutHeader,
   CouponModal,
@@ -32,6 +34,9 @@ function CheckoutPageContent() {
   const searchParams = useSearchParams()
   const { user } = useAuth()
   const isGiftMode = searchParams.get('mode') === 'gift'
+  const [showAddressModal, setShowAddressModal] = useState(false)
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
+  const { addresses: allAddresses, loading: loadingAddresses, reload: loadAllAddresses } = useAddresses()
 
   /** 첫 렌더에서만: 장바구니→로그인→결제로 온 비회원 선택 줄을 직접구매로 넣음 (useCheckout보다 먼저) */
   const guestCheckoutHydrated = useRef(false)
@@ -79,6 +84,7 @@ function CheckoutPageContent() {
     handleSearchAddress,
     setTossWidgets,
     loadUserPoints,
+    reloadDefaultAddress,
     applyAddress,
     handleInputChange,
   } = actions
@@ -108,6 +114,41 @@ function CheckoutPageContent() {
   } = derived
 
   const totalGiftSteps = 1
+
+  const openAddressModal = useCallback(() => {
+    loadAllAddresses()
+    setSelectedAddressId(defaultAddress?.id || null)
+    setShowAddressModal(true)
+  }, [defaultAddress?.id, loadAllAddresses])
+
+  const confirmAddressSelection = useCallback(async () => {
+    if (!selectedAddressId || !user) {
+      setShowAddressModal(false)
+      setSelectedAddressId(null)
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/addresses/${selectedAddressId}/default`, {
+        method: 'PUT',
+      })
+
+      if (!res.ok) {
+        toast.error('배송지 설정에 실패했습니다.', { duration: 3000 })
+        return
+      }
+
+      await Promise.all([loadAllAddresses(), reloadDefaultAddress()])
+      const selected = allAddresses.find((address) => address.id === selectedAddressId)
+      if (selected) applyAddress(selected)
+      toast.success('배송지가 변경되었습니다.', { duration: 2000 })
+    } catch {
+      toast.error('배송지 설정에 실패했습니다.', { duration: 3000 })
+    } finally {
+      setShowAddressModal(false)
+      setSelectedAddressId(null)
+    }
+  }, [selectedAddressId, user, loadAllAddresses, reloadDefaultAddress, allAddresses, applyAddress])
 
   useEffect(() => {
     setCurrentStep(1)
@@ -226,12 +267,24 @@ function CheckoutPageContent() {
                   saveAsDefaultAddress={isGiftMode ? false : saveAsDefaultAddress}
                   isGuest={!user}
                   hideSaveAsDefaultOption={isGiftMode}
+                  onChangeAddressClick={openAddressModal}
                   onSearchAddress={handleSearchAddress}
                   onInputChange={handleInputChange}
                   onSaveAsDefaultChange={(checked) => {
                     if (isGiftMode) return
                     setFlags(prev => ({ ...prev, saveAsDefaultAddress: checked }))
                   }}
+                />
+              )}
+              {user && (
+                <AddressModal
+                  show={showAddressModal}
+                  onClose={() => setShowAddressModal(false)}
+                  addresses={allAddresses}
+                  selectedAddressId={selectedAddressId}
+                  onSelectAddress={setSelectedAddressId}
+                  onConfirm={confirmAddressSelection}
+                  loading={loadingAddresses}
                 />
               )}
 
@@ -287,8 +340,8 @@ function CheckoutPageContent() {
                 ) : (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">보유 포인트</span>
-                      <span className="text-sm font-semibold text-primary-900">
+                      <span className="text-[15px] text-gray-600">보유 포인트</span>
+                      <span className="text-[15px] font-semibold text-primary-900">
                         {userPoints.toLocaleString()}P
                       </span>
                     </div>
@@ -311,7 +364,7 @@ function CheckoutPageContent() {
                             const maxPoints = Math.min(userPoints, Math.max(0, afterCouponDiscount))
                             setUsedPoints(Math.min(parsed, maxPoints))
                           }}
-                          className="flex-1 px-1.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          className="flex-1 px-1.5 py-1 text-sm placeholder:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="0"
                         />
                         <button
@@ -330,15 +383,6 @@ function CheckoutPageContent() {
                         최대 {Math.min(userPoints, Math.max(0, afterCouponDiscount)).toLocaleString()}P 사용 가능
                       </p>
                     </div>
-                    {usedPoints > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setUsedPoints(0)}
-                        className="text-sm text-gray-500 hover:text-gray-700"
-                      >
-                        포인트 사용 취소
-                      </button>
-                    )}
                   </div>
                 )}
               </div>

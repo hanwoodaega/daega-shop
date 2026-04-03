@@ -245,7 +245,7 @@ export async function PATCH(request: NextRequest) {
     // 이전 상태 및 취소 시 필요한 필드 확인
     const { data: oldOrder } = await supabase
       .from('orders')
-      .select('status, user_id, order_number, total_amount, toss_payment_key')
+      .select('status, user_id, order_number, total_amount, toss_payment_key, points_used')
       .eq('id', orderId)
       .single()
 
@@ -273,14 +273,7 @@ export async function PATCH(request: NextRequest) {
         }
       }
 
-      const { data: pointUsage } = await supabase
-        .from('point_history')
-        .select('points')
-        .eq('order_id', orderId)
-        .eq('type', 'usage')
-        .maybeSingle()
-
-      const usedPoints = pointUsage && pointUsage.points != null ? Math.abs(pointUsage.points) : 0
+      const usedPoints = Math.max(0, Number(oldOrder.points_used || 0))
 
       const { error: updateOrderError } = await supabase
         .from('orders')
@@ -292,16 +285,37 @@ export async function PATCH(request: NextRequest) {
 
       if (updateOrderError) {
         console.error('관리자 주문 취소 DB 반영 실패:', updateOrderError)
+        if (paymentKey) {
+          console.error('[admin/orders] toss cancelled but order update failed', {
+            orderId,
+            userId: oldOrder.user_id,
+            paymentKey,
+            error: updateOrderError,
+          })
+        }
         return NextResponse.json({ error: '주문 취소 처리에 실패했습니다.' }, { status: 500 })
       }
 
-      await handleOrderCancellationPoints(
+      const pointResult = await handleOrderCancellationPoints(
         oldOrder.user_id,
         orderId,
         oldOrder.total_amount,
         usedPoints,
-        supabase
+        supabase,
+        oldOrder.order_number ?? null
       )
+      const pointErrors = [...pointResult.errors]
+      const pointStatus =
+        pointResult.status === 'success'
+          ? 'ok'
+          : 'needs_recovery'
+      if (pointStatus !== 'ok') {
+        console.error('[admin/orders] point recovery needed after cancel', {
+          orderId,
+          userId: oldOrder.user_id,
+          pointResult: { ...pointResult, errors: pointErrors },
+        })
+      }
 
       try {
         const orderNumber = oldOrder.order_number || orderId.slice(0, 8)
@@ -331,7 +345,17 @@ export async function PATCH(request: NextRequest) {
         .eq('id', orderId)
         .single()
 
-      return NextResponse.json(updatedOrder)
+      return NextResponse.json({
+        ...updatedOrder,
+        orderCancelled: true,
+        pointStatus,
+        points: {
+          deducted: pointResult.deducted,
+          refunded: pointResult.refunded,
+          status: pointResult.status,
+          errors: pointErrors,
+        },
+      })
     }
 
     // 관리자 구매확정: DELIVERED → CONFIRMED, 포인트 적립 및 알림
@@ -343,11 +367,12 @@ export async function PATCH(request: NextRequest) {
       }
       const finalAmount = oldOrder.total_amount
       const pointsToAdd = Math.floor(Math.max(0, finalAmount) * 0.01)
+      const orderNumber = oldOrder.order_number || orderId.slice(0, 8)
       const success = await addPoints(
         oldOrder.user_id,
         pointsToAdd,
         'purchase',
-        `주문 #${orderId} 구매확정 적립`,
+        `주문 #${orderNumber} 구매확정 적립`,
         orderId,
         undefined,
         supabase
@@ -362,7 +387,6 @@ export async function PATCH(request: NextRequest) {
       if (statusUpdateError) {
         return NextResponse.json({ error: '구매확정 처리에 실패했습니다.' }, { status: 500 })
       }
-      const orderNumber = oldOrder.order_number || orderId.slice(0, 8)
       if (pointsToAdd > 0) {
         await supabase.from('notifications').insert({
           user_id: oldOrder.user_id,

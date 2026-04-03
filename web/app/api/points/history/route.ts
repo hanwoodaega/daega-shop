@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
     // RLS 우회를 위해 admin client 사용 (다른 API와 동일한 방식)
     const supabase = createSupabaseAdminClient()
@@ -29,14 +31,32 @@ export async function GET(request: NextRequest) {
       .from('point_history')
       .select('id, type, description, points, created_at')
       .eq('user_id', user.id)
+      .gte('created_at', sixMonthsAgo.toISOString())
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
     if (error) {
       return dbErrorResponse('points/history GET', error)
     }
-    
-    return NextResponse.json({ history: history || [] })
+
+    const normalizedHistory = (history || []).map((item: any) => {
+      const description = String(item.description || '')
+      const isCancelRefund =
+        description.includes('cancellation - point refund') ||
+        (description.includes('주문취소') && description.includes('포인트 환불'))
+      const isCancelDeduction =
+        description.includes('cancellation - point deduction') ||
+        (description.includes('주문취소') && description.includes('적립 회수'))
+      if (isCancelRefund) {
+        return { ...item, type: 'cancel_refund' }
+      }
+      if (isCancelDeduction) {
+        return { ...item, type: 'cancel_deduction' }
+      }
+      return item
+    })
+
+    return NextResponse.json({ history: normalizedHistory })
   } catch (error: unknown) {
     return unknownErrorResponse('points/history GET', error)
   }

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/supabase'
 import { useCartStore } from '@/lib/store'
 import {
+  getBootstrapCartSyncInFlight,
   getBootstrapHasSetCartThisSession,
   loadCartFromDB,
   registerAbortLoadCart,
@@ -173,10 +174,11 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
       }, delayMs)
     }
 
-    // 로그인 직후 첫 로드만 syncCartOnLogin. 단, 이번 세션에서 bootstrap이 이미 장바구니를 세팅했으면 건너뜀.
+    // 로그인 직후 첫 로드만 syncCartOnLogin.
+    // 단, bootstrap이 이미 세팅했거나(in-session) 현재 includeSync=1 반영 중이면 건너뛴다.
     if (syncedUserIdRef.current !== userId) {
       syncedUserIdRef.current = userId
-      if (!getBootstrapHasSetCartThisSession()) {
+      if (!getBootstrapHasSetCartThisSession() && !getBootstrapCartSyncInFlight()) {
         abortControllerRef.current = new AbortController()
         syncCartOnLogin(userId, abortControllerRef.current.signal).catch(() => {})
       }

@@ -1,22 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
 // GET: 내가 작성한 리뷰 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServerClient()
+    const supabaseAuth = await createSupabaseServerClient()
 
     // 사용자 인증 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser()
     
     if (authError || !user) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
     }
 
+    // 사용자 본인 데이터만 조회하도록 user_id로 제한하면서,
+    // pending 리뷰도 누락되지 않게 admin client로 조회한다.
+    const supabase = createSupabaseAdminClient()
+
     const searchParams = request.nextUrl.searchParams
     const countOnly = searchParams.get('countOnly') === 'true'
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
     // 개수만 필요한 경우 최적화된 쿼리
     if (countOnly) {
@@ -24,6 +30,7 @@ export async function GET(request: NextRequest) {
         .from('reviews')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
+        .gte('created_at', sixMonthsAgo.toISOString())
 
       if (countError) {
         console.error('리뷰 개수 조회 실패:', countError)
@@ -52,6 +59,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('user_id', user.id)
+      .gte('created_at', sixMonthsAgo.toISOString())
       .order('created_at', { ascending: false })
 
     if (reviewsError) {

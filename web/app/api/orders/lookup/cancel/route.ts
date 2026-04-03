@@ -101,17 +101,7 @@ export async function POST(request: NextRequest) {
 
     // 사용 포인트 환불/적립 회수: 회원 주문(user_id가 있을 때만)
     const userId = order.user_id as string | null
-    let usedPoints = 0
-    if (userId) {
-      const { data: pointUsage } = await supabase
-        .from('point_history')
-        .select('points')
-        .eq('order_id', orderId)
-        .eq('type', 'usage')
-        .maybeSingle()
-
-      usedPoints = pointUsage ? Math.abs(pointUsage.points) : 0
-    }
+    const usedPoints = Math.max(0, Number(order.points_used || 0))
 
     const { error: updateError } = await supabase
       .from('orders')
@@ -122,6 +112,14 @@ export async function POST(request: NextRequest) {
       .eq('id', orderId)
 
     if (updateError) {
+      if (paymentKey) {
+        console.error('[orders/lookup/cancel] toss cancelled but order update failed', {
+          orderId,
+          userId,
+          paymentKey,
+          error: updateError,
+        })
+      }
       return NextResponse.json(
         {
           error: '주문 취소 처리에 실패했습니다.',
@@ -130,17 +128,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    let pointResult: Awaited<ReturnType<typeof handleOrderCancellationPoints>> | null = null
     if (userId) {
-      await handleOrderCancellationPoints(
+      pointResult = await handleOrderCancellationPoints(
         userId,
         orderId,
         order.total_amount,
-        usedPoints
+        usedPoints,
+        supabase,
+        order.order_number ?? null
       )
+      if (pointResult.status !== 'success') {
+        console.error('[orders/lookup/cancel] point recovery needed', {
+          orderId,
+          userId,
+          pointResult,
+        })
+      }
+    }
+
+    const pointErrors = pointResult ? [...pointResult.errors] : []
+    const pointStatus =
+      !pointResult
+        ? 'ok'
+        : pointResult.status === 'success'
+          ? 'ok'
+          : 'needs_recovery'
+    if (pointStatus === 'needs_recovery') {
+      console.error('[orders/lookup/cancel] point recovery needed', {
+        orderId,
+        userId,
+        pointResult: pointResult ? { ...pointResult, errors: pointErrors } : null,
+      })
     }
 
     return NextResponse.json({
       success: true,
+      orderCancelled: true,
+      pointStatus,
+      points: pointResult
+        ? {
+            deducted: pointResult.deducted,
+            refunded: pointResult.refunded,
+            status: pointResult.status,
+            errors: pointErrors,
+          }
+        : null,
     })
   } catch (error: unknown) {
     return unknownErrorResponse('orders/lookup/cancel', error)

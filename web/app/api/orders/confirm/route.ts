@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
 
     // 포인트 적립 (최종 결제 금액의 1%)
     const pointsToAdd = Math.floor(Math.max(0, finalAmount) * 0.01)
+    const orderNumber = order.order_number || order.id.slice(0, 8)
     
     // 포인트가 0이어도 구매확정 기록을 남기기 위해 항상 addPoints 호출
     // (리뷰 작성 가능 여부 확인을 위해 point_history에 order_id가 필요)
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
       user.id,
       pointsToAdd,
       'purchase',
-      `주문 #${order.id} 구매확정 적립`,
+      `주문 #${orderNumber} 구매확정 적립`,
       order.id, // order_id 전달
       undefined,
       supabase
@@ -127,7 +128,6 @@ export async function POST(request: NextRequest) {
     // 포인트가 0보다 클 때만 알림 생성
     if (pointsToAdd > 0) {
       // 구매확정 포인트 적립 알림 생성
-      const orderNumber = order.order_number || order.id.slice(0, 8)
       const notificationTitle = `구매확정 ${pointsToAdd.toLocaleString()}P 적립`
       const notificationContent = `주문번호 ${orderNumber}가 구매확정이 되어 포인트가 적립되었습니다.`
 

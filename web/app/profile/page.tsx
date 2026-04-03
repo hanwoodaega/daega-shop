@@ -109,7 +109,6 @@ function ProfilePageContent() {
                     <option value={3}>3개월</option>
                     <option value={6}>6개월</option>
                     <option value={12}>1년</option>
-                    <option value={36}>3년</option>
                   </select>
                   <div className="flex-1 min-w-[200px] relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">

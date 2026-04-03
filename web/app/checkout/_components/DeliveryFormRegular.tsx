@@ -23,6 +23,7 @@ interface DeliveryFormRegularProps {
   isGuest?: boolean
   /** 선물 모드 등에서 기본 배송지 저장 UI 강제 숨김 */
   hideSaveAsDefaultOption?: boolean
+  onChangeAddressClick?: () => void
   onSearchAddress: () => void
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void
   onSaveAsDefaultChange: (checked: boolean) => void
@@ -40,6 +41,7 @@ export default function DeliveryFormRegular({
   saveAsDefaultAddress,
   isGuest = false,
   hideSaveAsDefaultOption = false,
+  onChangeAddressClick,
   onSearchAddress,
   onInputChange,
   onSaveAsDefaultChange,
@@ -101,7 +103,13 @@ export default function DeliveryFormRegular({
               </div>
               <button
                 type="button"
-                onClick={() => router.push('/profile/addresses')}
+                onClick={() => {
+                  if (onChangeAddressClick) {
+                    onChangeAddressClick()
+                    return
+                  }
+                  router.push('/profile/addresses')
+                }}
                 className="ml-4 px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition whitespace-nowrap"
               >
                 배송지 변경

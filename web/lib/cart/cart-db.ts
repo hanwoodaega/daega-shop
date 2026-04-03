@@ -136,6 +136,8 @@ const CART_LAST_SYNCED_USER_KEY = 'cart_last_synced_user_id'
 
 /** 이번 세션에서 bootstrap이 이미 장바구니를 세팅했으면 true. syncCartOnLogin 건너뛸 때 사용 */
 let bootstrapHasSetCartThisSession = false
+/** bootstrap includeSync=1 호출로 서버 장바구니 반영 중인지 여부 (로그인 직후 중복 GET 완화용) */
+let bootstrapCartSyncInFlight = false
 
 /** 삭제/비우기 시작 시 진행 중인 GET 장바구니 요청을 취소하기 위한 콜백 (레이스 방지: 늦게 도착한 GET이 0을 덮어쓰지 않도록) */
 let onAbortLoadCart: (() => void) | null = null
@@ -145,6 +147,18 @@ export function registerAbortLoadCart(fn: () => void): void {
 
 export function getBootstrapHasSetCartThisSession(): boolean {
   return bootstrapHasSetCartThisSession
+}
+
+export function markBootstrapCartSyncStart(): void {
+  bootstrapCartSyncInFlight = true
+}
+
+export function markBootstrapCartSyncDone(): void {
+  bootstrapCartSyncInFlight = false
+}
+
+export function getBootstrapCartSyncInFlight(): boolean {
+  return bootstrapCartSyncInFlight
 }
 
 /** persist와 동일한 키·포맷({ state, version })으로 즉시 저장. store.ts cart persist의 version과 맞출 것. */

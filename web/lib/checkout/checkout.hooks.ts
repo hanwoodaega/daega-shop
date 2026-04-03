@@ -114,7 +114,7 @@ export function useCheckout(options: UseCheckoutOptions) {
   const [currentStep, setCurrentStep] = useState(1)
 
   // Hooks
-  const { address: defaultAddress, loading: loadingDefaultAddress, hasDefaultAddress } = useDefaultAddress()
+  const { address: defaultAddress, loading: loadingDefaultAddress, hasDefaultAddress, reload: reloadDefaultAddress } = useDefaultAddress()
   const { profile: userProfile, loading: loadingUserProfile } = useUserProfile()
 
   // Derived values
@@ -1027,6 +1027,7 @@ export function useCheckout(options: UseCheckoutOptions) {
       handleSearchAddress,
       setTossWidgets,
       loadUserPoints,
+      reloadDefaultAddress,
       applyAddress,
       handleInputChange,
     },
