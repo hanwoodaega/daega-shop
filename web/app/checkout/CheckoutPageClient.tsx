@@ -349,7 +349,7 @@ function CheckoutPageContent() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         사용할 포인트
                       </label>
-                      <div className="flex gap-2">
+                      <div className="flex flex-nowrap items-stretch gap-2">
                         <input
                           type="text"
                           inputMode="numeric"
@@ -364,7 +364,7 @@ function CheckoutPageContent() {
                             const maxPoints = Math.min(userPoints, Math.max(0, afterCouponDiscount))
                             setUsedPoints(Math.min(parsed, maxPoints))
                           }}
-                          className="flex-1 px-1.5 py-1 text-sm placeholder:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          className="min-w-0 flex-1 px-1.5 py-1 text-sm placeholder:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="0"
                         />
                         <button
@@ -374,7 +374,7 @@ function CheckoutPageContent() {
                             setUsedPoints(maxPoints)
                             setUsedPointsInput(String(maxPoints))
                           }}
-                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium"
+                          className="shrink-0 whitespace-nowrap px-3 py-2 sm:px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium"
                         >
                           전액사용
                         </button>
