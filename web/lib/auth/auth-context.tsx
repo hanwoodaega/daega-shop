@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
 import { supabase, isSupabaseConfigured } from '../supabase/supabase'
-import { useCartStore, useWishlistStore } from '../store'
+import { useWishlistStore } from '../store'
+import { clearPendingGuestCheckout } from '../cart/pending-guest-checkout'
 import { clearCartSyncFlag, setCartItems } from '../cart/cart-db'
 import { setCartStorageUserId } from '../cart/cart-storage-key'
 import { deriveAuthState } from './auth-state'
@@ -50,27 +51,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const hasSyncedRef = useRef(false)
-  /** 세션당 cart/wishlist merge는 1회만. checkSession과 onAuthStateChange가 동시에 돌아가도 한 쪽만 보내도록 */
-  const bootstrapCartSentRef = useRef(false)
+  /** 세션당 deferred sync(`includeSync=1`) 호출은 1회만 — 서버 DB → 클라 덮어쓰기 */
+  const deferredBootstrapSyncSentRef = useRef(false)
   /** 동일 accessToken으로 bootstrap 중복 호출 방지 (in-flight promise 공유) */
   const bootstrapInFlightRef = useRef<Map<string, Promise<any>>>(new Map())
   /** includeSync=1 동기화는 로그인 후 백그라운드로 1회만 실행 */
   const deferredSyncInFlightRef = useRef<Map<string, Promise<void>>>(new Map())
   /** post-login finalize는 accessToken당 1회 */
   const finalizeInFlightRef = useRef<Map<string, Promise<void>>>(new Map())
-  /** bootstrap 중복 호출 시 "가장 마지막에 시작한 응답"만 setCartItems/setUser 반영. 응답 순서 비결정성 제거 */
+  /** runPostLoginBootstrap(includeSync=0) 중복 호출 시 최신 응답만 반영 */
   const bootstrapCallIdRef = useRef(0)
-  /** 적용한 bootstrap callId. hasSyncedRef(boolean)만 쓰면 먼저 도착한 응답이 true를 세워 최신 응답 적용이 막힘 → callId 비교로 "더 최신면 적용" */
-  const lastAppliedBootstrapIdRef = useRef(0)
   const currentUserRef = useRef<User | null>(null)
   const initialGetUserTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const runDeferredSync = async (
-    accessToken: string,
-    userId: string,
-    localCartItems: any[],
-    localWishlistItems: any[]
-  ) => {
+  const runDeferredSync = async (accessToken: string, userId: string) => {
     const existing = deferredSyncInFlightRef.current.get(accessToken)
     if (existing) {
       await existing
@@ -86,10 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({
-            cart: localCartItems,
-            wishlist: localWishlistItems,
-          }),
+          // 서버는 본문으로 merge하지 않음(includeSync=1 시 DB만 조회). 빈 객체로 충분.
+          body: JSON.stringify({}),
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok || data?.authenticated === false) return
@@ -121,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const runPostLoginBootstrap = async (
     session: { user?: User | null; access_token?: string | null },
-    options?: { includeCartForMerge?: boolean }
+    options?: { includeDeferredBootstrapSync?: boolean }
   ) => {
     try {
       const accessToken = typeof session?.access_token === 'string' ? session.access_token : ''
@@ -135,14 +127,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return await existing
       }
 
-      const requestedMerge = options?.includeCartForMerge !== false
-      const includeCartForMerge = requestedMerge && !bootstrapCartSentRef.current
-      if (includeCartForMerge) bootstrapCartSentRef.current = true
-      const localWishlistItems = includeCartForMerge ? useWishlistStore.getState().items : []
-      const localCartItems =
-        includeCartForMerge
-          ? useCartStore.getState().items.filter((item) => item.id?.startsWith('cart-'))
-          : []
+      const requestedSync = options?.includeDeferredBootstrapSync !== false
+      const includeDeferredServerSync = requestedSync && !deferredBootstrapSyncSentRef.current
+      if (includeDeferredServerSync) deferredBootstrapSyncSentRef.current = true
 
       const promise = (async () => {
         const res = await fetch('/api/auth/bootstrap?includeSync=0', {
@@ -180,8 +167,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       bootstrapInFlightRef.current.set(accessToken, promise)
       try {
         const result = await promise
-        if (includeCartForMerge && session.user?.id) {
-          void runDeferredSync(accessToken, session.user.id, localCartItems, localWishlistItems)
+        if (includeDeferredServerSync && session.user?.id) {
+          void runDeferredSync(accessToken, session.user.id)
         }
         return result
       } finally {
@@ -292,7 +279,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const session = localSession?.session
         const bootstrap = await runPostLoginBootstrap(
           { user: session?.user ?? null, access_token: session?.access_token ?? null },
-          { includeCartForMerge: !hasSyncedRef.current }
+          { includeDeferredBootstrapSync: !hasSyncedRef.current }
         )
         
         if (initialGetUserTimeoutRef.current) {
@@ -308,19 +295,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCartStorageUserId(newUser?.id ?? null)
         setUser(newUser)
         setLoading(false)
-
-        if (newUser && bootstrap.sync && myCallId > lastAppliedBootstrapIdRef.current) {
-          const cartItems = bootstrap.sync?.cart?.items
-          const wishlistItems = bootstrap.sync?.wishlist?.items
-          if (bootstrap.sync?.cart?.done && Array.isArray(cartItems)) {
-            setCartItems(cartItems, 'bootstrap')
-          }
-          if (bootstrap.sync?.wishlist?.done && Array.isArray(wishlistItems)) {
-            useWishlistStore.setState({ items: wishlistItems })
-          }
-          lastAppliedBootstrapIdRef.current = myCallId
-          hasSyncedRef.current = true
-        }
+        // 장바구니·찜은 runDeferredSync(includeSync=1)에서만 반영됨
       } catch (error) {
         console.error('서버 API 세션 확인 예외:', error)
         if (isMounted && initialGetUserTimeoutRef.current) {
@@ -350,26 +325,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const myCallId = ++bootstrapCallIdRef.current
           const bootstrap = await runPostLoginBootstrap(
             { user: session?.user ?? null, access_token: session?.access_token ?? null },
-            { includeCartForMerge: !hasSyncedRef.current }
+            { includeDeferredBootstrapSync: !hasSyncedRef.current }
           )
           if (myCallId !== bootstrapCallIdRef.current) return
           currentUserRef.current = bootstrap.user ?? null
           setCartStorageUserId(bootstrap.user?.id ?? null)
           setUser(bootstrap.user ?? null)
           setLoading(false)
-
-          if (bootstrap.user && bootstrap.sync && myCallId > lastAppliedBootstrapIdRef.current) {
-            const cartItems = bootstrap.sync?.cart?.items
-            const wishlistItems = bootstrap.sync?.wishlist?.items
-            if (bootstrap.sync?.cart?.done && Array.isArray(cartItems)) {
-              setCartItems(cartItems, 'bootstrap')
-            }
-            if (bootstrap.sync?.wishlist?.done && Array.isArray(wishlistItems)) {
-              useWishlistStore.setState({ items: wishlistItems })
-            }
-            lastAppliedBootstrapIdRef.current = myCallId
-            hasSyncedRef.current = true
-          }
         }
         return
       }
@@ -392,7 +354,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const myCallId = ++bootstrapCallIdRef.current
       const bootstrap = await runPostLoginBootstrap(
         { user: session?.user ?? null, access_token: session?.access_token ?? null },
-        { includeCartForMerge: !hasSyncedRef.current }
+        { includeDeferredBootstrapSync: !hasSyncedRef.current }
       )
       if (myCallId !== bootstrapCallIdRef.current) return
 
@@ -406,19 +368,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(newUser)
       setLoading(false)
 
-      if (newUser && bootstrap.sync && myCallId > lastAppliedBootstrapIdRef.current) {
-        const cartItems = bootstrap.sync?.cart?.items
-        const wishlistItems = bootstrap.sync?.wishlist?.items
-        if (bootstrap.sync?.cart?.done && Array.isArray(cartItems)) {
-          setCartItems(cartItems, 'bootstrap')
-        }
-        if (bootstrap.sync?.wishlist?.done && Array.isArray(wishlistItems)) {
-          useWishlistStore.setState({ items: wishlistItems })
-        }
-        lastAppliedBootstrapIdRef.current = myCallId
-        hasSyncedRef.current = true
-      }
-      
       if (justLoggedIn) {
         const accessToken = typeof session?.access_token === 'string' ? session.access_token : ''
         const nextPath = consumePostLoginNext() || '/'
@@ -430,8 +379,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (wasLoggedOut) {
         hasSyncedRef.current = false
-        bootstrapCartSentRef.current = false
-        lastAppliedBootstrapIdRef.current = 0
+        deferredBootstrapSyncSentRef.current = false
       }
     })
 
@@ -449,6 +397,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     if (!isSupabaseConfigured) return
     await supabase.auth.signOut()
+    clearPendingGuestCheckout()
     setCartStorageUserId(null)
     setUser(null)
     setCartItems([], 'signOut')

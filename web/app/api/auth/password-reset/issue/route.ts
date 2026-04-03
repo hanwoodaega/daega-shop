@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { generateToken, hashToken, normalizePhone, normalizeUsername } from '@/lib/auth/otp-utils'
+import { generateToken, hashToken, normalizePhone } from '@/lib/auth/otp-utils'
+import { canonicalUsername, isValidUsername, USERNAME_RULES_MESSAGE } from '@/lib/auth/username-rules'
 
 const RESET_TOKEN_MINUTES = 10
 
@@ -38,12 +39,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '인증 정보가 올바르지 않습니다.' }, { status: 400 })
     }
 
-    const normalizedUsername = normalizeUsername(String(username))
+    const u = canonicalUsername(username)
+    if (!isValidUsername(u)) {
+      return NextResponse.json({ error: USERNAME_RULES_MESSAGE }, { status: 400 })
+    }
     const { data: userProfile } = await supabaseAdmin
       .from('users')
       .select('id')
       .eq('phone', phoneNumber)
-      .eq('username_normalized', normalizedUsername)
+      .eq('username', u)
       .maybeSingle()
 
     if (!userProfile) {

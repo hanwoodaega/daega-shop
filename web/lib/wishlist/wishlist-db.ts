@@ -1,28 +1,5 @@
 // 위시리스트 서버 API 호출 (클라이언트)
 import { useWishlistStore } from '../store'
-import toast from 'react-hot-toast'
-
-// 서버 API에서 위시리스트 불러오기
-export async function loadWishlistFromDB(userId: string): Promise<string[]> {
-  try {
-    // 서버 API로 위시리스트 조회
-    const res = await fetch('/api/wishlist')
-    
-    if (!res.ok) {
-      if (res.status === 401 || res.status === 403) {
-        return []
-      }
-      console.error('위시리스트 조회 실패:', res.status)
-      return []
-    }
-    
-    const data = await res.json()
-    return data.items || []
-  } catch (error) {
-    console.error('위시리스트 조회 에러:', error)
-    return []
-  }
-}
 
 // 서버 API로 위시리스트에 추가
 export async function addToWishlistDB(userId: string, productId: string): Promise<boolean> {
@@ -110,28 +87,5 @@ export async function toggleWishlistDB(userId: string | null, productId: string)
   }
 
   return true
-}
-
-// 로그인 시 DB에서 불러와서 localStorage와 병합
-export async function syncWishlistOnLogin(userId: string): Promise<void> {
-  try {
-    const localItems = useWishlistStore.getState().items
-    const dbItems = await loadWishlistFromDB(userId)
-
-    // localStorage에만 있는 항목들을 DB에 추가
-    const itemsToAdd = localItems.filter(item => !dbItems.includes(item))
-    
-    for (const productId of itemsToAdd) {
-      await addToWishlistDB(userId, productId)
-    }
-
-    // DB + localStorage 병합 (중복 제거)
-    const mergedItems = Array.from(new Set([...dbItems, ...localItems]))
-    useWishlistStore.setState({ items: mergedItems })
-
-    // 동기화 알림 제거 (조용하게 동기화)
-  } catch (error) {
-    console.error('위시리스트 동기화 실패:', error)
-  }
 }
 

@@ -127,84 +127,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body = await request.json().catch(() => ({}))
-    const localCart = Array.isArray(body?.cart) ? body.cart : []
-    const localWishlist = Array.isArray(body?.wishlist) ? body.wishlist : []
-
+    // includeSync=1: 요청 본문은 사용하지 않음(과거 로컬 merge 제거됨). DB만 조회.
     const syncTask = async () => {
-      if (localWishlist.length > 0) {
-        const wishlistRows = localWishlist
-          .filter((id: any) => typeof id === 'string' && id.length > 0)
-          .map((productId: string) => ({ user_id: user.id, product_id: productId }))
-
-        if (wishlistRows.length > 0) {
-          await supabase
-            .from('wishlists')
-            .upsert(wishlistRows, { onConflict: 'user_id,product_id' })
-        }
-      }
-
-      if (localCart.length > 0) {
-        const { data: existingRows } = await supabase
-          .from('carts')
-          .select('id, product_id, quantity, promotion_group_id, discount_percent')
-          .eq('user_id', user.id)
-
-        const existingByKey = new Map<string, any>()
-        ;(existingRows || []).forEach((row: any) => {
-          const key = `${row.product_id}::${row.promotion_group_id || ''}`
-          existingByKey.set(key, row)
-        })
-
-        for (const item of localCart) {
-          const productId = item?.productId
-          const quantity = Number(item?.quantity || 0)
-          if (!productId || quantity <= 0) continue
-
-          const promotionGroupId = item?.promotion_group_id || null
-          const key = `${productId}::${promotionGroupId || ''}`
-          const existing = existingByKey.get(key)
-
-          if (existing) {
-            const newQty = (existing.quantity || 0) + quantity
-            await supabase
-              .from('carts')
-              .update({
-                quantity: newQty,
-                discount_percent: item?.discount_percent ?? existing.discount_percent ?? null,
-              })
-              .eq('id', existing.id)
-            existingByKey.set(key, { ...existing, quantity: newQty })
-          } else if (promotionGroupId) {
-            const { data: inserted } = await supabase
-              .from('carts')
-              .insert({
-                user_id: user.id,
-                product_id: productId,
-                quantity,
-                promotion_group_id: promotionGroupId,
-                promotion_type: item?.promotion_type || null,
-                discount_percent: item?.discount_percent ?? null,
-              })
-              .select('id, product_id, quantity, promotion_group_id')
-              .single()
-            if (inserted) existingByKey.set(key, inserted)
-          } else {
-            const { data: inserted } = await supabase
-              .from('carts')
-              .insert({
-                user_id: user.id,
-                product_id: productId,
-                quantity,
-                discount_percent: item?.discount_percent ?? null,
-              })
-              .select('id, product_id, quantity, promotion_group_id')
-              .single()
-            if (inserted) existingByKey.set(key, inserted)
-          }
-        }
-      }
-
       const cartItems = await fetchCartItemsForUser(supabase, user.id)
       const { data: wishlistRows } = await supabase
         .from('wishlists')

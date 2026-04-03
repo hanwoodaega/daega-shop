@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { normalizeUsername } from '@/lib/auth/otp-utils'
+import {
+  canonicalUsername,
+  isValidUsername,
+  USERNAME_RULES_MESSAGE,
+} from '@/lib/auth/username-rules'
 import { getClientIpFromHeaders, rateLimitOrThrow } from '@/lib/auth/rate-limit'
 
 export async function POST(request: NextRequest) {
@@ -16,16 +20,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '아이디를 입력해주세요.' }, { status: 400 })
     }
 
-    const normalized = normalizeUsername(String(username))
-    if (normalized.length < 6) {
-      return NextResponse.json({ error: '아이디는 최소 6자 이상이어야 합니다.' }, { status: 400 })
+    const u = canonicalUsername(username)
+    if (!isValidUsername(u)) {
+      return NextResponse.json({ error: USERNAME_RULES_MESSAGE }, { status: 400 })
     }
 
     const supabaseAdmin = createSupabaseAdminClient()
     const { data: existingUser, error } = await supabaseAdmin
       .from('users')
       .select('id')
-      .eq('username_normalized', normalized)
+      .eq('username', u)
       .maybeSingle()
 
     if (error) {

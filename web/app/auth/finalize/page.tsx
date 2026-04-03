@@ -3,6 +3,10 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/supabase'
+import {
+  clearPendingGuestCheckout,
+  isCheckoutRedirectPath,
+} from '@/lib/cart/pending-guest-checkout'
 
 function FinalizeContent() {
   const router = useRouter()
@@ -25,10 +29,14 @@ function FinalizeContent() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
+        clearPendingGuestCheckout()
         setError(data?.error || '로그인 상태를 확인할 수 없습니다.')
         return
       }
       const redirectTo = typeof data?.redirectTo === 'string' ? data.redirectTo : '/'
+      if (!isCheckoutRedirectPath(redirectTo)) {
+        clearPendingGuestCheckout()
+      }
       router.replace(redirectTo)
     }
 

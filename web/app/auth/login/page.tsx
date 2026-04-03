@@ -7,6 +7,11 @@ import { supabase } from '@/lib/supabase/supabase'
 import { mutateUnreadCount } from '@/lib/swr'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+import { sanitizeUsernameInput } from '@/lib/auth/username-rules'
+import {
+  clearPendingGuestCheckout,
+  isCheckoutRedirectPath,
+} from '@/lib/cart/pending-guest-checkout'
 
 function LoginForm() {
   const router = useRouter()
@@ -29,6 +34,14 @@ function LoginForm() {
     const replaceUrl = cleanSearch ? `?${cleanSearch}` : window.location.pathname
     window.history.replaceState(null, '', replaceUrl)
   }, [fromSignup, searchParams])
+
+  /** 결제로 이어지지 않는 로그인 화면이면 비회원 주문 stash 제거 (헤더 등에서 /checkout 없이 들어온 경우) */
+  useEffect(() => {
+    const next = searchParams.get('next')
+    if (!isCheckoutRedirectPath(next)) {
+      clearPendingGuestCheckout()
+    }
+  }, [searchParams])
 
   useEffect(() => {
     let isMounted = true
@@ -258,11 +271,11 @@ function LoginForm() {
           <h2 className="text-3xl font-bold text-center mb-8 text-primary-900">로그인</h2>
 
             {showSignupSuccess && (
-              <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg text-sm flex items-start gap-2">
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-800 rounded-lg text-sm flex items-start gap-2">
                 <span className="flex-shrink-0 mt-0.5" aria-hidden>✓</span>
                 <div className="flex-1">
-                  <p className="font-medium">회원가입이 완료되었습니다.</p>
-                  <p className="mt-1 text-green-700">아래에서 로그인해주세요.</p>
+                  <p className="font-medium leading-tight">회원가입이 완료되었습니다.</p>
+                  <p className="mt-0.5 text-green-700 leading-tight">아래에서 로그인해주세요.</p>
                 </div>
                 <button
                   type="button"
@@ -287,7 +300,7 @@ function LoginForm() {
                 <input
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => setUsername(sanitizeUsernameInput(e.target.value))}
                   required
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
                   placeholder="아이디를 입력해주세요"

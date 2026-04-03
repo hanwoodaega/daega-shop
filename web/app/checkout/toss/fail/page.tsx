@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { clearPendingGuestCheckout } from '@/lib/cart/pending-guest-checkout'
 
 const USER_CANCEL_CODES = ['PAY_PROCESS_CANCELED', 'USER_CANCEL', 'REJECTED_PAYMENT']
 
@@ -13,6 +14,7 @@ function TossFailContent() {
   const [isUserCancel, setIsUserCancel] = useState(false)
 
   useEffect(() => {
+    clearPendingGuestCheckout()
     const errorMessage = searchParams.get('message')
     const errorCode = searchParams.get('code')
     const orderId = searchParams.get('orderId')

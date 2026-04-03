@@ -8,6 +8,12 @@ import Header from '@/components/layout/Header'
 import { supabase } from '@/lib/supabase/supabase'
 import { sanitizeOtpCodeInput } from '@/lib/phone/kr'
 import { formatPhoneDisplay, parsePhoneInput, extractPhoneNumbers } from '@/lib/utils/format-phone'
+import {
+  sanitizeUsernameInput,
+  USERNAME_MIN_LEN,
+  isValidUsername,
+  USERNAME_RULES_MESSAGE,
+} from '@/lib/auth/username-rules'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -58,17 +64,22 @@ export default function SignupPage() {
   }, [cooldown])
 
   useEffect(() => {
-    const trimmed = username.trim()
-    if (!trimmed) {
+    if (!username) {
       setUsernameStatus('idle')
       setCheckedUsername('')
       setUsernameMessage('')
       return
     }
-    if (trimmed.length < 6) {
+    if (username.length < USERNAME_MIN_LEN) {
       setUsernameStatus('invalid')
       setCheckedUsername('')
-      setUsernameMessage('아이디는 최소 6자 이상이어야 합니다.')
+      setUsernameMessage(`아이디는 최소 ${USERNAME_MIN_LEN}자 이상이어야 합니다.`)
+      return
+    }
+    if (!isValidUsername(username)) {
+      setUsernameStatus('invalid')
+      setCheckedUsername('')
+      setUsernameMessage(USERNAME_RULES_MESSAGE)
       return
     }
     setUsernameStatus('checking')
@@ -78,7 +89,7 @@ export default function SignupPage() {
         const res = await fetch('/api/auth/check-username', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: trimmed }),
+          body: JSON.stringify({ username }),
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
@@ -86,7 +97,7 @@ export default function SignupPage() {
         }
         if (data?.available) {
           setUsernameStatus('available')
-          setCheckedUsername(trimmed)
+          setCheckedUsername(username)
           setUsernameMessage('사용 가능한 아이디입니다.')
         } else {
           setUsernameStatus('taken')
@@ -145,10 +156,10 @@ export default function SignupPage() {
     setLoading(true)
 
     try {
-      if (username.trim().length < 6) {
-        throw new Error('아이디는 최소 6자 이상이어야 합니다.')
+      if (!isValidUsername(username)) {
+        throw new Error(USERNAME_RULES_MESSAGE)
       }
-      if (usernameStatus !== 'available' || username.trim() !== checkedUsername) {
+      if (usernameStatus !== 'available' || username !== checkedUsername) {
         throw new Error('아이디 중복 확인을 해주세요.')
       }
       const res = await fetch('/api/auth/send-verification-code', {
@@ -157,7 +168,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           phone,
           purpose: 'signup',
-          username: username.trim(),
+          username,
         }),
       })
 
@@ -233,7 +244,7 @@ export default function SignupPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: username.trim(),
+          username,
           password,
           name: name.trim() || null,
           phone,
@@ -296,11 +307,11 @@ export default function SignupPage() {
                   <input
                     type="text"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(e) => setUsername(sanitizeUsernameInput(e.target.value))}
                     required
                     autoComplete="username"
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-900 placeholder:text-gray-400"
-                    placeholder="아이디 입력"
+                    placeholder="아이디를 입력해주세요"
                   />
                   {usernameMessage && (
                     <p
@@ -323,7 +334,7 @@ export default function SignupPage() {
                     required
                     autoComplete="new-password"
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-900 placeholder:text-gray-400"
-                    placeholder="비밀번호 입력"
+                    placeholder="비밀번호를 입력해주세요"
                   />
                 </div>
               </div>
@@ -351,29 +362,29 @@ export default function SignupPage() {
                     autoComplete="name"
                     required
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-900 placeholder:text-gray-400"
-                    placeholder="이름 입력"
+                    placeholder="이름을 입력해주세요"
                   />
                 </div>
               </div>
               <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4">
                 <label className="text-sm font-medium text-gray-700 shrink-0 lg:w-28 pt-0.5">휴대폰 번호</label>
-                <div className="flex-1 min-w-0 flex flex-col sm:flex-row gap-2 sm:items-center">
+                <div className="flex-1 min-w-0 flex flex-row items-center gap-2">
                   <input
                     type="tel"
                     value={formatPhoneDisplay(phone)}
                     onChange={(e) => setPhone(parsePhoneInput(e.target.value))}
                     required
                     autoComplete="tel"
-                    className="flex-1 min-w-0 w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-900 placeholder:text-gray-400"
+                    className="min-w-0 flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-900 placeholder:text-gray-400"
                     placeholder="휴대폰 번호를 입력해주세요"
                     maxLength={13}
                   />
                   <button
                     type="button"
                     onClick={handleSendCode}
-                    disabled={loading || username.trim().length < 6 || extractPhoneNumbers(phone).length < 10}
-                    className={`w-full sm:w-auto flex-shrink-0 px-3 py-2.5 rounded-lg font-semibold transition disabled:opacity-50 whitespace-nowrap border ${
-                      loading || username.trim().length < 6 || extractPhoneNumbers(phone).length < 10
+                    disabled={loading || !isValidUsername(username) || extractPhoneNumbers(phone).length < 10}
+                    className={`flex-shrink-0 px-3 py-2.5 rounded-lg font-semibold transition disabled:opacity-50 whitespace-nowrap border ${
+                      loading || !isValidUsername(username) || extractPhoneNumbers(phone).length < 10
                         ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
                         : 'border-blue-900 bg-blue-900 text-white hover:bg-blue-950'
                     }`}
@@ -422,18 +433,18 @@ export default function SignupPage() {
               </div>
               <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4">
                 <label className="text-sm font-medium text-gray-700 shrink-0 lg:w-28 pt-0.5">휴대폰 번호</label>
-                <div className="flex-1 min-w-0 flex flex-col sm:flex-row gap-2 sm:items-center">
+                <div className="flex-1 min-w-0 flex flex-row items-center gap-2">
                   <input
                     type="tel"
                     value={formatPhoneDisplay(phone)}
                     readOnly
-                    className="flex-1 min-w-0 w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-700"
+                    className="min-w-0 flex-1 px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-700"
                   />
                   <button
                     type="button"
                     onClick={handleSendCode}
                     disabled={loading}
-                    className={`w-full sm:w-auto flex-shrink-0 px-3 py-2.5 rounded-lg font-semibold transition disabled:opacity-50 whitespace-nowrap border ${
+                    className={`flex-shrink-0 px-3 py-2.5 rounded-lg font-semibold transition disabled:opacity-50 whitespace-nowrap border ${
                       loading
                         ? 'border-gray-300 text-gray-700 hover:bg-gray-50'
                         : 'border-blue-900 bg-blue-900 text-white hover:bg-blue-950'
@@ -453,28 +464,39 @@ export default function SignupPage() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  {otpVerified ? (
-                    <p className="text-gray-700 font-medium">인증완료</p>
-                  ) : (
-                    <>
-                      <input
-                        type="text"
-                        value={verificationCode}
-                        onChange={(e) => setVerificationCode(sanitizeOtpCodeInput(e.target.value))}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600 placeholder:text-gray-400"
-                        placeholder="6자리 숫자"
-                        maxLength={6}
-                      />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={verificationCode}
+                    onChange={(e) => {
+                      if (otpVerified) return
+                      setVerificationCode(sanitizeOtpCodeInput(e.target.value))
+                    }}
+                    readOnly={otpVerified}
+                    className={`w-full px-4 py-2.5 border rounded-lg placeholder:text-gray-400 ${
+                      otpVerified
+                        ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                        : 'border-gray-300 focus:outline-none focus:border-red-600'
+                    }`}
+                    placeholder="6자리 숫자"
+                    maxLength={6}
+                  />
+                  <div className="mt-2 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    {!otpVerified && (
                       <button
                         type="button"
                         onClick={handleVerifyOtp}
                         disabled={loading || verificationCode.length !== 6}
-                        className="mt-2 w-full sm:w-auto px-3 py-2.5 rounded-lg font-semibold transition disabled:opacity-50 whitespace-nowrap border border-blue-900 bg-blue-900 text-white hover:bg-blue-950 disabled:bg-gray-300 disabled:border-gray-300 disabled:text-gray-500"
+                        className="w-full sm:w-auto px-3 py-2.5 rounded-lg font-semibold transition disabled:opacity-50 whitespace-nowrap border border-blue-900 bg-blue-900 text-white hover:bg-blue-950 disabled:bg-gray-300 disabled:border-gray-300 disabled:text-gray-500"
                       >
                         {loading ? '인증 중...' : '인증 완료'}
                       </button>
-                    </>
-                  )}
+                    )}
+                    {otpVerified && (
+                      <p className="w-full text-right text-sm font-medium text-green-600">인증완료</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -482,9 +504,9 @@ export default function SignupPage() {
 
           {/* 약관 동의 */}
           <div className="mt-8 pt-6 border-t border-gray-200">
-            <div className="flex flex-col lg:flex-row lg:items-start gap-2 lg:gap-4">
-              <div className="shrink-0 lg:w-28 lg:pt-0.5">
-                <h3 className="text-sm font-medium text-gray-700">이용약관동의</h3>
+            <div className="flex flex-col lg:flex-row lg:items-start gap-3 lg:gap-4">
+              <div className="shrink-0 lg:w-28 lg:pt-0.5 mb-2 lg:mb-0">
+                <h3 className="text-base font-medium text-gray-700">이용약관동의</h3>
               </div>
               <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="py-1">

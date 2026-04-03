@@ -9,6 +9,8 @@ interface LoginPromptModalProps {
   onGuestCheckout?: () => void
   /** 로그인 후 리다이렉트할 URL (제공 시에만 next 사용) */
   loginNextUrl?: string
+  /** 로그인 페이지로 가기 직전 (예: 비회원 장바구니 줄 sessionStorage 저장) */
+  onBeforeLogin?: () => void
 }
 
 export default function LoginPromptModal({
@@ -16,6 +18,7 @@ export default function LoginPromptModal({
   onClose,
   onGuestCheckout,
   loginNextUrl,
+  onBeforeLogin,
 }: LoginPromptModalProps) {
   const router = useRouter()
 
@@ -27,6 +30,7 @@ export default function LoginPromptModal({
   }
 
   const handleLogin = () => {
+    onBeforeLogin?.()
     if (loginNextUrl) {
       router.push(`/auth/login?next=${encodeURIComponent(loginNextUrl)}`)
     } else {

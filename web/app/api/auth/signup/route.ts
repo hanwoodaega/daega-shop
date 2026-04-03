@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
-import { hashToken, normalizePhone, normalizeUsername, usernameToEmail } from '@/lib/auth/otp-utils'
+import { hashToken, normalizePhone, usernameToEmail } from '@/lib/auth/otp-utils'
+import {
+  canonicalUsername,
+  isValidUsername,
+  USERNAME_RULES_MESSAGE,
+} from '@/lib/auth/username-rules'
 import { issuePhoneVerificationCoupon } from '@/lib/coupon/coupon-issue.server'
 import { getClientIpFromHeaders, rateLimitOrThrow } from '@/lib/auth/rate-limit'
 import { buildServerTimingHeader } from '@/lib/utils/server-timing'
@@ -55,10 +60,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '인증 정보가 올바르지 않습니다.' }, { status: 400 })
     }
 
-    const trimmedUsername = String(username).trim()
-    const normalizedUsername = normalizeUsername(trimmedUsername)
-    if (trimmedUsername.length < 6) {
-      return NextResponse.json({ error: '아이디는 최소 6자 이상이어야 합니다.' }, { status: 400 })
+    const usernameFinal = canonicalUsername(username)
+    if (!isValidUsername(usernameFinal)) {
+      return NextResponse.json({ error: USERNAME_RULES_MESSAGE }, { status: 400 })
     }
 
     const tPhoneCheck = Date.now()
@@ -66,7 +70,7 @@ export async function POST(request: NextRequest) {
     const { data: existingUsername } = await supabaseAdmin
       .from('users')
       .select('id')
-      .eq('username_normalized', normalizedUsername)
+      .eq('username', usernameFinal)
       .maybeSingle()
     const tUserCheck = Date.now()
 
@@ -74,7 +78,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '이미 사용 중인 아이디입니다.' }, { status: 409 })
     }
 
-    const email = usernameToEmail(trimmedUsername)
+    const email = usernameToEmail(usernameFinal)
 
     const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -82,7 +86,7 @@ export async function POST(request: NextRequest) {
       email_confirm: true,
       user_metadata: {
         provider: 'phone',
-        username: trimmedUsername,
+        username: usernameFinal,
         name,
         phone: normalizedPhone,
       },
@@ -101,8 +105,7 @@ export async function POST(request: NextRequest) {
         name,
         phone: normalizedPhone,
         phone_verified_at: nowIso,
-        username: trimmedUsername,
-        username_normalized: normalizedUsername,
+        username: usernameFinal,
         status: 'active',
       }, { onConflict: 'id' })
     const tUpsert = Date.now()
@@ -111,7 +114,7 @@ export async function POST(request: NextRequest) {
       const message = String(profileError.message || '')
       const code = String(profileError.code || '')
       if (code === '23505' || message.includes('unique')) {
-        if (message.includes('users_username_unique') || message.includes('users_username_normalized_unique')) {
+        if (message.includes('users_username_unique')) {
           return NextResponse.json({ error: '이미 사용 중인 아이디입니다.' }, { status: 409 })
         }
       }

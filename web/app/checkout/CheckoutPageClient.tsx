@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Header from '@/components/layout/Header'
@@ -11,6 +11,8 @@ import { useAuth } from '@/lib/auth/auth-context'
 import { useDaumPostcodeScript } from '@/lib/postcode/useDaumPostcode'
 import { Coupon } from '@/lib/supabase/supabase'
 import { useCheckout } from '@/lib/checkout'
+import { consumePendingGuestCheckout } from '@/lib/cart/pending-guest-checkout'
+import { useDirectPurchaseStore } from '@/lib/store'
 import {
   CheckoutHeader,
   CouponModal,
@@ -30,7 +32,17 @@ function CheckoutPageContent() {
   const searchParams = useSearchParams()
   const { user } = useAuth()
   const isGiftMode = searchParams.get('mode') === 'gift'
-  
+
+  /** 첫 렌더에서만: 장바구니→로그인→결제로 온 비회원 선택 줄을 직접구매로 넣음 (useCheckout보다 먼저) */
+  const guestCheckoutHydrated = useRef(false)
+  if (typeof window !== 'undefined' && !guestCheckoutHydrated.current) {
+    guestCheckoutHydrated.current = true
+    const pending = consumePendingGuestCheckout()
+    if (pending && pending.length > 0) {
+      useDirectPurchaseStore.getState().setItems(pending)
+    }
+  }
+
   const { state, actions, derived } = useCheckout({ isGiftMode })
   
   const {

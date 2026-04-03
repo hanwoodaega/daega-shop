@@ -186,8 +186,7 @@ export function clearCartSyncFlag(): void {
 }
 
 /**
- * 로그인 후 서버 장바구니로 덮어쓰기만 수행. merge는 bootstrap 한 곳에서만.
- * (규칙 B: 동기화는 로그인 순간 merge 1회, 그 외에는 서버 → 클라 덮어쓰기만)
+ * 로그인 후 서버 장바구니로 덮어쓰기만 수행. 로컬→DB 병합은 하지 않음(bootstrap 동일).
  * signal: 삭제 시 진행 중인 동기화 GET 취소용
  */
 export async function syncCartOnLogin(userId: string, signal?: AbortSignal): Promise<void> {

@@ -7,6 +7,7 @@ import Footer from '@/components/layout/Footer'
 import Header from '@/components/layout/Header'
 import { sanitizeOtpCodeInput } from '@/lib/phone/kr'
 import { formatPhoneDisplay, parsePhoneInput, extractPhoneNumbers } from '@/lib/utils/format-phone'
+import { sanitizeUsernameInput, isValidUsername } from '@/lib/auth/username-rules'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -61,7 +62,7 @@ export default function FindPasswordPage() {
       const res = await fetch('/api/auth/send-verification-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, purpose: 'reset_pw', username: username.trim() }),
+        body: JSON.stringify({ phone, purpose: 'reset_pw', username }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -96,7 +97,7 @@ export default function FindPasswordPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone,
-          username: username.trim(),
+          username,
           verificationToken: verifyData.verificationToken,
         }),
       })
@@ -171,9 +172,9 @@ export default function FindPasswordPage() {
                 <input
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => setUsername(sanitizeUsernameInput(e.target.value))}
                   className="w-full lg:max-w-xs px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
-                  placeholder="아이디를 입력해주세요."
+                  placeholder="아이디 입력"
                 />
               </div>
               <div className="flex flex-col items-center">
@@ -200,7 +201,7 @@ export default function FindPasswordPage() {
                   <button
                     type="button"
                     onClick={sendCode}
-                    disabled={loading || username.trim().length < 6 || extractPhoneNumbers(phone).length < 10}
+                    disabled={loading || !isValidUsername(username) || extractPhoneNumbers(phone).length < 10}
                     className="w-full sm:w-auto flex-shrink-0 px-4 py-2.5 rounded-lg font-semibold transition whitespace-nowrap disabled:opacity-50 disabled:bg-gray-100 disabled:border disabled:border-gray-300 disabled:text-gray-700 bg-blue-900 text-white hover:bg-blue-950"
                   >
                     인증 요청
@@ -241,7 +242,7 @@ export default function FindPasswordPage() {
                   <button
                     type="button"
                     onClick={sendCode}
-                    disabled={loading || username.trim().length < 6 || extractPhoneNumbers(phone).length < 10}
+                    disabled={loading || !isValidUsername(username) || extractPhoneNumbers(phone).length < 10}
                     className="w-full sm:w-auto flex-shrink-0 px-4 py-2.5 rounded-lg font-semibold transition whitespace-nowrap disabled:opacity-50 disabled:bg-gray-100 disabled:border disabled:border-gray-300 disabled:text-gray-700 bg-blue-900 text-white hover:bg-blue-950"
                   >
                     인증 요청

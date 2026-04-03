@@ -51,6 +51,7 @@ function CartPageContent() {
     setShowAddressModal,
     setSelectedAddressId,
     closeLoginPrompt,
+    stashGuestCheckoutIntent,
     handleSelectAddress,
     confirmAddressSelection,
     handleCheckout,
@@ -241,7 +242,8 @@ function CartPageContent() {
         show={showLoginPrompt}
         onClose={closeLoginPrompt}
         onGuestCheckout={() => handleGuestCheckout(serverPricing?.discountedTotal)}
-        loginNextUrl="/cart"
+        loginNextUrl="/checkout"
+        onBeforeLogin={stashGuestCheckoutIntent}
       />
 
       <Footer />

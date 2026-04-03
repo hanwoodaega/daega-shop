@@ -7,9 +7,10 @@ import { formatPrice } from '@/lib/utils/utils'
 import { useIsMobile } from '@/lib/device/useDevice'
 import { useDefaultAddress, useAddresses } from '@/lib/address/useAddress'
 import { useCartRealtimeSync } from '@/lib/cart/useCartRealtimeSync'
+import { stashPendingGuestCheckout } from '@/lib/cart/pending-guest-checkout'
 import { validateCheckout } from '@/lib/cart/checkout-validator'
-import { isSoldOut } from '@/lib/product/product-utils'
-import { removeCartItemWithDB, updateCartQuantityWithDB } from '@/lib/cart/cart-db'
+import { isDeleted, isSoldOut } from '@/lib/product/product-utils'
+import { removeCartItemWithDB, updateCartQuantityWithDB, setCartItems, removeFromCartDB } from '@/lib/cart/cart-db'
 import { DeliveryMethod } from './cart.types'
 
 export function useCart() {
@@ -56,6 +57,30 @@ export function useCart() {
   const productIdsString = productIds.join(',')
   useCartRealtimeSync(user?.id, productIdsString)
 
+  /** 삭제된 상품은 목록에서 제거(로컬·DB). 로그인 시 API는 이미 제외하지만, 비회원·오래된 스토어 대비 */
+  useEffect(() => {
+    const deletedItems = items.filter((i) => isDeleted(i.status))
+    if (deletedItems.length === 0) return
+
+    const next = items.filter((i) => !isDeleted(i.status))
+    setCartItems(next, 'pruneDeleted')
+
+    if (user?.id) {
+      const seen = new Set<string>()
+      for (const item of deletedItems) {
+        const key = item.promotion_group_id ? `g:${item.promotion_group_id}` : `i:${item.id}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        if (item.id) {
+          void removeFromCartDB(user.id, {
+            cartId: item.id,
+            promotionGroupId: item.promotion_group_id,
+          })
+        }
+      }
+    }
+  }, [items, user?.id])
+
   // Computed
   const allSelected = useMemo(
     () => items.length > 0 && items.every((item) => item.selected !== false),
@@ -68,6 +93,7 @@ export function useCart() {
     const soldOutItems: typeof items = []
     
     items.forEach(item => {
+      if (isDeleted(item.status)) return
       if (isSoldOut(item.status)) {
         soldOutItems.push(item)
         return
@@ -180,6 +206,11 @@ export function useCart() {
     setShowLoginPrompt(false)
   }, [])
 
+  /** 장바구니에서 로그인하기 직전: 선택 줄을 결제용으로만 보관 (계정 장바구니 DB와 분리) */
+  const stashGuestCheckoutIntent = useCallback(() => {
+    stashPendingGuestCheckout(getSelectedItems())
+  }, [getSelectedItems])
+
   return {
     // State
     mounted,
@@ -210,6 +241,7 @@ export function useCart() {
     setShowAddressModal,
     setSelectedAddressId,
     closeLoginPrompt,
+    stashGuestCheckoutIntent,
     handleSelectAddress,
     confirmAddressSelection,
     handleCheckout,

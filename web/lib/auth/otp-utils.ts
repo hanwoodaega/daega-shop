@@ -8,10 +8,6 @@ export function normalizePhone(phone: string) {
   return phoneDigitsOnly(phone)
 }
 
-export function normalizeUsername(username: string) {
-  return username.replace(/\s+/g, '').toLowerCase()
-}
-
 export function generateOtpCode() {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabase } from './supabase/supabase'
 import { getCartStorageKey } from './cart/cart-storage-key'
+import { isActive } from './product/product-utils'
 
 export interface CartItem {
   id?: string  // 장바구니 아이템 고유 ID
@@ -148,10 +149,9 @@ export const useCartStore = create<CartStore>()(
       getSelectedItems: () => {
         return get().items.filter((item) => item.selected !== false && item.status !== 'soldout' && item.status !== 'deleted')
       },
+      /** 헤더 배지: 판매중(active) 줄만 — 상품 종류(줄) 개수, 수량 합 아님 */
       getTotalItems: () => {
-        const items = get().items.filter(item => item.status !== 'soldout' && item.status !== 'deleted')
-        // 구매 가능한 상품만 카운트 (품절/삭제 제외)
-        return items.reduce((total, item) => total + item.quantity, 0)
+        return get().items.filter((item) => isActive(item.status ?? 'active')).length
       },
     }),
     {

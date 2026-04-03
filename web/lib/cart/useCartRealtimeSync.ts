@@ -12,8 +12,8 @@ import { getCartStorageKey } from '@/lib/cart/cart-storage-key'
 
 /**
  * 장바구니 실시간 동기화 Hook
- * - 로그인 직후: localStorage(비로그인) 장바구니를 DB에 병합 후 표시
- * - 포커스/Realtime: DB 기준으로 갱신
+ * - 비회원: localStorage 줄 + 상품 상세 API로 표시 갱신(가격·품절 등)
+ * - 로그인: syncCartOnLogin 또는 bootstrap 이후 loadCartFromDB로 서버 장바구니 표시, 포커스 시 재조회
  */
 export function useCartRealtimeSync(userId: string | undefined, productIdsString: string) {
   const channelRef = useRef<any>(null)
@@ -54,7 +54,10 @@ export function useCartRealtimeSync(userId: string | undefined, productIdsString
         if (!Array.isArray(details)) return
         const detailByProductId = new Map(details.map((d: any) => [d.productId, d]))
         const merged = items
-          .filter((item: any) => detailByProductId.has(item.productId))
+          .filter((item: any) => {
+            const d = detailByProductId.get(item.productId)
+            return d && d.status !== 'deleted'
+          })
           .map((item: any) => {
             const d = detailByProductId.get(item.productId)!
             return {

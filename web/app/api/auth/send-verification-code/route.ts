@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/supabase-server'
 import { getUserFromServer } from '@/lib/auth/auth-server'
-import { generateOtpCode, hashOtp, normalizePhone, normalizeUsername } from '@/lib/auth/otp-utils'
+import { generateOtpCode, hashOtp, normalizePhone } from '@/lib/auth/otp-utils'
+import {
+  canonicalUsername,
+  isValidUsername,
+  USERNAME_RULES_MESSAGE,
+} from '@/lib/auth/username-rules'
 import { sendOtpSms } from '@/lib/notifications'
 import { getClientIpFromHeaders, rateLimitOrThrow } from '@/lib/auth/rate-limit'
 import { unknownErrorResponse } from '@/lib/api/api-errors'
@@ -57,14 +62,14 @@ export async function POST(request: NextRequest) {
       }
 
       if (username) {
-        const normalizedUsername = normalizeUsername(String(username))
-        if (normalizedUsername.length < 6) {
-          return NextResponse.json({ error: '아이디는 최소 6자 이상이어야 합니다.' }, { status: 400 })
+        const u = canonicalUsername(username)
+        if (!isValidUsername(u)) {
+          return NextResponse.json({ error: USERNAME_RULES_MESSAGE }, { status: 400 })
         }
         const { data: existingUsername } = await supabaseAdmin
           .from('users')
           .select('id')
-          .eq('username_normalized', normalizedUsername)
+          .eq('username', u)
           .maybeSingle()
 
         if (existingUsername) {
@@ -79,7 +84,7 @@ export async function POST(request: NextRequest) {
     if (purpose === 'find_id') {
       const { data: existingUser } = await supabaseAdmin
         .from('users')
-        .select('id, username_normalized')
+        .select('id, username')
         .eq('phone', phoneNumber)
         .maybeSingle()
 
@@ -87,7 +92,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: '가입된 계정이 없습니다.' }, { status: 404 })
       }
 
-      if (!existingUser.username_normalized) {
+      if (!existingUser.username) {
         return NextResponse.json({ error: '일치하는 사용자 정보가 없습니다.' }, { status: 404 })
       }
     }
@@ -96,21 +101,16 @@ export async function POST(request: NextRequest) {
       if (!username) {
         return NextResponse.json({ error: '아이디가 필요합니다.' }, { status: 400 })
       }
-      const normalizedUsername = normalizeUsername(String(username))
-      if (normalizedUsername.length < 6) {
-        return NextResponse.json({ error: '아이디는 최소 6자 이상이어야 합니다.' }, { status: 400 })
+      const u = canonicalUsername(username)
+      if (!isValidUsername(u)) {
+        return NextResponse.json({ error: USERNAME_RULES_MESSAGE }, { status: 400 })
       }
-      const { data: phoneUser } = await supabaseAdmin
-        .from('users')
-        .select('id, username_normalized')
-        .eq('phone', phoneNumber)
-        .maybeSingle()
 
       const { data: existingUser } = await supabaseAdmin
         .from('users')
         .select('id')
         .eq('phone', phoneNumber)
-        .eq('username_normalized', normalizedUsername)
+        .eq('username', u)
         .maybeSingle()
 
       if (!existingUser) {
