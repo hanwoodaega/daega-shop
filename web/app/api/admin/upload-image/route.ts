@@ -22,6 +22,7 @@ export async function POST(request: Request) {
 
     // 버킷 지정 (기본값: product-images)
     const bucket = (form.get('bucket') as string) || 'product-images'
+    const kind = String(form.get('kind') || '').trim()
     const preserveAspect = form.get('preserveAspect') === 'true'
     const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png'
     const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
@@ -32,12 +33,15 @@ export async function POST(request: Request) {
     let processedBuffer: Buffer
     let contentType: string
 
-    // 배너/컬렉션 버킷: 원본 유지
-    if (bucket === 'banner-images' || bucket === 'collection-images') {
+    const passthroughOriginal =
+      kind === 'hero' || bucket === 'banner-images' || bucket === 'collection-images'
+
+    if (passthroughOriginal) {
       processedBuffer = buffer
-      contentType = file.type || 'image/png'
+      contentType =
+        file.type && String(file.type).startsWith('image/') ? file.type : 'image/png'
     } else if (bucket === 'product-images' && preserveAspect) {
-      // 컬렉션 등: 비율 유지하며 최대 1200px 안으로 리사이즈 + 압축 (잘리지 않음)
+      // 비율 유지·긴 변 최대 1200px (sharp, JPEG)
       processedBuffer = await sharp(buffer)
         .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 85 })

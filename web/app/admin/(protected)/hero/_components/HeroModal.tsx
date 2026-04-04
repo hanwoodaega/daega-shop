@@ -81,7 +81,7 @@ export default function HeroModal({
           <div>
             <label className="block text-sm font-medium mb-2">이미지 *</label>
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
-              모바일·PC 모두 5:3 비율로 표시됩니다. 가로로 넓은 5:3 이미지를 사용해주세요 (권장: 1920×1152px 또는 1000×600px). 중요한 요소는 가운데에 두는 것을 권장합니다.
+              <strong>5:3</strong> 권장(예: 1000×600). 업로드는 원본 그대로 저장됩니다.
             </p>
             <input
               ref={imageFileInputRef}
@@ -92,11 +92,11 @@ export default function HeroModal({
             />
             {uploadingImage && <p className="text-sm text-gray-500 mt-1">업로드 중...</p>}
             {formData.image_url && (
-              <div className="mt-3">
+              <div className="mt-3 w-full aspect-[5/3] rounded-lg overflow-hidden bg-white border border-gray-200">
                 <img
                   src={formData.image_url}
                   alt="미리보기"
-                  className="w-full h-48 object-cover rounded-lg"
+                  className="h-full w-full object-contain object-center"
                 />
               </div>
             )}

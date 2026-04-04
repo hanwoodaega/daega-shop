@@ -15,15 +15,19 @@ interface HeroSliderProps {
   initialSlides?: HeroSlide[]
 }
 
+/** 모바일 3패널 트랙: translateX %는 트랙 너비 기준, 한 칸 = 100/3 */
+const MOBILE_TX_CURR = -100 / 3
+const MOBILE_TX_NEXT = -200 / 3
+const MOBILE_TX_PREV = 0
+
 export default function HeroSlider({ initialSlides }: HeroSliderProps) {
   const [slides, setSlides] = useState<HeroSlide[]>(initialSlides ?? [])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isDesktop, setIsDesktop] = useState(false)
   const [mobileTransitionEnabled, setMobileTransitionEnabled] = useState(true)
-  const [mobileTranslatePct, setMobileTranslatePct] = useState(-100)
+  const [mobileTranslatePct, setMobileTranslatePct] = useState(MOBILE_TX_CURR)
   const [mobileAnimating, setMobileAnimating] = useState(false)
 
-  // 화면 크기 기준으로 데스크톱 여부 판별 (lg 기준)
   useEffect(() => {
     const updateIsDesktop = () => {
       if (typeof window === 'undefined') return
@@ -56,11 +60,8 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
 
   const slideCount = slides.length
 
-  // 현재 인덱스를 기준으로, 모바일/탭은 1장, PC는 4장을 보여줌
   const visibleSlides = useMemo(() => {
     if (slideCount === 0) return [] as HeroSlide[]
-
-    if (!isDesktop) return [] as HeroSlide[]
 
     const group: HeroSlide[] = []
     const maxTiles = Math.min(4, slideCount)
@@ -69,7 +70,7 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
       group.push(slides[idx])
     }
     return group
-  }, [slides, slideCount, isDesktop, currentIndex])
+  }, [slides, slideCount, currentIndex])
 
   const mobileTriplet = useMemo(() => {
     if (slideCount === 0) return [] as HeroSlide[]
@@ -83,8 +84,7 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
     window.setTimeout(() => {
       setMobileTransitionEnabled(false)
       setCurrentIndex(nextIndex)
-      setMobileTranslatePct(-100)
-      // 다음 tick에서 transition 복구
+      setMobileTranslatePct(MOBILE_TX_CURR)
       window.setTimeout(() => {
         setMobileTransitionEnabled(true)
         setMobileAnimating(false)
@@ -92,7 +92,6 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
     }, 600)
   }
 
-  // 자동 슬라이드 전환 (4초마다 한 장씩)
   useEffect(() => {
     if (slideCount <= 1) return
 
@@ -104,7 +103,7 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
       }
       if (mobileAnimating) return
       setMobileAnimating(true)
-      setMobileTranslatePct(-200)
+      setMobileTranslatePct(MOBILE_TX_NEXT)
       const nextIndex = (currentIndex + 1) % slideCount
       scheduleMobileReset(nextIndex)
     }, 4000)
@@ -120,7 +119,7 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
     }
     if (mobileAnimating) return
     setMobileAnimating(true)
-    setMobileTranslatePct(0)
+    setMobileTranslatePct(MOBILE_TX_PREV)
     const nextIndex = (currentIndex - 1 + slideCount) % slideCount
     scheduleMobileReset(nextIndex)
   }
@@ -133,7 +132,7 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
     }
     if (mobileAnimating) return
     setMobileAnimating(true)
-    setMobileTranslatePct(-200)
+    setMobileTranslatePct(MOBILE_TX_NEXT)
     const nextIndex = (currentIndex + 1) % slideCount
     scheduleMobileReset(nextIndex)
   }
@@ -144,8 +143,7 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
         src={slide.image_url}
         alt="프로모션 배너"
         fill
-        className="object-cover"
-        // PC에서는 가운데 2장(각 480px), 모바일/탭에서는 전체 너비 사용
+        className="object-contain object-center"
         sizes="(min-width: 1024px) 480px, 100vw"
         priority={shouldPriority}
         loading={shouldPriority ? 'eager' : 'lazy'}
@@ -157,7 +155,7 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
         <Link
           href={slide.link_url}
           prefetch={false}
-          className="relative block w-full h-full overflow-hidden"
+          className="relative block h-full min-h-0 w-full overflow-hidden bg-white"
         >
           {image}
         </Link>
@@ -165,7 +163,7 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
     }
 
     return (
-      <div className="relative w-full h-full overflow-hidden">
+      <div className="relative h-full min-h-0 w-full overflow-hidden bg-white">
         {image}
       </div>
     )
@@ -174,18 +172,20 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
   return (
     <section className="relative overflow-hidden bg-white">
       <div className="w-full relative">
-        {/* 모바일/태블릿: 5:3 배너 1장 (좌로 자연스럽게 슬라이드) */}
         {mobileTriplet.length === 3 && (
-          <div className="relative w-full aspect-[5/3] lg:hidden overflow-hidden">
+          <div className="relative w-full aspect-[5/3] lg:hidden overflow-hidden bg-white">
             <div
-              className="flex h-full w-[300%]"
+              className="flex h-full w-[300%] flex-row"
               style={{
                 transform: `translateX(${mobileTranslatePct}%)`,
                 transition: mobileTransitionEnabled ? 'transform 600ms ease' : 'none',
               }}
             >
               {mobileTriplet.map((slide, idx) => (
-                <div key={`${slide.id}-${idx}`} className="relative w-full h-full flex-shrink-0">
+                <div
+                  key={`${slide.id}-${idx}`}
+                  className="relative h-full w-1/3 min-h-0 shrink-0"
+                >
                   {renderTile(slide, idx === 1)}
                 </div>
               ))}
@@ -193,19 +193,16 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
           </div>
         )}
 
-        {/* PC: 가운데 2장은 1000px 고정, 양옆은 화면 여유에 따라 노출 */}
         <div className="hidden lg:block px-2 pt-0 pb-2">
-          <div className="relative w-full h-[288px] overflow-hidden">
+          <div className="relative h-[288px] w-full overflow-hidden bg-white">
             {visibleSlides.map((slide, idx) => {
-              // 가운데를 기준으로 양 옆으로 대칭 배치
-              // maxTiles 4일 때 centerIndex = 1.5 → offset: -1.5, -0.5, 0.5, 1.5
               const maxTiles = Math.min(4, slideCount)
               const centerIndex = (maxTiles - 1) / 2
               const offset = idx - centerIndex
               return (
                 <div
-                  key={idx}
-                  className="absolute top-0 left-1/2 w-[480px] h-[288px] transition-transform duration-700 will-change-transform"
+                  key={`${slide.id}-${idx}`}
+                  className="absolute top-0 left-1/2 h-[288px] w-[480px] transition-transform duration-700 will-change-transform"
                   style={{
                     transform: `translateX(calc(-50% + ${offset} * (480px + 8px)))`,
                   }}
@@ -220,7 +217,6 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
               )
             })}
 
-            {/* 좌/우 화살표 (1000px 영역 양옆) */}
             {slideCount > 1 && (
               <>
                 <button
@@ -248,10 +244,8 @@ export default function HeroSlider({ initialSlides }: HeroSliderProps) {
           </div>
         </div>
 
-        {/* 인디케이터: 현재 이미지 / 전체 이미지 (모바일/탭: 오른쪽 하단, PC: 3번째 타일) */}
         {slideCount > 1 && (
           <>
-            {/* 모바일/탭 */}
             <div className="absolute bottom-2 right-3 px-2 py-1 rounded-full bg-black/60 text-white text-xs font-medium lg:hidden">
               {currentIndex + 1}/{slideCount}
             </div>

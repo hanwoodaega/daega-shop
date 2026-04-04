@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
 import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
@@ -36,6 +37,9 @@ export async function PUT(
       return dbErrorResponse('admin/hero/[id] PUT', error)
     }
 
+    revalidateTag('hero', 'default')
+    revalidatePath('/')
+
     return NextResponse.json({ slide: data })
   } catch (error: unknown) {
     return unknownErrorResponse('admin/hero/[id] PUT', error)
@@ -60,6 +64,9 @@ export async function DELETE(
     if (error) {
       return dbErrorResponse('admin/hero/[id] DELETE', error)
     }
+
+    revalidateTag('hero', 'default')
+    revalidatePath('/')
 
     return NextResponse.json({ success: true })
   } catch (error: unknown) {

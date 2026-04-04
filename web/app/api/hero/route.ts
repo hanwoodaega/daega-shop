@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
 
-// 60초 간 캐시 후 재검증
-export const revalidate = 60
+/** Route Handler 기본 캐시 없음 — 홈 RSC fetch는 tags: ['hero'] + revalidateTag로 무효화 */
+export const dynamic = 'force-dynamic'
 
 // GET: 활성화된 히어로 슬라이드 목록 조회 (공개 API)
 export async function GET(request: NextRequest) {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
 import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
@@ -52,6 +53,9 @@ export async function POST(request: NextRequest) {
     if (error) {
       return dbErrorResponse('admin/hero POST', error)
     }
+
+    revalidateTag('hero', 'default')
+    revalidatePath('/')
 
     return NextResponse.json({ slide: data })
   } catch (error: unknown) {

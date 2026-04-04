@@ -66,7 +66,7 @@ export default async function Home() {
           next: { revalidate: 300 }, // 5분 캐시
         }),
         fetch(`${baseUrl}/api/hero`, {
-          next: { revalidate: 300 }, // 5분 캐시
+          next: { revalidate: 300, tags: ['hero'] },
         }),
         fetch(`${baseUrl}/api/recommendations`, {
           next: { revalidate: 300 }, // 5분 캐시

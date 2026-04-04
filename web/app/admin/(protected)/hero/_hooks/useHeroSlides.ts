@@ -73,6 +73,7 @@ export function useHeroSlides(): UseHeroSlidesReturn {
     try {
       const fd = new FormData()
       fd.append('file', file)
+      fd.append('kind', 'hero')
       const res = await fetch('/api/admin/upload-image', { method: 'POST', body: fd })
       const data = await res.json()
       

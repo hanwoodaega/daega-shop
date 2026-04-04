@@ -9,11 +9,11 @@ interface HeroItemProps {
 export default function HeroItem({ slide, onEdit, onDelete }: HeroItemProps) {
   return (
     <div className="p-6 flex items-center gap-6">
-      <div className="flex-shrink-0">
+      <div className="flex-shrink-0 w-40 aspect-[5/3] rounded overflow-hidden bg-white border border-gray-200">
         <img
           src={slide.image_url}
           alt={`히어로 슬라이드 ${slide.sort_order}`}
-          className="w-32 h-20 object-cover rounded"
+          className="h-full w-full object-contain object-center"
         />
       </div>
       <div className="flex-1">
