@@ -10,6 +10,7 @@ import { formatPhoneDisplay, parsePhoneInput, extractPhoneNumbers } from '@/lib/
 import { sanitizeUsernameInput, isValidUsername } from '@/lib/auth/username-rules'
 
 const RESEND_COOLDOWN_SECONDS = 60
+const MIN_PASSWORD_LENGTH = 8
 
 export default function FindPasswordPage() {
   const router = useRouter()
@@ -119,6 +120,9 @@ export default function FindPasswordPage() {
     setError('')
     setLoading(true)
     try {
+      if (newPassword.length < MIN_PASSWORD_LENGTH) {
+        throw new Error(`비밀번호는 최소 ${MIN_PASSWORD_LENGTH}자 이상이어야 합니다.`)
+      }
       if (newPassword !== confirmPassword) {
         throw new Error('비밀번호가 일치하지 않습니다.')
       }
@@ -162,7 +166,7 @@ export default function FindPasswordPage() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-start justify-center pt-10 pb-12 px-6">
+      <main className="flex-1 flex items-start justify-center pt-10 pb-16 lg:pb-20 px-6">
         <div className="max-w-md w-full">
           <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">비밀번호 찾기</h2>
           {step === 1 && (
@@ -297,6 +301,7 @@ export default function FindPasswordPage() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full lg:max-w-xs px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600"
                   placeholder="새 비밀번호"
+                  autoComplete="new-password"
                 />
                 <input
                   type="password"
@@ -304,12 +309,22 @@ export default function FindPasswordPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full lg:max-w-xs px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-red-600 mt-2"
                   placeholder="새 비밀번호 확인"
+                  autoComplete="new-password"
                 />
+                {error && (
+                  <div className="mt-3 w-full lg:max-w-xs p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm whitespace-pre-line">
+                    {error}
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={updatePassword}
-                  disabled={loading}
-                  className="w-full lg:max-w-xs mt-2 bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-950 transition"
+                  disabled={
+                    loading ||
+                    newPassword.length < MIN_PASSWORD_LENGTH ||
+                    newPassword !== confirmPassword
+                  }
+                  className="w-full lg:max-w-xs mt-2 bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-950 transition disabled:bg-gray-400"
                 >
                   비밀번호 변경
                 </button>
@@ -329,7 +344,7 @@ export default function FindPasswordPage() {
           )}
         </div>
       </main>
-      <div className="lg:mt-16">
+      <div className="mt-20 w-full lg:mt-28 shrink-0">
         <Footer />
       </div>
     </div>

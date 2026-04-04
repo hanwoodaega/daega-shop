@@ -7,11 +7,13 @@ import {
   isValidUsername,
   USERNAME_RULES_MESSAGE,
 } from '@/lib/auth/username-rules'
+import {
+  isValidSignupPassword,
+  SIGNUP_PASSWORD_INVALID_MESSAGE,
+} from '@/lib/auth/password-rules'
 import { issuePhoneVerificationCoupon } from '@/lib/coupon/coupon-issue.server'
 import { getClientIpFromHeaders, rateLimitOrThrow } from '@/lib/auth/rate-limit'
 import { buildServerTimingHeader } from '@/lib/utils/server-timing'
-
-const MIN_PASSWORD_LENGTH = 8
 
 export async function POST(request: NextRequest) {
   const t0 = Date.now()
@@ -27,8 +29,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '필수 값이 누락되었습니다.' }, { status: 400 })
     }
 
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      return NextResponse.json({ error: '비밀번호는 최소 8자 이상이어야 합니다.' }, { status: 400 })
+    if (!isValidSignupPassword(password)) {
+      return NextResponse.json({ error: SIGNUP_PASSWORD_INVALID_MESSAGE }, { status: 400 })
     }
 
     const normalizedPhone = normalizePhone(phone)

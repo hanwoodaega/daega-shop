@@ -33,6 +33,10 @@ function FinalizeContent() {
         setError(data?.error || '로그인 상태를 확인할 수 없습니다.')
         return
       }
+      // 서버에서 유저가 무효(삭제됨 등)인데 클라이언트에 옛 세션이 남아 있으면 로그인↔finalize 루프가 난다.
+      if (data?.authenticated === false) {
+        await supabase.auth.signOut().catch(() => {})
+      }
       const redirectTo = typeof data?.redirectTo === 'string' ? data.redirectTo : '/'
       if (!isCheckoutRedirectPath(redirectTo)) {
         clearPendingGuestCheckout()

@@ -14,6 +14,13 @@ import {
   isValidUsername,
   USERNAME_RULES_MESSAGE,
 } from '@/lib/auth/username-rules'
+import {
+  isValidSignupPassword,
+  PASSWORD_MAX_LEN,
+  SIGNUP_PASSWORD_HINT,
+  SIGNUP_PASSWORD_INVALID_MESSAGE,
+  SIGNUP_PASSWORD_MISMATCH_MESSAGE,
+} from '@/lib/auth/password-rules'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -47,6 +54,9 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [usernameMessage, setUsernameMessage] = useState('')
+  /** 비밀번호 인라인 안내: 포커스를 빠져나온 뒤에만 표시 */
+  const [passwordFieldLeft, setPasswordFieldLeft] = useState(false)
+  const [confirmFieldLeft, setConfirmFieldLeft] = useState(false)
 
   const [allAgreed, setAllAgreed] = useState(false)
   const [termsAgreed, setTermsAgreed] = useState(false)
@@ -162,6 +172,11 @@ export default function SignupPage() {
       if (usernameStatus !== 'available' || username !== checkedUsername) {
         throw new Error('아이디 중복 확인을 해주세요.')
       }
+      if (!isValidSignupPassword(password) || password !== confirmPassword) {
+        setPasswordFieldLeft(true)
+        setConfirmFieldLeft(true)
+        return
+      }
       const res = await fetch('/api/auth/send-verification-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -188,6 +203,8 @@ export default function SignupPage() {
       setLoading(false)
     }
   }
+
+  const trimPasswordInput = (raw: string) => raw.slice(0, PASSWORD_MAX_LEN)
 
   const handleVerifyOtp = async () => {
     if (verificationCode.length !== 6) return
@@ -225,8 +242,10 @@ export default function SignupPage() {
     setLoading(true)
 
     try {
-      if (password !== confirmPassword) {
-        throw new Error('비밀번호가 일치하지 않습니다.')
+      if (!isValidSignupPassword(password) || password !== confirmPassword) {
+        setPasswordFieldLeft(true)
+        setConfirmFieldLeft(true)
+        return
       }
       if (!(termsAgreed && privacyAgreed && thirdPartyAgreed && ageAgreed)) {
         throw new Error('필수 약관에 모두 동의해 주세요.')
@@ -267,6 +286,16 @@ export default function SignupPage() {
     }
   }
 
+  const passwordError =
+    passwordFieldLeft && password && !isValidSignupPassword(password)
+      ? SIGNUP_PASSWORD_INVALID_MESSAGE
+      : null
+
+  const confirmMismatchError =
+    confirmFieldLeft && confirmPassword && password !== confirmPassword
+      ? SIGNUP_PASSWORD_MISMATCH_MESSAGE
+      : null
+
   return (
     <div className="min-h-screen flex flex-col overflow-hidden">
       <div className="hidden lg:block">
@@ -291,7 +320,9 @@ export default function SignupPage() {
 
       <main className="flex-1 bg-white flex items-start justify-center pt-8 pb-32 px-6 overflow-y-auto scrollbar-hide">
         <div className="max-w-md w-full lg:max-w-xl lg:mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">회원가입</h2>
+          <h1 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">
+            회원가입
+          </h1>
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm whitespace-pre-line">
@@ -325,17 +356,28 @@ export default function SignupPage() {
                 </div>
               </div>
               <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4">
-                <label className="text-sm font-medium text-gray-700 shrink-0 lg:w-28">비밀번호</label>
+                <label className="text-sm font-medium text-gray-700 shrink-0 lg:w-28">
+                  <span className="inline-flex flex-wrap items-baseline gap-x-1 gap-y-0">
+                    <span>비밀번호</span>
+                    <span className="text-gray-500 font-normal text-xs">{SIGNUP_PASSWORD_HINT}</span>
+                  </span>
+                </label>
                 <div className="flex-1 min-w-0">
                   <input
                     type="password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => setPassword(trimPasswordInput(e.target.value))}
+                    onFocus={() => setPasswordFieldLeft(false)}
+                    onBlur={() => setPasswordFieldLeft(true)}
                     required
                     autoComplete="new-password"
+                    maxLength={PASSWORD_MAX_LEN}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-900 placeholder:text-gray-400"
                     placeholder="비밀번호를 입력해주세요"
                   />
+                  {passwordError && (
+                    <p className="mt-2 text-sm text-red-600">{passwordError}</p>
+                  )}
                 </div>
               </div>
               <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4">
@@ -344,12 +386,18 @@ export default function SignupPage() {
                   <input
                     type="password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) => setConfirmPassword(trimPasswordInput(e.target.value))}
+                    onFocus={() => setConfirmFieldLeft(false)}
+                    onBlur={() => setConfirmFieldLeft(true)}
                     required
                     autoComplete="new-password"
+                    maxLength={PASSWORD_MAX_LEN}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-900 placeholder:text-gray-400"
                     placeholder="비밀번호 확인"
                   />
+                  {confirmMismatchError && (
+                    <p className="mt-2 text-sm text-red-600">{confirmMismatchError}</p>
+                  )}
                 </div>
               </div>
               <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4">

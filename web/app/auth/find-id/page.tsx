@@ -7,6 +7,7 @@ import Footer from '@/components/layout/Footer'
 import Header from '@/components/layout/Header'
 import { sanitizeOtpCodeInput } from '@/lib/phone/kr'
 import { formatPhoneDisplay, parsePhoneInput, extractPhoneNumbers } from '@/lib/utils/format-phone'
+import { FIND_ID_NO_PHONE_ACCOUNT_MESSAGE } from '@/lib/auth/find-id-phone-users'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -130,7 +131,7 @@ export default function FindIdPage() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-start justify-center pt-10 pb-12 px-6">
+      <main className="flex-1 flex items-start justify-center pt-10 pb-16 lg:pb-20 px-6">
         <div className="max-w-md w-full">
           <h2 className="hidden lg:block text-3xl font-bold text-center mb-8 text-primary-900 lg:mt-10">아이디 찾기</h2>
           {step !== 3 && (
@@ -170,11 +171,14 @@ export default function FindIdPage() {
                     인증 요청
                   </button>
                 </div>
-                {error && (
-                  <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm whitespace-pre-line">
-                    {error}
-                  </div>
-                )}
+                {error &&
+                  (error === FIND_ID_NO_PHONE_ACCOUNT_MESSAGE ? (
+                    <p className="mt-3 w-full lg:max-w-xs text-center text-sm text-red-600">{error}</p>
+                  ) : (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm whitespace-pre-line w-full lg:max-w-xs">
+                      {error}
+                    </div>
+                  ))}
               </div>
 
               {step === 2 && (
@@ -236,7 +240,7 @@ export default function FindIdPage() {
           )}
         </div>
       </main>
-      <div className="lg:mt-16">
+      <div className="mt-20 w-full lg:mt-28 shrink-0">
         <Footer />
       </div>
     </div>

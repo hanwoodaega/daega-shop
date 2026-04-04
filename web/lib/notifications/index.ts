@@ -10,6 +10,7 @@ export {
   sendOtpSms,
   sendOrderLookupOtpSms,
   sendOrderCompleteSms,
+  sendFindIdSms,
   sendSms,
 } from './send-sms'
 export type { SendSmsResult } from './send-sms'

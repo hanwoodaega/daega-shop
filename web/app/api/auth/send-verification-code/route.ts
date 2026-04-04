@@ -9,6 +9,10 @@ import {
 } from '@/lib/auth/username-rules'
 import { sendOtpSms } from '@/lib/notifications'
 import { getClientIpFromHeaders, rateLimitOrThrow } from '@/lib/auth/rate-limit'
+import {
+  FIND_ID_NO_PHONE_ACCOUNT_MESSAGE,
+  listUsersEligibleForFindId,
+} from '@/lib/auth/find-id-phone-users'
 import { unknownErrorResponse } from '@/lib/api/api-errors'
 import { buildServerTimingHeader } from '@/lib/utils/server-timing'
 
@@ -82,18 +86,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (purpose === 'find_id') {
-      const { data: existingUser } = await supabaseAdmin
-        .from('users')
-        .select('id, username')
-        .eq('phone', phoneNumber)
-        .maybeSingle()
-
-      if (!existingUser) {
-        return NextResponse.json({ error: '가입된 계정이 없습니다.' }, { status: 404 })
-      }
-
-      if (!existingUser.username) {
-        return NextResponse.json({ error: '일치하는 사용자 정보가 없습니다.' }, { status: 404 })
+      const eligible = await listUsersEligibleForFindId(supabaseAdmin, phoneNumber)
+      if (eligible.length === 0) {
+        return NextResponse.json({ error: FIND_ID_NO_PHONE_ACCOUNT_MESSAGE }, { status: 404 })
       }
     }
 

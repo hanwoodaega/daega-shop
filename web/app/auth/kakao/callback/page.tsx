@@ -29,6 +29,12 @@ function KakaoCallbackContent() {
     handleKakaoCallback()
   }, [])
 
+  /** 세션 실패 시 로컬 정리 후 로그인으로 (재시도 시 약관·휴대폰 플로우 유지) */
+  const redirectToLoginAfterSessionFailure = async () => {
+    await supabase.auth.signOut().catch(() => {})
+    router.replace('/auth/login')
+  }
+
   const mapErrorMessage = (code?: string | null) => {
     switch (code) {
       case 'missing_code':
@@ -65,6 +71,10 @@ function KakaoCallbackContent() {
       const linked = searchParams.get('linked') === '1'
 
       if (error) {
+        if (error === 'verify_failed') {
+          await redirectToLoginAfterSessionFailure()
+          return
+        }
         setErrorCode(error)
         if (errorDesc) {
           setErrorDescription(errorDesc)
@@ -109,9 +119,7 @@ function KakaoCallbackContent() {
       })
 
       if (verifyError) {
-        setErrorCode('verify_failed')
-        setStatus('error')
-        setMessage(mapErrorMessage('verify_failed'))
+        await redirectToLoginAfterSessionFailure()
         return
       }
 
@@ -142,20 +150,15 @@ function KakaoCallbackContent() {
       })
 
       if (!accessToken) {
-        setErrorCode('verify_failed')
-        setStatus('error')
-        setMessage(mapErrorMessage('verify_failed'))
+        await redirectToLoginAfterSessionFailure()
         return
       }
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('post_login_next', nextPath)
       }
       window.location.href = nextPath
-    } catch (error: any) {
-      const fallbackCode = 'verify_failed'
-      setErrorCode(fallbackCode)
-      setStatus('error')
-      setMessage(mapErrorMessage(fallbackCode))
+    } catch {
+      await redirectToLoginAfterSessionFailure()
     }
   }
 

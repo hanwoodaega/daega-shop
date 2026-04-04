@@ -4,7 +4,7 @@
  */
 
 import { getSmsServiceConfig, normalizePhone, isValidPhone, middleServerPost } from './aligo-core'
-import { getOtpMessage, getOrderLookupOtpMessage, getOrderCompleteMessage } from './templates'
+import { getOtpMessage, getOrderLookupOtpMessage } from './templates'
 
 export interface SendSmsResult {
   success: boolean
@@ -101,7 +101,39 @@ export async function sendOrderCompleteSms(params: {
 }
 
 /**
- * 일반 문자 발송 (아이디 찾기 결과 등)
+ * 아이디 찾기 안내 문자 (중간 서버 /sms/send-find-id → 문구·마스킹은 서버에서 처리)
+ */
+export async function sendFindIdSms(params: { phone: string; userId: string }): Promise<SendSmsResult> {
+  const config = getSmsServiceConfig()
+  if (!config) {
+    console.warn('[SMS] 설정 없음: SMS_SERVICE_URL, SMS_SERVICE_TOKEN')
+    return { success: false, detail: 'config_missing' }
+  }
+
+  const to = normalizePhone(params.phone)
+  if (!isValidPhone(to)) {
+    return { success: false, detail: 'invalid_phone' }
+  }
+
+  const user_id = String(params.userId || '').trim()
+  if (!user_id) {
+    return { success: false, detail: 'missing_user_id' }
+  }
+
+  const result = await middleServerPost('/sms/send-find-id', { to, user_id })
+
+  if (result.ok) {
+    return { success: true }
+  }
+  console.error('[SMS] 아이디 찾기 문자 실패:', result.status, result.error)
+  return {
+    success: false,
+    detail: result.error || `http_${result.status}`,
+  }
+}
+
+/**
+ * 일반 문자 발송
  */
 export async function sendSms(phone: string, text: string, _title?: string): Promise<SendSmsResult> {
   const config = getSmsServiceConfig()

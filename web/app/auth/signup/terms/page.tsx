@@ -251,34 +251,6 @@ function SignupTermsContent() {
               <p className="ml-8 mt-1 text-sm text-gray-600">배송업체 및 결제대행사에 서비스 제공을 위한 정보가 제공됩니다.</p>
             </div>
 
-            {/* 본인은 만 14세 이상입니다 (필수) */}
-            <div className="py-2">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={ageAgreed}
-                  onChange={(e) => {
-                    setAgeAgreed(e.target.checked)
-                    if (!e.target.checked) setAllAgreed(false)
-                  }}
-                  className="w-6 h-6 appearance-none bg-white border border-gray-500 rounded-full focus:ring-blue-900 focus:ring-2 checked:bg-blue-900 checked:border-blue-900 cursor-pointer"
-                  style={{ 
-                    backgroundImage: ageAgreed 
-                      ? 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 16 16\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M3 8l3 3 7-7\' stroke=\'white\' stroke-width=\'1.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/%3E%3C/svg%3E")'
-                      : 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 16 16\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M3 8l3 3 7-7\' stroke=\'%23999\' stroke-width=\'1.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/%3E%3C/svg%3E")',
-                    backgroundSize: '80%',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'center'
-                  }}
-                />
-                <span className="ml-2 text-base font-semibold">
-                  <span className="text-blue-900">필수</span>
-                  <span className="ml-1 text-gray-900">본인은 만 14세 이상입니다</span>
-                </span>
-              </label>
-              <p className="ml-8 mt-1 text-sm text-gray-600">개인정보보호법에 따라 만 14세 미만은 가입이 제한됩니다.</p>
-            </div>
-
             {/* 마케팅 정보 수신 동의 (선택) */}
             <div className="py-2">
               <label className="flex items-center cursor-pointer">
@@ -305,6 +277,34 @@ function SignupTermsContent() {
                 </span>
               </label>
               <p className="ml-8 mt-1 text-sm text-gray-600">할인 혜택 및 이벤트 소식을 받아볼 수 있습니다.</p>
+            </div>
+
+            {/* 본인은 만 14세 이상입니다 (필수) */}
+            <div className="py-2">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={ageAgreed}
+                  onChange={(e) => {
+                    setAgeAgreed(e.target.checked)
+                    if (!e.target.checked) setAllAgreed(false)
+                  }}
+                  className="w-6 h-6 appearance-none bg-white border border-gray-500 rounded-full focus:ring-blue-900 focus:ring-2 checked:bg-blue-900 checked:border-blue-900 cursor-pointer"
+                  style={{ 
+                    backgroundImage: ageAgreed 
+                      ? 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 16 16\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M3 8l3 3 7-7\' stroke=\'white\' stroke-width=\'1.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/%3E%3C/svg%3E")'
+                      : 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 16 16\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M3 8l3 3 7-7\' stroke=\'%23999\' stroke-width=\'1.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/%3E%3C/svg%3E")',
+                    backgroundSize: '80%',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center'
+                  }}
+                />
+                <span className="ml-2 text-base font-semibold">
+                  <span className="text-blue-900">필수</span>
+                  <span className="ml-1 text-gray-900">본인은 만 14세 이상입니다</span>
+                </span>
+              </label>
+              <p className="ml-8 mt-1 text-sm text-gray-600">개인정보보호법에 따라 만 14세 미만은 가입이 제한됩니다.</p>
             </div>
           </div>
 

@@ -29,6 +29,11 @@ function NaverCallbackContent() {
     handleNaverCallback()
   }, [])
 
+  const redirectToLoginAfterSessionFailure = async () => {
+    await supabase.auth.signOut().catch(() => {})
+    router.replace('/auth/login')
+  }
+
   const mapErrorMessage = (code?: string | null) => {
     switch (code) {
       case 'missing_code':
@@ -76,6 +81,10 @@ function NaverCallbackContent() {
       }
 
       if (error) {
+        if (error === 'verify_failed') {
+          await redirectToLoginAfterSessionFailure()
+          return
+        }
         setErrorCode(error)
         if (errorDesc) {
           setErrorDescription(errorDesc)
@@ -95,9 +104,7 @@ function NaverCallbackContent() {
       })
 
       if (verifyError) {
-        setErrorCode('verify_failed')
-        setStatus('error')
-        setMessage(mapErrorMessage('verify_failed'))
+        await redirectToLoginAfterSessionFailure()
         return
       }
 
@@ -128,9 +135,7 @@ function NaverCallbackContent() {
       })
 
       if (!accessToken) {
-        setErrorCode('verify_failed')
-        setStatus('error')
-        setMessage(mapErrorMessage('verify_failed'))
+        await redirectToLoginAfterSessionFailure()
         return
       }
       if (typeof window !== 'undefined') {
@@ -138,11 +143,8 @@ function NaverCallbackContent() {
       }
       window.location.href = nextPath
       
-    } catch (error: any) {
-      const fallbackCode = 'verify_failed'
-      setErrorCode(fallbackCode)
-      setStatus('error')
-      setMessage(mapErrorMessage(fallbackCode))
+    } catch {
+      await redirectToLoginAfterSessionFailure()
     }
   }
 
