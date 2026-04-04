@@ -47,7 +47,7 @@ export default function HomeHeroUserBanner() {
   }
 
   const rawName = profileInfo?.name || (user as any)?.user_metadata?.name || ''
-  const displayName = rawName || '회원'
+  const displayName = rawName || '고객'
 
   const fullAddress = address?.address || ''
   const shortAddress = fullAddress.split('(')[0].trim()

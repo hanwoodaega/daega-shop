@@ -80,7 +80,6 @@ export default function MainMenu() {
                     <Link
                       key={category}
                       href={getCategoryPath(category)}
-                      prefetch={false}
                       className="block px-4 py-2 text-base text-gray-800 hover:bg-gray-50 hover:text-red-600 transition"
                       onClick={() => setCategoryOpen(false)}
                     >
@@ -95,7 +94,6 @@ export default function MainMenu() {
           {/* PC 전용: 이번주 행사 (카테고리 오른쪽) */}
           <Link
             href="/weekly-discount"
-            prefetch={false}
             className={`hidden lg:inline-flex relative group ${menuLinkClass(pathname === '/weekly-discount')}`}
           >
             <span>이번주 행사</span>
@@ -114,7 +112,6 @@ export default function MainMenu() {
               <Link
                 key={menu.name}
                 href={menu.href}
-                prefetch={false}
                 className={`${menuLinkClass(isActive)} ${
                   menu.name === '홈' ? 'lg:hidden' : ''
                 } ${menu.name === '선물관' ? 'hidden lg:inline-flex' : ''} flex-1 text-center lg:flex-none lg:text-left`}

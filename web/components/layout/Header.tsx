@@ -160,7 +160,6 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
             {/* 로고 */}
             <Link
               href="/"
-              prefetch={false}
               className="flex-shrink-0 z-20 flex items-center -ml-6 lg:ml-0"
               aria-label="홈으로 이동"
             >
@@ -234,11 +233,9 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
                   <NotificationBell />
 
                   {/* 장바구니 아이콘 */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      router.push('/cart')
-                    }}
+                  <Link
+                    href="/cart"
+                    onClick={(e) => e.stopPropagation()}
                     className="p-2 hover:bg-gray-100 rounded-full transition relative z-30"
                     aria-label="장바구니"
                   >
@@ -254,7 +251,7 @@ function HeaderContent({ hideMainMenu = false, showCartButton = false, sticky = 
                     >
                       {mounted ? (cartCount > 99 ? '99+' : cartCount) : ''}
                     </span>
-                  </button>
+                  </Link>
                 </div>
               </>
             )}
@@ -288,7 +285,7 @@ export default function Header({ hideMainMenu = false, showCartButton = false, s
         <div className="relative bg-white border-b border-gray-200">
           <div className="relative z-10 container mx-auto pl-2 pr-4">
             <div className="flex items-center h-16 gap-4">
-              <Link href="/" prefetch={false} className="flex-shrink-0 z-20" aria-label="홈으로 이동">
+              <Link href="/" className="flex-shrink-0 z-20" aria-label="홈으로 이동">
                 <Image
                   src="/images/logo.png"
                   alt="대가정육마트 로고"

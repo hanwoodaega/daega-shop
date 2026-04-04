@@ -80,7 +80,6 @@ export default function BottomNavbar() {
             {/* 홈 */}
             <Link
               href="/"
-              prefetch={false}
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
                 pathname === '/' ? 'text-red-600' : 'text-black'
               }`}
@@ -94,7 +93,6 @@ export default function BottomNavbar() {
             {/* 검색 (카테고리 + 검색 통합) */}
             <Link
               href="/categories"
-              prefetch={false}
               className={`flex flex-col items-center justify-center flex-1 py-2 relative ${
                 pathname === '/categories' ? 'text-red-600' : 'text-black'
               }`}
@@ -121,7 +119,6 @@ export default function BottomNavbar() {
             {/* 선물관 */}
             <Link
               href="/gift"
-              prefetch={false}
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
                 pathname?.startsWith('/gift') ? 'text-red-600' : 'text-black'
               }`}
@@ -139,7 +136,6 @@ export default function BottomNavbar() {
             {/* 찜 */}
             <Link
               href="/wishlist"
-              prefetch={false}
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
                 pathname === '/wishlist' ? 'text-red-600' : 'text-black'
               }`}
@@ -151,15 +147,8 @@ export default function BottomNavbar() {
             </Link>
 
             {/* 마이 */}
-            <button
-              type="button"
-              onClick={() => {
-                if (user) {
-                  router.push('/profile')
-                } else {
-                  router.push('/auth/login')
-                }
-              }}
+            <Link
+              href={user ? '/profile' : '/auth/login'}
               className={`flex flex-col items-center justify-center flex-1 py-2 ${
                 pathname?.startsWith('/auth') || pathname?.startsWith('/profile') ? 'text-red-600' : 'text-black'
               }`}
@@ -168,7 +157,7 @@ export default function BottomNavbar() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
               <span className="text-xs">마이</span>
-            </button>
+            </Link>
             </div>
           </div>
         </div>
