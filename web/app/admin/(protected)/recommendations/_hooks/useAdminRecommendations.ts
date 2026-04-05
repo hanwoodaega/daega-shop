@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import type { RecommendationCategory, RecommendationFormData } from '../_types'
 
 export function useAdminRecommendations() {
@@ -18,7 +19,7 @@ export function useAdminRecommendations() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/recommendations')
+      const res = await adminApiFetch('/api/admin/recommendations')
       const data = await res.json()
       if (res.ok) {
         setCategories(data.categories || [])
@@ -76,7 +77,7 @@ export function useAdminRecommendations() {
     }
 
     try {
-      const res = await fetch('/api/admin/recommendations', {
+      const res = await adminApiFetch('/api/admin/recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -105,7 +106,7 @@ export function useAdminRecommendations() {
     }
 
     try {
-      const res = await fetch(`/api/admin/recommendations/${editingCategory.id}`, {
+      const res = await adminApiFetch(`/api/admin/recommendations/${editingCategory.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -131,7 +132,7 @@ export function useAdminRecommendations() {
     if (!confirm('카테고리를 삭제하시겠습니까?')) return
 
     try {
-      const res = await fetch(`/api/admin/recommendations/${id}`, {
+      const res = await adminApiFetch(`/api/admin/recommendations/${id}`, {
         method: 'DELETE',
       })
       if (res.ok) {

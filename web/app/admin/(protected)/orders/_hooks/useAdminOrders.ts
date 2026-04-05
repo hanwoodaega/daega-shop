@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { Order, OrderStatus, DeliveryType, OrderFilters } from '../_types'
 
 export function useAdminOrders() {
@@ -47,7 +48,7 @@ export function useAdminOrders() {
         params.append('order_number', filters.orderNumber.trim())
       }
 
-      const response = await fetch(`/api/admin/orders?${params.toString()}`)
+      const response = await adminApiFetch(`/api/admin/orders?${params.toString()}`)
 
       if (response.status === 401) {
         redirectToLogin()
@@ -94,16 +95,15 @@ export function useAdminOrders() {
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus, trackingNumber?: string) => {
     setUpdatingOrderId(orderId)
     try {
-      const response = await fetch('/api/admin/orders', {
+      const response = await adminApiFetch('/api/admin/orders', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // 쿠키 포함
-          body: JSON.stringify({ 
-            orderId, 
-            status: newStatus,
-            trackingNumber: trackingNumber || trackingInputs[orderId]?.number,
-            trackingCompany: trackingInputs[orderId]?.carrier || '롯데택배',
-          })
+        body: JSON.stringify({
+          orderId,
+          status: newStatus,
+          trackingNumber: trackingNumber || trackingInputs[orderId]?.number,
+          trackingCompany: trackingInputs[orderId]?.carrier || '롯데택배',
+        }),
       })
 
       if (response.status === 401 || response.status === 403) {
@@ -133,7 +133,7 @@ export function useAdminOrders() {
   const handleAutoConfirm = async () => {
     setProcessingAutoConfirm(true)
     try {
-      const response = await fetch('/api/admin/orders/auto-confirm', { method: 'GET' })
+      const response = await adminApiFetch('/api/admin/orders/auto-confirm', { method: 'GET' })
       const data = await response.json()
 
       if (!response.ok) throw new Error(data.error || '자동 구매확정 실패')

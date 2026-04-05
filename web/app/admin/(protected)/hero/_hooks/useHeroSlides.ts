@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { HeroSlide, HeroFormData } from '../_types'
 
 export interface UseHeroSlidesReturn {
@@ -18,6 +20,7 @@ export interface UseHeroSlidesReturn {
 }
 
 export function useHeroSlides(): UseHeroSlidesReturn {
+  const router = useRouter()
   const [slides, setSlides] = useState<HeroSlide[]>([])
   const [loading, setLoading] = useState(true)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -26,10 +29,18 @@ export function useHeroSlides(): UseHeroSlidesReturn {
   const [showModal, setShowModal] = useState(false)
   const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null)
 
+  const redirectToLogin = () => {
+    router.push('/admin/login?next=/admin/hero')
+  }
+
   const fetchSlides = async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/admin/hero')
+      const res = await adminApiFetch('/api/admin/hero')
+      if (res.status === 401) {
+        redirectToLogin()
+        return
+      }
       const data = await res.json()
       if (res.ok) {
         setSlides(data.slides || [])
@@ -74,7 +85,11 @@ export function useHeroSlides(): UseHeroSlidesReturn {
       const fd = new FormData()
       fd.append('file', file)
       fd.append('kind', 'hero')
-      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: fd })
+      const res = await adminApiFetch('/api/admin/upload-image', { method: 'POST', body: fd })
+      if (res.status === 401) {
+        redirectToLogin()
+        return null
+      }
       const data = await res.json()
       
       if (!res.ok) {
@@ -104,11 +119,16 @@ export function useHeroSlides(): UseHeroSlidesReturn {
     const method = isEdit ? 'PUT' : 'POST'
 
     try {
-      const res = await fetch(url, {
+      const res = await adminApiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
+
+      if (res.status === 401) {
+        redirectToLogin()
+        return false
+      }
 
       const data = await res.json()
 
@@ -132,9 +152,14 @@ export function useHeroSlides(): UseHeroSlidesReturn {
     if (!confirm('정말 삭제하시겠습니까?')) return
 
     try {
-      const res = await fetch(`/api/admin/hero/${id}`, {
+      const res = await adminApiFetch(`/api/admin/hero/${id}`, {
         method: 'DELETE',
       })
+
+      if (res.status === 401) {
+        redirectToLogin()
+        return
+      }
 
       if (res.ok) {
         toast.success('히어로 슬라이드가 삭제되었습니다')

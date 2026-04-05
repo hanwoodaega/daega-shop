@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import type { Banner } from '../_types'
 
 interface BannerFormModalProps {
@@ -76,7 +77,7 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
       formData.append('file', file)
       formData.append('bucket', 'banner-images') // 배너 이미지 버킷 지정
 
-      const res = await fetch('/api/admin/upload-image', {
+      const res = await adminApiFetch('/api/admin/upload-image', {
         method: 'POST',
         body: formData,
       })
@@ -99,7 +100,7 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
   }
 
   const apiCall = async (method: 'PUT' | 'POST', url: string, data: FormData) => {
-    const res = await fetch(url, {
+    const res = await adminApiFetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),

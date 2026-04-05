@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import type { AdminReview } from '../_types'
 
 export function useReviewReplies(reviews: AdminReview[], onRefetch: () => Promise<void>) {
@@ -26,7 +27,7 @@ export function useReviewReplies(reviews: AdminReview[], onRefetch: () => Promis
       const text = replyDrafts[id] ?? ''
       setUpdatingId(id)
       try {
-        const res = await fetch(`/api/admin/reviews/${id}`, {
+        const res = await adminApiFetch(`/api/admin/reviews/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reply: text }),
@@ -58,7 +59,7 @@ export function useReviewReplies(reviews: AdminReview[], onRefetch: () => Promis
 
       setUpdatingId(id)
       try {
-        const res = await fetch(`/api/admin/reviews/${id}`, {
+        const res = await adminApiFetch(`/api/admin/reviews/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ deleteReply: true }),

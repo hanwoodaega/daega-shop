@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import AdminPageLayout from '@/app/admin/_components/AdminPageLayout'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 
 type Product = { id: string; name: string; category: string; price: number }
 type DescriptionImage = {
@@ -26,7 +27,7 @@ export default function AdminProductDescriptionPage() {
 
   const loadProducts = useCallback(() => {
     setLoadingProducts(true)
-    fetch('/api/admin/products?limit=500')
+    adminApiFetch('/api/admin/products?limit=500')
       .then((res) => res.json())
       .then((data) => {
         if (data.items) setProducts(data.items)
@@ -45,7 +46,7 @@ export default function AdminProductDescriptionPage() {
       return
     }
     setLoadingImages(true)
-    fetch(`/api/admin/product-description-images?product_id=${encodeURIComponent(productId)}`)
+    adminApiFetch(`/api/admin/product-description-images?product_id=${encodeURIComponent(productId)}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.images) setImages(data.images)
@@ -66,7 +67,7 @@ export default function AdminProductDescriptionPage() {
     const form = new FormData()
     form.set('file', file)
     form.set('product_id', productId)
-    fetch('/api/admin/product-description-images', {
+    adminApiFetch('/api/admin/product-description-images', {
       method: 'POST',
       body: form,
     })
@@ -94,12 +95,12 @@ export default function AdminProductDescriptionPage() {
     const swap = images.find((i) => i.sort_order === newOrder)
     if (!swap) return
     Promise.all([
-      fetch(`/api/admin/product-description-images/${id}`, {
+      adminApiFetch(`/api/admin/product-description-images/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sort_order: swap.sort_order }),
       }),
-      fetch(`/api/admin/product-description-images/${swap.id}`, {
+      adminApiFetch(`/api/admin/product-description-images/${swap.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sort_order: images[idx].sort_order }),
@@ -112,7 +113,7 @@ export default function AdminProductDescriptionPage() {
 
   const handleDelete = (id: string) => {
     if (!window.confirm('이 이미지를 삭제할까요?')) return
-    fetch(`/api/admin/product-description-images/${id}`, { method: 'DELETE' })
+    adminApiFetch(`/api/admin/product-description-images/${id}`, { method: 'DELETE' })
       .then((res) => {
         if (res.ok) {
           setImages((prev) => prev.filter((i) => i.id !== id))

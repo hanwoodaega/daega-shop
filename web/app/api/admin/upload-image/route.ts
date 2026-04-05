@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
 import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import sharp from 'sharp'
 
 export const runtime = 'nodejs'
 
-export async function POST(request: Request) {
-  const unauthorized = await ensureAdminApi()
+export async function POST(request: NextRequest) {
+  const unauthorized = await ensureAdminApi(request)
   if (unauthorized) return unauthorized
 
   try {
@@ -20,9 +20,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'File is empty' }, { status: 400 })
     }
 
-    // 버킷 지정 (기본값: product-images)
-    const bucket = (form.get('bucket') as string) || 'product-images'
     const kind = String(form.get('kind') || '').trim()
+    // 히어로는 홈 등에서 <img>로 바로 로드되므로 배너와 동일한 공개 버킷 사용
+    const bucket =
+      kind === 'hero'
+        ? 'banner-images'
+        : (form.get('bucket') as string) || 'product-images'
     const preserveAspect = form.get('preserveAspect') === 'true'
     const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png'
     const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`

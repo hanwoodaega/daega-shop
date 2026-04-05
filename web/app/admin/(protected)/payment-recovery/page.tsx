@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import AdminPageLayout from '@/app/admin/_components/AdminPageLayout'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 
 type RecoveryItem = {
   id: string
@@ -25,7 +26,7 @@ export default function AdminPaymentRecoveryPage() {
   const fetchList = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/order-drafts/recovery')
+      const res = await adminApiFetch('/api/admin/order-drafts/recovery')
       if (!res.ok) {
         toast.error('목록을 불러오지 못했습니다.')
         return

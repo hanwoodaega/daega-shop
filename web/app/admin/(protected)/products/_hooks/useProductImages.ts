@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { ProductImage } from '../_types'
 
 interface UseProductImagesProps {
@@ -20,7 +21,7 @@ export function useProductImages({ productId }: UseProductImagesProps) {
     }
     setLoadingImages(true)
     try {
-      const res = await fetch(`/api/admin/products/${productId}/images`)
+      const res = await adminApiFetch(`/api/admin/products/${productId}/images`)
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         console.error('이미지 목록 조회 실패:', errorData)
@@ -57,7 +58,7 @@ export function useProductImages({ productId }: UseProductImagesProps) {
       // 1. 이미지 파일 업로드
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch('/api/admin/upload-image', { method: 'POST', body: fd })
+      const res = await adminApiFetch('/api/admin/upload-image', { method: 'POST', body: fd })
       const data = await res.json()
 
       if (!res.ok) {
@@ -66,7 +67,7 @@ export function useProductImages({ productId }: UseProductImagesProps) {
       }
 
       // 2. product_images 테이블에 추가 (URL만 저장)
-      const addRes = await fetch(`/api/admin/products/${targetProductId}/images`, {
+      const addRes = await adminApiFetch(`/api/admin/products/${targetProductId}/images`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_url: data.url }),
@@ -103,7 +104,7 @@ export function useProductImages({ productId }: UseProductImagesProps) {
     if (!window.confirm('이미지를 삭제하시겠습니까?')) return false
 
     try {
-      const res = await fetch(`/api/admin/products/${productId}/images/${imageId}`, {
+      const res = await adminApiFetch(`/api/admin/products/${productId}/images/${imageId}`, {
         method: 'DELETE',
       })
 
@@ -137,7 +138,7 @@ export function useProductImages({ productId }: UseProductImagesProps) {
 
     try {
       // 최신 이미지 목록 가져오기
-      const latestRes = await fetch(`/api/admin/products/${productId}/images`)
+      const latestRes = await adminApiFetch(`/api/admin/products/${productId}/images`)
       if (!latestRes.ok) {
         toast.error('이미지 목록을 불러오는데 실패했습니다.')
         return false
@@ -173,12 +174,12 @@ export function useProductImages({ productId }: UseProductImagesProps) {
 
       // 두 이미지의 priority 업데이트
       const updatePromises = [
-        fetch(`/api/admin/products/${productId}/images/${imageId}`, {
+        adminApiFetch(`/api/admin/products/${productId}/images/${imageId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ priority: targetPriority }),
         }),
-        fetch(`/api/admin/products/${productId}/images/${targetImage.id}`, {
+        adminApiFetch(`/api/admin/products/${productId}/images/${targetImage.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ priority: currentPriority }),

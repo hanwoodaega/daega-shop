@@ -80,11 +80,31 @@ export function adminSessionCookieMaxAgeSec(): number {
   return DEFAULT_MAX_AGE_SEC
 }
 
-export function getAdminAuthCookieOptions() {
+/** 배포 뒤 프록시(예: Vercel)의 HTTPS 종단 여부 */
+export function isRequestHttps(request: Pick<Request, 'headers' | 'url'>): boolean {
+  const forwarded = request.headers.get('x-forwarded-proto')
+  if (forwarded) {
+    return forwarded.split(',')[0].trim() === 'https'
+  }
+  try {
+    return new URL(request.url).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * 프로덕션에서도 HTTP로 접속하면 Secure 쿠키는 브라우저가 저장하지 않음
+ * (로컬 `next start` + http://localhost 등). 연결이 실제 HTTPS일 때만 Secure.
+ */
+export function getAdminAuthCookieOptions(request?: Pick<Request, 'headers' | 'url'>) {
+  const secure =
+    process.env.NODE_ENV === 'production' &&
+    (request ? isRequestHttps(request) : true)
   return {
     httpOnly: true,
     sameSite: 'lax' as const,
-    secure: process.env.NODE_ENV === 'production',
+    secure,
     path: '/',
     maxAge: DEFAULT_MAX_AGE_SEC,
   }

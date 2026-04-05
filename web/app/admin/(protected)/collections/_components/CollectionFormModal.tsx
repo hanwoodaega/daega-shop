@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { useImageUpload } from '../_hooks/useImageUpload'
 import type { Collection, ColorTheme } from '../_types'
 
@@ -68,7 +69,7 @@ export default function CollectionFormModal({
   }, [editingCollection])
 
   const apiCall = async (method: 'PUT' | 'POST', url: string, data: FormData) => {
-    const res = await fetch(url, {
+    const res = await adminApiFetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

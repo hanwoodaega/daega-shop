@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { Banner } from '../_types'
 
 export function useBanners(initialBanners: Banner[]) {
@@ -10,7 +11,7 @@ export function useBanners(initialBanners: Banner[]) {
 
   const fetchBanners = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/banners')
+      const res = await adminApiFetch('/api/admin/banners')
       const data = await res.json()
       if (res.ok && data.banners) {
         setBanners(data.banners)

@@ -57,6 +57,6 @@ export async function POST(request: NextRequest) {
   }
 
   const res = NextResponse.json({ ok: true })
-  res.cookies.set(ADMIN_AUTH_COOKIE_NAME, token, getAdminAuthCookieOptions())
+  res.cookies.set(ADMIN_AUTH_COOKIE_NAME, token, getAdminAuthCookieOptions(request))
   return res
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { Coupon } from '@/lib/supabase/supabase'
 import { CouponFormData } from '../_types'
 import { validateCouponForm } from '../_utils/validation'
@@ -46,7 +47,7 @@ export function useCouponForm() {
     }
 
     try {
-      const res = await fetch('/api/admin/coupons', {
+      const res = await adminApiFetch('/api/admin/coupons', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -83,7 +84,7 @@ export function useCouponForm() {
     }
 
     try {
-      const res = await fetch(`/api/admin/coupons/${editingCoupon.id}`, {
+      const res = await adminApiFetch(`/api/admin/coupons/${editingCoupon.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validation.data),
@@ -111,7 +112,7 @@ export function useCouponForm() {
     if (!window.confirm('정말 삭제하시겠습니까?')) return { success: false }
 
     try {
-      const res = await fetch(`/api/admin/coupons/${couponId}`, {
+      const res = await adminApiFetch(`/api/admin/coupons/${couponId}`, {
         method: 'DELETE',
       })
 
@@ -135,7 +136,7 @@ export function useCouponForm() {
 
   const toggleActive = async (coupon: Coupon): Promise<{ success: boolean; error?: { status: number; message: string } }> => {
     try {
-      const res = await fetch(`/api/admin/coupons/${coupon.id}`, {
+      const res = await adminApiFetch(`/api/admin/coupons/${coupon.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

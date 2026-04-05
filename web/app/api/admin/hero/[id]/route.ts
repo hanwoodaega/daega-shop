@@ -10,7 +10,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const unauthorized = await ensureAdminApi()
+  const unauthorized = await ensureAdminApi(request)
   if (unauthorized) return unauthorized
 
   try {
@@ -52,7 +52,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const unauthorized = await ensureAdminApi()
+  const unauthorized = await ensureAdminApi(request)
   if (unauthorized) return unauthorized
 
   try {

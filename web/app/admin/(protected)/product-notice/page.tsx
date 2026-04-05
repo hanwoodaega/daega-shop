@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import AdminPageLayout from '@/app/admin/_components/AdminPageLayout'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 
 type Product = { id: string; name: string; category: string; price: number }
 
@@ -40,7 +41,7 @@ export default function AdminProductNoticePage() {
 
   useEffect(() => {
     setLoadingProducts(true)
-    fetch('/api/admin/products?limit=500')
+    adminApiFetch('/api/admin/products?limit=500')
       .then((res) => res.json())
       .then((data) => {
         if (data.items) setProducts(data.items)
@@ -58,7 +59,7 @@ export default function AdminProductNoticePage() {
       return
     }
     setLoadingNotice(true)
-    fetch(`/api/admin/product-notices?product_id=${encodeURIComponent(pid)}`)
+    adminApiFetch(`/api/admin/product-notices?product_id=${encodeURIComponent(pid)}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.error) {
@@ -112,7 +113,7 @@ export default function AdminProductNoticePage() {
         notice_category_id: selectedCategoryId,
         values: Object.entries(values).map(([field_id, value]) => ({ field_id, value })),
       }
-      const res = await fetch('/api/admin/product-notices', {
+      const res = await adminApiFetch('/api/admin/product-notices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

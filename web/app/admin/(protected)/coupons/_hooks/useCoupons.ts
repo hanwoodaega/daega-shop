@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Coupon } from '@/lib/supabase/supabase'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 
 export function useCoupons() {
   const [coupons, setCoupons] = useState<Coupon[]>([])
@@ -10,7 +11,7 @@ export function useCoupons() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/admin/coupons')
+      const res = await adminApiFetch('/api/admin/coupons')
       
       if (res.status === 401) {
         setError({ status: 401, message: '인증이 필요합니다.' })

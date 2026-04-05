@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { User, UserPoints, PointFormData, SelectedUserSummary } from '../_types'
 
 export function useAdminPoints() {
@@ -21,7 +22,7 @@ export function useAdminPoints() {
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/admin/users')
+      const response = await adminApiFetch('/api/admin/users')
       
       if (response.status === 401) {
         router.push('/admin/login?next=/admin/points')
@@ -47,7 +48,7 @@ export function useAdminPoints() {
 
       // 각 사용자의 포인트 정보 조회
       if (data.users && data.users.length > 0) {
-        const pointsResponse = await fetch('/api/admin/points/list')
+        const pointsResponse = await adminApiFetch('/api/admin/points/list')
         if (pointsResponse.ok) {
           const pointsData = await pointsResponse.json()
           const pointsMap: Record<string, UserPoints> = {}
@@ -140,7 +141,7 @@ export function useAdminPoints() {
 
     setIsSubmitting(true)
     try {
-      const response = await fetch('/api/admin/points/add', {
+      const response = await adminApiFetch('/api/admin/points/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

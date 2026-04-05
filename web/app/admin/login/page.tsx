@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 
 function AdminLoginForm() {
   const router = useRouter()
@@ -15,7 +16,7 @@ function AdminLoginForm() {
     setError(null)
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await adminApiFetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),

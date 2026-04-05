@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { supabase } from '@/lib/supabase/supabase'
 
 interface UseImageUploadOptions {
@@ -35,7 +36,7 @@ export function useImageUpload({ bucket, maxSizeMB = 10, useServerUpload = false
         form.set('file', file)
         form.set('bucket', bucket)
         if (preserveAspect) form.set('preserveAspect', 'true')
-        const res = await fetch('/api/admin/upload-image', { method: 'POST', body: form })
+        const res = await adminApiFetch('/api/admin/upload-image', { method: 'POST', body: form })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
           toast.error(data.error || '이미지 업로드 실패', { duration: 3000 })

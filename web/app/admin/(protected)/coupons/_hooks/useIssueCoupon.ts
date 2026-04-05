@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { Coupon } from '@/lib/supabase/supabase'
 import { IssueConditions } from '../_types'
 import { validateIssueConditions } from '../_utils/conditions'
@@ -12,7 +13,7 @@ async function issueCouponRequest(
   body: { coupon_id: string; conditions?: { phone?: string } }
 ): Promise<{ success: boolean; error?: { status: number; message: string } }> {
   try {
-    const res = await fetch('/api/admin/coupons/issue', {
+    const res = await adminApiFetch('/api/admin/coupons/issue', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

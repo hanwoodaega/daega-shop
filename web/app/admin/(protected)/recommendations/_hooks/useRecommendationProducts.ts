@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import type { RecommendationProduct, SelectedProduct } from '../_types'
 
 export function useRecommendationProducts(selectedCategoryId: string | null) {
@@ -9,7 +10,7 @@ export function useRecommendationProducts(selectedCategoryId: string | null) {
 
   const fetchCategoryProducts = useCallback(async (categoryId: string) => {
     try {
-      const res = await fetch(`/api/admin/recommendations/${categoryId}/products`)
+      const res = await adminApiFetch(`/api/admin/recommendations/${categoryId}/products`)
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`)
       }
@@ -36,7 +37,7 @@ export function useRecommendationProducts(selectedCategoryId: string | null) {
     }
 
     try {
-      const res = await fetch(`/api/admin/recommendations/${categoryId}/products`, {
+      const res = await adminApiFetch(`/api/admin/recommendations/${categoryId}/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ products }),
@@ -63,7 +64,7 @@ export function useRecommendationProducts(selectedCategoryId: string | null) {
     if (!confirm('이 상품을 카테고리에서 제거하시겠습니까?')) return
 
     try {
-      const res = await fetch(
+      const res = await adminApiFetch(
         `/api/admin/recommendations/${categoryId}/products?product_id=${productId}`,
         { method: 'DELETE' }
       )
@@ -83,7 +84,7 @@ export function useRecommendationProducts(selectedCategoryId: string | null) {
 
   const handleUpdateSortOrder = useCallback(async (categoryId: string, productId: string, sortOrder: number) => {
     try {
-      const res = await fetch(
+      const res = await adminApiFetch(
         `/api/admin/recommendations/${categoryId}/products/${productId}`,
         {
           method: 'PATCH',

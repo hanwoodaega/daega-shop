@@ -6,7 +6,7 @@ import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
 
 // GET: 히어로 슬라이드 목록 조회
 export async function GET(request: NextRequest) {
-  const unauthorized = await ensureAdminApi()
+  const unauthorized = await ensureAdminApi(request)
   if (unauthorized) return unauthorized
 
   try {
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
 // POST: 히어로 슬라이드 생성
 export async function POST(request: NextRequest) {
-  const unauthorized = await ensureAdminApi()
+  const unauthorized = await ensureAdminApi(request)
   if (unauthorized) return unauthorized
 
   try {

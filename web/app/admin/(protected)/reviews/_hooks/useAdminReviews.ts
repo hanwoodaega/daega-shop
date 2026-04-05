@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import type { AdminReview, ReviewStatus, ReviewListResponse, ReviewFilters } from '../_types'
 import { REVIEWS_PER_PAGE } from '../constants'
 
@@ -30,7 +31,7 @@ export function useAdminReviews() {
         params.append('date', filters.date)
       }
       
-      const res = await fetch(
+      const res = await adminApiFetch(
         `/api/admin/reviews?${params.toString()}`,
         { cache: 'no-store' }
       )
@@ -61,7 +62,7 @@ export function useAdminReviews() {
 
       setUpdatingId(id)
       try {
-        const res = await fetch(`/api/admin/reviews/${id}`, {
+        const res = await adminApiFetch(`/api/admin/reviews/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: nextStatus }),
@@ -93,7 +94,7 @@ export function useAdminReviews() {
 
       setUpdatingId(id)
       try {
-        const res = await fetch(`/api/admin/reviews/${id}`, { method: 'DELETE' })
+        const res = await adminApiFetch(`/api/admin/reviews/${id}`, { method: 'DELETE' })
         if (!res.ok) {
           const data = await res.json().catch(() => ({}))
           toast.error(data.error || '삭제에 실패했습니다.', { duration: 3000 })

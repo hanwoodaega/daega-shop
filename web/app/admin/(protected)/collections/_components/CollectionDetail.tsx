@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { formatPrice } from '@/lib/utils/utils'
 import ProductSelectorModal from './ProductSelectorModal'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import type { Collection, Product, CollectionProduct } from '../_types'
 
 interface CollectionDetailProps {
@@ -37,7 +38,7 @@ export default function CollectionDetail({
   const fetchCollectionProducts = async (collectionId: string) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/collections/${collectionId}`)
+      const res = await adminApiFetch(`/api/admin/collections/${collectionId}`)
       const data = await res.json()
       if (res.ok) {
         setCollectionProducts(data.products || [])
@@ -55,7 +56,7 @@ export default function CollectionDetail({
     if (!window.confirm('이 컬렉션을 삭제하시겠습니까?')) return
 
     try {
-      const res = await fetch(`/api/admin/collections/${collection.id}`, {
+      const res = await adminApiFetch(`/api/admin/collections/${collection.id}`, {
         method: 'DELETE',
       })
 
@@ -77,7 +78,7 @@ export default function CollectionDetail({
     if (!window.confirm('이 상품을 컬렉션에서 제거하시겠습니까?')) return
 
     try {
-      const res = await fetch(
+      const res = await adminApiFetch(
         `/api/admin/collections/${collection.id}/products?product_id=${productId}`,
         { method: 'DELETE' }
       )
@@ -99,7 +100,7 @@ export default function CollectionDetail({
     if (!collection) return
 
     try {
-      const res = await fetch(`/api/admin/collections/${collection.id}/products`, {
+      const res = await adminApiFetch(`/api/admin/collections/${collection.id}/products`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

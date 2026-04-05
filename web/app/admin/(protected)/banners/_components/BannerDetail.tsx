@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { formatPrice } from '@/lib/utils/utils'
 import ProductSelectorModal from './ProductSelectorModal'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import type { Banner, Product } from '../_types'
 
 interface BannerProduct {
@@ -41,7 +42,7 @@ export default function BannerDetail({ banner, onEdit, onDelete, initialProducts
   const fetchBannerProducts = async (bannerId: string) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/banners/${bannerId}/products`)
+      const res = await adminApiFetch(`/api/admin/banners/${bannerId}/products`)
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`)
       }
@@ -60,7 +61,7 @@ export default function BannerDetail({ banner, onEdit, onDelete, initialProducts
     if (!window.confirm('배너를 삭제하시겠습니까?')) return
 
     try {
-      const res = await fetch(`/api/admin/banners/${banner.id}`, {
+      const res = await adminApiFetch(`/api/admin/banners/${banner.id}`, {
         method: 'DELETE',
       })
       if (res.ok) {
@@ -81,7 +82,7 @@ export default function BannerDetail({ banner, onEdit, onDelete, initialProducts
     if (!window.confirm('이 상품을 배너에서 제거하시겠습니까?')) return
 
     try {
-      const res = await fetch(
+      const res = await adminApiFetch(
         `/api/admin/banners/${banner.id}/products?product_id=${productId}`,
         { method: 'DELETE' }
       )

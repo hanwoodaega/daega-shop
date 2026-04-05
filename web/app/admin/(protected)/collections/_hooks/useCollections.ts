@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { Collection } from '../_types'
 
 export function useCollections(initialCollections: Collection[], initialPromotedProductIds: string[]) {
@@ -17,7 +18,7 @@ export function useCollections(initialCollections: Collection[], initialPromoted
   // 컬렉션 목록 새로고침 함수
   const refreshCollections = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/collections')
+      const res = await adminApiFetch('/api/admin/collections')
       
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`)

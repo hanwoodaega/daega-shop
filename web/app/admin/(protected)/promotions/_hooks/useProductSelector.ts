@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { Product } from '../_types'
 
 export function useProductSelector() {
@@ -9,7 +10,7 @@ export function useProductSelector() {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/products?limit=1000')
+      const res = await adminApiFetch('/api/admin/products?limit=1000')
       const data = await res.json()
       if (res.ok) {
         setProducts(data.items || [])

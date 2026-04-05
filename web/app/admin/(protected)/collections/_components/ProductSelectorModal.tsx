@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { formatPrice } from '@/lib/utils/utils'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { useDebounce } from '../_hooks/useDebounce'
 import type { Product } from '../_types'
 
@@ -35,7 +36,7 @@ export default function ProductSelectorModal({
   const loadProducts = () => {
     setLoading(true)
     setFetchError(null)
-    fetch('/api/admin/products?limit=1000')
+    adminApiFetch('/api/admin/products?limit=1000')
       .then(res => res.json())
       .then(data => {
         if (data.items) {
@@ -84,7 +85,7 @@ export default function ProductSelectorModal({
     }
 
     try {
-      const res = await fetch(`/api/admin/collections/${collectionId}/products`, {
+      const res = await adminApiFetch(`/api/admin/collections/${collectionId}/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ product_ids: Array.from(selectedProducts) }),

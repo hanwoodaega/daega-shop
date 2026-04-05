@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import AdminPageLayout from '@/app/admin/_components/AdminPageLayout'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import OrderCard from '../_components/OrderCard'
 import { Order, OrderStatus } from '../_types'
 
@@ -21,7 +22,7 @@ export default function AdminOrderDetailPage() {
     if (!id) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/orders/${id}`)
+      const res = await adminApiFetch(`/api/admin/orders/${id}`)
       if (res.status === 401 || res.status === 403) {
         router.push('/admin/login?next=/admin/orders')
         return
@@ -50,10 +51,9 @@ export default function AdminOrderDetailPage() {
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus, trackingNumber?: string) => {
     setUpdatingOrderId(orderId)
     try {
-      const res = await fetch('/api/admin/orders', {
+      const res = await adminApiFetch('/api/admin/orders', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           orderId,
           status: newStatus,

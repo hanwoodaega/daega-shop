@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { User, NotificationType, NotificationFormData } from '../_types'
 
 export function useNotifications() {
@@ -28,7 +29,7 @@ export function useNotifications() {
   const fetchUsers = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/users', { cache: 'no-store' })
+      const res = await adminApiFetch('/api/admin/users', { cache: 'no-store' })
       if (res.status === 401) {
         // Auth error should be handled by a global interceptor or parent component,
         // but for now, we just stop loading and clear users.
@@ -99,7 +100,7 @@ export function useNotifications() {
 
     setSending(true)
     try {
-      const res = await fetch('/api/admin/notifications/create', {
+      const res = await adminApiFetch('/api/admin/notifications/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

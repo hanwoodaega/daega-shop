@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { Promotion, PromotionProduct } from '../_types'
 
 export function usePromotionProducts(promotions: Promotion[]) {
@@ -7,7 +8,7 @@ export function usePromotionProducts(promotions: Promotion[]) {
 
   const fetchPromotionProducts = useCallback(async (promotionId: string) => {
     try {
-      const detailRes = await fetch(`/api/admin/promotions/${promotionId}`)
+      const detailRes = await adminApiFetch(`/api/admin/promotions/${promotionId}`)
       const detailData = await detailRes.json()
       if (detailRes.ok && detailData.products) {
         return detailData.products as PromotionProduct[]
@@ -33,7 +34,7 @@ export function usePromotionProducts(promotions: Promotion[]) {
 
   const fetchPromotedProductIds = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/promotions')
+      const res = await adminApiFetch('/api/admin/promotions')
       const data = await res.json()
       if (res.ok && data.promotions) {
         const productIds = new Set<string>()

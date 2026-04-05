@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { Promotion, PromotionFormData } from '../_types'
 import { INITIAL_FORM_DATA } from '../constants'
 
@@ -12,7 +13,7 @@ export function useAdminPromotions() {
 
   const fetchPromotions = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/promotions')
+      const res = await adminApiFetch('/api/admin/promotions')
       const data = await res.json()
       if (res.ok) {
         setPromotions(data.promotions || [])
@@ -48,7 +49,7 @@ export function useAdminPromotions() {
     }
 
     try {
-      const res = await fetch('/api/admin/promotions', {
+      const res = await adminApiFetch('/api/admin/promotions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -85,7 +86,7 @@ export function useAdminPromotions() {
     }
 
     try {
-      const res = await fetch(`/api/admin/promotions/${editingPromotion.id}`, {
+      const res = await adminApiFetch(`/api/admin/promotions/${editingPromotion.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -114,7 +115,7 @@ export function useAdminPromotions() {
     if (!window.confirm('이 프로모션을 삭제하시겠습니까?')) return false
 
     try {
-      const res = await fetch(`/api/admin/promotions/${promotionId}`, {
+      const res = await adminApiFetch(`/api/admin/promotions/${promotionId}`, {
         method: 'DELETE',
       })
 
@@ -157,7 +158,7 @@ export function useAdminPromotions() {
 
     // 프로모션에 연결된 상품 조회
     try {
-      const res = await fetch(`/api/admin/promotions/${promotion.id}`)
+      const res = await adminApiFetch(`/api/admin/promotions/${promotion.id}`)
       const data = await res.json()
       if (res.ok && data.products && onProductIdsLoaded) {
         const productIds = data.products.map((p: any) => p.product_id)

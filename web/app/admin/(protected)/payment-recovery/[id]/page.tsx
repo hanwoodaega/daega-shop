@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import AdminPageLayout from '@/app/admin/_components/AdminPageLayout'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 
 type Draft = {
   id: string
@@ -30,7 +31,7 @@ export default function AdminPaymentRecoveryDetailPage() {
     if (!id) return
     let cancelled = false
     async function fetchDraft() {
-      const res = await fetch(`/api/admin/order-drafts/recovery/${id}`)
+      const res = await adminApiFetch(`/api/admin/order-drafts/recovery/${id}`)
       const json = await res.json()
       if (cancelled) return
       if (!res.ok) {
@@ -51,7 +52,7 @@ export default function AdminPaymentRecoveryDetailPage() {
     setCancelling(true)
     setError(null)
     try {
-      const res = await fetch(`/api/admin/order-drafts/recovery/${id}/cancel`, { method: 'POST' })
+      const res = await adminApiFetch(`/api/admin/order-drafts/recovery/${id}/cancel`, { method: 'POST' })
       const json = await res.json()
       if (!res.ok) {
         setError(json.error || '취소 실패')
@@ -69,7 +70,7 @@ export default function AdminPaymentRecoveryDetailPage() {
     setProcessing(true)
     setError(null)
     try {
-      const res = await fetch(`/api/admin/order-drafts/recovery/${id}/process`, { method: 'POST' })
+      const res = await adminApiFetch(`/api/admin/order-drafts/recovery/${id}/process`, { method: 'POST' })
       const json = await res.json()
       if (!res.ok) {
         setError(json.error || '재처리 실패')

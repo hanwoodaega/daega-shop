@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
+import { adminApiFetch } from '@/lib/admin/admin-api-fetch'
 import { ADMIN_CATEGORIES } from '@/lib/utils/constants'
 import { PRODUCT_LIST_LIMIT } from '../constants'
 import { Product, ProductFormData, ProductListState, ProductUIState } from '../_types'
@@ -58,7 +59,7 @@ export function useAdminProducts() {
       params.set('page', String(listState.page))
       params.set('limit', String(PRODUCT_LIST_LIMIT))
       const qs = params.toString() ? `?${params.toString()}` : ''
-      const res = await fetch(`/api/admin/products${qs}`)
+      const res = await adminApiFetch(`/api/admin/products${qs}`)
       const data = await res.json()
       if (res.ok) {
         setListState(prev => ({ 
@@ -107,7 +108,7 @@ export function useAdminProducts() {
         weight_gram: form.weight_gram ? parseInt(form.weight_gram.toString(), 10) : null,
         tax_type: form.tax_type,
       }
-      const res = await fetch('/api/admin/products', {
+      const res = await adminApiFetch('/api/admin/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -148,7 +149,7 @@ export function useAdminProducts() {
   // list/edit/toggle → toast (전역 피드백)
   // 메시지 자동 제거는 page에서 toast로 처리
   const removeItem = useCallback(async (id: string) => {
-    const res = await fetch(`/api/admin/products/${id}`, { method: 'DELETE' })
+    const res = await adminApiFetch(`/api/admin/products/${id}`, { method: 'DELETE' })
     if (res.ok) {
       setListState(prev => ({ ...prev, items: prev.items.filter((i) => i.id !== id) }))
       // 성공 메시지는 page에서 toast로 처리
@@ -172,7 +173,7 @@ export function useAdminProducts() {
     try {
       const newStatus =
         currentStatus === 'soldout' || currentStatus === 'deleted' ? 'active' : 'soldout'
-      const res = await fetch(`/api/admin/products/${productId}`, {
+      const res = await adminApiFetch(`/api/admin/products/${productId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -205,7 +206,7 @@ export function useAdminProducts() {
     if (!editing) return false
     setSavingEdit(true)
     try {
-      const res = await fetch(`/api/admin/products/${editing.id}`, {
+      const res = await adminApiFetch(`/api/admin/products/${editing.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
