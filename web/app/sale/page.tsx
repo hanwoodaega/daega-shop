@@ -1,4 +1,5 @@
 import CollectionProductsPageClient from '@/components/sections/CollectionProductsPageClient'
+import { COLLECTIONS_CACHE_TAG } from '@/lib/cache/revalidate-collections-public'
 import { getServerBaseUrl } from '@/lib/utils/server-url'
 import { DEFAULT_PAGE_SIZE } from '@/lib/utils/constants'
 
@@ -9,7 +10,7 @@ export default async function SalePage() {
     if (siteUrl) {
       const res = await fetch(
         `${siteUrl}/api/collections/sale?page=1&limit=${DEFAULT_PAGE_SIZE}&sort=default`,
-        { next: { revalidate: 300 } }
+        { next: { revalidate: 300, tags: [COLLECTIONS_CACHE_TAG] } }
       )
       if (res.ok) {
         const data = await res.json()

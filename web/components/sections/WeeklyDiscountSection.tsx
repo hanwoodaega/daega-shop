@@ -21,7 +21,7 @@ export default function WeeklyDiscountSection({
   const description = collection?.description || '놓칠 수 없는 이번 주 할인'
 
   return (
-    <section className="py-8 bg-white">
+    <section className="pt-5 pb-8 lg:py-8 bg-white">
       <div className="container mx-auto px-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">

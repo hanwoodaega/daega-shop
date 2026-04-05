@@ -59,9 +59,12 @@ export function useNotifications() {
       return users
     }
     const query = searchQuery.trim().toLowerCase()
-    return users.filter(u =>
-      u.name?.toLowerCase().includes(query) ||
-      (u.phone && u.phone.replace(/\s/g, '').includes(query.replace(/\s/g, '')))
+    return users.filter(
+      (u) =>
+        u.name?.toLowerCase().includes(query) ||
+        u.email?.toLowerCase().includes(query) ||
+        u.signup_method?.toLowerCase().includes(query) ||
+        (u.phone && u.phone.replace(/\s/g, '').includes(query.replace(/\s/g, '')))
     )
   }, [users, searchQuery])
 

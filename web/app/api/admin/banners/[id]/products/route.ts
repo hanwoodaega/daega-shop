@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateBannersPublicCache } from '@/lib/cache/revalidate-banners-public'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
 import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
@@ -62,7 +63,7 @@ export async function POST(
     // 배너 존재 확인
     const { data: banner, error: bannerError } = await supabaseAdmin
       .from('banners')
-      .select('id')
+      .select('id, slug')
       .eq('id', id)
       .single()
 
@@ -117,6 +118,8 @@ export async function POST(
       return dbErrorResponse('admin/banners/[id]/products POST', error)
     }
 
+    revalidateBannersPublicCache(banner.slug)
+
     return NextResponse.json({ products: data })
   } catch (error: unknown) {
     return unknownErrorResponse('admin/banners/[id]/products POST', error)
@@ -141,6 +144,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'product_id가 필요합니다.' }, { status: 400 })
     }
 
+    const { data: bannerRow } = await supabaseAdmin
+      .from('banners')
+      .select('slug')
+      .eq('id', id)
+      .maybeSingle()
+
     const { error } = await supabaseAdmin
       .from('banner_products')
       .delete()
@@ -150,6 +159,8 @@ export async function DELETE(
     if (error) {
       return dbErrorResponse('admin/banners/[id]/products DELETE', error)
     }
+
+    revalidateBannersPublicCache(bannerRow?.slug)
 
     return NextResponse.json({ success: true })
   } catch (error: unknown) {

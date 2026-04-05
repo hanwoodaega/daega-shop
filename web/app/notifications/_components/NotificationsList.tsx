@@ -23,18 +23,19 @@ export default function NotificationsList({ notifications }: NotificationsListPr
               : 'bg-blue-50 border-blue-200'
           }`}
         >
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 mb-2">
-                {notification.title}
-              </h3>
-              <div className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
-                {renderContent(notification, router)}
-              </div>
-              <p className="text-xs text-gray-500">
-                {new Date(notification.created_at).toLocaleString('ko-KR')}
-              </p>
-            </div>
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <h3 className="font-semibold text-gray-900 flex-1 min-w-0 pr-1">
+              {notification.title}
+            </h3>
+            <time
+              dateTime={notification.created_at}
+              className="text-xs text-gray-500 shrink-0 whitespace-nowrap pt-0.5"
+            >
+              {new Date(notification.created_at).toLocaleDateString('ko-KR')}
+            </time>
+          </div>
+          <div className="text-sm text-gray-700 whitespace-pre-wrap">
+            {renderContent(notification, router)}
           </div>
         </div>
       ))}

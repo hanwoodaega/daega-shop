@@ -93,7 +93,7 @@ export async function PUT(
 
   try {
     const body = await request.json()
-    const { title, type, buy_qty, discount_percent, is_active } = body
+    const { title, type, buy_qty, discount_percent, is_active, product_ids, group_id } = body
 
     // 유효성 검사
     if (type === 'bogo' && !buy_qty) {
@@ -129,6 +129,34 @@ export async function PUT(
 
     if (error) {
       return dbErrorResponse('admin/promotions/[id] PUT', error)
+    }
+
+    // 상품 목록 동기화 (관리자 수정 시 선택한 전체 ID로 교체)
+    if (Array.isArray(product_ids)) {
+      const { error: delError } = await supabaseAdmin
+        .from('promotion_products')
+        .delete()
+        .eq('promotion_id', id)
+
+      if (delError) {
+        return dbErrorResponse('admin/promotions/[id] PUT delete promotion_products', delError)
+      }
+
+      if (product_ids.length > 0) {
+        const gid = group_id !== undefined && group_id !== '' ? group_id : null
+        const rows = product_ids.map((product_id: string, index: number) => ({
+          promotion_id: id,
+          product_id,
+          group_id: gid,
+          priority: index,
+        }))
+
+        const { error: insError } = await supabaseAdmin.from('promotion_products').insert(rows)
+
+        if (insError) {
+          return dbErrorResponse('admin/promotions/[id] PUT insert promotion_products', insError)
+        }
+      }
     }
 
     return NextResponse.json({ promotion: data })

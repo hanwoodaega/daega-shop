@@ -46,7 +46,9 @@ export default function RecipientTable({
               />
             </th>
             <th className="p-2 border text-left">이름</th>
+            <th className="p-2 border text-left">가입방식</th>
             <th className="p-2 border text-left">전화번호</th>
+            <th className="p-2 border text-left">가입</th>
           </tr>
         </thead>
         <tbody>
@@ -67,7 +69,13 @@ export default function RecipientTable({
                 />
               </td>
               <td className="p-2 border">{user.name || '-'}</td>
+              <td className="p-2 border text-gray-800">{user.signup_method || '-'}</td>
               <td className="p-2 border">{user.phone || '-'}</td>
+              <td className="p-2 border text-gray-500 whitespace-nowrap">
+                {user.created_at
+                  ? new Date(user.created_at).toLocaleDateString('ko-KR')
+                  : '-'}
+              </td>
             </tr>
           ))}
         </tbody>

@@ -39,7 +39,7 @@ export default function CollectionSectionUI({
 
   if (loading) {
     return (
-      <section className="py-6" style={{ backgroundColor: theme.background || '#F3E9D7' }}>
+      <section className="py-5 lg:py-6" style={{ backgroundColor: theme.background || '#F3E9D7' }}>
         <div className="container mx-auto px-4">
           <div className="mb-8">
             <div className="flex flex-col gap-2">
@@ -77,9 +77,9 @@ export default function CollectionSectionUI({
   }
 
   return (
-    <section className="pt-6 lg:pt-3 overflow-x-hidden" style={{ backgroundColor: theme.background || '#F3E9D7' }}>
+    <section className="pt-4 lg:pt-3 overflow-x-hidden" style={{ backgroundColor: theme.background || '#F3E9D7' }}>
       <div className="container mx-auto px-2">
-        <div className="mb-6 lg:mb-0 lg:pb-0">
+        <div className="mb-3 lg:mb-0 lg:pb-0">
           <div className="w-[96%] mx-auto">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="flex-1 text-left lg:py-1">
@@ -153,7 +153,7 @@ export default function CollectionSectionUI({
         </div>
       </div>
 
-      <div className="bg-white pt-6 pb-4 -mx-2 px-3 relative z-10 lg:mt-3">
+      <div className="bg-white pt-3 pb-4 -mx-2 px-3 relative z-10 lg:pt-6 lg:mt-3">
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 px-3 bg-white">
           {products.map((product, index) => (
             <div key={product.id} className={index >= 5 ? 'lg:hidden' : undefined}>

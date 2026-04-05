@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { revalidateTag, revalidatePath } from 'next/cache'
+import { revalidateBannersPublicCache } from '@/lib/cache/revalidate-banners-public'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
 import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { title, subtitle_black, subtitle_red, description, image_url, background_color, is_active, sort_order, slug } = body
+    const { title, subtitle_black, subtitle_red, description, image_url, is_active, sort_order, slug } = body
 
     if (!image_url) {
       return NextResponse.json({ error: 'image_url은 필수입니다.' }, { status: 400 })
@@ -62,7 +62,6 @@ export async function POST(request: NextRequest) {
         subtitle_red: subtitle_red || null,
         description: description || null,
         image_url,
-        background_color: background_color || '#FFFFFF',
         is_active: is_active !== undefined ? is_active : true,
         sort_order: sort_order || 0,
         slug: slug?.trim() || null,
@@ -74,9 +73,7 @@ export async function POST(request: NextRequest) {
       return dbErrorResponse('admin/banners POST', error)
     }
 
-    // 캐시 무효화
-    revalidateTag('banner', 'default')
-    revalidatePath('/')
+    revalidateBannersPublicCache(data.slug)
 
     return NextResponse.json({ banner: data })
   } catch (error: unknown) {

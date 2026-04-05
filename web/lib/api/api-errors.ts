@@ -92,9 +92,16 @@ export function mapDbErrorForClient(err: { code?: string; message?: string } | n
     }
   }
   if (code === '22P02' || code === '23514') {
+    const check = /check constraint/i.test(msg)
     return {
       status: 400,
-      body: { error: API_ERROR_TEXT.validation, code: 'INVALID_DATA' },
+      body: {
+        error: check
+          ? '저장 값이 DB 제약 조건과 맞지 않습니다. (예: type 컬럼에 허용된 값만 가능한 경우)'
+          : API_ERROR_TEXT.validation,
+        code: 'INVALID_DATA',
+        detail: msg || undefined,
+      },
     }
   }
   if (code === '42501' || /permission denied|RLS/i.test(msg)) {

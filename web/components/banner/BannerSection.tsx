@@ -1,17 +1,32 @@
 import BannerSectionUI from './BannerSectionUI'
+import { BANNER_CACHE_TAG } from '@/lib/cache/revalidate-banners-public'
 import { createSupabaseServerClient } from '@/lib/supabase/supabase-server'
+import { getServerBaseUrl } from '@/lib/utils/server-url'
 
 /**
- * Server Component: 배너 데이터 fetch 담당
- * - 서버에서 Supabase 직접 조회 (URL 의존 없음, 배포 환경에서도 동작)
- * - 초기 HTML에 포함되어 SEO 최적화
+ * Server Component: 배너 데이터
+ * - baseUrl 있으면 `/api/banners` + `tags: [banner]` 로 조회 (관리자 저장 시 revalidateTag와 연동)
+ * - 없으면 Supabase 직접 조회 (빌드/로컬 등)
  */
 export default async function BannerSection() {
   try {
+    const baseUrl = await getServerBaseUrl()
+    if (baseUrl) {
+      const res = await fetch(`${baseUrl}/api/banners`, {
+        next: { revalidate: 300, tags: [BANNER_CACHE_TAG] },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const banners = data.banners || []
+        if (!banners.length) return null
+        return <BannerSectionUI banners={banners} />
+      }
+    }
+
     const supabase = await createSupabaseServerClient()
     const { data: banners, error } = await supabase
       .from('banners')
-      .select('id, title, subtitle_black, subtitle_red, description, image_url, background_color, slug')
+      .select('id, title, subtitle_black, subtitle_red, description, image_url, slug')
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
 

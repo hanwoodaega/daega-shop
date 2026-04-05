@@ -17,7 +17,7 @@ export default function RecipientToolbar({
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="이름, 전화번호로 검색..."
+          placeholder="이름, 가입방식, 전화번호 검색..."
           className="px-3 py-1.5 border border-gray-300 rounded text-sm"
         />
         <button

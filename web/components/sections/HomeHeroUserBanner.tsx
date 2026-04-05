@@ -25,7 +25,7 @@ export default function HomeHeroUserBanner() {
         >
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="font-semibold">로그인해 주세요</span>
+              <span className="font-semibold">로그인해주세요</span>
               <span className="text-base font-semibold text-gray-900">{'>'}</span>
             </div>
             <div className="ml-auto flex-shrink-0">

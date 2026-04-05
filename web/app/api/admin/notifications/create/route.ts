@@ -20,6 +20,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '수신자 목록이 필요합니다.' }, { status: 400 })
     }
 
+    const uniqueUserIds = Array.from(
+      new Set(user_ids.map((id: unknown) => String(id ?? '').trim()).filter((id) => id.length > 0))
+    )
+    if (uniqueUserIds.length === 0) {
+      return NextResponse.json({ error: '수신자 목록이 필요합니다.' }, { status: 400 })
+    }
+
     // 알림 타입 검증 (general, point, review만 허용)
     const validTypes = ['general', 'point', 'review']
     const notificationType = type || 'general'
@@ -33,8 +40,30 @@ export async function POST(request: NextRequest) {
     // 일단 null로 설정 (필요시 추가)
     const createdBy = null
 
-    // 각 사용자에게 알림 생성
-    const notifications = user_ids.map((userId: string) => ({
+    const { data: activeRows, error: activeErr } = await supabase
+      .from('users')
+      .select('id')
+      .in('id', uniqueUserIds)
+      .eq('status', 'active')
+
+    if (activeErr) {
+      console.error('알림 수신자(active) 확인 실패:', activeErr)
+      return NextResponse.json({ error: '수신자 확인에 실패했습니다.' }, { status: 500 })
+    }
+
+    const activeIds = new Set((activeRows || []).map((r: { id: string }) => r.id))
+    if (activeIds.size !== uniqueUserIds.length) {
+      return NextResponse.json(
+        {
+          error:
+            '활성 회원에게만 알림을 보낼 수 있습니다. 수신자 목록을 새로고침한 뒤 다시 선택해 주세요.',
+        },
+        { status: 400 }
+      )
+    }
+
+    // 각 사용자에게 알림 생성 (user_id = Auth id = public.users.id, 계정마다 별도 행)
+    const notifications = uniqueUserIds.map((userId: string) => ({
       user_id: userId,
       title,
       content,

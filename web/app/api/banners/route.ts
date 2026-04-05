@@ -9,7 +9,7 @@ export async function GET() {
     
     const { data: banners, error } = await supabase
       .from('banners')
-      .select('id, title, subtitle_black, subtitle_red, description, image_url, background_color, slug')
+      .select('id, title, subtitle_black, subtitle_red, description, image_url, slug')
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
     

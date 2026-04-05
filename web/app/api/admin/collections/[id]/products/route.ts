@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateCollectionsPublicCache } from '@/lib/cache/revalidate-collections-public'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
 import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
@@ -61,6 +62,8 @@ export async function POST(
       return dbErrorResponse('admin/collections/[id]/products POST', error)
     }
 
+    revalidateCollectionsPublicCache()
+
     return NextResponse.json({ products: data, added: toInsert.length })
   } catch (error: unknown) {
     return unknownErrorResponse('admin/collections/[id]/products POST', error)
@@ -115,6 +118,8 @@ export async function PUT(
       return dbErrorResponse('admin/collections/[id]/products PUT', error)
     }
 
+    revalidateCollectionsPublicCache()
+
     return NextResponse.json({ product: data })
   } catch (error: unknown) {
     return unknownErrorResponse('admin/collections/[id]/products PUT', error)
@@ -147,6 +152,8 @@ export async function DELETE(
     if (error) {
       return dbErrorResponse('admin/collections/[id]/products DELETE', error)
     }
+
+    revalidateCollectionsPublicCache()
 
     return NextResponse.json({ success: true })
   } catch (error: unknown) {

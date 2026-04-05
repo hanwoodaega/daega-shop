@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateCollectionsPublicCache } from '@/lib/cache/revalidate-collections-public'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
 import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
@@ -46,6 +47,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'type은 비어있을 수 없습니다.' }, { status: 400 })
     }
 
+    // 공개 URL /collections/{type} 에 쓰이므로 URL 안전한 slug만 허용
+    if (!/^[a-z0-9][a-z0-9_-]*$/.test(type)) {
+      return NextResponse.json(
+        {
+          error:
+            '타입은 영문 소문자, 숫자, 하이픈(-), 밑줄(_)만 사용하세요. 맨 앞은 숫자일 수 없습니다. (공백·한글·특수문자 불가)',
+        },
+        { status: 400 }
+      )
+    }
+
     // 같은 type이 이미 존재하는지 확인
     const { data: existing } = await supabaseAdmin
       .from('collections')
@@ -77,7 +89,10 @@ export async function POST(request: NextRequest) {
     if (color_theme !== undefined) {
       insertData.color_theme = { background: color_theme.background }
     }
-    if (sort_order !== undefined) insertData.sort_order = sort_order ?? 0
+    if (sort_order !== undefined) {
+      const n = Number(sort_order)
+      insertData.sort_order = Number.isFinite(n) ? Math.trunc(n) : 0
+    }
     if (is_active !== undefined) insertData.is_active = is_active ?? true
 
     const { data, error } = await supabaseAdmin
@@ -89,6 +104,8 @@ export async function POST(request: NextRequest) {
     if (error) {
       return dbErrorResponse('admin/collections POST', error)
     }
+
+    revalidateCollectionsPublicCache()
 
     return NextResponse.json({ collection: data })
   } catch (error: unknown) {

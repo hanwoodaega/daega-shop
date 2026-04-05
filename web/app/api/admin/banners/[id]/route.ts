@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { revalidateTag, revalidatePath } from 'next/cache'
+import { revalidateBannersPublicCache } from '@/lib/cache/revalidate-banners-public'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
 import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { apiJsonError, dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
@@ -64,7 +64,7 @@ export async function PUT(
 
   try {
     const body = await request.json()
-    const { title, subtitle_black, subtitle_red, description, image_url, background_color, is_active, sort_order, slug } = body
+    const { title, subtitle_black, subtitle_red, description, image_url, is_active, sort_order, slug } = body
 
     // slug 중복 검사 (slug가 변경되는 경우)
     if (slug !== undefined && slug && slug.trim()) {
@@ -83,13 +83,18 @@ export async function PUT(
       }
     }
 
+    const { data: prevRow } = await supabaseAdmin
+      .from('banners')
+      .select('slug')
+      .eq('id', id)
+      .maybeSingle()
+
     const updateData: any = {}
     if (title !== undefined) updateData.title = title || null
     if (subtitle_black !== undefined) updateData.subtitle_black = subtitle_black || null
     if (subtitle_red !== undefined) updateData.subtitle_red = subtitle_red || null
     if (description !== undefined) updateData.description = description || null
     if (image_url !== undefined) updateData.image_url = image_url
-    if (background_color !== undefined) updateData.background_color = background_color
     if (is_active !== undefined) updateData.is_active = is_active
     if (sort_order !== undefined) updateData.sort_order = sort_order
     if (slug !== undefined) updateData.slug = slug?.trim() || null
@@ -106,9 +111,7 @@ export async function PUT(
       return dbErrorResponse('admin/banners/[id] PUT', error)
     }
 
-    // 캐시 무효화
-    revalidateTag('banner', 'default')
-    revalidatePath('/')
+    revalidateBannersPublicCache(data.slug, prevRow?.slug)
 
     return NextResponse.json({ banner: data })
   } catch (error: unknown) {
@@ -126,6 +129,12 @@ export async function DELETE(
   if (unauthorized) return unauthorized
 
   try {
+    const { data: before } = await supabaseAdmin
+      .from('banners')
+      .select('slug')
+      .eq('id', id)
+      .maybeSingle()
+
     const { error } = await supabaseAdmin
       .from('banners')
       .update({ is_active: false, updated_at: new Date().toISOString() })
@@ -135,9 +144,7 @@ export async function DELETE(
       return dbErrorResponse('admin/banners/[id] DELETE', error)
     }
 
-    // 캐시 무효화
-    revalidateTag('banner', 'default')
-    revalidatePath('/')
+    revalidateBannersPublicCache(before?.slug)
 
     return NextResponse.json({ success: true })
   } catch (error: unknown) {

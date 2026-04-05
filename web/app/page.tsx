@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import BottomNavbar from '@/components/layout/BottomNavbar'
@@ -11,6 +12,7 @@ import HeroSlider from '@/components/sections/HeroSlider'
 import HomeHeroUserBanner from '@/components/sections/HomeHeroUserBanner'
 import BannerSection from '@/components/banner/BannerSection'
 import { getServerBaseUrl } from '@/lib/utils/server-url'
+import { COLLECTIONS_CACHE_TAG } from '@/lib/cache/revalidate-collections-public'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,7 +65,7 @@ export default async function Home() {
     if (baseUrl) {
       const [collectionsRes, heroRes, recommendationRes] = await Promise.all([
         fetch(`${baseUrl}/api/collections`, {
-          next: { revalidate: 300 }, // 5분 캐시
+          next: { revalidate: 300, tags: [COLLECTIONS_CACHE_TAG] },
         }),
         fetch(`${baseUrl}/api/hero`, {
           next: { revalidate: 300, tags: ['hero'] },
@@ -111,7 +113,7 @@ export default async function Home() {
             const typeSlug = (collection.type || '').trim().toLowerCase()
             const res = await fetch(
               `${baseUrl}/api/collections/${encodeURIComponent(typeSlug)}?limit=4`,
-              { next: { revalidate: 300 } }
+              { next: { revalidate: 300, tags: [COLLECTIONS_CACHE_TAG] } }
             )
             if (!res.ok) return { collection, products: [] as any[] }
             const data = await res.json()
@@ -154,19 +156,31 @@ export default async function Home() {
           .filter((s) => s.products.length > 0)
           .map((section) => {
             const hasImage = !!(section.collection.image_url && String(section.collection.image_url).trim())
-            return hasImage ? (
-              <CollectionSectionUI
-                key={section.collection.id}
-                collection={section.collection}
-                products={section.products}
-                loading={false}
-              />
-            ) : (
-              <WeeklyDiscountSection
-                key={section.collection.id}
-                collection={section.collection}
-                products={section.products}
-              />
+            if (!hasImage) {
+              return (
+                <WeeklyDiscountSection
+                  key={section.collection.id}
+                  collection={section.collection}
+                  products={section.products}
+                />
+              )
+            }
+            return (
+              <Fragment key={section.collection.id}>
+                <div className="lg:hidden">
+                  <CollectionSectionUI
+                    collection={section.collection}
+                    products={section.products}
+                    loading={false}
+                  />
+                </div>
+                <div className="hidden lg:block">
+                  <WeeklyDiscountSection
+                    collection={section.collection}
+                    products={section.products}
+                  />
+                </div>
+              </Fragment>
             )
           })}
 

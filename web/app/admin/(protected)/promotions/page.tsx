@@ -37,6 +37,7 @@ export default function PromotionsPage() {
     setShowProductSelector,
     toggleProduct,
     setSelection,
+    clearSelection,
   } = useProductSelector()
 
   const handleEdit = async (promotion: any) => {
@@ -47,10 +48,13 @@ export default function PromotionsPage() {
 
   const handleSubmit = async (productIds: string[]) => {
     if (editingPromotion) {
-      return await handleUpdate()
-    } else {
-      return await handleCreate(productIds)
+      const ok = await handleUpdate(productIds)
+      if (ok) clearSelection()
+      return ok
     }
+    const ok = await handleCreate(productIds)
+    if (ok) clearSelection()
+    return ok
   }
 
   return (

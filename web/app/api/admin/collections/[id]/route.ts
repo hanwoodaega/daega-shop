@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateCollectionsPublicCache } from '@/lib/cache/revalidate-collections-public'
 import { supabaseAdmin } from '@/lib/supabase/supabase-admin'
 import { ensureAdminApi } from '@/lib/auth/admin-auth'
 import { dbErrorResponse, unknownErrorResponse } from '@/lib/api/api-errors'
@@ -150,6 +151,8 @@ export async function PUT(
       return dbErrorResponse('admin/collections/[id] PUT', error)
     }
 
+    revalidateCollectionsPublicCache()
+
     return NextResponse.json({ collection: data })
   } catch (error: unknown) {
     return unknownErrorResponse('admin/collections/[id] PUT', error)
@@ -174,6 +177,8 @@ export async function DELETE(
     if (error) {
       return dbErrorResponse('admin/collections/[id] DELETE', error)
     }
+
+    revalidateCollectionsPublicCache()
 
     return NextResponse.json({ success: true })
   } catch (error: unknown) {

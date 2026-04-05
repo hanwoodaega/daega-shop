@@ -6,7 +6,6 @@ export interface Banner {
   subtitle_red?: string | null
   description?: string | null
   image_url?: string | null
-  background_color?: string
 }
 
 

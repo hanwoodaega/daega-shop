@@ -1,12 +1,15 @@
 'use client'
 
+import { useState } from 'react'
 import { useNotifications } from './_hooks/useNotifications'
 import NotificationForm from './_components/NotificationForm'
 import RecipientTable from './_components/RecipientTable'
 import RecipientToolbar from './_components/RecipientToolbar'
+import NotificationDayHistory from './_components/NotificationDayHistory'
 import AdminPageLayout from '@/app/admin/_components/AdminPageLayout'
 
 export default function AdminNotificationsPage() {
+  const [historyRefresh, setHistoryRefresh] = useState(0)
   const {
     formData,
     updateField,
@@ -27,7 +30,7 @@ export default function AdminNotificationsPage() {
     }
     const success = await sendNotifications()
     if (success) {
-      // 추가 로직
+      setHistoryRefresh((k) => k + 1)
     }
   }
 
@@ -71,6 +74,8 @@ export default function AdminNotificationsPage() {
           {sending ? '발송 중...' : '알림 발송'}
         </button>
       </div>
+
+      <NotificationDayHistory refreshTrigger={historyRefresh} />
     </AdminPageLayout>
   )
 }

@@ -17,7 +17,6 @@ interface FormData {
   subtitle_red: string
   description: string
   image_url: string
-  background_color: string
   is_active: boolean
   sort_order: number
   slug: string
@@ -30,7 +29,6 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
     subtitle_red: '',
     description: '',
     image_url: '',
-    background_color: '#FFFFFF',
     is_active: true,
     sort_order: 0,
     slug: '',
@@ -46,7 +44,6 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
         subtitle_red: editingBanner.subtitle_red || '',
         description: editingBanner.description || '',
         image_url: editingBanner.image_url,
-        background_color: editingBanner.background_color,
         is_active: editingBanner.is_active,
         sort_order: editingBanner.sort_order,
         slug: editingBanner.slug || '',
@@ -211,8 +208,11 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
           <div>
             <label className="block text-sm font-medium mb-2">
               이미지 URL <span className="text-red-500">*</span>
-              <span className="text-xs text-gray-500 font-normal ml-2">(권장: 400×400px, 정사각형)</span>
             </label>
+            <p className="text-xs text-gray-600 mb-2 leading-relaxed">
+              메인 배너 카드는 <strong>가로∶세로 2∶1</strong> 영역에 맞춰 표시됩니다. 권장 원본{' '}
+              <strong>1000×500px</strong>(또는 같은 비율). 비율이 다르면 잘림·확대가 있을 수 있습니다.
+            </p>
             <div className="space-y-2">
               <div className="flex gap-2">
                 <input
@@ -241,12 +241,12 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
               />
               {formData.image_url && (
                 <div className="mt-2">
-                  <p className="text-xs text-gray-500 mb-1">미리보기:</p>
-                  <div className="relative w-full aspect-square max-w-xs border rounded-lg overflow-hidden bg-gray-100">
+                  <p className="text-xs text-gray-500 mb-1">미리보기 (메인과 동일 2∶1, 꽉 채움):</p>
+                  <div className="relative w-full max-w-md aspect-[2/1] border rounded-lg overflow-hidden bg-gray-100">
                     <img
                       src={formData.image_url}
                       alt="미리보기"
-                      className="w-full h-full object-contain"
+                      className="h-full w-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none'
                       }}
@@ -254,25 +254,6 @@ export default function BannerFormModal({ editingBanner, onClose, onSuccess }: B
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">배경색</label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={formData.background_color}
-                onChange={(e) => setFormData(prev => ({ ...prev, background_color: e.target.value }))}
-                className="w-16 h-10 border rounded"
-              />
-              <input
-                type="text"
-                value={formData.background_color}
-                onChange={(e) => setFormData(prev => ({ ...prev, background_color: e.target.value }))}
-                className="flex-1 px-3 py-2 border rounded-lg"
-                placeholder="#FFFFFF"
-              />
             </div>
           </div>
 

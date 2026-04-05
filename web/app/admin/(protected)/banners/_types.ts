@@ -5,7 +5,6 @@ export interface Banner {
   subtitle_red?: string | null
   description?: string | null
   image_url: string
-  background_color: string
   is_active: boolean
   sort_order: number
   slug?: string | null

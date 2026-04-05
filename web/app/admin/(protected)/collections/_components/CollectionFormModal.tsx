@@ -86,7 +86,12 @@ export default function CollectionFormModal({
     const responseData = await res.json()
 
     if (!res.ok) {
-      throw new Error(responseData.error || `${method === 'PUT' ? '컬렉션 수정' : '컬렉션 생성'} 실패`)
+      const base = responseData.error || `${method === 'PUT' ? '컬렉션 수정' : '컬렉션 생성'} 실패`
+      const detail =
+        typeof responseData.detail === 'string' && responseData.detail.trim()
+          ? responseData.detail.trim()
+          : ''
+      throw new Error(detail ? `${base}\n${detail}` : base)
     }
 
     return responseData
@@ -145,7 +150,7 @@ export default function CollectionFormModal({
               value={formData.type}
               onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
               className="w-full px-3 py-2 border rounded-lg"
-              placeholder="예: best, sale, no9"
+              placeholder="예: spring_sale (영문·숫자·-_ 만, /collections/이름 으로 열림)"
               disabled={!!editingCollection}
               required
             />

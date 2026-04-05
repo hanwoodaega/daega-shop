@@ -6,72 +6,47 @@ interface BannerSectionUIProps {
 }
 
 export default function BannerSectionUI({ banners }: BannerSectionUIProps) {
-  if (banners.length === 0) {
+  const withImage = banners.filter((b) => b.image_url && String(b.image_url).trim())
+
+  if (withImage.length === 0) {
     return null
   }
 
   return (
     <div className="container mx-auto px-0 lg:px-2">
       <div className="grid gap-0 lg:gap-2 lg:grid-cols-3">
-        {banners.map((banner) => {
-          const BannerContent = (
-            <div
-              className="rounded-none lg:rounded-lg px-4 py-6"
-              style={{ backgroundColor: banner.background_color }}
-            >
-              <div className="flex flex-row items-center gap-4">
-                {/* 왼쪽: 텍스트 영역 */}
-                <div className="flex-1 text-left">
-                  {/* 부제목 영역 */}
-                  <div className="mb-2">
-                    {banner.subtitle_black && (
-                      <h2 className="text-lg md:text-xl lg:text-[17px] font-bold text-black mb-0 whitespace-pre-line tracking-tight leading-tight">
-                        {banner.subtitle_black}
-                      </h2>
-                    )}
-                    {banner.subtitle_red && (
-                      <h2 className="text-lg md:text-xl lg:text-[17px] font-bold text-red-600 whitespace-pre-line tracking-tight leading-tight">
-                        {banner.subtitle_red}
-                      </h2>
-                    )}
-                  </div>
-                  
-                  {/* 설명 */}
-                  {banner.description && (
-                    <p className="text-sm md:text-base text-gray-700 whitespace-pre-line">
-                      {banner.description}
-                    </p>
-                  )}
-                </div>
+        {withImage.map((banner) => {
+          const alt =
+            banner.title || banner.subtitle_black || banner.subtitle_red || '배너'
 
-                {/* 오른쪽: 이미지 */}
-                <div className="flex-shrink-0">
-                  {banner.image_url ? (
-                    <img
-                      src={banner.image_url}
-                      alt={banner.title || banner.subtitle_black || banner.subtitle_red || '배너'}
-                      className="w-24 h-24 md:w-28 md:h-28 lg:w-28 lg:h-28 object-contain"
-                    />
-                  ) : null}
-                </div>
-              </div>
+          const card = (
+            <div className="relative aspect-[2/1] w-full overflow-hidden rounded-none bg-neutral-100 lg:rounded-lg">
+              <img
+                src={banner.image_url!}
+                alt={alt}
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
             </div>
           )
 
           if (banner.slug) {
-            // slug가 /로 시작하면 절대 경로, 아니면 /banners/ 접두사 추가
             const href = banner.slug.startsWith('/') ? banner.slug : `/banners/${banner.slug}`
             return (
               <Link key={banner.id} href={href} prefetch={false} className="block">
-                {BannerContent}
+                {card}
               </Link>
             )
           }
 
-          return <div key={banner.id}>{BannerContent}</div>
+          return (
+            <div key={banner.id}>
+              {card}
+            </div>
+          )
         })}
       </div>
     </div>
   )
 }
-

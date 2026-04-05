@@ -77,7 +77,7 @@ export function useAdminPromotions() {
     }
   }, [formData, fetchPromotions])
 
-  const handleUpdate = useCallback(async () => {
+  const handleUpdate = useCallback(async (productIds: string[]) => {
     if (!editingPromotion) return false
 
     if (!formData.title.trim()) {
@@ -89,13 +89,17 @@ export function useAdminPromotions() {
       const res = await adminApiFetch(`/api/admin/promotions/${editingPromotion.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          product_ids: productIds,
+        }),
       })
 
       const data = await res.json()
 
       if (res.ok) {
         toast.success('프로모션이 수정되었습니다', { duration: 2000 })
+        setShowCreateModal(false)
         setEditingPromotion(null)
         resetForm()
         await fetchPromotions()
